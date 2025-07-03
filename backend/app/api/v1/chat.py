@@ -1,55 +1,51 @@
-from fastapi import APIRouter, HTTPException, Depends
-from datetime import datetime
-import uuid
-import logging
-
-from app.models.schemas import ChatRequest, ChatResponse, ChatMessage
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from app.services.llm_service import llm_service
+import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    response: str
+    model_name: str
+
 @router.post("/", response_model=ChatResponse)
-async def send_message(request: ChatRequest):
-    """Send message to AI and get response"""
+async def chat(request: ChatRequest):
+    """Chat mit LLM - einfach und funktional"""
     try:
-        logger.info(f"📨 Received chat message: {request.message[:50]}...")
+        print(f"📨 Chat Request: {request.message}")
         
-        # Generate conversation ID if not provided
-        conversation_id = request.conversation_id or str(uuid.uuid4())
+        response = llm_service.generate_response(request.message)
         
-        # Generate AI response
-        ai_response = await llm_service.generate_response(
-            message=request.message,
-            conversation_id=conversation_id
-        )
-        
-        logger.info(f"✅ Generated AI response: {ai_response[:50]}...")
+        print(f"✅ Chat Response: {response}")
         
         return ChatResponse(
-            response=ai_response,
-            conversation_id=conversation_id,
-            timestamp=datetime.now()
+            response=response,
+            model_name=llm_service.model_name
         )
-        
     except Exception as e:
-        logger.error(f"❌ Error in chat endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
+        logger.error(f"❌ Chat Error: {str(e)}")
+        print(f"❌ Chat Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Chat Error: {str(e)}")
 
 @router.get("/health")
 async def chat_health():
-    """Chat service health check"""
+    """Health Check für Chat"""
     return {
-        "status": "healthy",
-        "service": "chat",
-        "llm_initialized": llm_service.is_initialized,
-        "model_name": llm_service.model_name
+        "status": "ok",
+        "model_loaded": llm_service.is_initialized,
+        "model_name": llm_service.model_name,
+        "device": llm_service.device
     }
 
 @router.post("/test")
 async def test_simple():
-    """Simple test without AI"""
+    """Test ohne LLM"""
     return {
-        "response": "Test successful! Backend is working.",
-        "timestamp": datetime.now()
+        "response": "Test erfolgreich! Backend läuft.",
+        "model_name": "test"
     }

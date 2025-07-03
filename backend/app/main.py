@@ -1,69 +1,25 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import logging
+from app.api.v1.chat import router as chat_router
 
-from app.core.config import settings
-from app.core.logging import setup_logging
-from app.api.v1.router import api_router
-from app.models.database import create_tables
+app = FastAPI(title="StreamWorks-KI", version="1.0.0")
 
-# Setup logging
-setup_logging()
-logger = logging.getLogger(__name__)
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    # Startup
-    logger.info("🚀 Starting StreamWorks-KI Backend...")
-    
-    # Initialize database tables
-    try:
-        await create_tables()
-        logger.info("📊 Database tables initialized successfully")
-    except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
-    
-    logger.info("✅ Services initialized successfully")
-    
-    yield
-    
-    # Shutdown
-    logger.info("🔄 Shutting down...")
-    logger.info("✅ Shutdown complete")
-
-# Create FastAPI app
-app = FastAPI(
-    title="StreamWorks-KI API",
-    description="Intelligente Workload-Automatisierung für StreamWorks",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    lifespan=lifespan
-)
-
-# CORS middleware
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(api_router, prefix="/api/v1")
+# Routes
+app.include_router(chat_router, prefix="/api/v1/chat", tags=["chat"])
 
-# Health check
 @app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "service": "StreamWorks-KI",
-        "version": "1.0.0"
-    }
+async def health():
+    return {"status": "ok", "message": "StreamWorks-KI Backend läuft"}
 
 @app.get("/")
 async def root():
-    return {"message": "StreamWorks-KI Backend läuft! 🚀"}
+    return {"message": "StreamWorks-KI API - Funktioniert! 🚀"}
