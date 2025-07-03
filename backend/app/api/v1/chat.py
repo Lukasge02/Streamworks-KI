@@ -42,5 +42,14 @@ async def chat_health():
     return {
         "status": "healthy",
         "service": "chat",
-        "llm_initialized": llm_service.is_initialized
+        "llm_initialized": llm_service.is_initialized,
+        "model_name": llm_service.model_name
+    }
+
+@router.post("/test")
+async def test_simple():
+    """Simple test without AI"""
+    return {
+        "response": "Test successful! Backend is working.",
+        "timestamp": datetime.now()
     }
