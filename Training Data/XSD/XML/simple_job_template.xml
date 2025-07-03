@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<stream xmlns="http://streamworks.com/schema/v1">
+  <metadata>
+    <name>SimpleJobTemplate</name>
+    <description>Einfache Vorlage für Standard-Jobs</description>
+    <version>1.0</version>
+  </metadata>
+  
+  <parameters>
+    <parameter name="source_path" type="path" default="/data/input/" required="true"/>
+    <parameter name="target_path" type="path" default="/data/output/" required="true"/>
+  </parameters>
+  
+  <schedule>
+    <type>trigger</type>
+    <description>Manuell oder durch anderen Stream ausgelöst</description>
+    <enabled>true</enabled>
+  </schedule>
+  
+  <jobs>
+    <job id="main_job">
+      <name>MainProcessingJob</name>
+      <type>file_processing</type>
+      <priority>medium</priority>
+      
+      <tasks>
+        <task id="copy_files">
+          <name>CopyFiles</name>
+          <type>file_copy</type>
+          <config>
+            <source>${source_path}</source>
+            <target>${target_path}</target>
+            <pattern>*.txt</pattern>
+            <overwrite>false</overwrite>
+          </config>
+          <timeout>PT10M</timeout>
+        </task>
+        
+        <task id="log_completion">
+          <name>LogCompletion</name>
+          <type>logging</type>
+          <depends_on>copy_files</depends_on>
+          <config>
+            <message>File copy completed successfully</message>
+            <level>info</level>
+          </config>
+        </task>
+      </tasks>
+      
+      <error_handling>
+        <retry_count>2</retry_count>
+        <retry_delay>PT5M</retry_delay>
+      </error_handling>
+    </job>
+  </jobs>
+</stream>

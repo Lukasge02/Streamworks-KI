@@ -1,0 +1,56 @@
+CSV-Verarbeitung in StreamWorks - Tipps und Tricks
+
+HÄUFIGE CSV-HERAUSFORDERUNGEN:
+1. Unterschiedliche Trennzeichen (Komma, Semikolon, Tab)
+2. Fehlende Header-Zeilen
+3. Sonderzeichen in Daten
+4. Große Dateien (Memory-Probleme)
+5. Inkonsistente Datentypen
+
+LÖSUNGSANSÄTZE:
+
+1. TRENNZEICHEN AUTOMATISCH ERKENNEN:
+- Erste Zeilen samplen
+- Häufigstes Zeichen als Delimiter
+- Fallback auf Standardwerte
+
+2. HEADER BEHANDLUNG:
+- Erste Zeile auf Muster prüfen
+- Bei fehlenden Headern: Standard-Spalten (Col1, Col2, ...)
+- Header normalisieren (Leerzeichen entfernen, Umlaute)
+
+3. ENCODING PROBLEME:
+- UTF-8 als Standard
+- BOM (Byte Order Mark) behandeln
+- Fallback auf Windows-1252
+
+4. GROSSE DATEIEN:
+- Chunking: Datei in Teilen verarbeiten
+- Streaming: Zeile für Zeile lesen
+- Memory-Monitoring
+
+BEISPIEL BATCH-PROZESS:
+1. CSV-Datei validieren
+2. Schema automatisch erkennen
+3. Daten bereinigen
+4. In Zielformat konvertieren
+5. Qualitätsprüfung
+6. Backup erstellen
+
+STREAMWORKS INTEGRATION:
+- CSV-Reader Komponente verwenden
+- Datentyp-Mapping konfigurieren
+- Fehlerbehandlung für ungültige Zeilen
+- Progress-Tracking für große Dateien
+
+PERFORMANCE TIPPS:
+- Index auf häufig verwendete Spalten
+- Parallelisierung bei unabhängigen Operationen
+- Compression für Zwischenergebnisse
+- Caching für wiederverwendbare Daten
+
+MONITORING:
+- Anzahl verarbeitete Zeilen
+- Fehlerhafte Datensätze
+- Verarbeitungszeit pro Chunk
+- Memory-Verbrauch

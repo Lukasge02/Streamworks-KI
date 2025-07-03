@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://streamworks.com/schema/v1"
+           xmlns:sw="http://streamworks.com/schema/v1"
+           elementFormDefault="qualified">
+
+  <!-- Root Element -->
+  <xs:element name="stream" type="sw:StreamType"/>
+
+  <!-- Main Stream Type -->
+  <xs:complexType name="StreamType">
+    <xs:sequence>
+      <xs:element name="metadata" type="sw:MetadataType"/>
+      <xs:element name="parameters" type="sw:ParametersType" minOccurs="0"/>
+      <xs:element name="schedule" type="sw:ScheduleType"/>
+      <xs:element name="jobs" type="sw:JobsType"/>
+      <xs:element name="monitoring" type="sw:MonitoringType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Metadata Type -->
+  <xs:complexType name="MetadataType">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="description" type="xs:string" minOccurs="0"/>
+      <xs:element name="version" type="xs:string"/>
+      <xs:element name="created" type="xs:date" minOccurs="0"/>
+      <xs:element name="owner" type="xs:string" minOccurs="0"/>
+      <xs:element name="category" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Parameters Type -->
+  <xs:complexType name="ParametersType">
+    <xs:sequence>
+      <xs:element name="parameter" type="sw:ParameterType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ParameterType">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="type" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="string"/>
+          <xs:enumeration value="integer"/>
+          <xs:enumeration value="boolean"/>
+          <xs:enumeration value="date"/>
+          <xs:enumeration value="path"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="default" type="xs:string"/>
+    <xs:attribute name="required" type="xs:boolean" default="false"/>
+  </xs:complexType>
+
+  <!-- Schedule Type -->
+  <xs:complexType name="ScheduleType">
+    <xs:sequence>
+      <xs:element name="type">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="once"/>
+            <xs:enumeration value="recurring"/>
+            <xs:enumeration value="trigger"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+      <xs:choice>
+        <xs:sequence>
+          <xs:element name="frequency" type="sw:FrequencyType" minOccurs="0"/>
+          <xs:element name="time" type="xs:time" minOccurs="0"/>
+        </xs:sequence>
+        <xs:element name="cron" type="xs:string" minOccurs="0"/>
+      </xs:choice>
+      <xs:element name="timezone" type="xs:string" minOccurs="0"/>
+      <xs:element name="enabled" type="xs:boolean" default="true"/>
+      <xs:element name="description" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="FrequencyType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="hourly"/>
+      <xs:enumeration value="daily"/>
+      <xs:enumeration value="weekly"/>
+      <xs:enumeration value="monthly"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Jobs Type -->
+  <xs:complexType name="JobsType">
+    <xs:sequence>
+      <xs:element name="job" type="sw:JobType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="JobType">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="type" type="xs:string"/>
+      <xs:element name="priority" type="sw:PriorityType" minOccurs="0"/>
+      <xs:element name="depends_on" type="xs:string" minOccurs="0"/>
+      <xs:element name="tasks" type="sw:TasksType"/>
+      <xs:element name="error_handling" type="sw:ErrorHandlingType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+  </xs:complexType>
+
+  <xs:simpleType name="PriorityType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="low"/>
+      <xs:enumeration value="medium"/>
+      <xs:enumeration value="high"/>
+      <xs:enumeration value="critical"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Tasks Type -->
+  <xs:complexType name="TasksType">
+    <xs:sequence>
+      <xs:element name="task" type="sw:TaskType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskType">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="type" type="xs:string"/>
+      <xs:element name="depends_on" type="xs:string" minOccurs="0"/>
+      <xs:element name="config" type="sw:ConfigType" minOccurs="0"/>
+      <xs:element name="timeout" type="xs:duration" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+  </xs:complexType>
+
+  <!-- Generic Config Type -->
+  <xs:complexType name="ConfigType" mixed="true">
+    <xs:sequence>
+      <xs:any processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Error Handling Type -->
+  <xs:complexType name="ErrorHandlingType">
+    <xs:sequence>
+      <xs:element name="retry_count" type="xs:nonNegativeInteger" minOccurs="0"/>
+      <xs:element name="retry_delay" type="xs:duration" minOccurs="0"/>
+      <xs:element name="notification" type="sw:NotificationType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Notification Type -->
+  <xs:complexType name="NotificationType">
+    <xs:sequence>
+      <xs:element name="email" type="xs:string" minOccurs="0"/>
+      <xs:element name="slack" type="xs:string" minOccurs="0"/>
+      <xs:element name="severity">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="info"/>
+            <xs:enumeration value="warning"/>
+            <xs:enumeration value="critical"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Monitoring Type -->
+  <xs:complexType name="MonitoringType">
+    <xs:sequence>
+      <xs:element name="alerts" type="sw:AlertsType" minOccurs="0"/>
+      <xs:element name="metrics" type="sw:MetricsType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="AlertsType">
+    <xs:sequence>
+      <xs:element name="alert" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="condition" type="xs:string" minOccurs="0"/>
+            <xs:element name="notification" type="xs:string"/>
+            <xs:choice>
+              <xs:element name="recipients" type="xs:string"/>
+              <xs:element name="channel" type="xs:string"/>
+            </xs:choice>
+          </xs:sequence>
+          <xs:attribute name="type" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="failure"/>
+                <xs:enumeration value="performance"/>
+                <xs:enumeration value="warning"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="MetricsType">
+    <xs:sequence>
+      <xs:element name="metric" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="type" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="time"/>
+                <xs:enumeration value="size"/>
+                <xs:enumeration value="count"/>
+                <xs:enumeration value="percentage"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

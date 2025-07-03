@@ -6,6 +6,7 @@ import logging
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.v1.router import api_router
+from app.models.database import create_tables
 
 # Setup logging
 setup_logging()
@@ -16,6 +17,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("🚀 Starting StreamWorks-KI Backend...")
+    
+    # Initialize database tables
+    try:
+        await create_tables()
+        logger.info("📊 Database tables initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+    
     logger.info("✅ Services initialized successfully")
     
     yield

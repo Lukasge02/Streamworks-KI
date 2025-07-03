@@ -3,6 +3,7 @@ import { Header } from './components/Layout/Header';
 import { NavigationTabs } from './components/Layout/NavigationTabs';
 import { ChatInterface } from './components/Chat/ChatInterface';
 import { StreamGeneratorForm } from './components/StreamGenerator/StreamGeneratorForm';
+import { TrainingDataTab } from './components/TrainingData/TrainingDataTab';
 import { DocumentationTab } from './components/Documentation/DocumentationTab';
 import { useAppStore } from './store/appStore';
 import './App.css';
@@ -16,6 +17,8 @@ function App() {
         return <ChatInterface />;
       case 'generator':
         return <StreamGeneratorForm />;
+      case 'training':
+        return <TrainingDataTab />;
       case 'docs':
         return <DocumentationTab />;
       default:

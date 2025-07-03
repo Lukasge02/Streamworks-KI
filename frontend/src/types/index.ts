@@ -21,4 +21,4 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export type TabType = 'chat' | 'generator' | 'docs';
+export type TabType = 'chat' | 'generator' | 'docs' | 'training';
