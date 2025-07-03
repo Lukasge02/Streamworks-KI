@@ -103,3 +103,7 @@ Eine vollständig funktionale "StreamWorks-KI" als Proof of Concept, die zeigt, 
 
 ---
 **CONTEXT FÜR NEUE CHATS**: Projekt ist in Phase 3 - LoRA Fine-Tuning Implementation. Training Data System ist vollständig implementiert und funktional.
+
+## 💻 **Git Commit Konfiguration**
+- **WICHTIG**: Keine "Co-Authored-By: Claude" Zeilen in Commit Messages
+- **Format**: Nur Titel, Beschreibung und Claude Code Link
