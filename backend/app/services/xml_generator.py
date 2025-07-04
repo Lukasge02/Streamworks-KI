@@ -10,7 +10,7 @@ from datetime import datetime
 import re
 
 from app.core.config import settings
-from app.services.xml_templates import XMLTemplateLoader, XMLValidator, schedule_to_cron, detect_stream_type
+from app.services.xml_templates_helper import XMLTemplateLoader, XMLValidator, schedule_to_cron, detect_stream_type
 from app.services.error_handler import error_handler, ErrorType
 
 logger = logging.getLogger(__name__)

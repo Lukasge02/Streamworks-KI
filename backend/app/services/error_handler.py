@@ -13,6 +13,8 @@ from collections import defaultdict
 from cachetools import TTLCache
 from pathlib import Path
 import yaml
+import traceback
+import json
 
 # Specific exception classes for better error handling
 class LLMConnectionError(Exception):
@@ -87,23 +89,31 @@ class FallbackType(Enum):
 
 @dataclass
 class FallbackResponse:
-    """Represents a fallback response"""
+    """Enhanced fallback response with detailed error context"""
     message: str
     fallback_type: FallbackType
     confidence: float
     error_type: ErrorType
     timestamp: datetime
     metadata: Dict[str, Any] = None
+    error_code: str = None
+    user_friendly_message: str = None
+    suggestions: List[str] = None
+    technical_details: Dict[str, Any] = None
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
+        """Convert to dictionary with enhanced error information"""
         return {
             "message": self.message,
+            "user_friendly_message": self.user_friendly_message or self.message,
             "fallback_type": self.fallback_type.value,
             "confidence": self.confidence,
             "error_type": self.error_type.value,
+            "error_code": self.error_code,
             "timestamp": self.timestamp.isoformat(),
             "metadata": self.metadata or {},
+            "suggestions": self.suggestions or [],
+            "technical_details": self.technical_details or {},
             "is_fallback": True
         }
 
@@ -160,7 +170,23 @@ class StreamWorksErrorHandler:
             re.IGNORECASE
         )
         
-        logger.info("🛡️ Error Handler initialized with TTL cache and pattern matching")
+        # Error code mapping for better debugging
+        self.error_codes = {
+            ErrorType.LLM_CONNECTION: "LLM_CONN_001",
+            ErrorType.LLM_TIMEOUT: "LLM_TIME_002",
+            ErrorType.LLM_GENERATION: "LLM_GEN_003",
+            ErrorType.RAG_VECTORDB: "RAG_VDB_004",
+            ErrorType.RAG_EMBEDDING: "RAG_EMB_005",
+            ErrorType.RAG_SEARCH: "RAG_SRCH_006",
+            ErrorType.XML_GENERATION: "XML_GEN_007",
+            ErrorType.XML_VALIDATION: "XML_VAL_008",
+            ErrorType.DATABASE_CONNECTION: "DB_CONN_009",
+            ErrorType.DATABASE_QUERY: "DB_QUERY_010",
+            ErrorType.API_VALIDATION: "API_VAL_011",
+            ErrorType.UNKNOWN: "UNK_ERR_999"
+        }
+        
+        logger.info("🛡️ Error Handler initialized with enhanced error messaging")
     
     def _load_response_templates(self) -> Dict[str, str]:
         """Load response templates from external file or use defaults"""
@@ -214,7 +240,7 @@ class StreamWorksErrorHandler:
         logger.info("🛡️ Error Handler initialized with fallback responses")
     
     async def handle_llm_error(self, error: Exception, context: Dict[str, Any] = None) -> FallbackResponse:
-        """Handle LLM service errors with specific exception handling"""
+        """Handle LLM service errors with enhanced context and user-friendly messages"""
         if isinstance(error, (LLMConnectionError, ConnectionError, TimeoutError)):
             error_type = ErrorType.LLM_CONNECTION
         elif isinstance(error, LLMTimeoutError):
@@ -225,18 +251,47 @@ class StreamWorksErrorHandler:
             error_type = self._classify_llm_error(error)
         
         self._increment_error_count(error_type)
-        logger.warning(f"🚨 LLM Error ({error_type.value}): {str(error)}")
         
-        # Get context for better fallback
+        # Enhanced error logging with context
+        error_context = {
+            "error_type": error_type.value,
+            "error_class": type(error).__name__,
+            "error_message": str(error),
+            "context": context or {},
+            "traceback": traceback.format_exc(),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        logger.warning(f"🚨 LLM Error [{self.error_codes[error_type]}]: {str(error)}")
+        logger.debug(f"Error context: {json.dumps(error_context, indent=2)}")
+        
+        # Extract context for better error handling
         query = context.get('query', '') if context else ''
+        user_id = context.get('user_id', 'anonymous') if context else 'anonymous'
+        
+        # Generate user-friendly message and suggestions
+        user_message, suggestions = self._get_user_friendly_llm_message(error_type, error)
+        
+        # Create technical details for debugging
+        technical_details = {
+            "original_error": str(error),
+            "error_class": type(error).__name__,
+            "query_length": len(query),
+            "user_id": user_id,
+            "stacktrace": traceback.format_exc()[-500:]  # Last 500 chars
+        }
         
         if error_type == ErrorType.LLM_CONNECTION:
             return FallbackResponse(
                 message=self._get_cached_response(query, "connection_error"),
+                user_friendly_message=user_message,
                 fallback_type=FallbackType.CACHED,
                 confidence=0.6,
                 error_type=error_type,
+                error_code=self.error_codes[error_type],
                 timestamp=datetime.now(),
+                suggestions=suggestions,
+                technical_details=technical_details,
                 metadata={
                     "original_error": str(error),
                     "suggestion": "LLM Service wird wiederhergestellt. Versuche es in wenigen Minuten erneut."
@@ -617,6 +672,148 @@ Die Datenpersistierung ist momentan eingeschränkt. Deine Anfrage wurde verarbei
         """Reset error counts (for testing/monitoring)"""
         self.error_counts.clear()
         logger.info("🧹 Error counts reset")
+    
+    def _get_user_friendly_llm_message(self, error_type: ErrorType, error: Exception) -> tuple[str, List[str]]:
+        """Generate user-friendly message and suggestions for LLM errors"""
+        if error_type == ErrorType.LLM_CONNECTION:
+            message = "🤖 Der KI-Service ist momentan nicht erreichbar. Das System verwendet Fallback-Antworten."
+            suggestions = [
+                "Versuche es in 2-3 Minuten erneut",
+                "Stelle eine einfachere Frage",
+                "Nutze den XML Generator für Stream-Erstellung",
+                "Kontaktiere den Support bei anhaltenden Problemen"
+            ]
+        elif error_type == ErrorType.LLM_TIMEOUT:
+            message = "⏱️ Die KI-Antwort dauert zu lange. Bitte stelle eine kürzere, spezifischere Frage."
+            suggestions = [
+                "Verwende kürzere Sätze (max 100 Wörter)",
+                "Stelle eine spezifische Frage statt mehrere auf einmal",
+                "Vermeide sehr komplexe technische Anfragen",
+                "Nutze Keywords wie 'XML', 'Stream', 'Batch Job'"
+            ]
+        elif error_type == ErrorType.LLM_GENERATION:
+            message = "🔧 Die KI konnte keine passende Antwort generieren. Das System zeigt verfügbare Informationen."
+            suggestions = [
+                "Formuliere die Frage anders",
+                "Verwende StreamWorks-spezifische Begriffe",
+                "Schaue in den anderen Tabs nach Features",
+                "Nutze den Stream Generator für XML-Erstellung"
+            ]
+        else:
+            message = "❓ Ein unerwarteter Fehler ist aufgetreten. Das System arbeitet an einer Lösung."
+            suggestions = [
+                "Lade die Seite neu",
+                "Versuche eine andere Formulierung",
+                "Nutze alternative Features",
+                "Kontaktiere den Support"
+            ]
+        
+        return message, suggestions
+    
+    def _get_user_friendly_rag_message(self, error_type: ErrorType, error: Exception) -> tuple[str, List[str]]:
+        """Generate user-friendly message and suggestions for RAG errors"""
+        if error_type == ErrorType.RAG_VECTORDB:
+            message = "🔍 Die Dokumentensuche ist temporär eingeschränkt. Grundfunktionen sind verfügbar."
+            suggestions = [
+                "Nutze den Stream Generator Tab",
+                "Stelle allgemeine Fragen zu StreamWorks",
+                "Verwende die XML-Templates",
+                "Warte 1-2 Minuten und versuche erneut"
+            ]
+        elif error_type == ErrorType.RAG_EMBEDDING:
+            message = "📊 Problem bei der Textanalyse. Verwende einfachere Formulierungen."
+            suggestions = [
+                "Verwende kürzere Fragen",
+                "Nutze deutsche Begriffe",
+                "Vermeide Sonderzeichen",
+                "Stelle eine Frage nach der anderen"
+            ]
+        else:
+            message = "📚 Suchfunktion temporär beeinträchtigt. Alternative Features sind verfügbar."
+            suggestions = [
+                "Nutze den XML Generator",
+                "Schaue in andere Tabs",
+                "Verwende allgemeine Fragen",
+                "Versuche später erneut"
+            ]
+        
+        return message, suggestions
+    
+    async def handle_error_with_context(self, error: Exception, context: str, user_context: Dict[str, Any] = None) -> FallbackResponse:
+        """Handle any error with enhanced context and user-friendly messaging"""
+        error_type = self._classify_general_error(error)
+        self._increment_error_count(error_type)
+        
+        # Enhanced error logging
+        error_details = {
+            "timestamp": datetime.now().isoformat(),
+            "context": context,
+            "error_type": error_type.value,
+            "error_class": type(error).__name__,
+            "error_message": str(error),
+            "user_context": user_context or {},
+            "error_code": self.error_codes.get(error_type, "UNK_ERR_999")
+        }
+        
+        logger.error(f"Error in {context} [{error_details['error_code']}]: {error_details}")
+        
+        # Generate user-friendly response
+        user_message = self._get_context_specific_message(context, error_type, error)
+        suggestions = self._get_context_specific_suggestions(context, error_type)
+        
+        return FallbackResponse(
+            message=f"Problem in {context}: {str(error)}",
+            user_friendly_message=user_message,
+            fallback_type=FallbackType.ERROR,
+            confidence=0.3,
+            error_type=error_type,
+            error_code=error_details["error_code"],
+            timestamp=datetime.now(),
+            suggestions=suggestions,
+            technical_details=error_details,
+            metadata={"context": context}
+        )
+    
+    def _classify_general_error(self, error: Exception) -> ErrorType:
+        """Classify any type of error"""
+        error_str = str(error)
+        
+        if isinstance(error, (ConnectionError, TimeoutError)):
+            return ErrorType.LLM_CONNECTION
+        elif self.connection_pattern.search(error_str):
+            return ErrorType.LLM_CONNECTION
+        elif self.vector_db_pattern.search(error_str):
+            return ErrorType.RAG_VECTORDB
+        elif self.db_connection_pattern.search(error_str):
+            return ErrorType.DATABASE_CONNECTION
+        else:
+            return ErrorType.UNKNOWN
+    
+    def _get_context_specific_message(self, context: str, error_type: ErrorType, error: Exception) -> str:
+        """Get context-specific user-friendly message"""
+        context_lower = context.lower()
+        
+        if "chat" in context_lower or "rag" in context_lower:
+            return f"💬 Problem im Chat-System: {self._get_user_friendly_rag_message(error_type, error)[0]}"
+        elif "xml" in context_lower:
+            return f"🔧 Problem bei XML-Generierung: Fallback-Template wird verwendet."
+        elif "database" in context_lower:
+            return f"🗄️ Datenbankproblem: Daten werden temporär im Speicher verarbeitet."
+        else:
+            return f"⚠️ Problem in {context}: Das System arbeitet an einer Lösung."
+    
+    def _get_context_specific_suggestions(self, context: str, error_type: ErrorType) -> List[str]:
+        """Get context-specific suggestions"""
+        context_lower = context.lower()
+        
+        if "chat" in context_lower:
+            return ["Formuliere die Frage neu", "Nutze andere Tabs", "Versuche später erneut"]
+        elif "xml" in context_lower:
+            return ["Nutze XML Generator Tab", "Prüfe Template-Einstellungen", "Verwende einfachere Parameter"]
+        elif "database" in context_lower:
+            return ["Speichere wichtige Daten extern", "Versuche erneut", "Kontaktiere Support"]
+        else:
+            return ["Lade Seite neu", "Versuche alternative Features", "Kontaktiere Support"]
 
 # Global instance
 error_handler = StreamWorksErrorHandler()
