@@ -48,32 +48,8 @@ class XMLGeneratorService:
         try:
             logger.info("🚀 XML Generator wird initialisiert...")
             
-            # Load tokenizer
-            logger.info(f"📝 Lade Tokenizer: {settings.BASE_MODEL}")
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                settings.BASE_MODEL,
-                padding_side="left"  # For generation
-            )
-            
-            # Add pad token if missing
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            
-            # Load base model
-            logger.info(f"🧠 Lade Base Model: {settings.BASE_MODEL}")
-            self.base_model = AutoModelForCausalLM.from_pretrained(
-                settings.BASE_MODEL,
-                torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
-                low_cpu_mem_usage=True,
-                device_map=None
-            )
-            
-            # Move to device
-            self.base_model.to(self.device)
-            self.base_model.eval()
-            
-            # Try to load LoRA adapter if available
-            await self._load_lora_adapter()
+            # XML Generator ist jetzt RAG-basiert, keine LoRA mehr
+            logger.info("🎯 RAG-basierter XML Generator - kein separates Model benötigt")
             
             self.is_initialized = True
             logger.info(f"✅ XML Generator initialisiert auf {self.device}")
@@ -84,29 +60,14 @@ class XMLGeneratorService:
             raise
     
     async def _load_lora_adapter(self):
-        """Load LoRA adapter if available"""
+        """Load LoRA adapter - DISABLED (RAG-only mode)"""
         try:
-            adapter_path = Path(settings.LORA_ADAPTER_PATH)
-            
-            if adapter_path.exists() and (adapter_path / "adapter_config.json").exists():
-                logger.info(f"🔗 Lade LoRA Adapter: {adapter_path}")
-                
-                self.lora_model = PeftModel.from_pretrained(
-                    self.base_model,
-                    str(adapter_path),
-                    device_map=None
-                )
-                
-                self.is_fine_tuned = True
-                logger.info("✅ LoRA Adapter erfolgreich geladen")
-            else:
-                logger.info("📭 Kein LoRA Adapter gefunden - nutze Base Model")
-                self.lora_model = self.base_model
-                self.is_fine_tuned = False
+            # LoRA ist deaktiviert - verwende RAG-basierte Generierung
+            logger.info("🎯 LoRA deaktiviert - nutze RAG-basierte XML-Generierung")
+            self.is_fine_tuned = False
                 
         except Exception as e:
-            logger.warning(f"⚠️ LoRA Adapter laden fehlgeschlagen: {e}")
-            self.lora_model = self.base_model
+            logger.warning(f"⚠️ XML Generator Setup Fehler: {e}")
             self.is_fine_tuned = False
     
     async def generate_stream(self, requirements: Dict) -> str:
@@ -452,15 +413,9 @@ Generiere XML:"""
         return {
             "status": "healthy" if self.is_initialized else "disabled",
             "xml_generation_enabled": settings.XML_GENERATION_ENABLED,
-            "base_model": settings.BASE_MODEL,
-            "is_fine_tuned": self.is_fine_tuned,
-            "lora_adapter_path": settings.LORA_ADAPTER_PATH,
+            "mode": "RAG-based",  # Kein separates Model mehr
             "device": self.device,
-            "lora_config": {
-                "r": settings.LORA_R,
-                "alpha": settings.LORA_ALPHA,
-                "dropout": settings.LORA_DROPOUT
-            }
+            "generation_method": "template_based"
         }
 
 # Global instance

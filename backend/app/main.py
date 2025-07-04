@@ -241,8 +241,7 @@ async def system_status():
         "models": {
             "mistral_model": settings.OLLAMA_MODEL,
             "embedding_model": settings.EMBEDDING_MODEL,
-            "vector_db_path": settings.VECTOR_DB_PATH,
-            "lora_adapter_path": settings.LORA_ADAPTER_PATH
+            "vector_db_path": settings.VECTOR_DB_PATH
         },
         "mistral_parameters": {
             "temperature": settings.MODEL_TEMPERATURE,

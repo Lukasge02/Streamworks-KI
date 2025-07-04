@@ -32,6 +32,11 @@ class EvaluationMetric:
     overall_score: float
     sources_used: List[str]
     metadata: Dict[str, Any]
+    
+    @property
+    def sources_count(self) -> int:
+        """Anzahl der verwendeten Quellen"""
+        return len(self.sources_used) if self.sources_used else 0
 
 @dataclass
 class PerformanceReport:
@@ -153,6 +158,8 @@ class EvaluationService:
             
         except Exception as e:
             logger.error(f"❌ Evaluation Fehler: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             # Fallback-Metrik
             return EvaluationMetric(
                 timestamp=datetime.now(),
@@ -244,7 +251,7 @@ class EvaluationService:
         if sources:
             if len(sources) >= 2:
                 source_integration_score += 0.3  # Multiple Quellen
-            if any('[Quelle:' in response or 'Training Data' in str(sources)):
+            if '[Quelle:' in response or 'Training Data' in str(sources):
                 source_integration_score += 0.2  # Quellen-Zitation
         
         # Frage-spezifische Vollständigkeit

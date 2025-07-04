@@ -49,15 +49,8 @@ class Settings(BaseSettings):
     GERMAN_PROMPT_STYLE: str = "professional"
     USE_GERMAN_TECHNICAL_TERMS: bool = True
     
-    # XML Generation Settings (LoRA Fine-Tuning)  
-    LORA_ADAPTER_PATH: str = "./data/models/xml_lora"
-    XML_GENERATION_ENABLED: bool = False  # Start disabled
-    
-    # LoRA Training Parameters
-    LORA_R: int = 16
-    LORA_ALPHA: int = 32
-    LORA_DROPOUT: float = 0.1
-    LORA_TARGET_MODULES: List[str] = ["c_attn", "c_proj"]  # For DialoGPT
+    # XML Generation Settings (RAG-basiert)  
+    XML_GENERATION_ENABLED: bool = True  # RAG-basierte Generierung
     
     # Legacy Generation Parameters (für Kompatibilität)
     MAX_NEW_TOKENS: int = 512
