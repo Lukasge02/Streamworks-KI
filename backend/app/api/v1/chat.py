@@ -1,6 +1,6 @@
 """
 Chat API with Mistral 7B + RAG Integration
-Optimiert für deutsche StreamWorks-Dokumentation
+Optimiert für deutsche StreamWorks-Dokumentation mit Conversation Memory
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ from typing import Optional, List
 from enum import Enum
 import logging
 import time
+import uuid
 
 from app.services.rag_service import rag_service
 from app.services.mistral_rag_service import mistral_rag_service
@@ -83,15 +84,53 @@ class DeleteDocumentResponse(BaseModel):
 
 @router.post("/", response_model=ChatResponse)
 async def chat_with_mistral(request: ChatRequest):
-    """Optimierter Chat für Mistral 7B + RAG"""
+    """Optimierter Chat für Mistral 7B + RAG mit Conversation Memory"""
     
     start_time = time.time()
     
     try:
         logger.info(f"📨 Mistral Chat Request: {request.message[:50]}...")
         
-        # RAG-Antwort mit Mistral
-        response = await mistral_rag_service.answer_with_mistral_rag(request.message)
+        # Conversation ID generieren oder verwenden
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+        
+        # Conversation Memory importieren und Kontext laden
+        try:
+            from app.services.conversation_memory import conversation_memory
+            conversation_context = conversation_memory.get_context(conversation_id)
+            
+            # Erweitere Nachricht um Konversations-Kontext
+            enhanced_message = request.message
+            if conversation_context:
+                enhanced_message = f"{conversation_context}\n\nAktuelle Frage: {request.message}"
+                logger.info(f"💬 Konversations-Kontext geladen ({len(conversation_context)} Zeichen)")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Conversation Memory nicht verfügbar: {e}")
+            enhanced_message = request.message
+            conversation_context = ""
+        
+        # RAG-Antwort mit Mistral (mit Kontext)
+        response = await mistral_rag_service.answer_with_mistral_rag(enhanced_message)
+        
+        # Speichere Konversation in Memory
+        try:
+            from app.services.conversation_memory import conversation_memory
+            conversation_memory.add_message(
+                session_id=conversation_id,
+                question=request.message,  # Original-Frage ohne Kontext
+                answer=response,
+                metadata={
+                    "model_used": "mistral:7b-instruct",
+                    "mode": "mistral_rag",
+                    "context_used": bool(conversation_context),
+                    "processing_time": time.time() - start_time
+                }
+            )
+            logger.info(f"💾 Konversation gespeichert: {conversation_id}")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Konversation konnte nicht gespeichert werden: {e}")
         
         # Performance-Logging
         process_time = time.time() - start_time
@@ -100,7 +139,7 @@ async def chat_with_mistral(request: ChatRequest):
         return ChatResponse(
             response=response,
             mode="mistral_rag",
-            conversation_id=request.conversation_id,
+            conversation_id=conversation_id,
             sources_used=0,  # TODO: Track sources from RAG
             model_used="mistral:7b-instruct",
             processing_time=process_time
@@ -110,10 +149,23 @@ async def chat_with_mistral(request: ChatRequest):
         logger.error(f"❌ Mistral chat error: {e}")
         process_time = time.time() - start_time
         
+        # Auch Fehler in Conversation Memory speichern
+        try:
+            if 'conversation_id' in locals():
+                from app.services.conversation_memory import conversation_memory
+                conversation_memory.add_message(
+                    session_id=conversation_id,
+                    question=request.message,
+                    answer="[Fehler bei der Verarbeitung]",
+                    metadata={"error": str(e), "processing_time": process_time}
+                )
+        except:
+            pass  # Ignoriere Fehler beim Speichern von Fehlern
+        
         return ChatResponse(
             response="Entschuldigung, bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
             mode="error_fallback",
-            conversation_id=request.conversation_id,
+            conversation_id=request.conversation_id or str(uuid.uuid4()),
             sources_used=0,
             model_used="mistral:7b-instruct",
             processing_time=process_time

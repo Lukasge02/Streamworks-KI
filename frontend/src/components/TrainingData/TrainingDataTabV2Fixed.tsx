@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Upload, FileText, Database, Search, AlertCircle, 
   CheckCircle, Clock, Trash2, RefreshCw, Archive,
-  Eye, X
+  Eye, X, Grid, List
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { apiService } from '../../services/apiService';
+import BatchUploader from './BatchUploader';
 
 interface TrainingFile {
   id: string;
@@ -46,6 +47,7 @@ const TrainingDataTabV2Fixed: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<TrainingFile | null>(null);
   const [indexingFiles, setIndexingFiles] = useState<Set<string>>(new Set());
+  const [uploadMode, setUploadMode] = useState<'single' | 'batch'>('single');
 
   // Safe console logging
   const logMessage = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -297,29 +299,66 @@ const TrainingDataTabV2Fixed: React.FC = () => {
         )}
       </div>
 
-      {/* Upload Area */}
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-        }`}
-      >
-        <input {...getInputProps()} />
-        <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-        {isDragActive ? (
-          <p className="text-lg">Dateien hier ablegen...</p>
-        ) : (
-          <div>
-            <p className="text-lg mb-2">Dateien hier ablegen oder klicken zum Auswählen</p>
-            <p className="text-sm text-gray-500">
-              Unterstützt: .txt, .csv, .bat, .md, .ps1, .xml, .xsd (max. 50MB)
-            </p>
-            <p className="text-xs text-gray-400 mt-2">
-              XML/XSD → Stream Templates | Andere → Help Data
-            </p>
-          </div>
-        )}
+      {/* Upload Mode Toggle */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Training Data Upload</h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setUploadMode('single')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              uploadMode === 'single'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Upload className="h-4 w-4" />
+            Einzeln
+          </button>
+          <button
+            onClick={() => setUploadMode('batch')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              uploadMode === 'batch'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Grid className="h-4 w-4" />
+            Batch
+          </button>
+        </div>
       </div>
+
+      {/* Upload Area */}
+      {uploadMode === 'single' ? (
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          }`}
+        >
+          <input {...getInputProps()} />
+          <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+          {isDragActive ? (
+            <p className="text-lg">Dateien hier ablegen...</p>
+          ) : (
+            <div>
+              <p className="text-lg mb-2">Datei hier ablegen oder klicken zum Auswählen</p>
+              <p className="text-sm text-gray-500">
+                Unterstützt: .txt, .csv, .bat, .md, .ps1, .xml, .xsd (max. 50MB)
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                XML/XSD → Stream Templates | Andere → Help Data
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <BatchUploader 
+          onUploadComplete={loadData}
+          maxFiles={20}
+          allowedCategory="help_data"
+        />
+      )}
 
       {/* Controls */}
       <div className="flex flex-wrap gap-4 items-center">

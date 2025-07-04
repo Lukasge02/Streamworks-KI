@@ -173,19 +173,38 @@ class RAGService:
             return []
     
     async def query(self, question: str) -> dict:
-        """Optimierte Q&A für Chat-Mode mit Mistral Integration"""
+        """Optimierte Q&A für Chat-Mode mit Mistral Integration und intelligenter Suche"""
         if not self.is_initialized:
             await self.initialize()
         
         try:
-            # Search relevant documents
-            relevant_docs = await self.search_documents(question)
+            logger.info(f"🔍 RAG Query: {question}")
+            
+            # Erweitere Query mit intelligenter Suche
+            try:
+                from app.services.intelligent_search import intelligent_search
+                expanded_query = intelligent_search.expand_query(question)
+                logger.info(f"🎯 Erweiterte Query: {expanded_query}")
+                search_query = expanded_query
+            except Exception as e:
+                logger.warning(f"⚠️ Intelligent Search nicht verfügbar: {e}")
+                search_query = question
+            
+            # Search relevant documents with expanded query
+            relevant_docs = await self.search_documents(search_query)
+            
+            # Fallback: Versuche mit Original-Query wenn erweiterte Suche keine Ergebnisse bringt
+            if not relevant_docs and search_query != question:
+                logger.info("🔄 Fallback auf Original-Query")
+                relevant_docs = await self.search_documents(question)
             
             if not relevant_docs:
                 return {
                     "answer": self._generate_fallback_answer(question),
                     "sources": [],
-                    "confidence": 0.0
+                    "confidence": 0.0,
+                    "expanded_query": search_query if search_query != question else None,
+                    "search_results": 0
                 }
             
             # Combine context from relevant documents
@@ -200,11 +219,13 @@ class RAGService:
             # Extract sources
             sources = [doc.metadata.get("filename", "Unbekannt") for doc in relevant_docs]
             
-            logger.info(f"✅ RAG Query beantwortet für: '{question[:50]}'")
+            logger.info(f"✅ RAG Query beantwortet für: '{question[:50]}' ({len(relevant_docs)} Dokumente)")
             return {
                 "answer": answer,
                 "sources": sources,
-                "confidence": 0.9 if relevant_docs else 0.0
+                "confidence": 0.9 if relevant_docs else 0.0,
+                "expanded_query": search_query if search_query != question else None,
+                "search_results": len(relevant_docs)
             }
             
         except Exception as e:
@@ -212,7 +233,9 @@ class RAGService:
             return {
                 "answer": self._generate_fallback_answer(question),
                 "sources": [],
-                "confidence": 0.0
+                "confidence": 0.0,
+                "expanded_query": None,
+                "search_results": 0
             }
 
     async def answer_question(self, question: str) -> str:

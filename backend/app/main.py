@@ -16,6 +16,8 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.xml_generation import router as xml_router
 from app.api.v1.xml_validation import router as validation_router
 from app.api.v1.training import router as training_router
+from app.api.v1.search import router as search_router
+from app.api.v1.conversations import router as conversations_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -151,6 +153,18 @@ app.include_router(
     training_router,
     prefix="/api/v1/training",
     tags=["training"]
+)
+
+app.include_router(
+    search_router,
+    prefix="/api/v1/search",
+    tags=["intelligent_search"]
+)
+
+app.include_router(
+    conversations_router,
+    prefix="/api/v1/conversations",
+    tags=["conversation_memory"]
 )
 
 @app.get("/")
