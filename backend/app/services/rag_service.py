@@ -8,10 +8,10 @@ from typing import List, Optional
 from pathlib import Path
 
 import chromadb
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.docstore.document import Document
+from langchain.schema import Document
 
 from app.core.config import settings
 
@@ -172,8 +172,8 @@ class RAGService:
             logger.error(f"❌ Fehler bei der Dokumentensuche: {e}")
             return []
     
-    async def answer_question(self, question: str) -> str:
-        """Answer question using RAG"""
+    async def query(self, question: str) -> dict:
+        """Optimierte Q&A für Chat-Mode - returns structured response"""
         if not self.is_initialized:
             await self.initialize()
         
@@ -182,20 +182,40 @@ class RAGService:
             relevant_docs = await self.search_documents(question)
             
             if not relevant_docs:
-                return self._generate_fallback_answer(question)
+                return {
+                    "answer": self._generate_fallback_answer(question),
+                    "sources": [],
+                    "confidence": 0.0
+                }
             
             # Combine context from relevant documents
             context = self._build_context(relevant_docs)
             
-            # Generate answer based on context
-            answer = self._generate_contextual_answer(question, context)
+            # Generate answer based on context  
+            answer = self._generate_contextual_answer_enhanced(question, context)
             
-            logger.info(f"✅ RAG Antwort generiert für: '{question[:50]}'")
-            return answer
+            # Extract sources
+            sources = [doc.metadata.get("filename", "Unbekannt") for doc in relevant_docs]
+            
+            logger.info(f"✅ RAG Query beantwortet für: '{question[:50]}'")
+            return {
+                "answer": answer,
+                "sources": sources,
+                "confidence": 0.9 if relevant_docs else 0.0
+            }
             
         except Exception as e:
-            logger.error(f"❌ Fehler bei RAG Q&A: {e}")
-            return self._generate_fallback_answer(question)
+            logger.error(f"❌ Fehler bei RAG Query: {e}")
+            return {
+                "answer": self._generate_fallback_answer(question),
+                "sources": [],
+                "confidence": 0.0
+            }
+
+    async def answer_question(self, question: str) -> str:
+        """Answer question using RAG (legacy method)"""
+        result = await self.query(question)
+        return result["answer"]
     
     def _build_context(self, documents: List[Document]) -> str:
         """Build context from relevant documents"""
@@ -209,28 +229,93 @@ class RAGService:
         
         return "\n\n".join(context_parts)
     
-    def _generate_contextual_answer(self, question: str, context: str) -> str:
-        """Generate answer based on context (rule-based for now)"""
-        # For now, use rule-based approach
-        # Later: Can be replaced with LLM-based generation
+    def _generate_contextual_answer_enhanced(self, question: str, context: str) -> str:
+        """Enhanced contextual answer generation for dual-mode chat"""
+        question_lower = question.lower()
         
+        # Build structured response based on question type
+        if any(keyword in question_lower for keyword in ["hallo", "hi", "hey", "guten tag"]):
+            return """👋 **Hallo! Ich bin SKI, deine StreamWorks-KI-Expertin.**
+
+Ich kann dir helfen bei:
+• **StreamWorks Dokumentation** und Fragen
+• **API-Verwendung** und Endpoints  
+• **XML-Stream Konfiguration**
+• **Scheduling** und Zeitpläne
+
+Was möchtest du wissen?"""
+
+        elif any(keyword in question_lower for keyword in ["xml", "stream", "erstell", "generier"]):
+            xml_info = self._extract_xml_info(context)
+            return f"""🔧 **XML-Stream Erstellung:**
+
+{xml_info}
+
+💡 **Tipp:** Wechsle zum **XML Generator Modus** für interaktive Stream-Erstellung!"""
+            
+        elif any(keyword in question_lower for keyword in ["api", "schnittstelle", "endpoint"]):
+            api_info = self._extract_api_info(context)
+            return f"""🔗 **StreamWorks API:**
+
+{api_info}
+
+📚 Weitere Details findest du in der API-Dokumentation."""
+            
+        elif any(keyword in question_lower for keyword in ["schedule", "zeitplan", "cron", "zeit"]):
+            schedule_info = self._extract_schedule_info(context)
+            return f"""⏰ **StreamWorks Scheduling:**
+
+{schedule_info}
+
+🕐 **Beispiele:**
+- Täglich um 2 Uhr: `0 2 * * *`
+- Stündlich: `0 * * * *`
+- Wöchentlich: `0 2 * * 0`"""
+            
+        elif any(keyword in question_lower for keyword in ["config", "konfiguration", "einstellung"]):
+            config_info = self._extract_config_info(context)
+            return f"""⚙️ **StreamWorks Konfiguration:**
+
+{config_info}"""
+        
+        # Default structured response
+        context_summary = self._summarize_context(context)
+        return f"""📚 **StreamWorks Dokumentation:**
+
+{context_summary}
+
+❓ **Spezifischere Frage?** Verwende Begriffe wie "XML", "API", "Schedule" oder "Config" für detailliertere Antworten."""
+
+    def _generate_contextual_answer(self, question: str, context: str) -> str:
+        """Generate answer based on context with improved logic"""
         question_lower = question.lower()
         context_lower = context.lower()
         
-        # Keywords mapping
-        if any(keyword in question_lower for keyword in ["xml", "stream", "erstell"]):
-            if "xml" in context_lower:
-                return f"Basierend auf der Dokumentation kann ich dir bei der XML-Stream-Erstellung helfen. {self._extract_xml_info(context)}"
-            
-        elif any(keyword in question_lower for keyword in ["api", "schnittstelle"]):
-            if "api" in context_lower:
-                return f"Hier sind die verfügbaren StreamWorks APIs: {self._extract_api_info(context)}"
-            
-        elif any(keyword in question_lower for keyword in ["hilfe", "help", "was", "wie"]):
-            return f"Gerne helfe ich dir! Basierend auf der Dokumentation: {self._extract_general_info(context)}"
+        # Extract key information from context
+        context_summary = self._summarize_context(context)
         
-        # Default: Return relevant context
-        return f"Basierend auf der StreamWorks Dokumentation:\n\n{context[:500]}..."
+        # Keywords mapping with better responses
+        if any(keyword in question_lower for keyword in ["xml", "stream", "erstell", "generier"]):
+            xml_info = self._extract_xml_info(context)
+            return f"📋 **StreamWorks XML-Stream Erstellung:**\n\n{xml_info}\n\n**Tipp:** Nutze den Stream Generator Tab für eine geführte Erstellung!"
+            
+        elif any(keyword in question_lower for keyword in ["api", "schnittstelle", "endpoint"]):
+            api_info = self._extract_api_info(context)
+            return f"🔗 **StreamWorks API Informationen:**\n\n{api_info}"
+            
+        elif any(keyword in question_lower for keyword in ["schedule", "zeitplan", "cron", "zeit"]):
+            schedule_info = self._extract_schedule_info(context)
+            return f"⏰ **StreamWorks Scheduling:**\n\n{schedule_info}"
+            
+        elif any(keyword in question_lower for keyword in ["config", "konfiguration", "einstellung"]):
+            config_info = self._extract_config_info(context)
+            return f"⚙️ **StreamWorks Konfiguration:**\n\n{config_info}"
+            
+        elif any(keyword in question_lower for keyword in ["hilfe", "help", "was", "wie", "hallo"]):
+            return f"👋 **Hallo! Ich bin SKI, deine StreamWorks-KI.**\n\nBasierend auf der Dokumentation kann ich dir helfen bei:\n\n{context_summary}\n\n**Was möchtest du genauer wissen?**"
+        
+        # Default: Return formatted context
+        return f"📚 **Aus der StreamWorks Dokumentation:**\n\n{context_summary}"
     
     def _extract_xml_info(self, context: str) -> str:
         """Extract XML-related information"""
@@ -249,9 +334,147 @@ class RAGService:
         sentences = context.split('.')
         return '. '.join(sentences[:2]) + '.' if sentences else "Informationen verfügbar."
     
+    def _summarize_context(self, context: str) -> str:
+        """Create a summary of the context"""
+        sentences = context.split('.')
+        key_sentences = []
+        
+        for sentence in sentences[:5]:  # First 5 sentences
+            sentence = sentence.strip()
+            if len(sentence) > 20:  # Meaningful sentences
+                key_sentences.append(sentence)
+        
+        return '. '.join(key_sentences)[:300] + '...' if key_sentences else context[:300] + '...'
+    
+    def _extract_schedule_info(self, context: str) -> str:
+        """Extract scheduling-related information"""
+        lines = context.split('\n')
+        schedule_lines = [line for line in lines if any(keyword in line.lower() for keyword in ['schedule', 'cron', 'zeit', 'daily', 'weekly'])]
+        return '\n'.join(schedule_lines[:3]) if schedule_lines else "Scheduling-Informationen in der Dokumentation verfügbar."
+    
+    def _extract_config_info(self, context: str) -> str:
+        """Extract configuration-related information"""
+        lines = context.split('\n')
+        config_lines = [line for line in lines if any(keyword in line.lower() for keyword in ['config', 'parameter', 'einstellung', 'option'])]
+        return '\n'.join(config_lines[:3]) if config_lines else "Konfigurations-Informationen in der Dokumentation verfügbar."
+    
     def _generate_fallback_answer(self, question: str) -> str:
         """Generate fallback answer when no relevant docs found"""
-        return f"Entschuldigung, ich konnte keine relevanten Informationen zu '{question}' in der StreamWorks Dokumentation finden. Könntest du die Frage anders formulieren oder spezifischer sein?"
+        return f"❓ Entschuldigung, ich konnte keine relevanten Informationen zu '{question}' in der StreamWorks Dokumentation finden.\n\n**Tipps:**\n- Versuche eine spezifischere Frage\n- Nutze Begriffe wie 'XML', 'Stream', 'API', 'Schedule'\n- Schaue in den anderen Tabs nach weiteren Features"
+    
+    async def get_all_documents(self) -> List[dict]:
+        """Get all indexed documents with metadata"""
+        if not self.is_initialized:
+            await self.initialize()
+        
+        try:
+            # Get direct access to ChromaDB collection
+            collection = self.vector_store._collection
+            
+            # Get all documents
+            all_data = collection.get()
+            
+            # Group by source file
+            docs_by_source = {}
+            
+            for i, doc_content in enumerate(all_data['documents']):
+                metadata = all_data['metadatas'][i]
+                source = metadata.get('source', 'unknown')
+                
+                if source not in docs_by_source:
+                    docs_by_source[source] = {
+                        'id': source,
+                        'filename': os.path.basename(source),
+                        'source_path': source,
+                        'chunks': 0,
+                        'total_size': 0,
+                        'upload_date': metadata.get('upload_date', 'unknown'),
+                        'status': 'indexed'
+                    }
+                
+                docs_by_source[source]['chunks'] += 1
+                docs_by_source[source]['total_size'] += len(doc_content)
+            
+            return list(docs_by_source.values())
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting all documents: {e}")
+            return []
+    
+    async def get_document_details(self, doc_id: str) -> dict:
+        """Get detailed information about a specific document"""
+        if not self.is_initialized:
+            await self.initialize()
+        
+        try:
+            # Get direct access to ChromaDB collection
+            collection = self.vector_store._collection
+            
+            # Get all chunks for this document
+            results = collection.get(
+                where={"source": doc_id}
+            )
+            
+            if not results['documents']:
+                raise ValueError(f"Document {doc_id} not found")
+            
+            # Get first chunk for preview
+            preview_content = results['documents'][0][:200] + "..." if len(results['documents'][0]) > 200 else results['documents'][0]
+            
+            return {
+                "id": doc_id,
+                "filename": os.path.basename(doc_id),
+                "chunks": len(results['documents']),
+                "preview": preview_content,
+                "metadata": results['metadatas'][0] if results['metadatas'] else {}
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting document details: {e}")
+            raise
+    
+    async def delete_document(self, doc_id: str) -> bool:
+        """Delete a document and all its chunks from the vector store"""
+        if not self.is_initialized:
+            await self.initialize()
+        
+        try:
+            # Get direct access to ChromaDB collection
+            collection = self.vector_store._collection
+            
+            # Find all chunks for this document
+            results = collection.get(
+                where={"source": doc_id}
+            )
+            
+            if results['ids']:
+                # Delete all chunks
+                collection.delete(ids=results['ids'])
+                
+                # Persist changes
+                self.vector_store.persist()
+                
+                logger.info(f"🗑️ Deleted {len(results['ids'])} chunks for document {doc_id}")
+                return True
+            else:
+                logger.warning(f"⚠️ Document {doc_id} not found for deletion")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Error deleting document: {e}")
+            return False
+
+    async def get_document_count(self) -> int:
+        """Get total number of documents in the vector store"""
+        if not self.is_initialized:
+            await self.initialize()
+        
+        try:
+            collection = self.vector_store._collection
+            return collection.count()
+        except Exception as e:
+            logger.error(f"❌ Error getting document count: {e}")
+            return 0
     
     async def get_stats(self) -> dict:
         """Get RAG service statistics"""

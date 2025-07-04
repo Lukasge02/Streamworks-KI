@@ -3,12 +3,14 @@ import { UploadZone } from './UploadZone';
 import { FileManager } from './FileManager';
 import { TrainingStatus } from './TrainingStatus';
 import { CategorySelector } from './CategorySelector';
+import { DocumentManager } from '../DocumentManager';
 import { useAppStore } from '../../store/appStore';
 import { apiService, TrainingFile } from '../../services/apiService';
 
 export type FileCategory = 'help_data' | 'stream_templates';
 
 export const TrainingDataTab: React.FC = () => {
+  const [activeView, setActiveView] = useState<'upload' | 'manage'>('upload');
   const [selectedCategory, setSelectedCategory] = useState<FileCategory>('help_data');
   const [files, setFiles] = useState<TrainingFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -108,36 +110,70 @@ export const TrainingDataTab: React.FC = () => {
         <p className="text-gray-600">
           Upload and manage training data for StreamWorks-KI fine-tuning
         </p>
+        
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setActiveView('upload')}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              activeView === 'upload'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            📤 Upload & Training
+          </button>
+          <button
+            onClick={() => setActiveView('manage')}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              activeView === 'manage'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            📋 Knowledge Base
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 p-6 space-y-6 overflow-auto">
-        {/* Training Status Dashboard */}
-        <TrainingStatus 
-          helpDataStats={getCategoryStats('help_data')}
-          streamTemplateStats={getCategoryStats('stream_templates')}
-        />
+        {activeView === 'upload' && (
+          <>
+            {/* Training Status Dashboard */}
+            <TrainingStatus 
+              helpDataStats={getCategoryStats('help_data')}
+              streamTemplateStats={getCategoryStats('stream_templates')}
+            />
 
-        {/* Category Selector */}
-        <CategorySelector 
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-        />
+            {/* Category Selector */}
+            <CategorySelector 
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+            />
 
-        {/* Upload Zone */}
-        <UploadZone 
-          category={selectedCategory}
-          onFilesUploaded={handleFileUpload}
-        />
+            {/* Upload Zone */}
+            <UploadZone 
+              category={selectedCategory}
+              onFilesUploaded={handleFileUpload}
+            />
 
-        {/* File Manager */}
-        <FileManager 
-          files={files}
-          selectedCategory={selectedCategory}
-          onFileDelete={handleFileDelete}
-          onRefresh={loadFiles}
-          isLoading={isLoading}
-        />
+            {/* File Manager */}
+            <FileManager 
+              files={files}
+              selectedCategory={selectedCategory}
+              onFileDelete={handleFileDelete}
+              onRefresh={loadFiles}
+              isLoading={isLoading}
+            />
+          </>
+        )}
+
+        {activeView === 'manage' && (
+          <DocumentManager 
+            onRefresh={loadFiles}
+          />
+        )}
       </div>
     </div>
   );

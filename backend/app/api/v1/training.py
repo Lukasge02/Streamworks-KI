@@ -167,6 +167,93 @@ async def process_training_file(
         raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
 
 
+@router.post("/index/{file_id}")
+async def index_to_chromadb(
+    file_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Index a training file to ChromaDB"""
+    logger.info(f"🔍 Indexing file to ChromaDB: {file_id}")
+    
+    try:
+        training_service = TrainingService(db)
+        result = await training_service.index_file_to_chromadb(file_id)
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        logger.info(f"✅ File indexed successfully: {file_id}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to index file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to index file: {str(e)}")
+
+
+@router.post("/index/batch")
+async def batch_index_to_chromadb(
+    file_ids: List[str],
+    db: AsyncSession = Depends(get_db)
+):
+    """Batch index multiple files to ChromaDB"""
+    logger.info(f"🔍 Batch indexing {len(file_ids)} files to ChromaDB")
+    
+    try:
+        training_service = TrainingService(db)
+        results = await training_service.batch_index_to_chromadb(file_ids)
+        
+        logger.info(f"✅ Batch indexing completed")
+        return results
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to batch index files: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to batch index files: {str(e)}")
+
+
+@router.delete("/index/{file_id}")
+async def remove_from_chromadb(
+    file_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove a file from ChromaDB index"""
+    logger.info(f"🗑️ Removing file from ChromaDB: {file_id}")
+    
+    try:
+        training_service = TrainingService(db)
+        success = await training_service.remove_from_chromadb(file_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="File not found or not indexed")
+        
+        logger.info(f"✅ File removed from index: {file_id}")
+        return {"message": "File removed from index successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to remove from index: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove from index: {str(e)}")
+
+
+@router.get("/chromadb/stats")
+async def get_chromadb_stats(db: AsyncSession = Depends(get_db)):
+    """Get ChromaDB statistics"""
+    logger.info("📊 Getting ChromaDB statistics")
+    
+    try:
+        training_service = TrainingService(db)
+        stats = await training_service.get_chromadb_stats()
+        
+        logger.info("✅ ChromaDB stats retrieved successfully")
+        return stats
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to get ChromaDB stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+
 @router.get("/health")
 async def training_health_check():
     """Health check for training API"""

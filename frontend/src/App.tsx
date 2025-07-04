@@ -1,11 +1,12 @@
-import React from 'react';
 import { Header } from './components/Layout/Header';
 import { NavigationTabs } from './components/Layout/NavigationTabs';
-import { ChatInterface } from './components/Chat/ChatInterface';
+import { DualModeChat } from './components/Chat/DualModeChat';
 import { StreamGeneratorForm } from './components/StreamGenerator/StreamGeneratorForm';
-import { TrainingDataTab } from './components/TrainingData/TrainingDataTab';
+import TrainingDataTabV2Fixed from './components/TrainingData/TrainingDataTabV2Fixed';
 import { DocumentationTab } from './components/Documentation/DocumentationTab';
 import { useAppStore } from './store/appStore';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
 function App() {
@@ -14,15 +15,15 @@ function App() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'chat':
-        return <ChatInterface />;
+        return <DualModeChat />;
       case 'generator':
         return <StreamGeneratorForm />;
       case 'training':
-        return <TrainingDataTab />;
+        return <TrainingDataTabV2Fixed />;
       case 'docs':
         return <DocumentationTab />;
       default:
-        return <ChatInterface />;
+        return <DualModeChat />;
     }
   };
 
@@ -33,6 +34,17 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderActiveTab()}
       </main>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }

@@ -10,7 +10,12 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "StreamWorks-KI"
     
     # CORS
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "http://localhost:3001", 
+        "http://127.0.0.1:3001"
+    ]
     
     # Database
     DATABASE_URL: str = "sqlite:///./streamworks_ki.db"
@@ -22,8 +27,29 @@ class Settings(BaseSettings):
     RAG_CHUNK_OVERLAP: int = 50
     RAG_TOP_K: int = 5
     
-    # XML Generation Settings (LoRA Fine-Tuning)
-    BASE_MODEL: str = "microsoft/DialoGPT-small"  # Lightweight base
+    # === MISTRAL 7B OPTIMIERUNG ===
+    OLLAMA_MODEL: str = "mistral:7b-instruct"
+    LLM_ENABLED: bool = True
+    OLLAMA_HOST: str = "http://localhost:11434"
+    
+    # Mistral-spezifische Parameter
+    MODEL_TEMPERATURE: float = 0.7    # Kreativ aber konsistent
+    MODEL_TOP_P: float = 0.95        # Mistral arbeitet gut mit hohem top_p
+    MODEL_TOP_K: int = 40            # Reduziert für Fokus
+    MODEL_MAX_TOKENS: int = 2048     # Ausreichend für strukturierte Antworten
+    MODEL_REPEAT_PENALTY: float = 1.1 # Verhindert Wiederholungen
+    
+    # Performance-Optimierung
+    MODEL_THREADS: int = 8           # Für M4 MacBook optimal
+    MODEL_BATCH_SIZE: int = 1        # Einzelne Requests
+    MODEL_CONTEXT_WINDOW: int = 8192 # Mistral kann 8k Context
+    
+    # Deutsche Spezialisierung
+    FORCE_GERMAN_RESPONSES: bool = True
+    GERMAN_PROMPT_STYLE: str = "professional"
+    USE_GERMAN_TECHNICAL_TERMS: bool = True
+    
+    # XML Generation Settings (LoRA Fine-Tuning)  
     LORA_ADAPTER_PATH: str = "./data/models/xml_lora"
     XML_GENERATION_ENABLED: bool = False  # Start disabled
     
@@ -33,7 +59,7 @@ class Settings(BaseSettings):
     LORA_DROPOUT: float = 0.1
     LORA_TARGET_MODULES: List[str] = ["c_attn", "c_proj"]  # For DialoGPT
     
-    # Generation Parameters
+    # Legacy Generation Parameters (für Kompatibilität)
     MAX_NEW_TOKENS: int = 512
     TEMPERATURE: float = 0.7
     TOP_P: float = 0.9
