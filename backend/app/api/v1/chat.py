@@ -15,7 +15,9 @@ from app.services.mistral_rag_service import mistral_rag_service
 from app.services.mistral_llm_service import mistral_llm_service
 from app.services.xml_generator import xml_generator
 from app.services.error_handler import error_handler
+from app.services.citation_service import citation_service
 from app.models.validation import ChatRequestValidator, ValidationErrorResponse, validate_request_size
+from app.models.schemas import ChatResponseWithCitations, Citation, CitationSummary
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -653,6 +655,125 @@ async def search_documents_endpoint(query: str, top_k: int = 5):
             status_code=500,
             detail=f"Document search failed: {str(e)}"
         )
+
+@router.post("/chat-with-citations", response_model=ChatResponseWithCitations)
+async def chat_with_citations(request: ChatRequestValidator, raw_request: Request):
+    """Enhanced Chat with Multi-Source Citations"""
+    
+    start_time = time.time()
+    conversation_id = request.conversation_id or str(uuid.uuid4())
+    
+    try:
+        # Request size validation
+        content_length = raw_request.headers.get("content-length")
+        if content_length and not validate_request_size(int(content_length)):
+            raise HTTPException(
+                status_code=413,
+                detail="Request too large. Maximum size is 10MB."
+            )
+        
+        logger.info(f"🔗 Citation Chat Request: {request.message[:100]}...")
+        
+        # Get documents with citations
+        search_result = await rag_service.search_documents_with_citations(
+            query=request.message,
+            top_k=settings.RAG_TOP_K,
+            include_citations=True
+        )
+        
+        documents = search_result["documents"]
+        citations = search_result["citations"] or []
+        citation_summary = search_result["citation_summary"]
+        
+        if not documents:
+            # No relevant documents found
+            response_text = "Entschuldigung, ich konnte keine relevanten Informationen zu Ihrer Frage finden. Könnten Sie die Frage anders formulieren?"
+            citations = []
+            citation_summary = CitationSummary(
+                total_citations=0,
+                source_breakdown={},
+                highest_relevance=0.0,
+                coverage_score=0.0
+            )
+        else:
+            # Generate response using Mistral with RAG
+            rag_result = await mistral_rag_service.generate_response(
+                question=request.message,
+                documents=documents
+            )
+            
+            response_text = rag_result.get("response", "Keine Antwort generiert.")
+            
+            # Add citation information to response
+            if citations:
+                citation_text = citation_service.format_citations_for_response(citations)
+                response_text += citation_text
+        
+        processing_time = time.time() - start_time
+        
+        # Save to conversation memory if available
+        try:
+            from app.services.conversation_memory import conversation_memory
+            conversation_memory.add_message(
+                session_id=conversation_id,
+                question=request.message,
+                answer=response_text,
+                metadata={
+                    "citations_count": len(citations),
+                    "coverage_score": citation_summary.coverage_score if citation_summary else 0.0,
+                    "processing_time": processing_time,
+                    "sources_used": len(set(c.filename for c in citations))
+                }
+            )
+        except Exception as save_error:
+            logger.warning(f"Could not save to conversation memory: {save_error}")
+        
+        return ChatResponseWithCitations(
+            response=response_text,
+            citations=citations,
+            citation_summary=citation_summary or CitationSummary(
+                total_citations=0,
+                source_breakdown={},
+                highest_relevance=0.0,
+                coverage_score=0.0
+            ),
+            conversation_id=conversation_id,
+            timestamp=time.time(),
+            response_quality=citation_summary.coverage_score if citation_summary else 0.0
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Citation Chat Error: {str(e)}")
+        
+        # Fallback without citations
+        try:
+            fallback_response = await error_handler.handle_rag_error(e, {
+                "query": request.message,
+                "context": "citation_chat"
+            })
+            
+            processing_time = time.time() - start_time
+            
+            return ChatResponseWithCitations(
+                response=fallback_response.message,
+                citations=[],
+                citation_summary=CitationSummary(
+                    total_citations=0,
+                    source_breakdown={},
+                    highest_relevance=0.0,
+                    coverage_score=0.0
+                ),
+                conversation_id=conversation_id,
+                timestamp=time.time(),
+                response_quality=0.0
+            )
+            
+        except Exception as fallback_error:
+            logger.error(f"❌ Citation fallback failed: {fallback_error}")
+            raise HTTPException(
+                status_code=500,
+                detail="Chat service temporarily unavailable"
+            )
 
 @router.post("/test")
 async def test_simple():

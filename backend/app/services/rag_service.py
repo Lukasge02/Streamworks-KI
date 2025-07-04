@@ -17,6 +17,8 @@ from langchain.schema import Document
 
 from app.core.config import settings
 from app.services.error_handler import error_handler, ErrorType
+from app.services.citation_service import citation_service
+from app.models.schemas import Citation, CitationSummary
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +218,53 @@ class RAGService:
             except Exception as fallback_error:
                 logger.error(f"❌ Error handler also failed: {fallback_error}")
                 return []
+    
+    async def search_documents_with_citations(
+        self, 
+        query: str, 
+        top_k: int = None,
+        include_citations: bool = True
+    ) -> Dict[str, Any]:
+        """Enhanced document search with citation support"""
+        if not self.is_initialized:
+            await self.initialize()
+        
+        try:
+            # Get documents using existing search
+            documents = await self.search_documents(query, top_k)
+            
+            if not include_citations:
+                return {
+                    "documents": documents,
+                    "citations": [],
+                    "citation_summary": None
+                }
+            
+            # Create citations from documents
+            citations = await citation_service.create_citations_from_documents(
+                documents, query
+            )
+            
+            # Create citation summary
+            citation_summary = citation_service.create_citation_summary(citations)
+            
+            logger.info(f"🔗 Generated {len(citations)} citations with {citation_summary.coverage_score:.1%} coverage")
+            
+            return {
+                "documents": documents,
+                "citations": citations,
+                "citation_summary": citation_summary
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error in citation search: {e}")
+            # Fallback to basic search
+            documents = await self.search_documents(query, top_k)
+            return {
+                "documents": documents,
+                "citations": [],
+                "citation_summary": None
+            }
     
     def _normalize_query(self, query: str) -> str:
         """Normalize query for cache key generation"""
