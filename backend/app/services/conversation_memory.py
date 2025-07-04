@@ -4,6 +4,7 @@ Conversation Memory Service für persistente Chat-Sessions
 import logging
 import json
 import os
+import aiofiles
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -303,21 +304,23 @@ class ConversationMemory:
         
         return None
     
-    def _save_session(self, session: ConversationSession):
-        """Speichert Session in Datei"""
+    async def _save_session(self, session: ConversationSession):
+        """Speichert Session in Datei (async)"""
         session_file = self.storage_path / f"session_{session.session_id}.json"
         
-        with open(session_file, 'w', encoding='utf-8') as f:
-            json.dump(session.to_dict(), f, ensure_ascii=False, indent=2)
+        async with aiofiles.open(session_file, 'w', encoding='utf-8') as f:
+            content = json.dumps(session.to_dict(), ensure_ascii=False, indent=2)
+            await f.write(content)
         
         # Update Cache
         self.sessions[session.session_id] = session
     
-    def _load_session_from_file(self, session_file: Path) -> Optional[ConversationSession]:
-        """Lädt Session aus Datei"""
+    async def _load_session_from_file(self, session_file: Path) -> Optional[ConversationSession]:
+        """Lädt Session aus Datei (async)"""
         try:
-            with open(session_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            async with aiofiles.open(session_file, 'r', encoding='utf-8') as f:
+                content = await f.read()
+                data = json.loads(content)
             
             return ConversationSession.from_dict(data)
             

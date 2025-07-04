@@ -52,9 +52,23 @@ async def lifespan(app: FastAPI):
         await init_db()
         logger.info("✅ Database initialized")
         
-        # 1. RAG Service initialisieren
+        # 1. Mistral LLM Service zuerst initialisieren (für RAG Dependencies)
+        if settings.LLM_ENABLED:
+            logger.info("🤖 Initializing Mistral 7B Service...")
+            await mistral_llm_service.initialize()
+            
+            mistral_stats = await mistral_llm_service.get_stats()
+            logger.info(f"✅ Mistral 7B ready - Model: {mistral_stats.get('model_name', 'mistral:7b-instruct')}")
+        else:
+            logger.info("⏭️ Mistral Service disabled")
+        
+        # 2. RAG Service initialisieren (kann jetzt Mistral nutzen)
         if settings.RAG_ENABLED:
             logger.info("🔍 Initializing RAG Service...")
+            # Inject Mistral service if available
+            if settings.LLM_ENABLED and mistral_llm_service.is_initialized:
+                rag_service.mistral_service = mistral_llm_service
+                logger.info("✅ Mistral service injected into RAG")
             await rag_service.initialize()
             
             rag_stats = await rag_service.get_stats()
@@ -62,19 +76,11 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("⏭️ RAG Service disabled")
         
-        # 2. Mistral-spezifische Initialisierung
-        if settings.LLM_ENABLED:
-            logger.info("🤖 Initializing Mistral 7B Service...")
-            await mistral_llm_service.initialize()
-            
-            # 3. Mistral RAG Service
+        # 3. Mistral RAG Service (kombiniert beide Services)
+        if settings.LLM_ENABLED and settings.RAG_ENABLED:
             logger.info("🔍 Initializing Mistral RAG Service...")
             await mistral_rag_service.initialize()
-            
-            mistral_stats = await mistral_llm_service.get_stats()
-            logger.info(f"✅ Mistral 7B ready - Model: {mistral_stats.get('model_name', 'mistral:7b-instruct')}")
-        else:
-            logger.info("⏭️ Mistral Service disabled")
+            logger.info("✅ Mistral RAG Service ready")
         
         # 4. XML Generator
         if settings.XML_GENERATION_ENABLED:
@@ -85,10 +91,6 @@ async def lifespan(app: FastAPI):
             logger.info(f"✅ XML Generator ready - LoRA: {xml_stats.get('is_fine_tuned', False)}")
         else:
             logger.info("⏭️ XML Generator disabled (Mock mode)")
-        
-        # 5. Performance-Monitoring aktivieren
-        logger.info("📊 Activating Mistral Performance Monitoring...")
-        app.add_middleware(MistralPerformanceMiddleware)
         
         logger.info("✅ StreamWorks-KI ready with Mistral 7B optimization")
         
@@ -128,6 +130,9 @@ app.add_middleware(PerformanceMonitoringMiddleware)
 
 # Add StreamWorks-specific Metrics
 app.add_middleware(StreamWorksMetricsMiddleware)
+
+# Add Mistral Performance Monitoring
+app.add_middleware(MistralPerformanceMiddleware)
 
 # Add Request Logging in development
 if settings.ENV == "development":

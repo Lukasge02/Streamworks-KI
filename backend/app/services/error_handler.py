@@ -4,10 +4,60 @@ Provides graceful fallbacks and error recovery
 """
 import logging
 import traceback
+import re
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
+from collections import defaultdict
+from cachetools import TTLCache
+from pathlib import Path
+import yaml
+
+# Specific exception classes for better error handling
+class LLMConnectionError(Exception):
+    """Raised when LLM service connection fails"""
+    pass
+
+class LLMTimeoutError(Exception):
+    """Raised when LLM service times out"""
+    pass
+
+class LLMGenerationError(Exception):
+    """Raised when LLM generation fails"""
+    pass
+
+class RAGSearchError(Exception):
+    """Raised when RAG search fails"""
+    pass
+
+class RAGEmbeddingError(Exception):
+    """Raised when RAG embedding fails"""
+    pass
+
+class RAGVectorDBError(Exception):
+    """Raised when RAG vector database fails"""
+    pass
+
+class XMLGenerationError(Exception):
+    """Raised when XML generation fails"""
+    pass
+
+class XMLValidationError(Exception):
+    """Raised when XML validation fails"""
+    pass
+
+class DatabaseConnectionError(Exception):
+    """Raised when database connection fails"""
+    pass
+
+class DatabaseQueryError(Exception):
+    """Raised when database query fails"""
+    pass
+
+class APIValidationError(Exception):
+    """Raised when API input validation fails"""
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -58,55 +108,76 @@ class FallbackResponse:
         }
 
 class StreamWorksErrorHandler:
-    """Central error handler for StreamWorks-KI"""
+    """Central error handler for StreamWorks-KI with TTL caching and pattern matching"""
     
     def __init__(self):
-        self.error_cache: Dict[str, FallbackResponse] = {}
-        self.error_counts: Dict[ErrorType, int] = {}
-        self.cached_responses: Dict[str, str] = {
-            "general_help": """
-# StreamWorks-KI Hilfe
-
-## Verfügbare Funktionen:
-- **Q&A System**: Fragen zu StreamWorks-Dokumentation
-- **XML Generator**: Automatische Stream-Konfiguration
-- **Batch Jobs**: Hilfe bei Automatisierung
-
-## Häufige Fragen:
-- "Was ist StreamWorks?" - Informationen zur Plattform
-- "Wie erstelle ich einen Stream?" - XML-Generierung
-- "Batch Job erstellen" - Automatisierung
-
-*System ist temporär eingeschränkt verfügbar.*
-            """,
-            "xml_help": """
-# XML Stream Generator
-
-## Verfügbare Templates:
-1. **Data Processing**: Standard Datenverarbeitung
-2. **Batch Jobs**: Automatisierte Skript-Ausführung  
-3. **API Integration**: REST API Anbindung
-
-## Beispiel-Anfrage:
-"Erstelle einen Stream für tägliche CSV-Verarbeitung"
-
-*Nutze den Template-Generator bei Problemen.*
-            """,
-            "technical_help": """
-# Technische Hilfe
-
-StreamWorks-KI verwendet:
-- **RAG System**: Dokumenten-basierte Antworten
-- **LLM Integration**: Mistral 7B für Textgenerierung
-- **Template System**: Vorgefertigte XML-Strukturen
-
-Bei technischen Problemen versuche:
-1. Frage neu formulieren
-2. Kürzere Anfragen stellen
-3. Template-basierte Generierung nutzen
-
-*Service wird automatisch wiederhergestellt.*
-            """
+        # TTL Cache to prevent memory leaks
+        self.error_cache = TTLCache(maxsize=100, ttl=300)  # 5 minutes TTL
+        self.error_counts = defaultdict(int)
+        
+        # Load response templates from external file if available
+        self.cached_responses = self._load_response_templates()
+        
+        # Compile regex patterns for efficient error classification
+        self.connection_pattern = re.compile(
+            r'connection|connect|unreachable|refused|network', 
+            re.IGNORECASE
+        )
+        self.timeout_pattern = re.compile(
+            r'timeout|time|slow|duration', 
+            re.IGNORECASE
+        )
+        self.generation_pattern = re.compile(
+            r'generate|generation|model|inference', 
+            re.IGNORECASE
+        )
+        self.vector_db_pattern = re.compile(
+            r'chroma|vector|database|db|index', 
+            re.IGNORECASE
+        )
+        self.embedding_pattern = re.compile(
+            r'embedding|encode|transform|tokenize', 
+            re.IGNORECASE
+        )
+        self.search_pattern = re.compile(
+            r'search|query|retrieve|find', 
+            re.IGNORECASE
+        )
+        self.validation_pattern = re.compile(
+            r'validation|valid|schema|format', 
+            re.IGNORECASE
+        )
+        self.xml_generation_pattern = re.compile(
+            r'xml|template|stream|configuration', 
+            re.IGNORECASE
+        )
+        self.db_connection_pattern = re.compile(
+            r'database|connection|pool|sqlite|sql', 
+            re.IGNORECASE
+        )
+        self.db_query_pattern = re.compile(
+            r'query|execute|select|insert|update|delete', 
+            re.IGNORECASE
+        )
+        
+        logger.info("🛡️ Error Handler initialized with TTL cache and pattern matching")
+    
+    def _load_response_templates(self) -> Dict[str, str]:
+        """Load response templates from external file or use defaults"""
+        template_file = Path("./data/error_templates.yaml")
+        
+        if template_file.exists():
+            try:
+                with open(template_file, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load error templates: {e}")
+        
+        # Default templates (much shorter than before)
+        return {
+            "general_help": "📚 StreamWorks-KI ist temporär eingeschränkt verfügbar. Nutze Q&A System, XML Generator oder Batch Jobs. Versuche spezifische Fragen wie 'XML erstellen' oder 'Batch Job'.",
+            "xml_help": "🔧 XML Generator verfügbar. Templates: Data Processing, Batch Jobs, API Integration. Beispiel: 'Erstelle Stream für CSV-Verarbeitung'. Nutze Template-Generator bei Problemen.",
+            "technical_help": "⚙️ StreamWorks-KI nutzt RAG System + Mistral 7B. Bei Problemen: Frage neu formulieren, kürzere Anfragen, Template-basierte Generierung. Service wird wiederhergestellt."
         }
         
         # Default XML templates for fallbacks
@@ -143,10 +214,17 @@ Bei technischen Problemen versuche:
         logger.info("🛡️ Error Handler initialized with fallback responses")
     
     async def handle_llm_error(self, error: Exception, context: Dict[str, Any] = None) -> FallbackResponse:
-        """Handle LLM service errors with appropriate fallbacks"""
-        error_type = self._classify_llm_error(error)
-        self._increment_error_count(error_type)
+        """Handle LLM service errors with specific exception handling"""
+        if isinstance(error, (LLMConnectionError, ConnectionError, TimeoutError)):
+            error_type = ErrorType.LLM_CONNECTION
+        elif isinstance(error, LLMTimeoutError):
+            error_type = ErrorType.LLM_TIMEOUT
+        elif isinstance(error, LLMGenerationError):
+            error_type = ErrorType.LLM_GENERATION
+        else:
+            error_type = self._classify_llm_error(error)
         
+        self._increment_error_count(error_type)
         logger.warning(f"🚨 LLM Error ({error_type.value}): {str(error)}")
         
         # Get context for better fallback
@@ -202,10 +280,17 @@ Bei technischen Problemen versuche:
             )
     
     async def handle_rag_error(self, error: Exception, context: Dict[str, Any] = None) -> FallbackResponse:
-        """Handle RAG service errors"""
-        error_type = self._classify_rag_error(error)
-        self._increment_error_count(error_type)
+        """Handle RAG service errors with specific exception handling"""
+        if isinstance(error, RAGVectorDBError):
+            error_type = ErrorType.RAG_VECTORDB
+        elif isinstance(error, RAGEmbeddingError):
+            error_type = ErrorType.RAG_EMBEDDING
+        elif isinstance(error, RAGSearchError):
+            error_type = ErrorType.RAG_SEARCH
+        else:
+            error_type = self._classify_rag_error(error)
         
+        self._increment_error_count(error_type)
         logger.warning(f"🔍 RAG Error ({error_type.value}): {str(error)}")
         
         query = context.get('query', '') if context else ''
@@ -270,10 +355,15 @@ Deine Anfrage: "{query[:100]}..." konnte nicht vollständig verarbeitet werden.
             )
     
     async def handle_xml_error(self, error: Exception, context: Dict[str, Any] = None) -> FallbackResponse:
-        """Handle XML generation errors"""
-        error_type = self._classify_xml_error(error)
-        self._increment_error_count(error_type)
+        """Handle XML generation errors with specific exception handling"""
+        if isinstance(error, XMLValidationError):
+            error_type = ErrorType.XML_VALIDATION
+        elif isinstance(error, XMLGenerationError):
+            error_type = ErrorType.XML_GENERATION
+        else:
+            error_type = self._classify_xml_error(error)
         
+        self._increment_error_count(error_type)
         logger.warning(f"🔧 XML Error ({error_type.value}): {str(error)}")
         
         # Generate fallback XML
@@ -342,10 +432,15 @@ Ein technisches Problem ist aufgetreten. Hier ist ein Standard-Template:
         )
     
     async def handle_database_error(self, error: Exception, context: Dict[str, Any] = None) -> FallbackResponse:
-        """Handle database connection/query errors"""
-        error_type = self._classify_database_error(error)
-        self._increment_error_count(error_type)
+        """Handle database errors with specific exception handling"""
+        if isinstance(error, DatabaseConnectionError):
+            error_type = ErrorType.DATABASE_CONNECTION
+        elif isinstance(error, DatabaseQueryError):
+            error_type = ErrorType.DATABASE_QUERY
+        else:
+            error_type = self._classify_database_error(error)
         
+        self._increment_error_count(error_type)
         logger.error(f"🗄️ Database Error ({error_type.value}): {str(error)}")
         
         return FallbackResponse(
@@ -376,10 +471,15 @@ Die Datenpersistierung ist momentan eingeschränkt. Deine Anfrage wurde verarbei
         )
     
     async def handle_api_validation_error(self, error: Exception, context: Dict[str, Any] = None) -> FallbackResponse:
-        """Handle API input validation errors"""
-        error_type = ErrorType.API_VALIDATION
-        self._increment_error_count(error_type)
+        """Handle API validation errors with specific exception handling"""
+        if isinstance(error, APIValidationError):
+            error_type = ErrorType.API_VALIDATION
+        elif isinstance(error, ValueError):
+            error_type = ErrorType.API_VALIDATION
+        else:
+            error_type = ErrorType.API_VALIDATION
         
+        self._increment_error_count(error_type)
         logger.warning(f"📝 API Validation Error: {str(error)}")
         
         # Extract validation details if available
@@ -426,60 +526,62 @@ Die Datenpersistierung ist momentan eingeschränkt. Deine Anfrage wurde verarbei
         )
     
     def _classify_llm_error(self, error: Exception) -> ErrorType:
-        """Classify LLM-related errors"""
-        error_str = str(error).lower()
+        """Classify LLM-related errors using compiled regex patterns"""
+        error_str = str(error)
         
-        if any(term in error_str for term in ['connection', 'connect', 'unreachable', 'refused']):
+        if self.connection_pattern.search(error_str):
             return ErrorType.LLM_CONNECTION
-        elif any(term in error_str for term in ['timeout', 'time', 'slow']):
+        elif self.timeout_pattern.search(error_str):
             return ErrorType.LLM_TIMEOUT
-        elif any(term in error_str for term in ['generate', 'generation', 'model']):
+        elif self.generation_pattern.search(error_str):
             return ErrorType.LLM_GENERATION
         else:
             return ErrorType.UNKNOWN
     
     def _classify_rag_error(self, error: Exception) -> ErrorType:
-        """Classify RAG-related errors"""
-        error_str = str(error).lower()
+        """Classify RAG-related errors using compiled regex patterns"""
+        error_str = str(error)
         
-        if any(term in error_str for term in ['chroma', 'vector', 'database', 'db']):
+        if self.vector_db_pattern.search(error_str):
             return ErrorType.RAG_VECTORDB
-        elif any(term in error_str for term in ['embedding', 'encode', 'transform']):
+        elif self.embedding_pattern.search(error_str):
             return ErrorType.RAG_EMBEDDING
-        elif any(term in error_str for term in ['search', 'query', 'retrieve']):
+        elif self.search_pattern.search(error_str):
             return ErrorType.RAG_SEARCH
         else:
             return ErrorType.UNKNOWN
     
     def _classify_xml_error(self, error: Exception) -> ErrorType:
-        """Classify XML-related errors"""
-        error_str = str(error).lower()
+        """Classify XML-related errors using compiled regex patterns"""
+        error_str = str(error)
         
-        if any(term in error_str for term in ['validation', 'valid', 'schema']):
+        if self.validation_pattern.search(error_str):
             return ErrorType.XML_VALIDATION
-        elif any(term in error_str for term in ['generation', 'generate', 'template']):
+        elif self.xml_generation_pattern.search(error_str):
             return ErrorType.XML_GENERATION
         else:
             return ErrorType.UNKNOWN
     
     def _classify_database_error(self, error: Exception) -> ErrorType:
-        """Classify database-related errors"""
-        error_str = str(error).lower()
+        """Classify database-related errors using compiled regex patterns"""
+        error_str = str(error)
         
-        if any(term in error_str for term in ['connection', 'connect', 'pool']):
+        if self.db_connection_pattern.search(error_str):
             return ErrorType.DATABASE_CONNECTION
-        elif any(term in error_str for term in ['query', 'sql', 'execute']):
+        elif self.db_query_pattern.search(error_str):
             return ErrorType.DATABASE_QUERY
         else:
             return ErrorType.UNKNOWN
     
     def _get_cached_response(self, query: str, error_context: str = "general") -> str:
-        """Get appropriate cached response based on query"""
-        query_lower = query.lower()
+        """Get appropriate cached response based on query using pattern matching"""
+        # Use compiled patterns for efficient matching
+        xml_pattern = re.compile(r'xml|stream|erstell|generier|template', re.IGNORECASE)
+        help_pattern = re.compile(r'was ist|hilfe|help|erkläre|info', re.IGNORECASE)
         
-        if any(term in query_lower for term in ['xml', 'stream', 'erstell', 'generier']):
+        if xml_pattern.search(query):
             return self.cached_responses["xml_help"]
-        elif any(term in query_lower for term in ['was ist', 'hilfe', 'help', 'erkläre']):
+        elif help_pattern.search(query):
             return self.cached_responses["general_help"]
         else:
             return self.cached_responses["technical_help"]

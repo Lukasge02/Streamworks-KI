@@ -23,11 +23,12 @@ logger = logging.getLogger(__name__)
 class RAGService:
     """RAG Service for document-based Q&A with Performance Optimization and Error Handling"""
     
-    def __init__(self):
+    def __init__(self, mistral_service=None):
         self.embeddings = None
         self.vector_store = None
         self.text_splitter = None
         self.is_initialized = False
+        self.mistral_service = mistral_service  # Dependency injection
         
         # Performance optimization with caching
         self.query_cache = TTLCache(maxsize=1000, ttl=300)  # 5min cache
@@ -423,23 +424,25 @@ class RAGService:
         return "\n\n".join(context_parts)
     
     async def _generate_mistral_answer(self, question: str, context: str) -> str:
-        """Generate intelligent answer using Mistral 7B"""
+        """Generate intelligent answer using Mistral 7B via dependency injection"""
         try:
-            # Import here to avoid circular imports
-            from app.services.mistral_llm_service import mistral_llm_service
-            
-            if not mistral_llm_service.is_initialized:
-                logger.warning("⚠️ Mistral Service nicht verfügbar, nutze Fallback")
-                return None
-            
-            # Use Mistral for intelligent answer generation
-            answer = await mistral_llm_service.generate_german_response(question, context)
-            
-            if answer and len(answer.strip()) > 10:  # Valid answer check
-                logger.info("✅ Mistral-generierte Antwort verwendet")
-                return answer
+            # Use dependency injection instead of direct import
+            if hasattr(self, 'mistral_service') and self.mistral_service:
+                if not self.mistral_service.is_initialized:
+                    logger.warning("⚠️ Mistral Service nicht verfügbar, nutze Fallback")
+                    return None
+                
+                # Use Mistral for intelligent answer generation
+                answer = await self.mistral_service.generate_german_response(question, context)
+                
+                if answer and len(answer.strip()) > 10:  # Valid answer check
+                    logger.info("✅ Mistral-generierte Antwort verwendet")
+                    return answer
+                else:
+                    logger.warning("⚠️ Mistral-Antwort unzureichend, nutze Fallback")
+                    return None
             else:
-                logger.warning("⚠️ Mistral-Antwort unzureichend, nutze Fallback")
+                logger.debug("Mistral service not injected, using fallback")
                 return None
                 
         except Exception as e:
