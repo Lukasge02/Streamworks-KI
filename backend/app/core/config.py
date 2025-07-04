@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     RAG_CHUNK_OVERLAP: int = 50
     RAG_TOP_K: int = 5
     
+    # ChromaDB Settings (disable telemetry)
+    CHROMA_TELEMETRY_ENABLED: bool = False
+    
     # === MISTRAL 7B OPTIMIERUNG ===
     OLLAMA_MODEL: str = "mistral:7b-instruct"
     LLM_ENABLED: bool = True

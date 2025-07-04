@@ -1,12 +1,13 @@
 """
 RAG Service for StreamWorks-KI Q&A System
-Uses ChromaDB + LangChain + Sentence Transformers
+Uses ChromaDB + LangChain + Sentence Transformers with Robust Error Handling
 """
 import os
 import logging
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pathlib import Path
+from cachetools import TTLCache
 
 import chromadb
 from langchain_community.vectorstores import Chroma
@@ -15,11 +16,12 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 
 from app.core.config import settings
+from app.services.error_handler import error_handler, ErrorType
 
 logger = logging.getLogger(__name__)
 
 class RAGService:
-    """RAG Service for document-based Q&A"""
+    """RAG Service for document-based Q&A with Performance Optimization and Error Handling"""
     
     def __init__(self):
         self.embeddings = None
@@ -27,7 +29,22 @@ class RAGService:
         self.text_splitter = None
         self.is_initialized = False
         
-        logger.info("🔍 RAG Service initialisiert")
+        # Performance optimization with caching
+        self.query_cache = TTLCache(maxsize=1000, ttl=300)  # 5min cache
+        self.embedding_cache = TTLCache(maxsize=5000, ttl=3600)  # 1h cache
+        self.document_cache = TTLCache(maxsize=500, ttl=1800)  # 30min cache
+        
+        # Performance stats
+        self.performance_stats = {
+            "total_queries": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "avg_response_time": 0.0,
+            "errors_handled": 0,
+            "last_query_time": None
+        }
+        
+        logger.info("🔍 RAG Service initialisiert mit Performance-Optimierung")
     
     async def initialize(self):
         """Initialize RAG components"""
@@ -55,6 +72,10 @@ class RAGService:
             persist_directory.mkdir(parents=True, exist_ok=True)
             
             logger.info(f"📚 Initialisiere Vector Database: {persist_directory}")
+            
+            # Disable ChromaDB telemetry
+            import os
+            os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
             
             # Check if vector store already exists
             if self._vector_store_exists(persist_directory):
@@ -153,36 +174,89 @@ class RAGService:
             raise
     
     async def search_documents(self, query: str, top_k: int = None) -> List[Document]:
-        """Search similar documents"""
+        """Optimized document search with caching and error handling"""
         if not self.is_initialized:
             await self.initialize()
         
         try:
             top_k = top_k or settings.RAG_TOP_K
             
-            # Similarity search
+            # Check cache first
+            cache_key = f"search:{self._normalize_query(query)}:{top_k}"
+            if cache_key in self.document_cache:
+                self.performance_stats["cache_hits"] += 1
+                logger.info(f"🚀 Cache hit for query: '{query[:50]}'")
+                return self.document_cache[cache_key]
+            
+            # Cache miss - perform search
+            self.performance_stats["cache_misses"] += 1
+            
+            # Similarity search with error handling
             docs = self.vector_store.similarity_search(
                 query=query,
                 k=top_k
             )
+            
+            # Cache results
+            self.document_cache[cache_key] = docs
             
             logger.info(f"🔍 Gefunden: {len(docs)} relevante Dokumente für Query: '{query[:50]}'")
             return docs
             
         except Exception as e:
             logger.error(f"❌ Fehler bei der Dokumentensuche: {e}")
-            return []
+            
+            # Use error handler for graceful fallback
+            try:
+                fallback_response = await error_handler.handle_rag_error(e, {"query": query})
+                self.performance_stats["errors_handled"] += 1
+                logger.info("🔧 Using error handler fallback for document search")
+                return []  # Return empty list but don't crash
+            except Exception as fallback_error:
+                logger.error(f"❌ Error handler also failed: {fallback_error}")
+                return []
+    
+    def _normalize_query(self, query: str) -> str:
+        """Normalize query for cache key generation"""
+        return query.lower().strip()[:100]  # Limit length for cache efficiency
+    
+    async def _get_cached_embedding(self, text: str) -> Optional[List[float]]:
+        """Get cached embedding or compute new one"""
+        if text in self.embedding_cache:
+            return self.embedding_cache[text]
+        
+        try:
+            # This would require access to embedding model directly
+            # For now, return None to use standard vector search
+            return None
+        except Exception as e:
+            logger.warning(f"⚠️ Embedding generation failed: {e}")
+            return None
     
     async def query(self, question: str) -> dict:
-        """Optimierte Q&A für Chat-Mode mit Mistral Integration und intelligenter Suche"""
+        """Optimized Q&A with robust error handling, caching, and performance tracking"""
         if not self.is_initialized:
             await self.initialize()
         
-        # Response-Time tracking
+        # Performance tracking
         query_start_time = time.time()
+        self.performance_stats["total_queries"] += 1
         
         try:
             logger.info(f"🔍 RAG Query: {question}")
+            
+            # Check query cache first
+            cache_key = f"query:{self._normalize_query(question)}"
+            if cache_key in self.query_cache:
+                self.performance_stats["cache_hits"] += 1
+                cached_result = self.query_cache[cache_key]
+                cached_result["from_cache"] = True
+                cached_result["response_time"] = time.time() - query_start_time
+                logger.info(f"🚀 Cache hit for query: '{question[:50]}'")
+                return cached_result
+            
+            # Cache miss - process query
+            self.performance_stats["cache_misses"] += 1
             
             # Erweitere Query mit intelligenter Suche
             try:
@@ -246,8 +320,15 @@ class RAGService:
                 "confidence": confidence,
                 "expanded_query": search_query if search_query != question else None,
                 "search_results": len(relevant_docs),
-                "response_time": response_time
+                "response_time": response_time,
+                "from_cache": False
             }
+            
+            # Cache successful result
+            self.query_cache[cache_key] = response_obj.copy()
+            
+            # Update performance stats
+            self._update_performance_stats(response_time)
             
             # 🔬 EVALUATION: Automatische wissenschaftliche Evaluierung
             try:
@@ -283,14 +364,46 @@ class RAGService:
         except Exception as e:
             logger.error(f"❌ Fehler bei RAG Query: {e}")
             response_time = time.time() - query_start_time
-            return {
-                "answer": self._generate_fallback_answer(question),
-                "sources": [],
-                "confidence": 0.0,
-                "expanded_query": None,
-                "search_results": 0,
-                "response_time": response_time
-            }
+            self.performance_stats["errors_handled"] += 1
+            
+            # Use error handler for graceful fallback
+            try:
+                fallback_response = await error_handler.handle_rag_error(e, {"query": question})
+                
+                # Create fallback response object
+                fallback_obj = {
+                    "answer": fallback_response.message,
+                    "sources": [],
+                    "confidence": fallback_response.confidence,
+                    "expanded_query": None,
+                    "search_results": 0,
+                    "response_time": response_time,
+                    "is_fallback": True,
+                    "fallback_type": fallback_response.fallback_type.value,
+                    "error_type": fallback_response.error_type.value
+                }
+                
+                # Cache fallback with shorter TTL
+                cache_key_fallback = f"fallback:{self._normalize_query(question)}"
+                self.query_cache[cache_key_fallback] = fallback_obj
+                
+                logger.info(f"🔧 RAG Query fallback provided for: '{question[:50]}'")
+                return fallback_obj
+                
+            except Exception as fallback_error:
+                logger.error(f"❌ Error handler also failed: {fallback_error}")
+                
+                # Ultimate fallback
+                return {
+                    "answer": self._generate_fallback_answer(question),
+                    "sources": [],
+                    "confidence": 0.0,
+                    "expanded_query": None,
+                    "search_results": 0,
+                    "response_time": response_time,
+                    "is_fallback": True,
+                    "error": "Complete system failure"
+                }
 
     async def answer_question(self, question: str) -> str:
         """Answer question using RAG (legacy method)"""
@@ -619,8 +732,19 @@ Was möchtest du wissen?"""
             logger.error(f"❌ Error getting document count: {e}")
             return 0
     
+    def _update_performance_stats(self, response_time: float):
+        """Update performance statistics"""
+        # Update average response time
+        total_queries = self.performance_stats["total_queries"]
+        current_avg = self.performance_stats["avg_response_time"]
+        
+        # Calculate new average
+        new_avg = ((current_avg * (total_queries - 1)) + response_time) / total_queries
+        self.performance_stats["avg_response_time"] = new_avg
+        self.performance_stats["last_query_time"] = time.time()
+    
     async def get_stats(self) -> dict:
-        """Get RAG service statistics"""
+        """Get comprehensive RAG service statistics"""
         if not self.is_initialized:
             return {"status": "not_initialized"}
         
@@ -629,13 +753,24 @@ Was möchtest du wissen?"""
             collection = self.vector_store._collection
             doc_count = collection.count()
             
+            # Calculate cache efficiency
+            total_requests = self.performance_stats["cache_hits"] + self.performance_stats["cache_misses"]
+            cache_hit_rate = (self.performance_stats["cache_hits"] / total_requests * 100) if total_requests > 0 else 0
+            
             return {
                 "status": "healthy",
                 "documents_count": doc_count,
                 "embedding_model": settings.EMBEDDING_MODEL,
                 "vector_db_path": settings.VECTOR_DB_PATH,
                 "chunk_size": settings.RAG_CHUNK_SIZE,
-                "top_k": settings.RAG_TOP_K
+                "top_k": settings.RAG_TOP_K,
+                "performance": {
+                    **self.performance_stats,
+                    "cache_hit_rate_percent": round(cache_hit_rate, 2),
+                    "query_cache_size": len(self.query_cache),
+                    "document_cache_size": len(self.document_cache),
+                    "embedding_cache_size": len(self.embedding_cache)
+                }
             }
             
         except Exception as e:

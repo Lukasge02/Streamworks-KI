@@ -18,6 +18,9 @@ from app.api.v1.xml_validation import router as validation_router
 from app.api.v1.training import router as training_router
 from app.api.v1.search import router as search_router
 from app.api.v1.conversations import router as conversations_router
+from app.api.v1.evaluation import router as evaluation_router
+from app.api.v1.health import router as health_router
+from app.api.v1.ab_testing import router as ab_testing_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -165,6 +168,24 @@ app.include_router(
     conversations_router,
     prefix="/api/v1/conversations",
     tags=["conversation_memory"]
+)
+
+app.include_router(
+    evaluation_router,
+    prefix="/api/v1/evaluation",
+    tags=["evaluation"]
+)
+
+app.include_router(
+    health_router,
+    prefix="/api/v1/health",
+    tags=["health"]
+)
+
+app.include_router(
+    ab_testing_router,
+    prefix="/api/v1/ab-testing",
+    tags=["ab_testing"]
 )
 
 @app.get("/")

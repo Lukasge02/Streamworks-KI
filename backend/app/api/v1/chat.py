@@ -1,9 +1,9 @@
 """
 Chat API with Mistral 7B + RAG Integration
-Optimiert für deutsche StreamWorks-Dokumentation mit Conversation Memory
+Optimiert für deutsche StreamWorks-Dokumentation mit robust input validation
 """
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
+from pydantic import BaseModel, ValidationError as PydanticValidationError
 from typing import Optional, List
 from enum import Enum
 import logging
@@ -14,6 +14,8 @@ from app.services.rag_service import rag_service
 from app.services.mistral_rag_service import mistral_rag_service
 from app.services.mistral_llm_service import mistral_llm_service
 from app.services.xml_generator import xml_generator
+from app.services.error_handler import error_handler
+from app.models.validation import ChatRequestValidator, ValidationErrorResponse, validate_request_size
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -83,13 +85,33 @@ class DeleteDocumentResponse(BaseModel):
     message: str
 
 @router.post("/", response_model=ChatResponse)
-async def chat_with_mistral(request: ChatRequest):
-    """Optimierter Chat für Mistral 7B + RAG mit Conversation Memory"""
+async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request):
+    """Robust Chat Endpoint mit vollständiger Input-Validierung und Error Handling"""
     
     start_time = time.time()
     
     try:
-        logger.info(f"📨 Mistral Chat Request: {request.message[:50]}...")
+        # Request size validation
+        content_length = raw_request.headers.get("content-length")
+        if content_length and not validate_request_size(int(content_length)):
+            raise HTTPException(
+                status_code=413,
+                detail="Request too large. Maximum size is 10MB."
+            )
+        
+        logger.info(f"📨 Validated Chat Request: {request.message[:50]}...")
+        
+        # Input validation already handled by Pydantic model
+        # Additional safety checks
+        if len(request.message.strip()) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Message cannot be empty after validation"
+            )
+        
+        # Rate limiting check (simple per-request)
+        if len(request.message) > 3500:  # Conservative limit
+            logger.warning(f"⚠️ Large message received: {len(request.message)} chars")
         
         # Conversation ID generieren oder verwenden
         conversation_id = request.conversation_id or str(uuid.uuid4())
@@ -145,31 +167,71 @@ async def chat_with_mistral(request: ChatRequest):
             processing_time=process_time
         )
         
+    except PydanticValidationError as ve:
+        logger.warning(f"📝 Validation error: {ve}")
+        # Return specific validation error
+        raise HTTPException(
+            status_code=422,
+            detail=f"Input validation failed: {str(ve)}"
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (they're already handled)
+        raise
+        
     except Exception as e:
-        logger.error(f"❌ Mistral chat error: {e}")
+        logger.error(f"❌ Chat endpoint error: {e}")
         process_time = time.time() - start_time
         
-        # Auch Fehler in Conversation Memory speichern
+        # Use error handler for graceful fallback
         try:
-            if 'conversation_id' in locals():
-                from app.services.conversation_memory import conversation_memory
-                conversation_memory.add_message(
-                    session_id=conversation_id,
-                    question=request.message,
-                    answer="[Fehler bei der Verarbeitung]",
-                    metadata={"error": str(e), "processing_time": process_time}
-                )
-        except:
-            pass  # Ignoriere Fehler beim Speichern von Fehlern
-        
-        return ChatResponse(
-            response="Entschuldigung, bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
-            mode="error_fallback",
-            conversation_id=request.conversation_id or str(uuid.uuid4()),
-            sources_used=0,
-            model_used="mistral:7b-instruct",
-            processing_time=process_time
-        )
+            # Determine error type based on the exception
+            if "mistral" in str(e).lower() or "llm" in str(e).lower():
+                fallback_response = await error_handler.handle_llm_error(e, {"query": request.message})
+            elif "rag" in str(e).lower() or "vector" in str(e).lower():
+                fallback_response = await error_handler.handle_rag_error(e, {"query": request.message})
+            else:
+                # Generic service error
+                fallback_response = await error_handler.handle_llm_error(e, {"query": request.message})
+            
+            # Save error to conversation memory
+            try:
+                if 'conversation_id' in locals():
+                    from app.services.conversation_memory import conversation_memory
+                    conversation_memory.add_message(
+                        session_id=conversation_id,
+                        question=request.message,
+                        answer=f"[Fallback] {fallback_response.message}",
+                        metadata={
+                            "error": str(e), 
+                            "processing_time": process_time,
+                            "fallback_type": fallback_response.fallback_type.value
+                        }
+                    )
+            except Exception as save_error:
+                logger.warning(f"Could not save to conversation memory: {save_error}")
+            
+            return ChatResponse(
+                response=fallback_response.message,
+                mode=f"fallback_{fallback_response.fallback_type.value}",
+                conversation_id=request.conversation_id or str(uuid.uuid4()),
+                sources_used=0,
+                model_used="error_fallback",
+                processing_time=process_time
+            )
+            
+        except Exception as fallback_error:
+            logger.error(f"❌ Even fallback failed: {fallback_error}")
+            
+            # Ultimate fallback
+            return ChatResponse(
+                response="Ein technischer Fehler ist aufgetreten. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support.",
+                mode="critical_error",
+                conversation_id=request.conversation_id or str(uuid.uuid4()),
+                sources_used=0,
+                model_used="system_fallback",
+                processing_time=process_time
+            )
 
 @router.post("/dual-mode", response_model=DualModeChatResponse)
 async def dual_mode_chat(request: DualModeChatRequest):

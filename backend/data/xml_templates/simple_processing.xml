@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Example StreamWorks Template - Data Processing -->
+<stream xmlns="http://streamworks.arvato.com/schema/v1">
+  <metadata>
+    <name>{{ stream_name }}</name>
+    <description>{{ description | default('Data processing stream') }}</description>
+    <version>1.0</version>
+    <created>{{ current_timestamp }}</created>
+    <author>StreamWorks-KI</author>
+  </metadata>
+  
+  <configuration>
+    <schedule>
+      <cron>{{ cron_expression | default('0 2 * * *') }}</cron>
+      <timezone>Europe/Berlin</timezone>
+    </schedule>
+  </configuration>
+  
+  <pipeline>
+    <tasks>
+      <task id="process" type="data_processing">
+        <name>Process Data</name>
+        <source>{{ data_source | default('/data/input') }}</source>
+        <target>{{ output_path | default('/data/output') }}</target>
+      </task>
+    </tasks>
+  </pipeline>
+</stream>
