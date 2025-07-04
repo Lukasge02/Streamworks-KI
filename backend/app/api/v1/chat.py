@@ -248,15 +248,19 @@ async def dual_mode_chat(request: DualModeChatRequest):
         logger.info(f"🤖 Dual-Mode Chat Request: {request.mode.value} - {request.message[:50]}...")
         
         if request.mode == ChatMode.QA:
-            # Nutze optimierten RAG Service für Q&A
-            result = await rag_service.query(request.message)
+            # Nutze Mistral RAG Service mit Citations für Q&A
+            rag_result = await mistral_rag_service.generate_response(request.message)
             
             response = DualModeChatResponse(
-                response=result["answer"],
-                mode_used="qa",
+                response=rag_result.get("response", "Keine Antwort generiert."),
+                mode_used="qa_with_citations",
                 processing_time=time.time() - start_time,
-                metadata={"confidence": result.get("confidence", 0.9), "model": "rag_service"},
-                sources=result.get("sources", [])
+                metadata={
+                    "confidence": 0.9, 
+                    "model": "mistral_rag_with_citations",
+                    "sources_used": rag_result.get("sources_used", 0)
+                },
+                sources=rag_result.get("citations", [])
             )
             
         elif request.mode == ChatMode.XML_GENERATOR:
