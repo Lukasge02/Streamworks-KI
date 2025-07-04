@@ -156,7 +156,7 @@ FRAGE: {question} [/INST]
                 
                 return {
                     "response": response,
-                    "citations": [c.model_dump() for c in citations],
+                    "citations": [c.dict() if hasattr(c, 'dict') else c.model_dump() for c in citations],
                     "sources_used": sources_used
                 }
             else:
@@ -168,6 +168,8 @@ FRAGE: {question} [/INST]
                 
         except Exception as e:
             logger.error(f"Fehler bei Mistral RAG Generation: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return {
                 "response": "Entschuldigung, bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
                 "citations": [],

@@ -114,7 +114,7 @@ class XMLGeneratorService:
             self.validator = XMLValidator()
             
             # Test template loading
-            templates = await self.template_loader.list_templates()
+            templates = self.template_loader.list_templates()  # Remove await - not async
             logger.info(f"📄 Loaded {len(templates)} XML templates")
             
             # Log available templates
@@ -130,7 +130,8 @@ class XMLGeneratorService:
             
             # Graceful fallback - create minimal template loader
             try:
-                self.template_loader = XMLTemplateLoader()
+                # templates_dir is now optional with fallback
+                self.template_loader = XMLTemplateLoader()  
                 self.validator = XMLValidator()
                 self.is_initialized = True
                 logger.warning("⚠️ XML Generator mit Basis-Templates initialisiert")

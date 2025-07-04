@@ -4,9 +4,16 @@ Extracted from deleted xml_templates.py to support xml_generator.py
 """
 import re
 import logging
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, NamedTuple
 from pathlib import Path
 from datetime import datetime
+
+class TemplateInfo(NamedTuple):
+    """Template information structure"""
+    name: str
+    category: str
+    description: str
+    path: Optional[str] = None
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +72,16 @@ def detect_stream_type(description: str, requirements: Dict[str, Any]) -> str:
 class XMLTemplateLoader:
     """Loads and manages XML templates"""
     
-    def __init__(self, templates_dir: Path):
+    def __init__(self, templates_dir: Optional[Path] = None):
+        if templates_dir is None:
+            # Default fallback directory
+            backend_dir = Path(__file__).parent.parent.parent
+            templates_dir = backend_dir / "data" / "xml_templates"
+            templates_dir.mkdir(parents=True, exist_ok=True)
+            
         self.templates_dir = templates_dir
         self.templates = {}
+        self.template_info = {}
         self._load_templates()
     
     def _load_templates(self):
@@ -75,27 +89,115 @@ class XMLTemplateLoader:
         try:
             if not self.templates_dir.exists():
                 logger.warning(f"Templates directory does not exist: {self.templates_dir}")
+                # Create basic template
+                self._create_basic_template()
                 return
             
             for template_file in self.templates_dir.glob("*.xml"):
                 try:
                     template_name = template_file.stem
                     with open(template_file, 'r', encoding='utf-8') as f:
-                        self.templates[template_name] = f.read()
+                        content = f.read()
+                        self.templates[template_name] = content
+                    
+                    # Extract template info from content
+                    description = self._extract_description(content)
+                    category = self._extract_category(template_name, content)
+                    
+                    self.template_info[template_name] = TemplateInfo(
+                        name=template_name,
+                        category=category,
+                        description=description,
+                        path=str(template_file)
+                    )
+                    
                     logger.debug(f"Loaded template: {template_name}")
                 except Exception as e:
                     logger.warning(f"Failed to load template {template_file}: {e}")
             
+            # Create basic template if none exist
+            if not self.templates:
+                self._create_basic_template()
+            
             logger.info(f"Loaded {len(self.templates)} XML templates")
         except Exception as e:
             logger.error(f"Failed to load templates: {e}")
+            self._create_basic_template()
+    
+    def _extract_description(self, content: str) -> str:
+        """Extract description from XML comment"""
+        import re
+        # Look for comment with description
+        match = re.search(r'<!--\s*(.+?)\s*-->', content, re.DOTALL)
+        if match:
+            return match.group(1).strip()[:100]  # Limit length
+        return "XML template for StreamWorks"
+    
+    def _extract_category(self, name: str, content: str) -> str:
+        """Extract category from template name and content"""
+        name_lower = name.lower()
+        content_lower = content.lower()
+        
+        if 'simple' in name_lower or 'basic' in name_lower:
+            return 'basic'
+        elif 'batch' in name_lower or 'batch' in content_lower:
+            return 'batch'
+        elif 'data' in name_lower or 'processing' in content_lower:
+            return 'data_processing'
+        elif 'api' in content_lower:
+            return 'api'
+        else:
+            return 'general'
+    
+    def _create_basic_template(self):
+        """Create a basic template as fallback"""
+        basic_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<!-- Basic StreamWorks Template -->
+<stream xmlns="http://streamworks.arvato.com/schema/v1">
+  <metadata>
+    <name>{{ stream_name | default('Default Stream') }}</name>
+    <description>{{ description | default('Basic stream configuration') }}</description>
+    <version>1.0</version>
+    <created>{{ current_timestamp }}</created>
+  </metadata>
+  
+  <configuration>
+    <schedule>
+      <cron>{{ cron_expression | default('0 2 * * *') }}</cron>
+      <timezone>Europe/Berlin</timezone>
+    </schedule>
+  </configuration>
+  
+  <pipeline>
+    <tasks>
+      <task id="process" type="basic">
+        <name>Basic Processing</name>
+        <source>{{ data_source | default('/data/input') }}</source>
+        <target>{{ output_path | default('/data/output') }}</target>
+      </task>
+    </tasks>
+  </pipeline>
+</stream>'''
+        
+        self.templates['basic'] = basic_content
+        self.template_info['basic'] = TemplateInfo(
+            name='basic',
+            category='basic',
+            description='Basic StreamWorks template',
+            path=None
+        )
+        logger.info("Created basic fallback template")
     
     def get_template(self, template_name: str) -> Optional[str]:
         """Get template by name"""
         return self.templates.get(template_name)
     
-    def list_templates(self) -> List[str]:
-        """List all available template names"""
+    def list_templates(self) -> List[TemplateInfo]:
+        """List all available templates with info"""
+        return list(self.template_info.values())
+    
+    def get_template_names(self) -> List[str]:
+        """Get simple list of template names"""
         return list(self.templates.keys())
 
 class XMLValidator:
