@@ -717,6 +717,7 @@ alias sw-deps="python tools/dependency_manager.py"
 
 ---
 
-**🎯 Ziel**: Maximale Entwicklungseffizienz mit Claude Code durch intelligente Automatisierung und kontinuierliche Qualitätssicherung.
+**🎯 Ziel**: Maximale Entwicklungseffizienz mit Claude Code durch intelligente Automa
+tisierung und kontinuierliche Qualitätssicherung.
 
 *Letzte Aktualisierung: 2025-07-04 12:00*
