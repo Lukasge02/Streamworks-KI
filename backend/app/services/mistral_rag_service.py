@@ -1,24 +1,25 @@
 """
 Mistral RAG Service - ChromaDB + Mistral 7B Integration
-Optimiert für deutsche StreamWorks-Dokumentation
+Optimiert für deutsche StreamWorks-Dokumentation mit Citations
 """
 import logging
 from typing import List, Dict, Any
 from app.core.config import settings
 from app.services.rag_service import RAGService
 from app.services.mistral_llm_service import mistral_llm_service
+from app.services.citation_service import citation_service
 
 logger = logging.getLogger(__name__)
 
 class MistralRAGService:
-    """RAG Service optimiert für Mistral 7B"""
+    """RAG Service optimiert für Mistral 7B mit Citation Support"""
     
     def __init__(self):
         self.rag_service = None
         self.mistral_service = mistral_llm_service
         self.is_initialized = False
         
-        logger.info("🔍 Mistral RAG Service initialisiert")
+        logger.info("🔍 Mistral RAG Service initialisiert mit Citation Support")
     
     async def initialize(self):
         """Initialisiere RAG + Mistral Services"""
@@ -42,20 +43,24 @@ class MistralRAGService:
             self.is_initialized = False
     
     async def search_for_mistral(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Optimierte Dokumentensuche für Mistral's Context Window"""
+        """Optimierte Dokumentensuche für Mistral's Context Window (Fallback)"""
         
         if not self.rag_service or not self.rag_service.is_initialized:
             logger.warning("RAG Service nicht verfügbar")
             return []
         
         try:
-            # Nutze bestehende RAG-Suche
-            documents = await self.rag_service.search_documents(query, top_k)
+            # Normale Dokumentensuche
+            docs = await self.rag_service.search_documents(query, top_k)
             
-            # Für Mistral optimierte Aufbereitung
+            if not docs:
+                logger.info(f"Keine Dokumente für Query gefunden: {query}")
+                return []
+            
+            # Konvertiere zu Mistral-Format
             context_docs = []
-            for i, doc in enumerate(documents):
-                # Relevanz basierend auf Position (erste Ergebnisse sind relevanter)
+            for i, doc in enumerate(docs):
+                # Nutze distance als relevance score
                 relevance = 1.0 - (i * 0.1)  # 1.0, 0.9, 0.8, etc.
                 
                 context_docs.append({
@@ -70,44 +75,196 @@ class MistralRAGService:
             logger.error(f"Fehler bei Dokumentensuche: {e}")
             return []
     
-    async def generate_mistral_context(self, query: str, max_tokens: int = 3000) -> str:
-        """Generiere optimalen Kontext für Mistral's 8k Context Window"""
+    async def generate_response(self, question: str, documents: List = None) -> Dict[str, Any]:
+        """Generate response with citations for chat API"""
+        if not self.is_initialized:
+            await self.initialize()
         
-        # Suche relevante Dokumente
-        docs = await self.search_for_mistral(query, top_k=7)
+        if not self.is_initialized:
+            return {
+                "response": "RAG Service ist nicht verfügbar. Bitte versuchen Sie es später erneut.",
+                "citations": [],
+                "sources_used": 0
+            }
         
-        if not docs:
+        try:
+            # Use provided documents or search for new ones
+            if documents:
+                # Use provided documents with citations
+                citations = await citation_service.create_citations_from_documents(documents, question)
+                context = self._build_context_from_documents(documents, citations)
+                sources_used = len(set(c.filename for c in citations))
+            else:
+                # Search for documents with citations
+                search_result = await self.rag_service.search_documents_with_citations(
+                    query=question,
+                    top_k=7,
+                    include_citations=True
+                )
+                
+                documents = search_result["documents"]
+                citations = search_result["citations"] or []
+                context = self._build_context_from_documents(documents, citations)
+                sources_used = len(set(c.filename for c in citations))
+            
+            if not documents or "Keine relevanten Dokumente" in context:
+                return {
+                    "response": await self._generate_fallback_response(question),
+                    "citations": [],
+                    "sources_used": 0
+                }
+            
+            # Generate response with Mistral
+            mistral_rag_prompt = f"""[INST] Du bist SKI, ein deutschsprachiger StreamWorks-Experte bei Arvato Systems.
+
+Beantworte die Frage basierend auf der verfügbaren StreamWorks-Dokumentation.
+
+WICHTIG: 
+- Antworte nur auf Deutsch
+- Verwende Emojis für bessere Lesbarkeit
+- Strukturiere die Antwort mit Markdown
+- Gib am Ende benutzerfreundliche Quellenangaben an
+
+KONTEXT:
+{context}
+
+FRAGE: {question} [/INST]
+
+## 🎯 StreamWorks-Antwort
+
+"""
+            
+            response = await self.mistral_service.ollama_generate(
+                prompt=mistral_rag_prompt,
+                model=settings.OLLAMA_MODEL,
+                options={
+                    "temperature": settings.MODEL_TEMPERATURE,
+                    "top_p": settings.MODEL_TOP_P,
+                    "top_k": settings.MODEL_TOP_K,
+                    "repeat_penalty": settings.MODEL_REPEAT_PENALTY,
+                    "num_predict": settings.MODEL_MAX_TOKENS
+                }
+            )
+            
+            if response:
+                response = self.mistral_service.post_process_german(response)
+                
+                # Add user-friendly citations to response
+                if citations:
+                    citation_text = citation_service.format_citations_for_response(citations, max_citations=3)
+                    response += citation_text
+                
+                return {
+                    "response": response,
+                    "citations": [c.model_dump() for c in citations],
+                    "sources_used": sources_used
+                }
+            else:
+                return {
+                    "response": await self._generate_fallback_response(question),
+                    "citations": [],
+                    "sources_used": 0
+                }
+                
+        except Exception as e:
+            logger.error(f"Fehler bei Mistral RAG Generation: {e}")
+            return {
+                "response": "Entschuldigung, bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+                "citations": [],
+                "sources_used": 0
+            }
+    
+    def _build_context_from_documents(self, documents: List, citations: List, max_tokens: int = 3000) -> str:
+        """Build context string from documents and citations"""
+        if not documents:
             return "Keine relevanten Dokumente gefunden."
         
-        # Baue Kontext für Mistral auf
         context_parts = []
         current_length = 0
         
-        for doc in docs:
-            # Schätze Token-Länge (ca. 4 Zeichen pro Token)
-            doc_tokens = len(doc['content']) // 4
+        for i, doc in enumerate(documents):
+            # Estimate token length (approx. 4 chars per token)
+            doc_tokens = len(doc.page_content) // 4
             
             if current_length + doc_tokens > max_tokens:
                 break
             
-            # Mistral-optimierte Kontext-Formatierung
+            # Get citation info for this document
+            citation = citations[i] if i < len(citations) else None
+            
+            if citation:
+                source_info = f"{citation.source_title} ({citation.source_type.value})"
+                if citation.document_type:
+                    source_info += f" - {citation.document_type.value}"
+                relevance_info = f"Relevanz: {citation.relevance_score:.1%}"
+            else:
+                # Fallback to filename cleanup
+                source_filename = doc.metadata.get('source', 'Unbekannte Quelle')
+                source_info = citation_service._extract_source_title(source_filename, doc.page_content[:200])
+                relevance_info = f"Relevanz: {doc.metadata.get('score', 0.0):.2f}"
+            
+            # Mistral-optimized context formatting
             context_part = f"""
 === STREAMWORKS DOKUMENTATION ===
-Quelle: {doc['source']}
-Relevanz: {doc['relevance']:.2f}
+Quelle: {source_info}
+{relevance_info}
 
-{doc['content']}
+{doc.page_content}
 """
             context_parts.append(context_part)
             current_length += doc_tokens
         
-        if not context_parts:
-            return "Keine passenden Dokumente im verfügbaren Token-Limit gefunden."
+        return "\n".join(context_parts) if context_parts else "Keine passenden Dokumente gefunden."
+    
+    async def generate_mistral_context(self, query: str, max_tokens: int = 3000) -> str:
+        """Generiere optimalen Kontext für Mistral's 8k Context Window mit Citations"""
         
-        return "\n".join(context_parts)
+        try:
+            # Hole Dokumente mit Citation Support
+            search_result = await self.rag_service.search_documents_with_citations(
+                query=query,
+                top_k=7,
+                include_citations=True
+            )
+            
+            documents = search_result["documents"]
+            citations = search_result["citations"] or []
+            
+            return self._build_context_from_documents(documents, citations, max_tokens)
+            
+        except Exception as e:
+            logger.error(f"Fehler bei Citation-basierter Kontextgenerierung: {e}")
+            # Fallback auf alte Methode
+            docs = await self.search_for_mistral(query, top_k=7)
+            
+            if not docs:
+                return "Keine relevanten Dokumente gefunden."
+            
+            context_parts = []
+            current_length = 0
+            
+            for doc in docs:
+                doc_tokens = len(doc['content']) // 4
+                if current_length + doc_tokens > max_tokens:
+                    break
+                
+                # Verbesserte Quellenangabe auch im Fallback
+                source_title = citation_service._extract_source_title(doc['source'], doc['content'][:200])
+                
+                context_part = f"""
+=== STREAMWORKS DOKUMENTATION ===
+Quelle: {source_title}
+Relevanz: {doc['relevance']:.2f}
+
+{doc['content']}
+"""
+                context_parts.append(context_part)
+                current_length += doc_tokens
+            
+            return "\n".join(context_parts) if context_parts else "Keine passenden Dokumente gefunden."
     
     async def answer_with_mistral_rag(self, question: str) -> str:
-        """RAG-Antwort mit Mistral 7B"""
+        """RAG-Antwort mit Mistral 7B und Citations"""
         
         if not self.is_initialized:
             await self.initialize()
@@ -116,7 +273,7 @@ Relevanz: {doc['relevance']:.2f}
             return "RAG Service ist nicht verfügbar. Bitte versuchen Sie es später erneut."
         
         try:
-            # 1. Kontext aus ChromaDB holen
+            # 1. Kontext aus ChromaDB holen mit Citations
             context = await self.generate_mistral_context(question)
             
             # 2. Spezielle Behandlung wenn kein Kontext gefunden
@@ -127,24 +284,20 @@ Relevanz: {doc['relevance']:.2f}
             # 3. Mistral-optimierter Prompt für RAG
             mistral_rag_prompt = f"""[INST] Du bist SKI, ein deutschsprachiger StreamWorks-Experte bei Arvato Systems.
 
-=== AUFGABE ===
-Beantworte die Frage präzise basierend auf der bereitgestellten StreamWorks-Dokumentation.
+Beantworte die Frage basierend auf der verfügbaren StreamWorks-Dokumentation.
 
-=== ANTWORT-REGELN ===
-- Antworte AUSSCHLIESSLICH auf Deutsch
-- Nutze die Dokumentation als Hauptquelle
-- Strukturiere die Antwort mit Markdown und passenden Emojis
-- Zitiere Quellen mit [Quelle: dateiname]
-- Sei konkret und hilfreich
-- Verwende professionelle Höflichkeitsformen (Sie/Ihnen)
+WICHTIG: 
+- Antworte nur auf Deutsch
+- Verwende Emojis für bessere Lesbarkeit  
+- Strukturiere die Antwort mit Markdown
+- Sei präzise und hilfreich
 
-=== STREAMWORKS DOKUMENTATION ===
+VERFÜGBARE DOKUMENTATION:
 {context}
 
-=== BENUTZERANFRAGE ===
-{question} [/INST]
+FRAGE: {question} [/INST]
 
-## 🔧 StreamWorks-Antwort
+## 🎯 StreamWorks-Antwort
 
 """
             
@@ -234,7 +387,7 @@ Ich konnte keine spezifischen Informationen zu Ihrer Frage in der StreamWorks-Do
             "is_initialized": self.is_initialized,
             "rag_service": rag_stats,
             "mistral_service": mistral_stats,
-            "optimization": "german_streamworks"
+            "optimization": "german_streamworks_with_citations"
         }
 
 # Global instance

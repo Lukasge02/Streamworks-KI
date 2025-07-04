@@ -28,6 +28,7 @@ make full-check  # Kompletter Check
 ## 🔧 **VS Code Power Features**
 
 ### **Keyboard Shortcuts**
+
 - **F5**: Debug FastAPI Server starten
 - **Ctrl+Shift+P** → "Python: Run Tests": Test Explorer öffnen
 - **Cmd+Shift+P** → "Tasks: Run Task": Alle Make-Commands

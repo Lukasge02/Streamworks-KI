@@ -134,8 +134,10 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
             enhanced_message = request.message
             conversation_context = ""
         
-        # RAG-Antwort mit Mistral (mit Kontext)
-        response = await mistral_rag_service.answer_with_mistral_rag(enhanced_message)
+        # RAG-Antwort mit Mistral + Citations (mit Kontext)
+        rag_result = await mistral_rag_service.generate_response(enhanced_message)
+        response = rag_result.get("response", "Keine Antwort generiert.")
+        sources_used = rag_result.get("sources_used", 0)
         
         # Speichere Konversation in Memory
         try:
@@ -146,7 +148,8 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
                 answer=response,
                 metadata={
                     "model_used": "mistral:7b-instruct",
-                    "mode": "mistral_rag",
+                    "mode": "mistral_rag_with_citations",
+                    "sources_used": sources_used,
                     "context_used": bool(conversation_context),
                     "processing_time": time.time() - start_time
                 }
@@ -162,9 +165,9 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
         
         return ChatResponse(
             response=response,
-            mode="mistral_rag",
+            mode="mistral_rag_with_citations",
             conversation_id=conversation_id,
-            sources_used=0,  # TODO: Track sources from RAG
+            sources_used=sources_used,
             model_used="mistral:7b-instruct",
             processing_time=process_time
         )
