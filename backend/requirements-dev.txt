@@ -1,0 +1,43 @@
+# Development dependencies for StreamWorks-KI
+
+# Testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.11.1
+pytest-xdist==3.3.1  # Parallel test execution
+
+# Test utilities
+httpx==0.25.0  # For async client testing
+factory-boy==3.3.0  # Test data factories
+freezegun==1.2.2  # Time mocking
+responses==0.23.3  # HTTP mocking
+
+# Code quality
+black==23.9.1  # Code formatting
+flake8==6.1.0  # Linting
+isort==5.12.0  # Import sorting
+mypy==1.6.1  # Type checking
+bandit==1.7.5  # Security linting
+
+# Pre-commit hooks
+pre-commit==3.5.0
+
+# Performance profiling
+py-spy==0.3.14  # Profiling
+memory-profiler==0.61.0
+line-profiler==4.1.1
+
+# Test coverage
+coverage[toml]==7.3.2
+
+# Debugging
+ipdb==0.13.13
+rich==13.6.0  # Better debugging output
+
+# Load testing
+locust==2.17.0
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==1.3.0

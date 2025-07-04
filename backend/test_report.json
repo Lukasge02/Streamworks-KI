@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-07-04T23:49:43.514280",
+  "system": "StreamWorks-KI",
+  "test_suites": [
+    {
+      "description": "Unit Test: Error Handler Initialization",
+      "command": "python3 -m pytest tests/unit/test_error_handler.py::TestStreamWorksErrorHandler::test_init -v",
+      "duration": 1.2065699100494385,
+      "return_code": 0,
+      "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.9.6, pytest-7.4.3, pluggy-1.6.0 -- /Library/Developer/CommandLineTools/usr/bin/python3\ncachedir: .pytest_cache\nrootdir: /Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend\nconfigfile: pytest.ini\nplugins: anyio-3.7.1\ncollecting ... collected 1 item\n\ntests/unit/test_error_handler.py::TestStreamWorksErrorHandler::test_init PASSED [100%]\n\n============================== 1 passed in 0.01s ===============================\n",
+      "stderr": "",
+      "success": true
+    },
+    {
+      "description": "Unit Test: Error Classification",
+      "command": "python3 -m pytest tests/unit/test_error_handler.py -k classify -v",
+      "duration": 0.9628849029541016,
+      "return_code": 0,
+      "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.9.6, pytest-7.4.3, pluggy-1.6.0 -- /Library/Developer/CommandLineTools/usr/bin/python3\ncachedir: .pytest_cache\nrootdir: /Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend\nconfigfile: pytest.ini\nplugins: anyio-3.7.1\ncollecting ... collected 21 items / 18 deselected / 3 selected\n\ntests/unit/test_error_handler.py::TestStreamWorksErrorHandler::test_classify_llm_error_connection PASSED [ 33%]\ntests/unit/test_error_handler.py::TestStreamWorksErrorHandler::test_classify_llm_error_timeout PASSED [ 66%]\ntests/unit/test_error_handler.py::TestStreamWorksErrorHandler::test_classify_rag_error_vectordb PASSED [100%]\n\n======================= 3 passed, 18 deselected in 0.01s =======================\n",
+      "stderr": "",
+      "success": true
+    },
+    {
+      "description": "Unit Test: XML Generator Basic Tests",
+      "command": "python3 -m pytest tests/unit/test_xml_generator_realistic.py -k init_success or method_exists -v",
+      "duration": 0.9206206798553467,
+      "return_code": 0,
+      "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.9.6, pytest-7.4.3, pluggy-1.6.0 -- /Library/Developer/CommandLineTools/usr/bin/python3\ncachedir: .pytest_cache\nrootdir: /Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend\nconfigfile: pytest.ini\nplugins: anyio-3.7.1\ncollecting ... collected 12 items / 10 deselected / 2 selected\n\ntests/unit/test_xml_generator_realistic.py::TestXMLGeneratorServiceRealistic::test_init_success PASSED [ 50%]\ntests/unit/test_xml_generator_realistic.py::TestXMLGeneratorServiceRealistic::test_validate_xml_method_exists PASSED [100%]\n\n======================= 2 passed, 10 deselected in 0.01s =======================\n",
+      "stderr": "",
+      "success": true
+    },
+    {
+      "description": "Integration Test: Service Initialization",
+      "command": "python3 -c \nimport sys\nsys.path.append('.')\ntry:\n    from app.services.error_handler import StreamWorksErrorHandler\n    from app.services.xml_generator import XMLGeneratorService\n    print('\u2705 All core services can be imported')\n    handler = StreamWorksErrorHandler()\n    print('\u2705 Error handler initializes successfully')\n    generator = XMLGeneratorService()\n    print('\u2705 XML generator initializes successfully')\n    print('SUCCESS: Integration test passed')\nexcept Exception as e:\n    print(f'\u274c Integration test failed: {e}')\n    sys.exit(1)\n",
+      "duration": 0.09933114051818848,
+      "return_code": 0,
+      "stdout": "\u2705 All core services can be imported\n\u2705 Error handler initializes successfully\n\u2705 XML generator initializes successfully\nSUCCESS: Integration test passed\n",
+      "stderr": "",
+      "success": true
+    },
+    {
+      "description": "API Test: Health Endpoint",
+      "command": "python3 -c \nimport sys\nsys.path.append('.')\ntry:\n    from fastapi.testclient import TestClient\n    from app.main import app\n    client = TestClient(app)\n    response = client.get('/health')\n    if response.status_code == 200:\n        print(f'\u2705 Health endpoint: {response.status_code}')\n        print('SUCCESS: API health check passed')\n    else:\n        print(f'\u274c Health endpoint failed: {response.status_code}')\n        sys.exit(1)\nexcept Exception as e:\n    print(f'\u274c API test failed: {e}')\n    sys.exit(1)\n",
+      "duration": 0.8715581893920898,
+      "return_code": 0,
+      "stdout": "\u2705 Health endpoint: 200\nSUCCESS: API health check passed\n",
+      "stderr": "/Users/lukasgeck/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\n/Users/lukasgeck/Library/Python/3.9/lib/python/site-packages/pydantic/_internal/_fields.py:149: UserWarning: Field \"model_used\" has conflict with protected namespace \"model_\".\n\nYou may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.\n  warnings.warn(\n2025-07-04 23:49:47,485 - app.middleware.monitoring - INFO - \ud83d\udcca Advanced Performance Monitoring initialized\n2025-07-04 23:49:47,485 - app.middleware.mistral_monitoring - INFO - \ud83d\udcca Mistral Performance Monitoring aktiviert\n2025-07-04 23:49:47,486 - app.middleware.monitoring - INFO - \ud83d\udce5 [req_1_1751665787] GET /health\n2025-07-04 23:49:47,486 - app.middleware.monitoring - INFO - \u2705 [req_1_1751665787] GET /health -> 200 in 0.000s\n2025-07-04 23:49:47,488 - httpx - INFO - HTTP Request: GET http://testserver/health \"HTTP/1.1 200 OK\"\n",
+      "success": true
+    },
+    {
+      "description": "Code Quality: Python Syntax Check",
+      "command": "python3 -c \nimport ast\nimport os\nimport sys\n\ndef check_python_syntax(directory):\n    error_count = 0\n    file_count = 0\n    \n    for root, dirs, files in os.walk(directory):\n        for file in files:\n            if file.endswith('.py'):\n                file_path = os.path.join(root, file)\n                file_count += 1\n                try:\n                    with open(file_path, 'r') as f:\n                        content = f.read()\n                    ast.parse(content)\n                except SyntaxError as e:\n                    print(f'\u274c Syntax error in {file_path}: {e}')\n                    error_count += 1\n                except Exception as e:\n                    print(f'\u26a0\ufe0f Warning in {file_path}: {e}')\n    \n    print(f'\ud83d\udcca Checked {file_count} Python files')\n    if error_count == 0:\n        print('\u2705 All Python files have valid syntax')\n        print('SUCCESS: Code quality check passed')\n    else:\n        print(f'\u274c Found {error_count} syntax errors')\n        sys.exit(1)\n\ncheck_python_syntax('app')\n",
+      "duration": 0.05668497085571289,
+      "return_code": 0,
+      "stdout": "\ud83d\udcca Checked 44 Python files\n\u2705 All Python files have valid syntax\nSUCCESS: Code quality check passed\n",
+      "stderr": "",
+      "success": true
+    }
+  ],
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 6,
+    "failed_tests": 0,
+    "success_rate": 100.0,
+    "total_duration": 4.117783,
+    "status": "PASSED"
+  }
+}
