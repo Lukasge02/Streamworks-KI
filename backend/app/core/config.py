@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     
     # Training Data Paths
     TRAINING_DATA_PATH: str = "./data/training_data"
-    HELP_DATA_PATH: str = "./data/training_data/help_data"
+    HELP_DATA_PATH: str = "./data/training_data/optimized/help_data"
     XML_TEMPLATE_PATH: str = "./data/training_data/stream_templates"
     
     # Services Toggle

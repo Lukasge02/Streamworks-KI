@@ -1,0 +1,35 @@
+StreamWorks Batch-Jobs Grundlagen
+
+ÜBERBLICK:
+StreamWorks Batch-Jobs sind automatisierte Verarbeitungsaufträge, die nach einem festgelegten Zeitplan ausgeführt werden. Diese Jobs ermöglichen es, große Datenmengen effizient zu verarbeiten, ohne manuelle Eingriffe.
+
+BATCH-JOB ERSTELLUNG:
+1. Definition der Datenquelle
+2. Festlegung der Verarbeitungslogik
+3. Konfiguration des Zeitplans
+4. Einrichtung der Ausgabeziele
+5. Konfiguration der Fehlerbehandlung
+
+BEISPIEL BATCH-JOB:
+Ein typischer Batch-Job könnte täglich um 2 Uhr morgens CSV-Dateien aus einem Input-Ordner lesen, diese validieren und transformieren, und die Ergebnisse in eine Datenbank schreiben.
+
+VORTEILE:
+- Automatisierte Verarbeitung ohne manuelle Eingriffe
+- Skalierbare Verarbeitung großer Datenmengen
+- Zuverlässige Ausführung nach Zeitplan
+- Umfassende Protokollierung und Monitoring
+- Fehlerbehandlung und Retry-Mechanismen
+
+WICHTIGE PARAMETER:
+- Job-Name: Eindeutige Bezeichnung des Jobs
+- Eingabequelle: Pfad oder Datenbank-Verbindung
+- Ausgabeziel: Zielverzeichnis oder Datenbank
+- Zeitplan: Cron-Ausdruck für die Ausführung
+- Ressourcen: Memory und CPU-Limits
+- Timeout: Maximale Ausführungsdauer
+
+MONITORING:
+Alle Batch-Jobs können über das StreamWorks-Dashboard überwacht werden. Dort sehen Sie den Status, die Ausführungszeiten und eventuelle Fehlermeldungen.
+
+TROUBLESHOOTING:
+Bei Problemen prüfen Sie zuerst die Log-Dateien des Jobs. Häufige Probleme sind fehlende Berechtigungen, nicht erreichbare Datenquellen oder Speicherplatzmangel.

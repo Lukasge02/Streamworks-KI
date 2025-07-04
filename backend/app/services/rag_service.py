@@ -94,7 +94,7 @@ class RAGService:
                 logger.info("📁 Auto-loading Training Data...")
                 
                 documents = []
-                for file_path in help_data_path.glob("*.txt"):
+                for file_path in help_data_path.glob("*.md"):
                     try:
                         with open(file_path, 'r', encoding='utf-8') as f:
                             content = f.read()
@@ -216,8 +216,18 @@ class RAGService:
                 # Fallback to template-based answer
                 answer = self._generate_contextual_answer_enhanced(question, context)
             
-            # Extract sources
-            sources = [doc.metadata.get("filename", "Unbekannt") for doc in relevant_docs]
+            # Extract sources with better formatting
+            sources = []
+            for doc in relevant_docs:
+                filename = doc.metadata.get("filename", "Unbekannt")
+                # Remove UUID and optimize filename for display
+                if "_optimized.md" in filename:
+                    display_name = filename.replace("_optimized.md", "").split("_")[-1]
+                    sources.append(f"Training Data {display_name}")
+                else:
+                    sources.append(filename)
+            # Remove duplicates while preserving order
+            sources = list(dict.fromkeys(sources))
             
             logger.info(f"✅ RAG Query beantwortet für: '{question[:50]}' ({len(relevant_docs)} Dokumente)")
             return {

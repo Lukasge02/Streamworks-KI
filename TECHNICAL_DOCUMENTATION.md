@@ -1,536 +1,607 @@
-# StreamWorks-KI - Technische Dokumentation v2.0
+# StreamWorks-KI - Technische Dokumentation v3.0
 
 ## 🎯 Projekt-Übersicht
 
-**StreamWorks-KI** ist eine intelligente Web-Anwendung zur Automatisierung von StreamWorks Workloads durch RAG-basierte Q&A und intelligente XML-Stream-Generierung. Das System kombiniert moderne Retrieval-Augmented Generation (RAG) mit Mistral 7B für kontextbewusste Antworten.
+**StreamWorks-KI** ist eine moderne Full-Stack Web-Anwendung zur intelligenten Automatisierung von StreamWorks Workloads. Das System kombiniert Retrieval-Augmented Generation (RAG), Mistral 7B LLM und erweiterte Features wie intelligente Suche und Conversation Memory für eine optimale Benutzererfahrung.
 
-### Kernfunktionen
-- **RAG-basierte Q&A**: Intelligente Antworten basierend auf StreamWorks-Dokumentation (ChromaDB + LangChain)
-- **Mistral 7B Integration**: Deutsche Optimierung für StreamWorks-spezifische Anfragen
-- **XML Stream Generator**: Intelligente XML-Generierung durch RAG + Mistral
-- **Training Data Management**: File Upload und automatische Vektorisierung
-- **Full-Stack Web-Interface**: React + FastAPI
+### 🏆 Kernfunktionen
+
+- **🧠 Intelligente Q&A**: RAG-basierte Antworten mit Mistral 7B und erweiterte Suchfunktionen
+- **🔍 Smart Search**: Synonym-basierte Suche mit Kontext-Erweiterung für bessere Ergebnisse
+- **💬 Conversation Memory**: Persistente Chat-Sessions mit Konversations-Kontext
+- **📤 Batch Upload**: Mehrere Dateien gleichzeitig mit Progress-Tracking verarbeiten
+- **🔄 TXT zu MD Konvertierung**: Automatische Optimierung für bessere RAG-Performance
+- **🌊 XML Stream Generator**: KI-gestützte StreamWorks XML-Erstellung
+- **📊 Advanced Monitoring**: Umfassende Metriken und Performance-Überwachung
 
 ## 🏗️ System-Architektur
 
 ### High-Level Architektur
+
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend       │    │   KI Services   │
-│   React + TS    │◄──►│   FastAPI       │◄──►│   RAG + Mistral │
-│   Port 3001     │    │   Port 8000     │    │   ChromaDB      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   UI Components │    │   REST APIs     │    │   Vector DB     │
-│   • Chat        │    │   • /chat/      │    │   ChromaDB      │
-│   • Generator   │    │   • /xml/       │    │   Embeddings    │
-│   • Training    │    │   • /training/  │    │   Documents     │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     StreamWorks-KI System                      │
+├─────────────────────────────────────────────────────────────────┤
+│  Frontend (React + TypeScript)                                 │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐              │
+│  │   Chat UI   │ │ Training    │ │ Stream      │              │
+│  │   + Memory  │ │ Data Mgmt   │ │ Generator   │              │
+│  └─────────────┘ └─────────────┘ └─────────────┘              │
+├─────────────────────────────────────────────────────────────────┤
+│  Backend API (FastAPI)                                         │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐              │
+│  │ Chat API    │ │ Search API  │ │ Training    │              │
+│  │ + Conv.     │ │ + Intent    │ │ API         │              │
+│  │ Memory      │ │ Analysis    │ │             │              │
+│  └─────────────┘ └─────────────┘ └─────────────┘              │
+├─────────────────────────────────────────────────────────────────┤
+│  AI Services Layer                                             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐              │
+│  │ RAG Service │ │ Intelligent │ │ Mistral 7B  │              │
+│  │ + ChromaDB  │ │ Search      │ │ LLM Service │              │
+│  └─────────────┘ └─────────────┘ └─────────────┘              │
+├─────────────────────────────────────────────────────────────────┤
+│  Data Layer                                                     │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐              │
+│  │ SQLite DB   │ │ Vector DB   │ │ File        │              │
+│  │ (Metadata)  │ │ (ChromaDB)  │ │ Storage     │              │
+│  └─────────────┘ └─────────────┘ └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Datenfluss
+### 🔧 Tech Stack
+
+**Frontend:**
+- **React 18** + **TypeScript** - Moderne UI-Entwicklung
+- **Tailwind CSS** - Utility-first CSS Framework
+- **Zustand** - Leichtgewichtiges State Management
+- **Lucide Icons** - Moderne Icon-Bibliothek
+- **React Dropzone** - Drag & Drop File Upload
+
+**Backend:**
+- **FastAPI** - High-Performance Python Web Framework
+- **SQLAlchemy** (async) - Database ORM mit async Support
+- **Pydantic** - Data Validation und Serialization
+- **SQLite** - Lightweight Database für Metadaten
+
+**AI/ML Stack:**
+- **Mistral 7B-Instruct** - Large Language Model via Ollama
+- **ChromaDB** - Vector Database für Embeddings
+- **LangChain** - Framework für LLM Applications
+- **Sentence-Transformers** - Text Embeddings (`all-MiniLM-L6-v2`)
+
+**Infrastructure:**
+- **Docker** (optional) - Containerization
+- **Uvicorn** - ASGI Server für FastAPI
+- **CORS** - Cross-Origin Resource Sharing
+
+## 📁 Projekt-Struktur
+
 ```
-User Input → Frontend → API Gateway → Service Router → AI Processing → Response
-    │                                        │              │
-    │                                        ▼              ▼
-    │                                   Vector Search   LLM Generation
-    │                                   (ChromaDB)     (Mistral 7B)
-    │                                        │              │
-    │                                        ▼              ▼
-    └────────────────────────────────── Structured Response ──┘
+StreamWorks-KI/
+├── frontend/                    # React Frontend
+│   ├── src/
+│   │   ├── components/         # React Components
+│   │   │   ├── Chat/          # Chat Interface + Memory
+│   │   │   ├── TrainingData/  # File Management + Batch Upload
+│   │   │   └── StreamGenerator/ # XML Generation
+│   │   ├── services/          # API Services
+│   │   ├── hooks/             # Custom React Hooks
+│   │   └── store/             # Zustand State Management
+│   ├── package.json
+│   └── vite.config.ts
+├── backend/                     # FastAPI Backend
+│   ├── app/
+│   │   ├── api/v1/            # API Endpoints
+│   │   │   ├── chat.py        # Chat + Conversation Memory
+│   │   │   ├── search.py      # Intelligent Search API
+│   │   │   ├── conversations.py # Conversation Management
+│   │   │   ├── training.py    # File Upload + Management
+│   │   │   └── xml_generation.py # Stream Generation
+│   │   ├── services/          # Business Logic
+│   │   │   ├── rag_service.py # RAG + Vector Search
+│   │   │   ├── intelligent_search.py # Smart Search
+│   │   │   ├── conversation_memory.py # Chat Memory
+│   │   │   ├── mistral_llm_service.py # Mistral LLM
+│   │   │   ├── training_service.py # File Processing
+│   │   │   └── txt_to_md_converter.py # Content Optimization
+│   │   ├── models/            # Database Models
+│   │   └── core/              # Configuration
+│   ├── data/                  # Data Storage
+│   │   ├── training_data/     # File Storage
+│   │   │   ├── originals/     # Original Files
+│   │   │   └── optimized/     # Processed MD Files
+│   │   ├── vector_db/         # ChromaDB Storage
+│   │   └── conversations/     # Chat Session Storage
+│   └── requirements.txt
+├── Training Data/              # Sample Training Data
+│   ├── TXT/                   # StreamWorks Documentation
+│   └── XSD/                   # XML Schemas & Templates
+├── CLAUDE.md                  # AI Assistant Instructions
+├── TECHNICAL_DOCUMENTATION.md # Diese Datei
+└── SETUP_GUIDE.md            # Installation & Setup
 ```
 
-## 🔧 Backend-Architektur (Python/FastAPI)
+## 🧠 AI Services im Detail
 
-### Service-Layer Architektur
+### RAG Service (`rag_service.py`)
+
+**Kernfunktionalität:**
+- Document Loading und Chunking mit LangChain
+- Vector Embeddings mit Sentence-Transformers
+- ChromaDB Integration für persistente Speicherung
+- Intelligente Query-Erweiterung durch Synonym-Service
+- Mistral 7B Integration für kontextbewusste Antworten
+
+**Workflow:**
+1. **Document Processing**: TXT/MD Dateien werden geladen und in Chunks aufgeteilt
+2. **Embedding Generation**: Chunks werden mit `all-MiniLM-L6-v2` vektorisiert
+3. **Vector Storage**: Embeddings werden in ChromaDB gespeichert
+4. **Query Processing**: Benutzeranfragen werden erweitert und gegen Vector DB gesucht
+5. **Answer Generation**: Mistral 7B generiert Antworten basierend auf gefundenen Kontexten
+
+**Code-Beispiel:**
 ```python
-app/
-├── api/v1/                 # REST API Endpoints
-│   ├── chat.py            # RAG-basierte Q&A + XML Generation
-│   ├── xml_generation.py  # XML Generator (Mock-Mode)
-│   ├── xml_validation.py  # XSD Validation
-│   └── training.py        # File Management
-├── services/              # Core Business Logic
-│   ├── rag_service.py     # ChromaDB + LangChain
-│   ├── mistral_rag_service.py  # Mistral 7B + RAG Integration
-│   ├── xml_generator.py   # XML Generation (Mock-Mode, LoRA-ready)
-│   └── training_service.py     # Data Processing
-├── core/                  # Configuration & Utils
-│   ├── config.py         # Settings Management
-│   └── logging.py        # Structured Logging
-├── models/               # Database & Schemas
-│   ├── database.py       # SQLAlchemy Models
-│   └── schemas.py        # Pydantic Schemas
-└── middleware/           # Cross-cutting Concerns
-    ├── monitoring.py     # Performance Metrics
-    └── mistral_monitoring.py  # LLM Metrics
-```
-
-### Kern-Services im Detail
-
-#### 1. RAGService (`rag_service.py`)
-```python
-class RAGService:
-    """RAG-basierte Q&A mit ChromaDB + LangChain"""
+# RAG Query mit intelligenter Suche
+async def query(self, question: str) -> dict:
+    # 1. Query Expansion durch Intelligent Search
+    expanded_query = intelligent_search.expand_query(question)
     
-    # Komponenten:
-    embeddings: HuggingFaceEmbeddings  # sentence-transformers/all-MiniLM-L6-v2
-    vector_store: Chroma               # Persistente Vector Database
-    text_splitter: RecursiveCharacterTextSplitter
+    # 2. Vector Search in ChromaDB
+    relevant_docs = await self.search_documents(expanded_query)
     
-    # Methoden:
-    async def search_documents()       # Vector Similarity Search
-    async def generate_answer()        # RAG Pipeline
-    async def add_documents()          # Document Indexing
-```
-
-#### 2. XMLGeneratorService (`xml_generator.py`)
-```python
-class XMLGeneratorService:
-    """XML Generation Service (Currently Mock Mode)"""
+    # 3. Context Building
+    context = self._build_context(relevant_docs)
     
-    # Aktueller Status:
-    mock_mode: bool = True             # Aktiv: Template-basierte Generation
-    fine_tuned_mode: bool = False      # Deaktiviert (LoRA-ready für Zukunft)
+    # 4. Mistral Answer Generation
+    answer = await self._generate_mistral_answer(question, context)
     
-    # Mock-Modus: Verwendet vordefinierte XML-Templates
-    # Zukunft: LoRA Fine-Tuning möglich
+    return {
+        "answer": answer,
+        "sources": sources,
+        "expanded_query": expanded_query
+    }
 ```
 
-#### 3. MistralRAGService (`mistral_rag_service.py`)
+### Intelligent Search Service (`intelligent_search.py`)
+
+**Features:**
+- **Bidirektionale Synonyme**: DE/EN Begriffsmapping für StreamWorks
+- **Query Expansion**: Automatische Erweiterung um verwandte Begriffe
+- **Intent Analysis**: Erkennung der Benutzerabsicht
+- **Search Suggestions**: Intelligente Vervollständigung
+
+**Synonym-Beispiele:**
 ```python
-class MistralRAGService:
-    """Mistral 7B + RAG Integration"""
-    
-    # Features:
-    - Deutsche Optimierung
-    - Context-aware Responses  
-    - StreamWorks-spezifische Prompts
-    - Performance Monitoring
-```
-
-### API-Endpoints
-
-#### Chat-APIs (RAG Q&A)
-```bash
-POST /api/v1/chat/          # Haupt-Chat Interface
-POST /api/v1/chat/dual-mode # Intelligente Mode-Erkennung
-POST /api/v1/chat/upload-docs # Document Upload für Vector DB
-GET  /api/v1/chat/search    # Direct Vector Search
-```
-
-#### XML-Generation APIs
-```bash
-POST /api/v1/xml/generate   # XML Stream Generation
-GET  /api/v1/xml/health     # Service Status
-GET  /api/v1/xml/templates  # Available Templates
-```
-
-#### Training & Management APIs
-```bash
-POST /api/v1/training/upload     # File Upload
-GET  /api/v1/training/files      # List Files
-DELETE /api/v1/training/files/{id} # Delete File
-GET  /api/v1/training/status     # Training Status
-```
-
-#### System APIs
-```bash
-GET /health                 # Global Health Check
-GET /api/v1/status         # Detailed System Status  
-GET /api/v1/metrics        # Performance Metrics
-GET /api/v1/mistral-metrics # LLM-specific Metrics
-```
-
-### Konfiguration (settings)
-
-#### RAG-Parameter
-```python
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-VECTOR_DB_PATH = "./data/vector_db"
-RAG_CHUNK_SIZE = 500
-RAG_CHUNK_OVERLAP = 50
-RAG_TOP_K = 5
-```
-
-#### Mistral 7B Optimierung
-```python
-OLLAMA_MODEL = "mistral:7b-instruct"
-MODEL_TEMPERATURE = 0.7
-MODEL_TOP_P = 0.95
-MODEL_TOP_K = 40
-MODEL_MAX_TOKENS = 2048
-MODEL_CONTEXT_WINDOW = 8192
-FORCE_GERMAN_RESPONSES = True
-```
-
-#### LoRA Training
-```python
-LORA_R = 16
-LORA_ALPHA = 32
-LORA_DROPOUT = 0.1
-LORA_TARGET_MODULES = ["c_attn", "c_proj"]
-```
-
-## 🎨 Frontend-Architektur (React/TypeScript)
-
-### Komponenten-Hierarchie
-```
-App.tsx
-├── Layout/
-│   ├── Header.tsx              # Top Navigation
-│   └── NavigationTabs.tsx      # Tab Navigation
-├── Chat/
-│   ├── DualModeChat.tsx        # Main Chat Interface ⭐
-│   ├── ChatInterface.tsx       # Chat UI Components
-│   ├── ChatInput.tsx          # Message Input
-│   ├── MessageList.tsx        # Message History
-│   └── MessageItem.tsx        # Individual Messages
-├── StreamGenerator/
-│   └── StreamGeneratorForm.tsx # XML Generator UI
-├── TrainingData/
-│   ├── TrainingDataTabV2Fixed.tsx ⭐ # Active Component
-│   ├── UploadZone.tsx         # Drag & Drop
-│   ├── FileManager.tsx        # File List
-│   ├── CategorySelector.tsx   # help_data/stream_templates
-│   └── TrainingStatus.tsx     # Upload Progress
-└── Documentation/
-    └── DocumentationTab.tsx   # Help & Docs
-```
-
-### State Management (Zustand)
-```typescript
-interface AppStore {
-  // Navigation
-  activeTab: 'chat' | 'generator' | 'training' | 'docs'
-  setActiveTab: (tab: string) => void
-  
-  // Chat State
-  messages: Message[]
-  isLoading: boolean
-  
-  // File Upload State  
-  uploadingFiles: File[]
-  uploadProgress: Record<string, number>
+synonyms = {
+    "fehler": ["error", "problem", "issue", "bug", "störung"],
+    "zeitplan": ["schedule", "cron", "timer", "planung"],
+    "batch": ["stapel", "verarbeitung", "bulk", "masse", "job"],
+    "stream": ["datenstrom", "streaming", "pipeline", "flow"]
 }
 ```
 
-### Service Layer
-```typescript
-// API Service (apiService.ts)
-class ApiService {
-  // Chat APIs
-  async sendMessage(message: string, mode?: string)
-  async uploadDocument(file: File, category: string)
-  
-  // XML Generation
-  async generateXML(params: StreamParams)
-  async validateXML(xmlContent: string)
-  
-  // Training Data
-  async getTrainingFiles()
-  async deleteTrainingFile(id: string)
-}
+### Conversation Memory Service (`conversation_memory.py`)
 
-// Stream Service (streamService.ts)  
-class StreamService {
-  async generateStream(config: StreamConfig)
-  async validateStream(xml: string)
-}
-```
+**Persistent Session Management:**
+- JSON-basierte Speicherung von Chat-Sessions
+- Automatischer Context-Loading für bessere Antworten
+- Session-Cleanup mit konfigurierbarem Timeout
+- Conversation Analytics und Statistics
 
-### Hooks
-```typescript
-// useChat.ts - Chat State Management
-export const useChat = () => {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  // ... chat logic
-}
-
-// useFileUpload.ts - File Upload Logic
-export const useFileUpload = () => {
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
-  // ... upload logic
-}
-
-// useStreamGenerator.ts - XML Generation Logic
-export const useStreamGenerator = () => {
-  // ... stream generation logic
-}
-```
-
-## 📊 Datenbank & Storage
-
-### SQLite Database (SQLAlchemy)
+**Session-Struktur:**
 ```python
-# Training Files Table
-class TrainingFile(Base):
-    __tablename__ = "training_files"
-    
-    id: str = Column(String, primary_key=True)
-    filename: str = Column(String, nullable=False)
-    category: str = Column(String, nullable=False)  # help_data/stream_templates
-    file_path: str = Column(String, nullable=False)
-    file_size: int = Column(Integer, nullable=False)
-    upload_date: datetime = Column(DateTime, default=datetime.utcnow)
-    status: str = Column(String, default="ready")  # ready/processing/error
-    processed_chunks: int = Column(Integer, default=0)
+@dataclass
+class ConversationSession:
+    session_id: str
+    messages: List[ConversationMessage]
+    created_at: datetime
+    last_activity: datetime
+    metadata: Optional[Dict] = None
 ```
 
-### Vector Database (ChromaDB)
+### Mistral LLM Service (`mistral_llm_service.py`)
+
+**Mistral 7B Integration:**
+- Ollama-basierte lokale Mistral 7B Ausführung
+- Deutsche Optimierung für StreamWorks-Kontext
+- Async Processing für bessere Performance
+- Health Monitoring und Error Handling
+
+## 📤 Advanced Features
+
+### Batch Upload System
+
+**Frontend Component:** `BatchUploader.tsx`
+**Features:**
+- Drag & Drop für bis zu 20 Dateien gleichzeitig
+- Progress-Tracking pro Datei mit visueller Anzeige
+- Pause/Resume/Cancel Funktionalität
+- Error Handling und Retry Logic
+- Detaillierte Status-Übersicht
+
+**Upload-Workflow:**
+1. File Validation (Format, Größe)
+2. Sequential Upload mit Progress-Updates
+3. Automatic TXT→MD Conversion
+4. RAG Indexing der optimierten Dateien
+5. Database Metadata Update
+
+### TXT zu MD Konvertierung
+
+**Service:** `txt_to_md_converter.py`
+**Optimierungen:**
+- Intelligente Strukturerkennung (Überschriften, Listen, Code)
+- StreamWorks-Begriff-Highlighting
+- Metadaten-Extraktion für bessere Suchbarkeit
+- Q&A Pattern Recognition
+- Automatic Keyword Generation
+
+**Konvertierungs-Pipeline:**
+```
+TXT Input → Content Analysis → Structure Detection → 
+Markdown Formatting → Metadata Generation → Optimized MD Output
+```
+
+### File Organization System
+
+**Neue Struktur:**
+```
+data/training_data/
+├── originals/          # Ursprüngliche Dateien
+│   ├── help_data/      # TXT, CSV, BAT, PS1
+│   └── stream_templates/ # XML, XSD
+└── optimized/          # Verarbeitete Dateien
+    ├── help_data/      # Optimierte MD Dateien
+    └── stream_templates/ # Processed Templates
+```
+
+**Features:**
+- Clean Display Names (ohne UUID-Präfix)
+- Cascade Delete (MD wird gelöscht wenn TXT entfernt wird)
+- Automatic Category Detection
+- File Status Tracking
+
+## 🔌 API Endpoints
+
+### Chat API (`/api/v1/chat/`)
+
 ```python
-# Document Storage Structure
+POST /api/v1/chat/
+# Chat mit Conversation Memory
 {
-    "collection_name": "streamworks_docs",
-    "documents": [
-        {
-            "id": "doc_uuid",
-            "content": "chunked_text",
-            "metadata": {
-                "source": "filename.txt",
-                "category": "help_data",
-                "chunk_index": 0,
-                "upload_date": "2025-07-04"
-            },
-            "embedding": [0.1, 0.2, ...]  # 384-dim vector
-        }
-    ]
+    "message": "Wie erstelle ich einen Batch-Job?",
+    "conversation_id": "optional-session-id"
+}
+
+Response:
+{
+    "response": "Für einen Batch-Job in StreamWorks...",
+    "conversation_id": "uuid-session-id",
+    "mode": "mistral_rag",
+    "processing_time": 2.34
 }
 ```
 
-### File Storage Structure
+### Intelligent Search API (`/api/v1/search/`)
+
+```python
+POST /api/v1/search/expand
+# Query Expansion
+{
+    "query": "batch fehler"
+}
+
+Response:
+{
+    "original_query": "batch fehler",
+    "expanded_query": "batch fehler stapel verarbeitung error problem issue",
+    "added_terms": ["stapel", "verarbeitung", "error", "problem", "issue"]
+}
+
+POST /api/v1/search/suggestions
+# Search Suggestions
+{
+    "partial_query": "ba"
+}
+
+Response:
+{
+    "suggestions": ["batch", "backup", "background"],
+    "count": 3
+}
 ```
-backend/data/
-├── training_data/
-│   ├── help_data/              # .txt, .csv, .bat, .md, .ps1
-│   │   ├── {uuid}_filename.txt
-│   │   └── ...
-│   └── stream_templates/       # .xml, .xsd
-│       ├── template1.xml
-│       └── ...
-├── vector_db/                  # ChromaDB Persistence
-│   ├── chroma.sqlite3
-│   └── embeddings/
-└── models/                     # LoRA Adapters (Future)
-    └── xml_lora/
+
+### Conversation Memory API (`/api/v1/conversations/`)
+
+```python
+GET /api/v1/conversations/
+# List all conversations (Admin)
+
+GET /api/v1/conversations/{session_id}/summary
+# Get conversation summary
+
+GET /api/v1/conversations/{session_id}/context
+# Get conversation context
+
+DELETE /api/v1/conversations/{session_id}
+# Delete conversation
+
+POST /api/v1/conversations/cleanup
+# Cleanup old conversations
 ```
 
-## 🚀 Deployment & Setup
+### Training Data API (`/api/v1/training/`)
 
-### Development Setup
-```bash
-# Backend Setup
-cd backend/
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --port 8000
+```python
+POST /api/v1/training/upload
+# File Upload (Single/Batch)
 
-# Frontend Setup  
-cd frontend/
-npm install
-npm run dev  # Startet auf Port 3001
+GET /api/v1/training/files
+# List training files
 
-# Access
-Frontend: http://localhost:3001
-Backend API: http://localhost:8000
-API Docs: http://localhost:8000/docs
+GET /api/v1/training/files/{file_id}/conversion-status
+# TXT→MD Conversion Status
+
+GET /api/v1/training/conversion-stats
+# Conversion Statistics
 ```
+
+## 🚀 Performance & Monitoring
+
+### Middleware Stack
+
+**Performance Monitoring:**
+```python
+# Request Timing & Metrics
+PerformanceMonitoringMiddleware
+RequestLoggingMiddleware  
+StreamWorksMetricsMiddleware
+MistralPerformanceMiddleware
+```
+
+**Metriken:**
+- Request/Response Times
+- Mistral LLM Performance
+- RAG Query Performance
+- File Upload Progress
+- Conversation Activity
+
+### Health Checks
+
+**Service Health Endpoints:**
+- `/api/v1/training/health` - Training Service Status
+- `/api/v1/search/health` - Intelligent Search Status
+- `/api/v1/conversations/health` - Conversation Memory Status
+- `/` - Overall System Health
+
+## 🗄️ Datenmodelle
+
+### Database Schema
+
+**TrainingFile Model:**
+```python
+class TrainingFile(Base):
+    id = Column(String, primary_key=True)
+    filename = Column(String, nullable=False)      # UUID_filename.txt
+    display_name = Column(String, nullable=False)  # Clean filename
+    category = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    upload_date = Column(DateTime, default=datetime.utcnow)
+    file_size = Column(Integer, nullable=False)
+    status = Column(String, default="processing")
+    
+    # ChromaDB Integration
+    is_indexed = Column(Boolean, default=False)
+    indexed_at = Column(DateTime, nullable=True)
+    chunk_count = Column(Integer, default=0)
+    chromadb_ids = Column(JSON, nullable=True)
+    
+    # TXT→MD Conversion
+    processed_file_path = Column(String, nullable=True)
+    original_format = Column(String, nullable=True)
+    optimized_format = Column(String, nullable=True)
+    conversion_status = Column(String, nullable=True)
+    conversion_metadata = Column(Text, nullable=True)
+```
+
+### Conversation Data Model
+
+**Session Storage (JSON):**
+```json
+{
+  "session_id": "uuid",
+  "messages": [
+    {
+      "question": "Benutzer-Frage",
+      "answer": "KI-Antwort",
+      "timestamp": "2025-07-04T12:00:00Z",
+      "metadata": {
+        "model_used": "mistral:7b-instruct",
+        "context_used": true,
+        "processing_time": 2.1
+      }
+    }
+  ],
+  "created_at": "2025-07-04T10:00:00Z",
+  "last_activity": "2025-07-04T12:00:00Z"
+}
+```
+
+## 🔧 Konfiguration
 
 ### Environment Variables
+
 ```bash
-# .env (Backend)
-ENV=development
-DATABASE_URL=sqlite:///./streamworks_ki.db
+# Core Settings
+PROJECT_NAME="StreamWorks-KI"
+ENV="development"
+LOG_LEVEL="INFO"
+DATABASE_URL="sqlite:///./streamworks_ki.db"
+
+# Service Toggles
 RAG_ENABLED=true
 LLM_ENABLED=true
 XML_GENERATION_ENABLED=false
-FORCE_GERMAN_RESPONSES=true
-LOG_LEVEL=INFO
+
+# Mistral Settings
+MISTRAL_MODEL="mistral:7b-instruct"
+MISTRAL_BASE_URL="http://localhost:11434"
+
+# RAG Configuration
+EMBEDDING_MODEL="all-MiniLM-L6-v2"
+VECTOR_DB_PATH="data/vector_db"
+CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
+
+# File Upload
+MAX_FILE_SIZE=52428800  # 50MB
+ALLOWED_EXTENSIONS=["txt", "md", "csv", "bat", "ps1", "xml", "xsd"]
+
+# Conversation Memory
+SESSION_TIMEOUT_HOURS=24
+MAX_MESSAGES_PER_SESSION=50
+CONTEXT_WINDOW_SIZE=3
 ```
 
-### Dependencies
+### Service Configuration
 
-#### Backend (Python)
+**RAG Service Config:**
 ```python
-# Core Framework
-fastapi==0.104.1
-uvicorn==0.24.0
-pydantic==2.5.0
-
-# AI/ML Stack
-transformers==4.36.0
-peft==0.6.0
-torch==2.1.0
-sentence-transformers==2.2.2
-
-# RAG Components
-langchain==0.0.350
-chromadb==0.4.18
-
-# Database
-sqlalchemy==2.0.23
-aiosqlite==0.19.0
-
-# Utilities
-pandas==2.1.0
-aiofiles==23.2.1
-requests==2.31.0
-```
-
-#### Frontend (TypeScript/React)
-```json
-{
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "zustand": "^4.4.1",
-    "react-dropzone": "^14.3.8",
-    "lucide-react": "^0.263.1",
-    "clsx": "^2.0.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.2.2",
-    "vite": "^5.0.8",
-    "tailwindcss": "^3.3.0",
-    "@vitejs/plugin-react": "^4.2.1"
-  }
+rag_config = {
+    "embedding_model": "all-MiniLM-L6-v2",
+    "vector_db_path": "data/vector_db",
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "similarity_threshold": 0.7
 }
 ```
 
-## 📈 Status & Roadmap
-
-### ✅ Implementiert (v2.0)
-- **Full-Stack Foundation**: React Frontend + FastAPI Backend
-- **RAG Q&A System**: ChromaDB + LangChain + Sentence Transformers
-- **Mistral 7B Integration**: Ollama + Deutsche Optimierung
-- **Training Data Management**: File Upload + automatische Vektorisierung
-- **XML Generator**: Template-basierte Generation (Mock-Mode)
-- **Performance Monitoring**: Request/Response Metrics
-- **Development Environment**: Vollständig funktional
-
-### 🎯 In Entwicklung (Phase 3)
-- **Enhanced RAG Features**: Multi-document Reasoning
-- **Improved XML Generation**: RAG + Mistral basierte XML-Erstellung
-- **Advanced Training Data**: Automatische Kategorisierung
-- **Performance Optimization**: Caching, Query Optimization
-- **UI Enhancements**: Better User Experience
-
-### 🚀 Geplant (Phase 4+)
-- **Production Deployment**: Docker + CI/CD
-- **Advanced XML Features**: Komplexe Stream Templates
-- **API-Integration**: StreamWorks API Calls
-- **User Management**: Authentication & Sessions
-- **Monitoring & Alerting**: Production Observability
-- **Optional**: LoRA Fine-Tuning für spezialisierte XML Generation
-
-## 🔧 Troubleshooting & FAQ
-
-### Häufige Probleme
-
-#### Backend startet nicht
-```bash
-# Check Dependencies
-pip list | grep fastapi
-
-# Check Python Version (>=3.8 required)
-python --version
-
-# Check Port
-lsof -i :8000
+**Intelligent Search Config:**
+```python
+search_config = {
+    "max_suggestions": 10,
+    "min_query_length": 2,
+    "context_window": 5,
+    "synonym_expansion": True
+}
 ```
 
-#### Frontend Build Fehler
+## 🎯 Deployment & Production
+
+### Requirements
+
+**System Requirements:**
+- Python 3.9+
+- Node.js 18+
+- Ollama mit Mistral 7B Model
+- 8GB+ RAM (für Mistral 7B)
+- 10GB+ Disk Space
+
+**Installation:**
 ```bash
-# Clear Cache
-rm -rf node_modules package-lock.json
+# Backend Setup
+cd backend
+pip install -r requirements.txt
+
+# Frontend Setup  
+cd frontend
 npm install
 
-# TypeScript Errors
-npm run build
-```
-
-#### RAG Service Fehler
-```bash
-# Check Vector DB
-ls -la backend/data/vector_db/
-
-# Re-initialize ChromaDB
-rm -rf backend/data/vector_db/
-# Restart backend (auto-creates new DB)
-```
-
-#### Mistral/Ollama Connection
-```bash
-# Check Ollama Service
-ollama list
+# Ollama Setup
 ollama pull mistral:7b-instruct
-
-# Test Connection
-curl http://localhost:11434/api/tags
 ```
 
-### Performance Optimization
+### Production Checklist
 
-#### RAG Performance
-- **Chunk Size**: 500 tokens (optimal für Sentence-BERT)
-- **Top-K**: 5 documents (balance relevance/speed)
-- **Embedding Model**: all-MiniLM-L6-v2 (fast + good quality)
+- [ ] Environment Variables konfiguriert
+- [ ] Ollama Service läuft
+- [ ] Database Migration durchgeführt
+- [ ] CORS Settings für Production
+- [ ] File Upload Limits gesetzt
+- [ ] Backup Strategy für Conversations
+- [ ] Monitoring & Logging aktiviert
+- [ ] Health Checks implementiert
 
-#### Mistral 7B Settings
-- **Temperature**: 0.7 (balance creativity/consistency)
-- **Context Window**: 8192 tokens
-- **Threads**: 8 (optimiert für M4 MacBook)
+## 🔍 Debugging & Troubleshooting
 
-## 📊 Metriken & Monitoring
+### Common Issues
 
-### Performance KPIs
-```python
-{
-    "response_times": {
-        "rag_search": "< 500ms",
-        "llm_generation": "< 2000ms", 
-        "total_pipeline": "< 3000ms"
-    },
-    "accuracy_metrics": {
-        "vector_search_relevance": "> 0.8",
-        "answer_quality_score": "> 0.7",
-        "xml_validation_rate": "> 0.95"
-    }
-}
-```
-
-### System Health Endpoints
+**1. Mistral Service nicht verfügbar:**
 ```bash
-GET /health                    # Global system status
-GET /api/v1/status            # Detailed component status
-GET /api/v1/metrics           # Performance metrics
-GET /api/v1/mistral-metrics   # LLM-specific metrics
+# Check Ollama Status
+ollama list
+ollama serve
+
+# Test Mistral Model
+curl -X POST http://localhost:11434/api/generate \
+  -d '{"model": "mistral:7b-instruct", "prompt": "Test"}'
 ```
 
-## 🎓 Entwickler-Notizen
+**2. ChromaDB Probleme:**
+```python
+# Reset Vector Database
+rm -rf backend/data/vector_db/
+# Restart backend - auto-recreates DB
+```
 
-### Code-Qualität
-- **Type Safety**: Vollständige TypeScript Coverage
-- **Error Handling**: Strukturierte Exception Handling
-- **Logging**: Structured Logging mit Loguru
-- **Testing**: Unit Tests für Core Services
-- **Documentation**: Inline Code Documentation
+**3. File Upload Errors:**
+```python
+# Check file permissions
+ls -la backend/data/training_data/
+# Check disk space
+df -h
+```
 
-### Architektur-Prinzipien
-- **Separation of Concerns**: Services ↔ API ↔ UI
-- **Dependency Injection**: Configurable Service Layer
-- **Async/Await**: Non-blocking I/O Operations
-- **Error Boundaries**: Graceful Error Recovery
-- **Performance First**: Optimized für Development + Production
+### Logging
+
+**Log Levels:**
+- `DEBUG`: Detaillierte Service-Informationen
+- `INFO`: Allgemeine Aktivitäten
+- `WARNING`: Potentielle Probleme
+- `ERROR`: Service-Fehler
+
+**Log Locations:**
+- Backend: Console Output
+- Frontend: Browser Console
+- Service Logs: Individual service loggers
+
+## 📈 Roadmap & Future Features
+
+### Geplante Erweiterungen
+
+**Phase 1 (Aktuell):**
+- ✅ RAG + Mistral Integration
+- ✅ Intelligent Search
+- ✅ Conversation Memory
+- ✅ Batch Upload System
+
+**Phase 2 (Nächste Schritte):**
+- [ ] LoRA Fine-Tuning für XML Generation
+- [ ] Advanced Analytics Dashboard
+- [ ] Multi-User Support
+- [ ] API Rate Limiting
+- [ ] Advanced File Processing (PDF, DOCX)
+
+**Phase 3 (Zukunft):**
+- [ ] Multi-Model Support (GPT, Claude)
+- [ ] Real-time Collaboration
+- [ ] Advanced Security Features
+- [ ] Mobile App
+- [ ] Enterprise Features
+
+### Performance Optimierungen
+
+**Geplant:**
+- Vector Database Clustering
+- Caching Layer für häufige Queries
+- Background Job Processing
+- Model Quantization für bessere Performance
+- CDN Integration für Frontend Assets
 
 ---
 
-**Version**: 2.0.0  
-**Letzte Aktualisierung**: 04.07.2025  
-**Architektur**: RAG + Mistral 7B Integration  
-**Status**: Phase 3 - Enhanced RAG Features & XML Generation  
-
-> 🎯 **Ziel**: Vollständig funktionale StreamWorks-KI basierend auf RAG + Mistral 7B für intelligente Q&A und XML-Generierung.
+**Version:** 3.0  
+**Letztes Update:** Juli 2025  
+**Autor:** Ravel-Lukas Geck  
+**Projekt:** StreamWorks-KI Bachelorarbeit
