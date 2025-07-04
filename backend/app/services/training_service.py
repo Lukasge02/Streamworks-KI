@@ -12,6 +12,8 @@ from app.models.database import TrainingFile
 from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse, CategoryStats
 from app.core.config import settings
 from app.services.rag_service import RAGService
+from app.services.txt_to_md_converter import txt_to_md_converter
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +30,12 @@ class TrainingService:
         """Ensure training data directories exist"""
         directories = [
             self.base_path,
-            os.path.join(self.base_path, "help_data"),
-            os.path.join(self.base_path, "stream_templates")
+            # Original files
+            os.path.join(self.base_path, "originals", "help_data"),
+            os.path.join(self.base_path, "originals", "stream_templates"),
+            # Optimized MD files
+            os.path.join(self.base_path, "optimized", "help_data"),
+            os.path.join(self.base_path, "optimized", "stream_templates"),
         ]
         
         for directory in directories:
@@ -44,26 +50,30 @@ class TrainingService:
     ) -> TrainingFileResponse:
         """Save training file to filesystem and database"""
         
-        # Generate unique file ID and path
+        # Generate unique file ID and paths
         file_id = str(uuid.uuid4())
         safe_filename = f"{file_id}_{filename}"
-        file_path = os.path.join(self.base_path, category, safe_filename)
+        
+        # Separate paths for originals and optimized files
+        original_path = os.path.join(self.base_path, "originals", category, safe_filename)
+        optimized_dir = os.path.join(self.base_path, "optimized", category)
         
         try:
-            # Save file to filesystem
-            async with aiofiles.open(file_path, 'wb') as f:
+            # Save original file
+            async with aiofiles.open(original_path, 'wb') as f:
                 await f.write(file_content)
             
-            logger.info(f"💾 File saved to: {file_path}")
+            logger.info(f"💾 Original file saved to: {original_path}")
             
-            # Create database record
+            # Create database record with clean display name
             db_file = TrainingFile(
                 id=file_id,
-                filename=filename,
+                filename=safe_filename,       # Technical filename with UUID
+                display_name=filename,        # Clean user-friendly name
                 category=category,
-                file_path=file_path,
+                file_path=original_path,
                 file_size=len(file_content),
-                status="ready"  # Mock: immediately ready
+                status="ready"
             )
             
             self.db.add(db_file)
@@ -72,10 +82,14 @@ class TrainingService:
             
             logger.info(f"📝 Database record created: {file_id}")
             
+            # Process file asynchronously (TXT to MD conversion if needed)
+            asyncio.create_task(self._process_uploaded_file(file_id, original_path, category))
+            
             # Convert to response model
             return TrainingFileResponse(
                 id=db_file.id,
                 filename=db_file.filename,
+                display_name=db_file.display_name,
                 category=db_file.category,
                 file_path=db_file.file_path,
                 upload_date=db_file.upload_date.isoformat(),
@@ -90,8 +104,8 @@ class TrainingService:
             
         except Exception as e:
             # Clean up file if database operation fails
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            if os.path.exists(original_path):
+                os.remove(original_path)
             raise e
     
     async def get_training_files(
@@ -118,6 +132,7 @@ class TrainingService:
             TrainingFileResponse(
                 id=file.id,
                 filename=file.filename,
+                display_name=file.display_name,
                 category=file.category,
                 file_path=file.file_path,
                 upload_date=file.upload_date.isoformat(),
@@ -144,10 +159,19 @@ class TrainingService:
             return False
         
         try:
-            # Delete file from filesystem
+            # Delete original file from filesystem
             if os.path.exists(file_record.file_path):
                 os.remove(file_record.file_path)
-                logger.info(f"🗑️ File deleted from filesystem: {file_record.file_path}")
+                logger.info(f"🗑️ Original file deleted: {file_record.file_path}")
+            
+            # Delete optimized MD file if it exists (Cascade Delete)
+            if hasattr(file_record, 'processed_file_path') and file_record.processed_file_path:
+                processed_path = file_record.processed_file_path
+                if os.path.exists(processed_path):
+                    os.remove(processed_path)
+                    logger.info(f"🗑️ Optimized MD file deleted: {processed_path}")
+                else:
+                    logger.warning(f"⚠️ Optimized file not found: {processed_path}")
             
             # Delete database record
             await self.db.delete(file_record)
@@ -382,4 +406,148 @@ class TrainingService:
             
         except Exception as e:
             logger.error(f"❌ Failed to get ChromaDB stats: {e}")
-            raise e
+            
+            return {
+                "indexed_files": 0,
+                "total_chunks": 0,
+                "collection_documents": 0,
+                "by_category": {"help_data": 0, "stream_templates": 0},
+                "vector_db_path": "data/vector_db/",
+                "embedding_model": "all-MiniLM-L6-v2",
+                "error": str(e)
+            }
+    
+    async def _process_uploaded_file(self, file_id: str, file_path: str, category: str):
+        """Process uploaded file - erweitert für TXT zu MD Konvertierung"""
+        
+        try:
+            logger.info(f"🔄 Processing uploaded file: {file_id}")
+            
+            file_path_obj = Path(file_path)
+            
+            # Get file record for updates
+            query = select(TrainingFile).where(TrainingFile.id == file_id)
+            result = await self.db.execute(query)
+            file_record = result.scalar_one_or_none()
+            
+            if not file_record:
+                logger.error(f"❌ File record not found: {file_id}")
+                return
+            
+            # Update status to processing
+            file_record.status = "processing"
+            await self.db.commit()
+            
+            # TXT zu MD Konvertierung
+            final_file_path = file_path_obj
+            conversion_metadata = {}
+            
+            if file_path_obj.suffix.lower() == '.txt':
+                logger.info(f"🔄 TXT-Datei erkannt: {file_path_obj.name}")
+                
+                try:
+                    # Bestimme optimized directory basierend auf Kategorie
+                    optimized_dir = Path(self.base_path) / "optimized" / category
+                    
+                    # Konvertiere zu Markdown
+                    md_file_path = await txt_to_md_converter.convert_txt_to_md(file_path_obj, optimized_dir)
+                    
+                    # Update file record with conversion info
+                    file_record.processed_file_path = str(md_file_path)
+                    file_record.original_format = "txt"
+                    file_record.optimized_format = "md"
+                    file_record.conversion_status = "completed"
+                    
+                    conversion_metadata = {
+                        "original_file": str(file_path_obj),
+                        "optimized_file": str(md_file_path),
+                        "conversion_date": datetime.utcnow().isoformat(),
+                        "converter_version": "1.0.0"
+                    }
+                    
+                    # Use MD file for RAG indexing
+                    final_file_path = md_file_path
+                    
+                    logger.info(f"✅ TXT zu MD Konvertierung abgeschlossen: {md_file_path.name}")
+                    
+                except Exception as e:
+                    logger.error(f"❌ TXT zu MD Konvertierung fehlgeschlagen: {e}")
+                    file_record.conversion_status = "failed"
+                    file_record.conversion_error = str(e)
+                    # Continue with original TXT file
+                    final_file_path = file_path_obj
+            
+            # Index file for RAG (using optimized MD if available, otherwise original)
+            try:
+                await self._index_for_rag(final_file_path, category, file_record)
+                logger.info(f"✅ File indexed for RAG: {final_file_path.name}")
+                
+                # Update final status
+                file_record.status = "ready"
+                file_record.conversion_metadata = str(conversion_metadata) if conversion_metadata else None
+                
+            except Exception as e:
+                logger.error(f"❌ RAG indexing failed: {e}")
+                file_record.status = "error"
+                file_record.index_error = str(e)
+            
+            await self.db.commit()
+            logger.info(f"✅ File processing completed: {file_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ File processing failed for {file_id}: {e}")
+            
+            # Update error status
+            try:
+                query = select(TrainingFile).where(TrainingFile.id == file_id)
+                result = await self.db.execute(query)
+                file_record = result.scalar_one_or_none()
+                
+                if file_record:
+                    file_record.status = "error"
+                    file_record.processing_error = str(e)
+                    await self.db.commit()
+            except Exception as db_error:
+                logger.error(f"❌ Failed to update error status: {db_error}")
+    
+    async def _index_for_rag(self, file_path: Path, category: str, file_record: TrainingFile):
+        """Index optimierte Datei für RAG"""
+        
+        try:
+            # Get RAG service
+            rag_service = await self._get_or_create_rag_service()
+            
+            # Read file content
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Create document metadata
+            metadata = {
+                "source": file_record.filename,
+                "category": category,
+                "file_id": file_record.id,
+                "upload_date": file_record.upload_date.isoformat(),
+                "file_type": file_path.suffix,
+                "optimized": file_path.suffix == '.md' and '_optimized' in file_path.name
+            }
+            
+            # Add to RAG service
+            from langchain.schema import Document
+            document = Document(page_content=content, metadata=metadata)
+            
+            # Add document to RAG system
+            chunk_count = await rag_service.add_documents([document])
+            
+            # Update file record
+            file_record.is_indexed = True
+            file_record.indexed_at = datetime.utcnow()
+            file_record.chunk_count = chunk_count
+            file_record.index_status = "indexed"
+            
+            logger.info(f"✅ File indexed to RAG: {file_path.name} ({chunk_count} chunks)")
+            
+        except Exception as e:
+            logger.error(f"❌ RAG indexing failed: {e}")
+            file_record.index_status = "failed"
+            file_record.index_error = str(e)
+            raise

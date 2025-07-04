@@ -1,0 +1,50 @@
+StreamWorks Datenverarbeitung - Schritt-für-Schritt Anleitung
+
+VORBEREITUNG:
+1. Datenquellen identifizieren
+2. Zielformat definieren
+3. Transformationsregeln festlegen
+4. Fehlerbehandlung planen
+
+TYPISCHER WORKFLOW:
+1. Daten-Import
+   - Dateien aus Input-Ordner lesen
+   - Dateiformat validieren
+   - Metadaten extrahieren
+
+2. Datenbereinigung
+   - Dubletten entfernen
+   - Fehlende Werte behandeln
+   - Datentypen konvertieren
+
+3. Transformation
+   - Filter anwenden
+   - Aggregationen berechnen
+   - Neue Spalten erstellen
+
+4. Export
+   - Daten in Zielformat konvertieren
+   - In Output-Ordner schreiben
+   - Backup erstellen
+
+KONFIGURATION BEISPIEL:
+Input-Pfad: /data/input/sales_*.csv
+Filter: Datum >= heute-30 Tage
+Aggregation: Summe nach Kunde
+Output: /data/output/sales_summary.xlsx
+
+MONITORING:
+- Job-Status überwachen
+- Log-Dateien prüfen
+- Performance-Metriken beobachten
+- Alert-Benachrichtigungen konfigurieren
+
+TROUBLESHOOTING:
+Problem: "Datei nicht gefunden"
+Lösung: Pfad prüfen, Berechtigungen kontrollieren
+
+Problem: "Memory-Fehler"
+Lösung: Batch-Größe reduzieren, Chunking verwenden
+
+Problem: "Timeout"
+Lösung: Timeout-Werte erhöhen, Performance optimieren

@@ -10,6 +10,7 @@ import { apiService } from '../../services/apiService';
 interface TrainingFile {
   id: string;
   filename: string;
+  display_name?: string;  // Clean user-friendly name
   category: 'help_data' | 'stream_templates';
   file_path: string;
   upload_date: string;
@@ -59,13 +60,13 @@ const TrainingDataTabV2Fixed: React.FC = () => {
       setError(null);
       
       // Load files
-      const filesData = await apiService.getTrainingFiles();
-      if (Array.isArray(filesData)) {
-        setFiles(filesData);
-        logMessage('success', `${filesData.length} Dateien geladen`);
+      const filesResult = await apiService.getTrainingFiles();
+      if (filesResult.success && Array.isArray(filesResult.data)) {
+        setFiles(filesResult.data);
+        logMessage('success', `${filesResult.data.length} Dateien geladen`);
       } else {
         setFiles([]);
-        logMessage('warning', 'Keine Dateien empfangen');
+        logMessage('warning', `Fehler beim Laden der Dateien: ${filesResult.error || 'Unbekannter Fehler'}`);
       }
       
       // Try to load ChromaDB stats
@@ -119,12 +120,17 @@ const TrainingDataTabV2Fixed: React.FC = () => {
       
       try {
         logMessage('success', `Uploading ${file.name}...`);
-        const uploadedFile = await apiService.uploadTrainingFile(file, category);
-        logMessage('success', `${file.name} erfolgreich hochgeladen`);
-        await loadData();
+        const result = await apiService.uploadTrainingFile(file, category);
+        
+        if (result.success) {
+          logMessage('success', `${file.name} erfolgreich hochgeladen`);
+          await loadData();
+        } else {
+          logMessage('error', `Upload fehlgeschlagen: ${result.error}`);
+        }
       } catch (error) {
         console.error('Upload error:', error);
-        logMessage('error', `Fehler beim Upload von ${file.name}`);
+        logMessage('error', `Fehler beim Upload von ${file.name}: ${error}`);
       }
     }
   }, [loadData]);
@@ -201,7 +207,8 @@ const TrainingDataTabV2Fixed: React.FC = () => {
   const filteredFiles = files.filter(file => {
     if (!file) return false;
     const matchesCategory = selectedCategory === 'all' || file.category === selectedCategory;
-    const matchesSearch = file.filename?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const displayName = file.display_name || file.filename;
+    const matchesSearch = displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     return matchesCategory && matchesSearch;
   });
 
@@ -425,7 +432,7 @@ const TrainingDataTabV2Fixed: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <FileText className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-900">{file.filename}</span>
+                      <span className="text-sm font-medium text-gray-900">{file.display_name || file.filename}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">

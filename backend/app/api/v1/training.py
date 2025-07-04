@@ -254,6 +254,113 @@ async def get_chromadb_stats(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
 
 
+@router.get("/files/{file_id}/conversion-status")
+async def get_conversion_status(file_id: str, db: AsyncSession = Depends(get_db)):
+    """Get TXT to MD conversion status"""
+    
+    try:
+        training_service = TrainingService(db)
+        
+        # Get file record
+        files = await training_service.get_training_files()
+        file_record = next((f for f in files if f.id == file_id), None)
+        
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        return {
+            "file_id": file_id,
+            "filename": file_record.filename,
+            "original_format": getattr(file_record, 'original_format', None),
+            "optimized_format": getattr(file_record, 'optimized_format', None),
+            "conversion_status": getattr(file_record, 'conversion_status', None),
+            "processed_file_path": getattr(file_record, 'processed_file_path', None),
+            "conversion_error": getattr(file_record, 'conversion_error', None),
+            "file_status": file_record.status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to get conversion status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/files/{file_id}/optimized-content")
+async def get_optimized_content(file_id: str, db: AsyncSession = Depends(get_db)):
+    """Get optimized markdown content"""
+    
+    try:
+        training_service = TrainingService(db)
+        
+        # Get file record
+        files = await training_service.get_training_files()
+        file_record = next((f for f in files if f.id == file_id), None)
+        
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Check if optimized file exists
+        processed_file_path = getattr(file_record, 'processed_file_path', None)
+        if not processed_file_path or not os.path.exists(processed_file_path):
+            raise HTTPException(status_code=404, detail="Optimized file not found")
+        
+        # Read optimized content
+        async with aiofiles.open(processed_file_path, 'r', encoding='utf-8') as f:
+            optimized_content = await f.read()
+        
+        return {
+            "file_id": file_id,
+            "original_filename": file_record.filename,
+            "optimized_filename": os.path.basename(processed_file_path),
+            "optimized_content": optimized_content,
+            "conversion_metadata": getattr(file_record, 'conversion_metadata', None),
+            "file_size": len(optimized_content),
+            "conversion_status": getattr(file_record, 'conversion_status', None)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to get optimized content: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversion-stats")
+async def get_conversion_stats(db: AsyncSession = Depends(get_db)):
+    """Get TXT to MD conversion statistics"""
+    
+    try:
+        training_service = TrainingService(db)
+        files = await training_service.get_training_files()
+        
+        # Filter TXT files
+        txt_files = [f for f in files if f.filename.lower().endswith('.txt')]
+        
+        # Count conversion statuses
+        conversion_stats = {
+            "total_txt_files": len(txt_files),
+            "conversions_completed": len([f for f in txt_files if getattr(f, 'conversion_status', None) == 'completed']),
+            "conversions_failed": len([f for f in txt_files if getattr(f, 'conversion_status', None) == 'failed']),
+            "conversions_pending": len([f for f in txt_files if getattr(f, 'conversion_status', None) is None]),
+            "optimized_files_created": len([f for f in txt_files if getattr(f, 'processed_file_path', None) is not None])
+        }
+        
+        # Calculate success rate
+        if conversion_stats["total_txt_files"] > 0:
+            conversion_stats["success_rate"] = round(
+                (conversion_stats["conversions_completed"] / conversion_stats["total_txt_files"]) * 100, 2
+            )
+        else:
+            conversion_stats["success_rate"] = 0.0
+        
+        return conversion_stats
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to get conversion stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/health")
 async def training_health_check():
     """Health check for training API"""
@@ -262,5 +369,10 @@ async def training_health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "service": "training_api",
         "allowed_extensions": ALLOWED_EXTENSIONS,
-        "max_file_size_mb": MAX_FILE_SIZE // (1024*1024)
+        "max_file_size_mb": MAX_FILE_SIZE // (1024*1024),
+        "features": {
+            "txt_to_md_conversion": True,
+            "rag_indexing": True,
+            "conversion_tracking": True
+        }
     }

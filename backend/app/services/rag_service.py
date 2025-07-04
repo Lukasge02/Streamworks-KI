@@ -173,7 +173,7 @@ class RAGService:
             return []
     
     async def query(self, question: str) -> dict:
-        """Optimierte Q&A für Chat-Mode - returns structured response"""
+        """Optimierte Q&A für Chat-Mode mit Mistral Integration"""
         if not self.is_initialized:
             await self.initialize()
         
@@ -191,8 +191,11 @@ class RAGService:
             # Combine context from relevant documents
             context = self._build_context(relevant_docs)
             
-            # Generate answer based on context  
-            answer = self._generate_contextual_answer_enhanced(question, context)
+            # Try to use Mistral for intelligent answer generation
+            answer = await self._generate_mistral_answer(question, context)
+            if not answer:
+                # Fallback to template-based answer
+                answer = self._generate_contextual_answer_enhanced(question, context)
             
             # Extract sources
             sources = [doc.metadata.get("filename", "Unbekannt") for doc in relevant_docs]
@@ -228,6 +231,30 @@ class RAGService:
             context_parts.append(f"[Quelle {i}: {source}]\n{content}")
         
         return "\n\n".join(context_parts)
+    
+    async def _generate_mistral_answer(self, question: str, context: str) -> str:
+        """Generate intelligent answer using Mistral 7B"""
+        try:
+            # Import here to avoid circular imports
+            from app.services.mistral_llm_service import mistral_llm_service
+            
+            if not mistral_llm_service.is_initialized:
+                logger.warning("⚠️ Mistral Service nicht verfügbar, nutze Fallback")
+                return None
+            
+            # Use Mistral for intelligent answer generation
+            answer = await mistral_llm_service.generate_german_response(question, context)
+            
+            if answer and len(answer.strip()) > 10:  # Valid answer check
+                logger.info("✅ Mistral-generierte Antwort verwendet")
+                return answer
+            else:
+                logger.warning("⚠️ Mistral-Antwort unzureichend, nutze Fallback")
+                return None
+                
+        except Exception as e:
+            logger.warning(f"⚠️ Mistral-Generierung fehlgeschlagen: {e}")
+            return None
     
     def _generate_contextual_answer_enhanced(self, question: str, context: str) -> str:
         """Enhanced contextual answer generation for dual-mode chat"""
