@@ -2,13 +2,13 @@
 
 ## 🎯 Projekt-Übersicht
 
-**StreamWorks-KI** ist eine intelligente Web-Anwendung zur Automatisierung von StreamWorks Workloads durch KI-gestützte Q&A und XML-Stream-Generierung. Das System kombiniert moderne Retrieval-Augmented Generation (RAG) mit LoRA Fine-Tuning für spezialisierte XML-Erstellung.
+**StreamWorks-KI** ist eine intelligente Web-Anwendung zur Automatisierung von StreamWorks Workloads durch RAG-basierte Q&A und intelligente XML-Stream-Generierung. Das System kombiniert moderne Retrieval-Augmented Generation (RAG) mit Mistral 7B für kontextbewusste Antworten.
 
 ### Kernfunktionen
-- **RAG-basierte Q&A**: Intelligente Antworten basierend auf StreamWorks-Dokumentation
-- **XML Stream Generator**: LoRA-tuned XML-Generierung für StreamWorks
-- **Training Data Management**: File Upload und Kategorisierung
-- **Mistral 7B Integration**: Optimiert für deutsche Antworten
+- **RAG-basierte Q&A**: Intelligente Antworten basierend auf StreamWorks-Dokumentation (ChromaDB + LangChain)
+- **Mistral 7B Integration**: Deutsche Optimierung für StreamWorks-spezifische Anfragen
+- **XML Stream Generator**: Intelligente XML-Generierung durch RAG + Mistral
+- **Training Data Management**: File Upload und automatische Vektorisierung
 - **Full-Stack Web-Interface**: React + FastAPI
 
 ## 🏗️ System-Architektur
@@ -17,8 +17,8 @@
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Backend       │    │   KI Services   │
-│   React + TS    │◄──►│   FastAPI       │◄──►│   RAG + LoRA    │
-│   Port 3001     │    │   Port 8000     │    │   Mistral 7B    │
+│   React + TS    │◄──►│   FastAPI       │◄──►│   RAG + Mistral │
+│   Port 3001     │    │   Port 8000     │    │   ChromaDB      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          │                       │                       │
@@ -49,14 +49,14 @@ User Input → Frontend → API Gateway → Service Router → AI Processing →
 ```python
 app/
 ├── api/v1/                 # REST API Endpoints
-│   ├── chat.py            # RAG-basierte Q&A
-│   ├── xml_generation.py  # LoRA XML Generator  
+│   ├── chat.py            # RAG-basierte Q&A + XML Generation
+│   ├── xml_generation.py  # XML Generator (Mock-Mode)
 │   ├── xml_validation.py  # XSD Validation
 │   └── training.py        # File Management
 ├── services/              # Core Business Logic
 │   ├── rag_service.py     # ChromaDB + LangChain
-│   ├── xml_generator.py   # LoRA Fine-Tuning
-│   ├── mistral_rag_service.py  # Mistral Integration
+│   ├── mistral_rag_service.py  # Mistral 7B + RAG Integration
+│   ├── xml_generator.py   # XML Generation (Mock-Mode, LoRA-ready)
 │   └── training_service.py     # Data Processing
 ├── core/                  # Configuration & Utils
 │   ├── config.py         # Settings Management
@@ -90,16 +90,14 @@ class RAGService:
 #### 2. XMLGeneratorService (`xml_generator.py`)
 ```python
 class XMLGeneratorService:
-    """LoRA-tuned XML Generation"""
+    """XML Generation Service (Currently Mock Mode)"""
     
-    # Komponenten:
-    base_model: AutoModelForCausalLM   # DialoGPT-small
-    tokenizer: AutoTokenizer
-    lora_model: PeftModel              # LoRA Adapter
+    # Aktueller Status:
+    mock_mode: bool = True             # Aktiv: Template-basierte Generation
+    fine_tuned_mode: bool = False      # Deaktiviert (LoRA-ready für Zukunft)
     
-    # Modi:
-    mock_mode: bool = True             # Development Mock
-    fine_tuned_mode: bool = False      # Production LoRA
+    # Mock-Modus: Verwendet vordefinierte XML-Templates
+    # Zukunft: LoRA Fine-Tuning möglich
 ```
 
 #### 3. MistralRAGService (`mistral_rag_service.py`)
@@ -408,24 +406,25 @@ requests==2.31.0
 - **Full-Stack Foundation**: React Frontend + FastAPI Backend
 - **RAG Q&A System**: ChromaDB + LangChain + Sentence Transformers
 - **Mistral 7B Integration**: Ollama + Deutsche Optimierung
-- **Training Data Management**: File Upload + Kategorisierung
-- **XML Generator Framework**: LoRA-ready Architecture
+- **Training Data Management**: File Upload + automatische Vektorisierung
+- **XML Generator**: Template-basierte Generation (Mock-Mode)
 - **Performance Monitoring**: Request/Response Metrics
 - **Development Environment**: Vollständig funktional
 
 ### 🎯 In Entwicklung (Phase 3)
-- **LoRA Training Pipeline**: Automated Fine-Tuning
-- **XML Template Processing**: Training Data → LoRA Dataset
-- **Production XML Generation**: Mock → Fine-tuned Models
-- **Advanced RAG Features**: Multi-document Reasoning
-- **Evaluation Framework**: Model Performance Metrics
+- **Enhanced RAG Features**: Multi-document Reasoning
+- **Improved XML Generation**: RAG + Mistral basierte XML-Erstellung
+- **Advanced Training Data**: Automatische Kategorisierung
+- **Performance Optimization**: Caching, Query Optimization
+- **UI Enhancements**: Better User Experience
 
 ### 🚀 Geplant (Phase 4+)
 - **Production Deployment**: Docker + CI/CD
-- **Advanced UI Features**: Stream Visualization
+- **Advanced XML Features**: Komplexe Stream Templates
 - **API-Integration**: StreamWorks API Calls
 - **User Management**: Authentication & Sessions
 - **Monitoring & Alerting**: Production Observability
+- **Optional**: LoRA Fine-Tuning für spezialisierte XML Generation
 
 ## 🔧 Troubleshooting & FAQ
 
@@ -531,7 +530,7 @@ GET /api/v1/mistral-metrics   # LLM-specific metrics
 
 **Version**: 2.0.0  
 **Letzte Aktualisierung**: 04.07.2025  
-**Architektur**: RAG + LoRA Specialized Services  
-**Status**: Phase 3 - LoRA Training Pipeline Implementation  
+**Architektur**: RAG + Mistral 7B Integration  
+**Status**: Phase 3 - Enhanced RAG Features & XML Generation  
 
-> 🎯 **Ziel**: Vollständig funktionale StreamWorks-KI als Proof of Concept für moderne KI-Integration in Unternehmensumgebungen.
+> 🎯 **Ziel**: Vollständig funktionale StreamWorks-KI basierend auf RAG + Mistral 7B für intelligente Q&A und XML-Generierung.
