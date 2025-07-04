@@ -70,39 +70,66 @@ AI: "Verstanden. Hier ist Ihr XML-Stream: [XML generieren + validieren]"
 ## 🔥 **Projekt-Vision**
 Eine vollständig funktionale "StreamWorks-KI" als Proof of Concept, die zeigt, wie moderne KI-Technologien (LLMs, Fine-Tuning) praktisch in Unternehmensumgebungen eingesetzt werden können.
 
-## 🚀 **Aktueller Status (03.07.2025)**
+## 🚀 **Aktueller Status (04.07.2025) - NEUE ARCHITEKTUR**
 
-### ✅ **Vollständig implementiert:**
-1. **Full-Stack Web-Anwendung**
-   - React Frontend mit 4 Tabs (Chat, Generator, Training Data, Docs)
-   - FastAPI Backend mit async/await
-   - Code-Llama-7B-Instruct LLM Integration
-   - Production-ready Architektur
+### 🏗️ **BACKEND REBUILD KOMPLETT - V2.0**
+**Architektur-Übergang**: Von monolithischem LLM-System zu spezialisierter RAG + LoRA Architektur
 
-2. **Training Data Management System**
-   - File Upload mit Drag & Drop
-   - Kategorisierung: StreamWorks Hilfe / Stream Templates
-   - File Manager mit Status Tracking
-   - Progress Dashboard
-   - SQLAlchemy Database Models
-   - File Storage in `data/training_data/`
+### ✅ **Neu implementiert (V2.0):**
 
-3. **API Endpoints**
-   - `/api/v1/chat/` - Chat mit Code-Llama
-   - `/api/v1/streams/` - XML Stream Generation
-   - `/api/v1/training/` - Training Data Management (5 Endpoints)
+1. **RAG-basiertes Q&A System**
+   - ChromaDB Vector Database für Dokumenten-Suche
+   - LangChain für Document Processing
+   - Sentence-Transformers für Embeddings (`all-MiniLM-L6-v2`)
+   - Automatisches Laden der Training Data in Vector DB
+   - Context-aware Antworten basierend auf Dokumentation
 
-### 🎯 **Nächste Schritte:**
-1. Training Data Preprocessing Pipeline
-2. LoRA Fine-Tuning Implementation
-3. Model Evaluation & Integration
+2. **LoRA Fine-Tuning für XML Generation**
+   - Separater XML Generator Service
+   - PEFT (Parameter Efficient Fine-Tuning) Integration
+   - Base Model: `microsoft/DialoGPT-small` (lightweight)
+   - LoRA Adapter Support für spezialisierte XML-Generierung
+   - Mock Mode für Development (sofortige XML Templates)
+
+3. **Neue Service-Architektur**
+   - `RAGService`: Dokumenten-basierte Q&A
+   - `XMLGeneratorService`: LoRA-tuned XML Generation
+   - Modulare, erweiterbare Struktur
+   - Async/Await für bessere Performance
+
+4. **Erweiterte API Endpoints (V2.0)**
+   - `/api/v1/chat/` - RAG-basierte Q&A (neu)
+   - `/api/v1/chat/upload-docs` - Document Upload für Vector DB
+   - `/api/v1/chat/search` - Vector Search (Dev Endpoint)
+   - `/api/v1/xml/generate` - LoRA-tuned XML Generation
+   - `/api/v1/xml/health` - XML Service Status
+   - Detaillierte Health Checks und Status Endpoints
+
+5. **Frontend Integration**
+   - Keine Änderungen nötig - APIs kompatibel
+   - Chat funktioniert sofort mit RAG System
+   - Stream Generator nutzt automatisch XML Service
+
+### 🔧 **Technical Highlights:**
+- **Dependencies**: ChromaDB, LangChain, PEFT, Sentence-Transformers
+- **Vector Storage**: Persistente ChromaDB in `data/vector_db/`
+- **Model Management**: Automatische Model Loading mit Error Handling  
+- **Configuration**: Umfangreiche Config für RAG + LoRA Parameter
+- **Development Mode**: Services können einzeln aktiviert/deaktiviert werden
+
+### 🎯 **Nächste Schritte (Phase 3):**
+1. LoRA Training Pipeline implementieren
+2. Training Data Preprocessing für XML Templates
+3. Model Evaluation & Performance Tuning
+4. Production Deployment Setup
 
 ### 📁 **Repository:**
 - GitHub: https://github.com/Lukasge02/Streamworks-KI
-- Vollständig dokumentiert in `PROJECT_STATUS.md` und `NEXT_STEPS.md`
+- **Neue Architektur**: RAG + LoRA spezialisierte Services
+- **Version**: 2.0.0 (Backend Rebuild komplett)
 
 ---
-**CONTEXT FÜR NEUE CHATS**: Projekt ist in Phase 3 - LoRA Fine-Tuning Implementation. Training Data System ist vollständig implementiert und funktional.
+**CONTEXT FÜR NEUE CHATS**: Projekt ist in Phase 3 - LoRA Training Pipeline. Backend V2.0 mit RAG + LoRA Architektur ist vollständig implementiert und funktional. Chat System nutzt jetzt RAG für intelligente Antworten basierend auf Dokumentation.
 
 ## 💻 **Git Commit Konfiguration**
 - **WICHTIG**: Keine "Co-Authored-By: Claude" Zeilen in Commit Messages
