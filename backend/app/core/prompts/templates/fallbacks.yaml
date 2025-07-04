@@ -1,0 +1,156 @@
+# 🚨 SKI Fallback-Antworten
+# Template-Sammlung für Situationen ohne klare Antwort
+
+version: "2.0"
+category: "fallbacks"
+
+# ❓ Allgemeine Unverständnis-Fallbacks
+general_fallback: |
+  🤔 Entschuldigung, ich konnte '{query}' nicht eindeutig verstehen.
+  
+  ### 💡 Versuchen Sie es mit:
+  - **Spezifischeren Begriffen** wie "XML", "Batch-Job", "API"
+  - **Konkreten Fragen** wie "Wie erstelle ich einen Stream?"
+  - **Anderen Tabs** für Stream Generator oder Training Data
+  
+  Was genau möchten Sie wissen?
+
+# 📚 Keine Dokumentation gefunden
+no_documentation: |
+  ❓ Entschuldigung, ich konnte keine relevanten Informationen zu '{query}' in der StreamWorks Dokumentation finden.
+
+  ### 💡 **Tipps:**
+  - Versuchen Sie eine spezifischere Frage
+  - Nutzen Sie Begriffe wie 'XML', 'Stream', 'API', 'Schedule'
+  - Schauen Sie in den anderen Tabs nach weiteren Features
+  
+  Oder beschreiben Sie Ihr konkretes Problem genauer.
+
+# 🔧 Themen-spezifische Fallbacks
+topic_fallbacks:
+  xml_streams: |
+    ## 🔧 XML-Stream-Erstellung
+
+    Gerne helfe ich Ihnen bei der XML-Stream-Erstellung! Hier sind Ihre Optionen:
+
+    ### 🎯 **Verfügbare Wege:**
+    1. **Stream Generator Tab**: Für interaktive Stream-Konfiguration
+    2. **Direkter Chat**: Stellen Sie mir spezifische Fragen zu XML-Strukturen
+    3. **Dokumentation**: Laden Sie StreamWorks-Dokumentation für detaillierte Anleitungen hoch
+
+    Was möchten Sie genau erstellen?
+
+  batch_jobs: |
+    ## 📅 Batch-Job Scheduling
+
+    Für Batch-Job-Konfiguration kann ich Ihnen helfen mit:
+
+    ### 🛠️ **Unterstützung bei:**
+    - **Zeitplanung**: Daily, Weekly, Monthly Schedules
+    - **PowerShell Integration**: Script-Ausführung
+    - **Fehlerbehandlung**: Retry-Mechanismen
+    - **Monitoring**: Überwachung und Logging
+
+    Beschreiben Sie Ihren Use-Case genauer!
+
+  api_integration: |
+    ## 🔗 API-Integration
+
+    Für StreamWorks API-Nutzung stehe ich zur Verfügung:
+
+    ### 📡 **API-Bereiche:**
+    - **Endpoints**: Verfügbare Schnittstellen
+    - **Authentifizierung**: Zugangsdaten und Tokens
+    - **Request/Response**: Datenformate und Strukturen
+    - **Fehlerbehandlung**: Status-Codes und Debugging
+
+    Welcher API-Bereich interessiert Sie?
+
+  scheduling: |
+    ## ⏰ Zeitplanung und Scheduling
+
+    Für StreamWorks Scheduling kann ich helfen:
+
+    ### 🕐 **Scheduling-Optionen:**
+    - **Cron-Ausdrücke**: Zeitformat und Syntax
+    - **Event-basiert**: Trigger und Bedingungen
+    - **Wiederkehrend**: Daily, Weekly, Monthly
+    - **Abhängigkeiten**: Job-Chains und Workflows
+
+    Welches Scheduling-Szenario planen Sie?
+
+# 🚧 Service-Probleme
+service_issues:
+  llm_unavailable: |
+    🤖 **LLM-Service temporär nicht verfügbar**
+    
+    Ich nutze derzeit Fallback-Antworten basierend auf der StreamWorks-Dokumentation.
+    
+    ### 🔄 **Dennoch verfügbar:**
+    - Dokumentations-Suche
+    - Basis-Antworten zu StreamWorks
+    - Stream Generator Tab
+    - Training Data Upload
+    
+    Wie kann ich Ihnen trotzdem helfen?
+
+  no_context: |
+    📭 **Keine passende Dokumentation gefunden**
+    
+    Für detailliertere Antworten empfehle ich:
+    
+    ### 📚 **Nächste Schritte:**
+    1. **Training Data hochladen** - Fügen Sie relevante Dokumentation hinzu
+    2. **Spezifischere Fragen** - Nutzen Sie Fachbegriffe
+    3. **Stream Generator** - Für praktische XML-Erstellung
+    
+    Möchten Sie Dokumentation hochladen?
+
+# 🎯 Hilfe-Angebote
+help_offers:
+  general_help: |
+    💡 **Ich helfe gerne!** 
+    
+    Sie können mich fragen zu:
+    
+    ### 🎯 **Meine Expertise:**
+    • **StreamWorks Dokumentation** und Konzepte
+    • **XML-Stream Erstellung** und Konfiguration
+    • **API Verwendung** und Integration
+    • **Batch-Job Automatisierung** und Scheduling
+    
+    Was interessiert Sie am meisten?
+
+  specific_guidance: |
+    🚀 **Lass uns konkreter werden!**
+    
+    ### 🎯 **Probieren Sie:**
+    - "Wie erstelle ich einen XML-Stream für CSV-Import?"
+    - "Welche API-Endpoints gibt es für Batch-Jobs?"
+    - "Wie konfiguriere ich einen täglichen Schedule?"
+    - "Was sind StreamWorks Best Practices?"
+    
+    Oder stellen Sie Ihre eigene spezifische Frage!
+
+# 🔄 Wiederholung und Klarstellung
+clarification:
+  unclear_request: |
+    🤔 **Ihre Anfrage war nicht ganz eindeutig.**
+    
+    ### 💭 **Meinten Sie vielleicht:**
+    - XML-Stream-Konfiguration?
+    - Batch-Job-Setup?
+    - API-Integration?
+    - Scheduling und Zeitplanung?
+    
+    Oder beschreiben Sie Ihr Problem anders?
+
+  too_broad: |
+    📊 **Das ist ein sehr breites Thema!**
+    
+    ### 🎯 **Für bessere Hilfe, spezifizieren Sie:**
+    - **Welcher Bereich?** (XML, API, Batch-Jobs, etc.)
+    - **Welches Problem?** (Erstellung, Konfiguration, Debugging)
+    - **Welcher Use-Case?** (Datenimport, Automatisierung, etc.)
+    
+    Was ist Ihr konkretes Ziel?

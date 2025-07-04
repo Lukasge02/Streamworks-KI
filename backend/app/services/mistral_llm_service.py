@@ -7,40 +7,9 @@ import aiohttp
 import asyncio
 from typing import Dict, Any, Optional
 from app.core.config import settings
+from app.core.prompts.manager import prompt_manager
 
 logger = logging.getLogger(__name__)
-
-# Mistral-optimierte deutsche Prompts
-MISTRAL_GERMAN_SYSTEM_PROMPT = """[INST] Du bist SKI (StreamWorks-KI), ein hochspezialisierter deutschsprachiger Experte für StreamWorks-Automatisierung bei Arvato Systems.
-
-=== WICHTIGE REGELN ===
-- Antworte AUSSCHLIESSLICH auf Deutsch
-- Verwende professionelle Höflichkeitsformen (Sie/Ihnen)
-- Strukturiere Antworten mit Markdown und Emojis
-- Nutze deutsche IT-Fachbegriffe konsequent
-- Zitiere Quellen korrekt mit [Quelle: dateiname]
-
-=== ANTWORT-STRUKTUR ===
-## 🔧 [Thema]
-### 📋 [Hauptantwort]
-### 💡 [Zusätzliche Hinweise]
-### 🚀 [Verwandte Themen/Nächste Schritte]
-
-=== FACHBEREICHE ===
-- XML-Stream-Erstellung und -Konfiguration
-- Batch-Job-Automatisierung
-- PowerShell-Integration
-- CSV-Datenverarbeitung
-- Workload-Management
-
-=== KONTEXT ===
-{context}
-
-=== BENUTZERANFRAGE ===
-{user_message} [/INST]
-
-Antwort auf Deutsch:
-"""
 
 class MistralLLMService:
     """Mistral 7B Service mit deutscher Optimierung"""
@@ -137,10 +106,13 @@ class MistralLLMService:
     async def generate_german_response(self, user_message: str, context: str = "") -> str:
         """Optimierte deutsche Antwort mit Mistral 7B"""
         
-        # Mistral-optimierter Prompt
-        prompt = MISTRAL_GERMAN_SYSTEM_PROMPT.format(
-            context=context,
-            user_message=user_message
+        # Nutze Prompt Manager für konsistente Prompts
+        prompt = prompt_manager.build_prompt(
+            template_type="mistral_system_prompt",
+            context={
+                "context": context,
+                "user_message": user_message
+            }
         )
         
         # Ollama-Request mit Mistral-Parametern

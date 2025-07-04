@@ -4,6 +4,7 @@ Uses ChromaDB + LangChain + Sentence Transformers
 """
 import os
 import logging
+import time
 from typing import List, Optional
 from pathlib import Path
 
@@ -177,6 +178,9 @@ class RAGService:
         if not self.is_initialized:
             await self.initialize()
         
+        # Response-Time tracking
+        query_start_time = time.time()
+        
         try:
             logger.info(f"🔍 RAG Query: {question}")
             
@@ -229,23 +233,63 @@ class RAGService:
             # Remove duplicates while preserving order
             sources = list(dict.fromkeys(sources))
             
-            logger.info(f"✅ RAG Query beantwortet für: '{question[:50]}' ({len(relevant_docs)} Dokumente)")
-            return {
+            # Response-Time berechnen
+            response_time = time.time() - query_start_time
+            
+            # Confidence Score berechnen
+            confidence = self._calculate_confidence(relevant_docs, answer)
+            
+            # Response-Objekt vorbereiten
+            response_obj = {
                 "answer": answer,
                 "sources": sources,
-                "confidence": 0.9 if relevant_docs else 0.0,
+                "confidence": confidence,
                 "expanded_query": search_query if search_query != question else None,
-                "search_results": len(relevant_docs)
+                "search_results": len(relevant_docs),
+                "response_time": response_time
             }
+            
+            # 🔬 EVALUATION: Automatische wissenschaftliche Evaluierung
+            try:
+                from app.services.evaluation_service import evaluation_service
+                
+                # Evaluiere die Antwort
+                evaluation_metric = await evaluation_service.evaluate_response_quality(
+                    query=question,
+                    response=answer,
+                    sources=sources,
+                    confidence=confidence,
+                    response_time=response_time,
+                    context=context
+                )
+                
+                # Füge Evaluation-Daten zur Response hinzu (für Debugging/Monitoring)
+                response_obj["evaluation"] = {
+                    "overall_score": evaluation_metric.overall_score,
+                    "relevance_score": evaluation_metric.relevance_score,
+                    "completeness_score": evaluation_metric.completeness_score,
+                    "hallucination_score": evaluation_metric.hallucination_score
+                }
+                
+                logger.info(f"✅ RAG Query beantwortet und evaluiert: '{question[:50]}' (Score: {evaluation_metric.overall_score:.2f})")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Evaluation konnte nicht durchgeführt werden: {e}")
+                # Evaluation-Fehler sollten die normale Antwort nicht blockieren
+                logger.info(f"✅ RAG Query beantwortet für: '{question[:50]}' ({len(relevant_docs)} Dokumente)")
+            
+            return response_obj
             
         except Exception as e:
             logger.error(f"❌ Fehler bei RAG Query: {e}")
+            response_time = time.time() - query_start_time
             return {
                 "answer": self._generate_fallback_answer(question),
                 "sources": [],
                 "confidence": 0.0,
                 "expanded_query": None,
-                "search_results": 0
+                "search_results": 0,
+                "response_time": response_time
             }
 
     async def answer_question(self, question: str) -> str:
@@ -417,6 +461,45 @@ Was möchtest du wissen?"""
         lines = context.split('\n')
         config_lines = [line for line in lines if any(keyword in line.lower() for keyword in ['config', 'parameter', 'einstellung', 'option'])]
         return '\n'.join(config_lines[:3]) if config_lines else "Konfigurations-Informationen in der Dokumentation verfügbar."
+    
+    def _calculate_confidence(self, documents: List[Document], answer: str) -> float:
+        """Berechne Confidence Score basierend auf Dokumenten und Antwort"""
+        if not documents:
+            return 0.0
+        
+        confidence_factors = []
+        
+        # Faktor 1: Anzahl relevanter Dokumente
+        doc_count_score = min(len(documents) / 3, 1.0)  # Optimal bei 3+ Docs
+        confidence_factors.append(doc_count_score)
+        
+        # Faktor 2: Antwortlänge und Struktur
+        answer_quality_score = 0.0
+        if len(answer) > 200:
+            answer_quality_score += 0.3
+        if '##' in answer or '###' in answer:
+            answer_quality_score += 0.2
+        if any(emoji in answer for emoji in ['🔧', '📋', '🚀', '✅', '💡']):
+            answer_quality_score += 0.2
+        if '```' in answer:
+            answer_quality_score += 0.3
+        answer_quality_score = min(answer_quality_score, 1.0)
+        confidence_factors.append(answer_quality_score)
+        
+        # Faktor 3: Quellenqualität
+        if any('Training Data' in str(doc.metadata.get('filename', '')) for doc in documents):
+            confidence_factors.append(0.9)  # Training Data ist hochwertig
+        else:
+            confidence_factors.append(0.5)  # Andere Quellen
+        
+        # Berechne durchschnittlichen Confidence Score
+        import statistics
+        confidence = statistics.mean(confidence_factors)
+        
+        # Normalisiere auf typischen Range (0.7-0.95)
+        confidence = 0.7 + (confidence * 0.25)
+        
+        return min(confidence, 0.95)
     
     def _generate_fallback_answer(self, question: str) -> str:
         """Generate fallback answer when no relevant docs found"""
