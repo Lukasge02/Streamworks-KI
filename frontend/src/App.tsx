@@ -1,6 +1,7 @@
 import { Header } from './components/Layout/Header';
 import { NavigationTabs } from './components/Layout/NavigationTabs';
 import { DualModeChat } from './components/Chat/DualModeChat';
+import { SmartSearchTab } from './components/SmartSearch/SmartSearchTab';
 import { StreamGeneratorForm } from './components/StreamGenerator/StreamGeneratorForm';
 import TrainingDataTabV2Fixed from './components/TrainingData/TrainingDataTabV2Fixed';
 import { DocumentationTab } from './components/Documentation/DocumentationTab';
@@ -16,6 +17,8 @@ function App() {
     switch (activeTab) {
       case 'chat':
         return <DualModeChat />;
+      case 'search':
+        return <SmartSearchTab />;
       case 'generator':
         return <StreamGeneratorForm />;
       case 'training':

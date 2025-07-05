@@ -2,13 +2,14 @@
 Chat API with Mistral 7B + RAG Integration
 Optimiert für deutsche StreamWorks-Dokumentation mit robust input validation
 """
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request
-from pydantic import BaseModel, ValidationError as PydanticValidationError
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Form
+from pydantic import BaseModel, ValidationError as PydanticValidationError, Field
 from typing import Optional, List
 from enum import Enum
 import logging
 import time
 import uuid
+from datetime import datetime
 
 from app.services.rag_service import rag_service
 from app.services.mistral_rag_service import mistral_rag_service
@@ -17,7 +18,7 @@ from app.services.xml_generator import xml_generator
 from app.services.error_handler import error_handler
 from app.services.citation_service import citation_service
 from app.models.validation import ChatRequestValidator, ValidationErrorResponse, validate_request_size
-from app.models.schemas import ChatResponseWithCitations, Citation, CitationSummary
+from app.models.schemas import ChatResponseWithCitations, Citation, CitationSummary, ManualSourceCategory
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -49,12 +50,17 @@ class DualModeChatResponse(BaseModel):
     mode_used: str
     processing_time: float
     metadata: dict
-    sources: Optional[List[str]] = None
+    sources: Optional[List[dict]] = None  # Changed to List[dict] for Citation objects
+
+class DocumentUploadRequest(BaseModel):
+    source_category: ManualSourceCategory = Field(..., description="Manual source category")
+    description: Optional[str] = Field(None, description="Optional description for the documents")
 
 class DocumentUploadResponse(BaseModel):
     message: str
     documents_added: int
     chunks_created: int
+    source_category: str = Field(..., description="Applied source category")
 
 class DocumentInfo(BaseModel):
     id: str
@@ -251,6 +257,31 @@ async def dual_mode_chat(request: DualModeChatRequest):
             # Nutze Mistral RAG Service mit Citations für Q&A
             rag_result = await mistral_rag_service.generate_response(request.message)
             
+            # Convert citations to proper format
+            citations = rag_result.get("citations", [])
+            sources_list = []
+            
+            if citations:
+                for citation in citations:
+                    if isinstance(citation, dict):
+                        # Extract essential info for sources list
+                        source_info = {
+                            "title": citation.get("source_title", "Unknown Source"),
+                            "type": citation.get("source_type", "Unknown"),
+                            "relevance": citation.get("relevance_score", 0.0),
+                            "filename": citation.get("filename", "")
+                        }
+                        sources_list.append(source_info)
+                    else:
+                        # Handle Citation object
+                        source_info = {
+                            "title": getattr(citation, 'source_title', 'Unknown Source'),
+                            "type": getattr(citation, 'source_type', 'Unknown'),
+                            "relevance": getattr(citation, 'relevance_score', 0.0),
+                            "filename": getattr(citation, 'filename', '')
+                        }
+                        sources_list.append(source_info)
+            
             response = DualModeChatResponse(
                 response=rag_result.get("response", "Keine Antwort generiert."),
                 mode_used="qa_with_citations",
@@ -258,9 +289,10 @@ async def dual_mode_chat(request: DualModeChatRequest):
                 metadata={
                     "confidence": 0.9, 
                     "model": "mistral_rag_with_citations",
-                    "sources_used": rag_result.get("sources_used", 0)
+                    "sources_used": rag_result.get("sources_used", 0),
+                    "citations_count": len(citations)
                 },
-                sources=rag_result.get("citations", [])
+                sources=sources_list
             )
             
         elif request.mode == ChatMode.XML_GENERATOR:
@@ -339,30 +371,47 @@ def extract_xml_requirements(message: str) -> dict:
     return requirements
 
 @router.post("/upload-docs", response_model=DocumentUploadResponse)
-async def upload_documents(files: List[UploadFile] = File(...)):
-    """Upload documents to RAG vector database"""
+async def upload_documents(
+    files: List[UploadFile] = File(...),
+    source_category: ManualSourceCategory = Form(...),
+    description: Optional[str] = Form(None)
+):
+    """Upload documents to RAG vector database with manual source categorization"""
     try:
         if not settings.RAG_ENABLED:
             raise HTTPException(status_code=503, detail="RAG Service is disabled")
         
-        logger.info(f"📁 Uploading {len(files)} documents to RAG")
+        logger.info(f"📁 Uploading {len(files)} documents to RAG with category: {source_category.value}")
         
         from langchain.docstore.document import Document
         
         documents = []
+        
+        # Map manual categories to SourceType
+        category_mapping = {
+            ManualSourceCategory.TESTDATEN: "Documentation",
+            ManualSourceCategory.STREAMWORKS_HILFE: "StreamWorks", 
+            ManualSourceCategory.SHAREPOINT: "SharePoint"
+        }
+        
+        mapped_source_type = category_mapping[source_category]
         
         for file in files:
             # Read file content
             content = await file.read()
             text_content = content.decode('utf-8')
             
-            # Create document
+            # Create document with manual source categorization
             doc = Document(
                 page_content=text_content,
                 metadata={
                     "filename": file.filename,
                     "type": "uploaded_document",
-                    "size": len(content)
+                    "size": len(content),
+                    "manual_source_category": source_category.value,
+                    "source_type": mapped_source_type,
+                    "description": description or f"Uploaded from {source_category.value}",
+                    "upload_timestamp": datetime.now().isoformat()
                 }
             )
             documents.append(doc)
@@ -370,12 +419,13 @@ async def upload_documents(files: List[UploadFile] = File(...)):
         # Add to RAG
         chunks_created = await rag_service.add_documents(documents)
         
-        logger.info(f"✅ Successfully uploaded {len(documents)} documents")
+        logger.info(f"✅ Successfully uploaded {len(documents)} documents from {source_category.value}")
         
         return DocumentUploadResponse(
-            message=f"Successfully uploaded {len(documents)} documents",
+            message=f"Successfully uploaded {len(documents)} documents from {source_category.value}",
             documents_added=len(documents),
-            chunks_created=chunks_created
+            chunks_created=chunks_created,
+            source_category=source_category.value
         )
         
     except Exception as e:
@@ -384,6 +434,105 @@ async def upload_documents(files: List[UploadFile] = File(...)):
             status_code=500,
             detail=f"Document upload failed: {str(e)}"
         )
+
+@router.post("/upload-docs-form", response_model=DocumentUploadResponse)
+async def upload_documents_form(
+    files: List[UploadFile] = File(...),
+    source_category: str = Form(...),
+    description: Optional[str] = Form(None)
+):
+    """Upload documents with form-based source categorization (easier for frontend)"""
+    try:
+        if not settings.RAG_ENABLED:
+            raise HTTPException(status_code=503, detail="RAG Service is disabled")
+        
+        # Validate and convert source_category
+        try:
+            category = ManualSourceCategory(source_category)
+        except ValueError:
+            raise HTTPException(
+                status_code=422, 
+                detail=f"Invalid source_category. Must be one of: {[c.value for c in ManualSourceCategory]}"
+            )
+        
+        logger.info(f"📁 Form upload: {len(files)} documents as {category.value}")
+        
+        from langchain.docstore.document import Document
+        
+        documents = []
+        
+        # Map manual categories to SourceType
+        category_mapping = {
+            ManualSourceCategory.TESTDATEN: "Documentation",
+            ManualSourceCategory.STREAMWORKS_HILFE: "StreamWorks", 
+            ManualSourceCategory.SHAREPOINT: "SharePoint"
+        }
+        
+        mapped_source_type = category_mapping[category]
+        
+        for file in files:
+            # Read file content
+            content = await file.read()
+            text_content = content.decode('utf-8')
+            
+            # Create document with manual source categorization
+            doc = Document(
+                page_content=text_content,
+                metadata={
+                    "filename": file.filename,
+                    "type": "uploaded_document",
+                    "size": len(content),
+                    "manual_source_category": category.value,
+                    "source_type": mapped_source_type,
+                    "description": description or f"Uploaded from {category.value}",
+                    "upload_timestamp": datetime.now().isoformat()
+                }
+            )
+            documents.append(doc)
+        
+        # Add to RAG
+        chunks_created = await rag_service.add_documents(documents)
+        
+        logger.info(f"✅ Form upload successful: {len(documents)} documents from {category.value}")
+        
+        return DocumentUploadResponse(
+            message=f"Successfully uploaded {len(documents)} documents from {category.value}",
+            documents_added=len(documents),
+            chunks_created=chunks_created,
+            source_category=category.value
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Form Upload Error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Document upload failed: {str(e)}"
+        )
+
+@router.get("/source-categories")
+async def get_source_categories():
+    """Get available source categories for manual upload"""
+    return {
+        "categories": [
+            {
+                "value": category.value,
+                "description": f"Dokumente aus {category.value}",
+                "example": f"Beispiel: Interne {category.value} Dokumentation"
+            }
+            for category in ManualSourceCategory
+        ],
+        "usage": {
+            "form_endpoint": "/api/v1/chat/upload-docs-form",
+            "json_endpoint": "/api/v1/chat/upload-docs",
+            "example_curl": """curl -X POST "http://localhost:8000/api/v1/chat/upload-docs-form" \\
+  -H "accept: application/json" \\
+  -F "files=@document.txt" \\
+  -F "source_category=StreamWorks Hilfe" \\
+  -F "description=Optionale Beschreibung\""""
+        }
+    }
 
 @router.get("/health")
 async def chat_health():

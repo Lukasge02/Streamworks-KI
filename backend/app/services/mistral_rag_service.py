@@ -95,16 +95,22 @@ class MistralRAGService:
                 context = self._build_context_from_documents(documents, citations)
                 sources_used = len(set(c.filename for c in citations))
             else:
-                # Search for documents with citations
+                # Search for documents with citations (OPTIMIZED - single call)
                 search_result = await self.rag_service.search_documents_with_citations(
                     query=question,
-                    top_k=7,
+                    top_k=5,  # Reduced from 7 for performance
                     include_citations=True
                 )
                 
                 documents = search_result["documents"]
                 citations = search_result["citations"] or []
-                context = self._build_context_from_documents(documents, citations)
+                
+                # Use pre-built context if available, otherwise build it
+                if "context" in search_result:
+                    context = search_result["context"]
+                else:
+                    context = self._build_context_from_documents(documents, citations, max_tokens=2500)  # Balanced tokens
+                    
                 sources_used = len(set(c.filename for c in citations))
             
             if not documents or "Keine relevanten Dokumente" in context:
@@ -114,23 +120,21 @@ class MistralRAGService:
                     "sources_used": 0
                 }
             
-            # Generate response with Mistral
-            mistral_rag_prompt = f"""[INST] Du bist SKI, ein deutschsprachiger StreamWorks-Experte bei Arvato Systems.
+            # Generate response with Mistral (ENHANCED PROMPT)
+            mistral_rag_prompt = f"""[INST] Du bist SKI, ein freundlicher StreamWorks-Experte bei Arvato Systems. 
 
-Beantworte die Frage basierend auf der verfügbaren StreamWorks-Dokumentation.
+Beantworte die Frage präzise und hilfreich basierend auf der StreamWorks-Dokumentation.
 
-WICHTIG: 
+WICHTIG:
 - Antworte nur auf Deutsch
-- Verwende Emojis für bessere Lesbarkeit
-- Strukturiere die Antwort mit Markdown
-- Gib am Ende benutzerfreundliche Quellenangaben an
+- Nutze eine klare, strukturierte Antwort
+- Gib konkrete Beispiele wenn möglich
+- Verwende Emojis sparsam (nur 1-2 pro Antwort)
 
-KONTEXT:
+VERFÜGBARE DOKUMENTATION:
 {context}
 
 FRAGE: {question} [/INST]
-
-## 🎯 StreamWorks-Antwort
 
 """
             
@@ -138,11 +142,12 @@ FRAGE: {question} [/INST]
                 prompt=mistral_rag_prompt,
                 model=settings.OLLAMA_MODEL,
                 options={
-                    "temperature": settings.MODEL_TEMPERATURE,
-                    "top_p": settings.MODEL_TOP_P,
-                    "top_k": settings.MODEL_TOP_K,
-                    "repeat_penalty": settings.MODEL_REPEAT_PENALTY,
-                    "num_predict": settings.MODEL_MAX_TOKENS
+                    "temperature": 0.1,  # Lower for faster, more focused responses
+                    "top_p": 0.9,
+                    "top_k": 20,  # Reduced from default for speed
+                    "repeat_penalty": 1.1,
+                    "num_predict": 1024,  # Balanced token limit for reasonable responses
+                    "num_ctx": 8192  # Standard context window
                 }
             )
             
@@ -205,13 +210,11 @@ FRAGE: {question} [/INST]
                 source_info = citation_service._extract_source_title(source_filename, doc.page_content[:200])
                 relevance_info = f"Relevanz: {doc.metadata.get('score', 0.0):.2f}"
             
-            # Mistral-optimized context formatting
+            # Balanced context formatting
+            content_snippet = doc.page_content[:800]  # Reasonable content per doc
             context_part = f"""
-=== STREAMWORKS DOKUMENTATION ===
-Quelle: {source_info}
-{relevance_info}
-
-{doc.page_content}
+=== {source_info} ===
+{content_snippet}
 """
             context_parts.append(context_part)
             current_length += doc_tokens
@@ -308,11 +311,12 @@ FRAGE: {question} [/INST]
                 prompt=mistral_rag_prompt,
                 model=settings.OLLAMA_MODEL,
                 options={
-                    "temperature": settings.MODEL_TEMPERATURE,
-                    "top_p": settings.MODEL_TOP_P,
-                    "top_k": settings.MODEL_TOP_K,
-                    "repeat_penalty": settings.MODEL_REPEAT_PENALTY,
-                    "num_predict": settings.MODEL_MAX_TOKENS
+                    "temperature": 0.1,  # Lower for faster, more focused responses
+                    "top_p": 0.9,
+                    "top_k": 20,  # Reduced from default for speed
+                    "repeat_penalty": 1.1,
+                    "num_predict": 1024,  # Balanced token limit for reasonable responses
+                    "num_ctx": 8192  # Standard context window
                 }
             )
             
@@ -330,25 +334,38 @@ FRAGE: {question} [/INST]
     async def _generate_fallback_response(self, question: str) -> str:
         """Fallback-Antwort ohne RAG-Kontext"""
         
-        fallback_prompt = f"""[INST] Du bist SKI, ein deutschsprachiger StreamWorks-Experte.
+        fallback_prompt = f"""[INST] Du bist SKI, ein freundlicher StreamWorks-Experte bei Arvato Systems.
 
-Die Frage konnte nicht in der Dokumentation gefunden werden.
-Gib eine hilfreiche allgemeine Antwort basierend auf deinem Wissen über:
-- XML-Stream-Erstellung
-- Batch-Job-Automatisierung  
-- Workload-Management
-- StreamWorks-Konzepte
+Die Frage konnte nicht in der spezifischen Dokumentation gefunden werden.
+Gib eine hilfreiche allgemeine Antwort basierend auf StreamWorks-Grundlagen:
 
-Frage: {question} [/INST]
+THEMEN:
+- XML-Stream-Konfiguration
+- Batch-Job-Automatisierung
+- Datenverarbeitung und -transformation
+- StreamWorks-Best Practices
 
-## 🤔 Allgemeine StreamWorks-Hilfe
+WICHTIG:
+- Antworte nur auf Deutsch
+- Sei hilfreich und konkret
+- Verweise auf weitere Ressourcen wenn sinnvoll
+
+FRAGE: {question} [/INST]
 
 """
         
         try:
             response = await self.mistral_service.ollama_generate(
                 prompt=fallback_prompt,
-                model=settings.OLLAMA_MODEL
+                model=settings.OLLAMA_MODEL,
+                options={
+                    "temperature": 0.1,  # Lower for consistent fallback responses
+                    "top_p": 0.9,
+                    "top_k": 20,
+                    "repeat_penalty": 1.1,
+                    "num_predict": 256,  # Even shorter for fallbacks
+                    "num_ctx": 2048  # Smaller context for fallbacks
+                }
             )
             
             if response:

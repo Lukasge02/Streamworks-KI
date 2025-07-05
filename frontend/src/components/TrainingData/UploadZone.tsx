@@ -4,33 +4,31 @@ import { FileCategory } from './TrainingDataTab';
 
 interface UploadZoneProps {
   category: FileCategory;
-  onFilesUploaded: (files: File[], category: FileCategory) => void;
+  onFilesUploaded: (files: File[]) => void;
+  isLoading?: boolean;
 }
 
 export const UploadZone: React.FC<UploadZoneProps> = ({
   category,
-  onFilesUploaded
+  onFilesUploaded,
+  isLoading = false
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
-  const allowedExtensions = {
-    help_data: ['.txt', '.csv', '.bat', '.md', '.ps1'],
-    stream_templates: ['.xml', '.xsd']
-  };
+  const allowedExtensions = ['.txt', '.csv', '.md', '.pdf', '.docx', '.xml']; // Unified list
 
   const maxFileSize = 50 * 1024 * 1024; // 50MB
 
   const validateFiles = (files: File[]): { valid: File[], errors: string[] } => {
     const valid: File[] = [];
     const errors: string[] = [];
-    const allowed = allowedExtensions[category];
 
     files.forEach(file => {
       // Check file extension
       const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-      if (!allowed.includes(extension)) {
-        errors.push(`${file.name}: Nicht erlaubte Dateiendung. Erlaubt: ${allowed.join(', ')}`);
+      if (!allowedExtensions.includes(extension)) {
+        errors.push(`${file.name}: Nicht erlaubte Dateiendung. Erlaubt: ${allowedExtensions.join(', ')}`);
         return;
       }
 
@@ -56,9 +54,9 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     setErrors(errors);
     
     if (valid.length > 0) {
-      onFilesUploaded(valid, category);
+      onFilesUploaded(valid);
     }
-  }, [category, onFilesUploaded]);
+  }, [onFilesUploaded]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -67,35 +65,22 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     setErrors(errors);
     
     if (valid.length > 0) {
-      onFilesUploaded(valid, category);
+      onFilesUploaded(valid);
     }
     
     // Reset input
     e.target.value = '';
   };
 
-  const categoryInfo = {
-    help_data: {
-      name: 'StreamWorks Hilfe',
-      description: 'Upload Dokumentation, Batch-Dateien oder Text-Dateien für die Q&A Knowledge Base',
-      extensions: allowedExtensions.help_data
-    },
-    stream_templates: {
-      name: 'Stream Templates',
-      description: 'Upload XML-Schemas oder Stream-Templates für die Template-Generierung',
-      extensions: allowedExtensions.stream_templates
-    }
-  };
-
-  const info = categoryInfo[category];
+  // Simplified - no category-specific info needed
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Dateien hochladen - {info.name}
-      </h2>
-      
-      <p className="text-gray-600 mb-4">{info.description}</p>
+    <div>
+      {isLoading && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-blue-700 font-medium">📤 Upload läuft...</p>
+        </div>
+      )}
 
       {/* Upload Zone */}
       <div
@@ -117,8 +102,9 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           type="file"
           multiple
           onChange={handleFileInput}
-          accept={info.extensions.join(',')}
+          accept={allowedExtensions.join(',')}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          disabled={isLoading}
         />
         
         <div className="space-y-4">
@@ -141,7 +127,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
             </p>
             
             <p className="text-gray-500 text-sm">
-              Erlaubte Formate: {info.extensions.join(', ')} • Max. 50MB pro Datei
+              Erlaubte Formate: {allowedExtensions.join(', ')} • Max. 50MB pro Datei • Bis zu 20 Dateien gleichzeitig
             </p>
           </div>
         </div>
@@ -154,7 +140,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           <div>
             <h3 className="font-medium text-blue-900 mb-1">Unterstützte Dateiformate</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {info.extensions.map((ext) => (
+              {allowedExtensions.map((ext) => (
                 <span key={ext} className="text-sm text-blue-700 font-mono">
                   {ext}
                 </span>

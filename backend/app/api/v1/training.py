@@ -9,74 +9,146 @@ from datetime import datetime
 import logging
 
 from app.core.config import settings
-from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse
+from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse, ManualSourceCategory
 from app.services.training_service import TrainingService
+from app.services.multi_format_processor import multi_format_processor
 from app.models.database import get_db
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Allowed file extensions by category
-ALLOWED_EXTENSIONS = {
-    "help_data": [".txt", ".csv", ".bat", ".md", ".ps1"],
-    "stream_templates": [".xml", ".xsd"]
-}
-
+# Multi-Format supported extensions (20+ formats)
+ALLOWED_EXTENSIONS = [
+    # Text & Documentation
+    ".txt", ".md", ".rtf", ".log",
+    # Office Documents  
+    ".pdf", ".docx", ".doc", ".odt",
+    # Structured Data
+    ".csv", ".tsv", ".xlsx", ".xls", ".json", ".jsonl", ".yaml", ".yml", ".toml",
+    # XML Family
+    ".xml", ".xsd", ".xsl", ".svg", ".rss", ".atom", 
+    # Code & Scripts
+    ".py", ".js", ".ts", ".java", ".sql", ".ps1", ".bat", ".sh", ".bash",
+    # Web & Markup
+    ".html", ".htm",
+    # Configuration
+    ".ini", ".cfg", ".conf",
+    # Email
+    ".msg", ".eml"
+]
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+MAX_FILES_PER_BATCH = 20  # Maximum files per upload
 
+@router.post("/upload-batch")
+async def upload_training_files_batch(
+    files: List[UploadFile] = File(...),
+    source_category: str = Form(...),
+    description: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """Upload multiple training files with manual source categorization"""
+    
+    # Validate file count
+    if len(files) > MAX_FILES_PER_BATCH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files. Maximum {MAX_FILES_PER_BATCH} files per batch."
+        )
+    
+    # Validate source category
+    try:
+        category = ManualSourceCategory(source_category)
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid source_category. Must be one of: {[c.value for c in ManualSourceCategory]}"
+        )
+    
+    logger.info(f"📤 Batch upload: {len(files)} files as {category.value}")
+    
+    # Map categories to internal types
+    category_mapping = {
+        ManualSourceCategory.TESTDATEN: "help_data",
+        ManualSourceCategory.STREAMWORKS_HILFE: "help_data", 
+        ManualSourceCategory.SHAREPOINT: "help_data"
+    }
+    internal_category = category_mapping[category]
+    
+    uploaded_files = []
+    failed_files = []
+    
+    try:
+        training_service = TrainingService(db)
+        
+        for file in files:
+            try:
+                # Validate file
+                if not file.filename:
+                    failed_files.append({"filename": "unknown", "error": "No filename provided"})
+                    continue
+                
+                file_extension = os.path.splitext(file.filename)[1].lower()
+                if file_extension not in ALLOWED_EXTENSIONS:
+                    failed_files.append({
+                        "filename": file.filename, 
+                        "error": f"Invalid file extension. Allowed: {ALLOWED_EXTENSIONS}"
+                    })
+                    continue
+                
+                # Read and validate file size
+                file_content = await file.read()
+                if len(file_content) > MAX_FILE_SIZE:
+                    failed_files.append({
+                        "filename": file.filename,
+                        "error": f"File too large. Maximum {MAX_FILE_SIZE // (1024*1024)}MB"
+                    })
+                    continue
+                
+                # Save file using the working method
+                training_file = await training_service.save_training_file(
+                    filename=file.filename,
+                    file_content=file_content,
+                    category=internal_category
+                )
+                
+                uploaded_files.append(training_file)
+                logger.info(f"✅ Uploaded: {file.filename} ({len(file_content)} bytes)")
+                
+            except Exception as e:
+                failed_files.append({"filename": file.filename, "error": str(e)})
+                logger.error(f"❌ Failed to upload {file.filename}: {e}")
+        
+        # Add files to RAG system for immediate availability
+        if uploaded_files:
+            await training_service.add_files_to_rag(uploaded_files)
+        
+        return {
+            "message": f"Batch upload completed: {len(uploaded_files)} successful, {len(failed_files)} failed",
+            "uploaded_files": len(uploaded_files),
+            "failed_files": len(failed_files),
+            "source_category": category.value,
+            "details": {
+                "successful": [f.filename for f in uploaded_files],
+                "failed": failed_files
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Batch upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Batch upload failed: {str(e)}")
+
+# Legacy single file upload (keep for compatibility)
 @router.post("/upload", response_model=TrainingFileResponse)
 async def upload_training_file(
     file: UploadFile = File(...),
-    category: str = Form(...),
+    source_category: str = Form("Testdaten"),
+    description: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload a training data file"""
-    logger.info(f"📤 Uploading file: {file.filename} to category: {category}")
-    
-    # Validate category
-    if category not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid category. Allowed: {list(ALLOWED_EXTENSIONS.keys())}"
-        )
-    
-    # Validate file extension
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-    
-    file_extension = os.path.splitext(file.filename)[1].lower()
-    if file_extension not in ALLOWED_EXTENSIONS[category]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file extension for category {category}. Allowed: {ALLOWED_EXTENSIONS[category]}"
-        )
-    
-    # Check file size
-    file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
-        )
-    
-    try:
-        # Create training service
-        training_service = TrainingService(db)
-        
-        # Save file and create database record
-        training_file = await training_service.save_training_file(
-            filename=file.filename,
-            file_content=file_content,
-            category=category
-        )
-        
-        logger.info(f"✅ File uploaded successfully: {training_file.id}")
-        return training_file
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to upload file: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    """Upload a single training file (legacy compatibility)"""
+    # Convert to batch upload
+    return await upload_training_files_batch([file], source_category, description, db)
 
 
 @router.get("/files", response_model=List[TrainingFileResponse])
@@ -99,6 +171,29 @@ async def list_training_files(
         logger.error(f"❌ Failed to list files: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve files: {str(e)}")
 
+@router.get("/source-categories")
+async def get_training_source_categories():
+    """Get available source categories for training data upload"""
+    return {
+        "categories": [
+            {
+                "value": category.value,
+                "description": f"Training Data aus {category.value}",
+                "icon": "📚" if category == ManualSourceCategory.TESTDATEN else 
+                       "🏢" if category == ManualSourceCategory.STREAMWORKS_HILFE else "☁️"
+            }
+            for category in ManualSourceCategory
+        ],
+        "upload_endpoint": "/api/v1/training/upload-batch",
+        "max_files": MAX_FILES_PER_BATCH,
+        "allowed_extensions": ALLOWED_EXTENSIONS,
+        "max_file_size_mb": MAX_FILE_SIZE // (1024 * 1024),
+        "example_curl": f"""curl -X POST "http://localhost:8000/api/v1/training/upload-batch" \\
+  -F "files=@document1.txt" \\
+  -F "files=@document2.md" \\
+  -F "source_category=StreamWorks Hilfe" \\
+  -F "description=Batch upload from training tab\""""
+    }
 
 @router.delete("/files/{file_id}")
 async def delete_training_file(
@@ -359,6 +454,177 @@ async def get_conversion_stats(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.error(f"❌ Failed to get conversion stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# 🚀 NEW MULTI-FORMAT API ENDPOINTS
+
+@router.get("/formats/supported")
+async def get_supported_formats():
+    """Get list of all supported file formats"""
+    logger.info("📋 Getting supported formats")
+    
+    try:
+        formats = multi_format_processor.get_supported_formats()
+        categories = multi_format_processor.get_supported_categories()
+        stats = multi_format_processor.get_processing_stats()
+        
+        return {
+            "supported_formats": formats,
+            "document_categories": categories,
+            "total_formats": len(formats),
+            "total_categories": len(categories),
+            "processing_stats": stats,
+            "allowed_extensions": ALLOWED_EXTENSIONS
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to get supported formats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze-file")
+async def analyze_file_format(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """Analyze a file and return format detection results without uploading"""
+    logger.info(f"🔍 Analyzing file format: {file.filename}")
+    
+    try:
+        # Read file content
+        content = await file.read()
+        
+        # Validate file size
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size: {MAX_FILE_SIZE / (1024*1024):.1f}MB"
+            )
+        
+        # Reset file position for potential reuse
+        await file.seek(0)
+        
+        # Analyze with multi-format processor
+        from app.services.multi_format_processor import FormatDetector
+        detector = FormatDetector()
+        
+        # Create temporary file path for analysis
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=file.filename, delete=False) as temp_file:
+            temp_file.write(content)
+            temp_path = temp_file.name
+        
+        try:
+            # Detect format and category
+            detected_format = detector.detect_format(temp_path, content[:1000])
+            document_category = detector.categorize_document(detected_format, file.filename)
+            
+            # Check if format is supported
+            is_supported = any(file.filename.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS)
+            
+            analysis_result = {
+                "filename": file.filename,
+                "file_size": len(content),
+                "detected_format": detected_format.value,
+                "document_category": document_category.value,
+                "is_supported": is_supported,
+                "processing_method": multi_format_processor._get_chunk_strategy(detected_format),
+                "content_preview": content.decode('utf-8', errors='ignore')[:200] + "..." if len(content) > 200 else content.decode('utf-8', errors='ignore'),
+                "analysis_timestamp": datetime.utcnow().isoformat()
+            }
+            
+            logger.info(f"✅ File analysis completed: {file.filename} -> {detected_format.value}")
+            return analysis_result
+            
+        finally:
+            # Cleanup temp file
+            import os
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to analyze file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze file: {str(e)}")
+
+
+@router.get("/processing/stats")
+async def get_processing_statistics():
+    """Get detailed processing statistics"""
+    logger.info("📊 Getting processing statistics")
+    
+    try:
+        stats = multi_format_processor.get_processing_stats()
+        
+        # Add additional insights
+        enhanced_stats = {
+            **stats,
+            "most_processed_format": max(stats['formats_processed'].items(), key=lambda x: x[1])[0] if stats['formats_processed'] else None,
+            "most_processed_category": max(stats['categories_processed'].items(), key=lambda x: x[1])[0] if stats['categories_processed'] else None,
+            "supported_formats_count": len(multi_format_processor.get_supported_formats()),
+            "supported_categories_count": len(multi_format_processor.get_supported_categories())
+        }
+        
+        return enhanced_stats
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to get processing stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/test-processing")
+async def test_multi_format_processing(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """Test multi-format processing without permanent storage (for debugging)"""
+    logger.info(f"🧪 Testing multi-format processing: {file.filename}")
+    
+    try:
+        # Read file content
+        content = await file.read()
+        
+        # Create temporary file for processing
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=file.filename, delete=False) as temp_file:
+            temp_file.write(content)
+            temp_path = temp_file.name
+        
+        try:
+            # Process with multi-format processor
+            processing_result = await multi_format_processor.process_file(temp_path, content)
+            
+            # Create response with processing details
+            test_result = {
+                "success": processing_result.success,
+                "file_format": processing_result.file_format.value if processing_result.success else None,
+                "document_category": processing_result.category.value if processing_result.success else None,
+                "processing_method": processing_result.processing_method,
+                "chunk_count": processing_result.chunk_count,
+                "error_message": processing_result.error_message,
+                "chunks_preview": [
+                    {
+                        "index": i,
+                        "content_preview": doc.page_content[:100] + "..." if len(doc.page_content) > 100 else doc.page_content,
+                        "metadata": doc.metadata
+                    }
+                    for i, doc in enumerate(processing_result.documents[:3])  # First 3 chunks only
+                ] if processing_result.success else [],
+                "metadata": processing_result.metadata,
+                "test_timestamp": datetime.utcnow().isoformat()
+            }
+            
+            logger.info(f"✅ Test processing completed: {file.filename}")
+            return test_result
+            
+        finally:
+            # Cleanup temp file
+            import os
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to test processing: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to test processing: {str(e)}")
 
 
 @router.get("/health")

@@ -13,7 +13,9 @@ from app.models.schemas import TrainingFileResponse, TrainingFileCreate, Trainin
 from app.core.config import settings
 from app.services.rag_service import RAGService
 from app.services.txt_to_md_converter import txt_to_md_converter
+from app.services.multi_format_processor import multi_format_processor, FileProcessingResult
 from pathlib import Path
+from langchain.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,83 @@ class TrainingService:
             os.makedirs(directory, exist_ok=True)
             logger.info(f"📁 Ensured directory exists: {directory}")
     
+    async def save_training_file_with_source(
+        self,
+        filename: str,
+        file_content: bytes,
+        category: str,
+        source_category: str,
+        description: Optional[str] = None
+    ) -> TrainingFileResponse:
+        """Save training file with manual source categorization"""
+        
+        # Generate unique filename to avoid conflicts
+        file_id = str(uuid.uuid4())
+        file_extension = os.path.splitext(filename)[1]
+        unique_filename = f"{file_id}_{filename}"
+        
+        # File paths
+        original_path = os.path.join(self.base_path, "originals", category, unique_filename)
+        optimized_filename = f"{file_id}_{os.path.splitext(filename)[0]}_optimized.md"
+        optimized_path = os.path.join(self.base_path, "optimized", category, optimized_filename)
+        
+        try:
+            # Save original file
+            async with aiofiles.open(original_path, 'wb') as f:
+                await f.write(file_content)
+            
+            # Convert to optimized MD if needed
+            if file_extension.lower() == '.txt':
+                # Save original as temp file for conversion
+                temp_txt_path = Path(original_path)
+                optimized_dir = Path(self.base_path) / "optimized" / category
+                
+                # Convert using the correct method
+                from app.services.txt_to_md_converter import txt_to_md_converter
+                optimized_md_path = await txt_to_md_converter.convert_txt_to_md(temp_txt_path, optimized_dir)
+                optimized_path = str(optimized_md_path)
+            else:
+                # Copy other files as-is to optimized directory
+                async with aiofiles.open(optimized_path, 'w', encoding='utf-8') as f:
+                    await f.write(file_content.decode('utf-8'))
+            
+            # Create database record with minimal fields (to avoid schema issues)
+            training_file = TrainingFile(
+                id=file_id,
+                filename=filename,
+                file_path=optimized_path,
+                category=category,
+                file_size=len(file_content),
+                is_indexed=False,
+                status="ready"  # Ready for use
+            )
+            
+            self.db.add(training_file)
+            await self.db.commit()
+            await self.db.refresh(training_file)
+            
+            logger.info(f"✅ Saved training file with source: {filename} -> {source_category}")
+            
+            return TrainingFileResponse(
+                id=training_file.id,
+                filename=training_file.filename,
+                file_path=training_file.file_path,
+                category=training_file.category,
+                file_size=training_file.file_size,
+                is_indexed=training_file.is_indexed,
+                status=training_file.status,
+                source_category=source_category,
+                created_at=training_file.created_at.isoformat()
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to save training file {filename}: {e}")
+            # Cleanup files on error
+            for path in [original_path, optimized_path]:
+                if os.path.exists(path):
+                    os.remove(path)
+            raise
+    
     async def save_training_file(
         self,
         filename: str,
@@ -65,15 +144,17 @@ class TrainingService:
             
             logger.info(f"💾 Original file saved to: {original_path}")
             
-            # Create database record with clean display name
+            # Create database record with simple fields
             db_file = TrainingFile(
                 id=file_id,
-                filename=safe_filename,       # Technical filename with UUID
-                display_name=filename,        # Clean user-friendly name
+                filename=filename,  # Clean user-friendly name
+                display_name=filename,  # Same as filename for user-friendly display
                 category=category,
                 file_path=original_path,
                 file_size=len(file_content),
-                status="ready"
+                status="ready",
+                is_indexed=False,
+                chunk_count=0
             )
             
             self.db.add(db_file)
@@ -82,8 +163,8 @@ class TrainingService:
             
             logger.info(f"📝 Database record created: {file_id}")
             
-            # Process file asynchronously (TXT to MD conversion if needed)
-            asyncio.create_task(self._process_uploaded_file(file_id, original_path, category))
+            # Process file asynchronously with separate DB session
+            asyncio.create_task(self._process_uploaded_file_async(file_id, original_path, category))
             
             # Convert to response model
             return TrainingFileResponse(
@@ -142,10 +223,114 @@ class TrainingService:
                 indexed_at=file.indexed_at.isoformat() if file.indexed_at else None,
                 chunk_count=file.chunk_count,
                 index_status=file.index_status,
-                index_error=file.index_error
+                index_error=file.index_error,
+                manual_source_category=file.manual_source_category
             )
             for file in files
         ]
+    
+    async def add_files_to_rag(self, training_files: List[TrainingFileResponse]):
+        """Add uploaded files to RAG system for immediate availability"""
+        try:
+            from app.services.rag_service import rag_service
+            from langchain.docstore.document import Document
+            
+            if not rag_service.is_initialized:
+                await rag_service.initialize()
+            
+            documents = []
+            for training_file in training_files:
+                try:
+                    # Read the optimized file content
+                    async with aiofiles.open(training_file.file_path, 'r', encoding='utf-8') as f:
+                        content = await f.read()
+                    
+                    # Create ChromaDB-compatible metadata
+                    source_category = getattr(training_file, 'manual_source_category', None) or 'Testdaten'
+                    metadata = {
+                        "filename": str(training_file.filename),
+                        "source": str(training_file.file_path),
+                        "type": "training_document",
+                        "category": str(training_file.category),
+                        "source_type": str(source_category),
+                        "description": f"Training data from {source_category}",
+                        "upload_timestamp": datetime.now().isoformat(),
+                        "training_file_id": str(training_file.id)
+                    }
+                    
+                    # Ensure all metadata values are ChromaDB-compatible (no None, all strings/numbers/bools)
+                    filtered_metadata = {}
+                    for k, v in metadata.items():
+                        if v is not None:
+                            if isinstance(v, (str, int, float, bool)):
+                                filtered_metadata[k] = v
+                            else:
+                                filtered_metadata[k] = str(v)
+                    
+                    doc = Document(
+                        page_content=content,
+                        metadata=filtered_metadata
+                    )
+                    documents.append(doc)
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to read training file {training_file.filename}: {e}")
+            
+            if documents:
+                # Add to RAG vector database
+                try:
+                    chunks_created = await rag_service.add_documents(documents)
+                    logger.info(f"✅ Created {chunks_created} chunks for {len(documents)} documents")
+                    
+                    # Update training files as indexed
+                    for training_file in training_files:
+                        await self._mark_file_as_indexed(training_file.id, chunks_created // len(documents) if len(documents) > 0 else 1)
+                        
+                except Exception as e:
+                    logger.error(f"❌ ChromaDB indexing failed: {e}")
+                    # Mark files as failed
+                    for training_file in training_files:
+                        await self._mark_file_as_failed(training_file.id, str(e))
+                    raise
+                
+                logger.info(f"✅ Added {len(documents)} training files to RAG ({chunks_created} chunks)")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to add files to RAG: {e}")
+            raise
+    
+    async def _mark_file_as_indexed(self, file_id: str, chunk_count: int):
+        """Mark training file as indexed in RAG"""
+        try:
+            update_query = update(TrainingFile).where(
+                TrainingFile.id == file_id
+            ).values(
+                is_indexed=True,
+                status="indexed",
+                indexed_at=datetime.now(),
+                chunk_count=chunk_count,
+                index_status="indexed"
+            )
+            await self.db.execute(update_query)
+            await self.db.commit()
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to mark file as indexed: {e}")
+
+    async def _mark_file_as_failed(self, file_id: str, error_message: str):
+        """Mark training file as failed to index"""
+        try:
+            update_query = update(TrainingFile).where(
+                TrainingFile.id == file_id
+            ).values(
+                is_indexed=False,
+                status="error",
+                index_status="failed",
+                index_error=error_message[:500]  # Limit error length
+            )
+            await self.db.execute(update_query)
+            await self.db.commit()
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to mark file as failed: {e}")
     
     async def delete_training_file(self, file_id: str) -> bool:
         """Delete training file from filesystem and database"""
@@ -159,25 +344,53 @@ class TrainingService:
             return False
         
         try:
+            files_deleted = []
+            
             # Delete original file from filesystem
-            if os.path.exists(file_record.file_path):
+            if file_record.file_path and os.path.exists(file_record.file_path):
                 os.remove(file_record.file_path)
+                files_deleted.append(f"Original: {file_record.file_path}")
                 logger.info(f"🗑️ Original file deleted: {file_record.file_path}")
             
             # Delete optimized MD file if it exists (Cascade Delete)
-            if hasattr(file_record, 'processed_file_path') and file_record.processed_file_path:
-                processed_path = file_record.processed_file_path
-                if os.path.exists(processed_path):
-                    os.remove(processed_path)
-                    logger.info(f"🗑️ Optimized MD file deleted: {processed_path}")
-                else:
-                    logger.warning(f"⚠️ Optimized file not found: {processed_path}")
+            if file_record.processed_file_path and os.path.exists(file_record.processed_file_path):
+                os.remove(file_record.processed_file_path)
+                files_deleted.append(f"Optimized: {file_record.processed_file_path}")
+                logger.info(f"🗑️ Optimized MD file deleted: {file_record.processed_file_path}")
+            
+            # Also try to find and delete MD files by pattern (fallback)
+            # Pattern: {file_id}_{filename}_optimized.md
+            base_filename = os.path.splitext(file_record.filename)[0]
+            optimized_pattern = f"{file_record.id}_{base_filename}_optimized.md"
+            
+            # Check common optimized directories
+            optimized_dirs = [
+                "/Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend/data/training_data/optimized/help_data",
+                "/Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend/data/training_data/optimized/stream_templates"
+            ]
+            
+            for opt_dir in optimized_dirs:
+                if os.path.exists(opt_dir):
+                    for filename in os.listdir(opt_dir):
+                        if file_record.id in filename and filename.endswith('_optimized.md'):
+                            opt_file_path = os.path.join(opt_dir, filename)
+                            os.remove(opt_file_path)
+                            files_deleted.append(f"Found optimized: {opt_file_path}")
+                            logger.info(f"🗑️ Found and deleted optimized file: {opt_file_path}")
+            
+            # Remove from ChromaDB if indexed
+            if file_record.is_indexed:
+                try:
+                    await self.remove_from_chromadb(file_id)
+                    logger.info(f"🗑️ Removed from ChromaDB: {file_id}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to remove from ChromaDB: {e}")
             
             # Delete database record
             await self.db.delete(file_record)
             await self.db.commit()
             
-            logger.info(f"🗑️ Database record deleted: {file_id}")
+            logger.info(f"🗑️ Complete deletion for {file_id}. Files removed: {', '.join(files_deleted) if files_deleted else 'None'}")
             return True
             
         except Exception as e:
@@ -417,11 +630,19 @@ class TrainingService:
                 "error": str(e)
             }
     
+    async def _process_uploaded_file_async(self, file_id: str, file_path: str, category: str):
+        """Process uploaded file with separate DB session"""
+        # Create NEW database session for async processing
+        from app.models.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db_session:
+            service = TrainingService(db_session)
+            await service._process_uploaded_file(file_id, file_path, category)
+
     async def _process_uploaded_file(self, file_id: str, file_path: str, category: str):
-        """Process uploaded file - erweitert für TXT zu MD Konvertierung"""
+        """Enhanced file processing with Multi-Format support"""
         
         try:
-            logger.info(f"🔄 Processing uploaded file: {file_id}")
+            logger.info(f"🚀 Processing uploaded file with Multi-Format Processor: {file_id}")
             
             file_path_obj = Path(file_path)
             
@@ -438,58 +659,108 @@ class TrainingService:
             file_record.status = "processing"
             await self.db.commit()
             
-            # TXT zu MD Konvertierung
-            final_file_path = file_path_obj
-            conversion_metadata = {}
-            
-            if file_path_obj.suffix.lower() == '.txt':
-                logger.info(f"🔄 TXT-Datei erkannt: {file_path_obj.name}")
-                
-                try:
-                    # Bestimme optimized directory basierend auf Kategorie
-                    optimized_dir = Path(self.base_path) / "optimized" / category
-                    
-                    # Konvertiere zu Markdown
-                    md_file_path = await txt_to_md_converter.convert_txt_to_md(file_path_obj, optimized_dir)
-                    
-                    # Update file record with conversion info
-                    file_record.processed_file_path = str(md_file_path)
-                    file_record.original_format = "txt"
-                    file_record.optimized_format = "md"
-                    file_record.conversion_status = "completed"
-                    
-                    conversion_metadata = {
-                        "original_file": str(file_path_obj),
-                        "optimized_file": str(md_file_path),
-                        "conversion_date": datetime.utcnow().isoformat(),
-                        "converter_version": "1.0.0"
-                    }
-                    
-                    # Use MD file for RAG indexing
-                    final_file_path = md_file_path
-                    
-                    logger.info(f"✅ TXT zu MD Konvertierung abgeschlossen: {md_file_path.name}")
-                    
-                except Exception as e:
-                    logger.error(f"❌ TXT zu MD Konvertierung fehlgeschlagen: {e}")
-                    file_record.conversion_status = "failed"
-                    file_record.conversion_error = str(e)
-                    # Continue with original TXT file
-                    final_file_path = file_path_obj
-            
-            # Index file for RAG (using optimized MD if available, otherwise original)
+            # 🚀 NEW: Multi-Format Processing
             try:
-                await self._index_for_rag(final_file_path, category, file_record)
-                logger.info(f"✅ File indexed for RAG: {final_file_path.name}")
+                # Read file content
+                with open(file_path, 'rb') as f:
+                    file_content = f.read()
+                
+                # Process with Multi-Format Processor
+                processing_result: FileProcessingResult = await multi_format_processor.process_file(
+                    file_path=str(file_path_obj),
+                    content=file_content
+                )
+                
+                if not processing_result.success:
+                    raise ValueError(f"Multi-format processing failed: {processing_result.error_message}")
+                
+                # Update file record with enhanced metadata
+                file_record.original_format = processing_result.file_format.value
+                file_record.optimized_format = "chunked_documents"
+                file_record.conversion_status = "completed"
+                file_record.document_category = processing_result.category.value
+                file_record.processing_method = processing_result.processing_method
+                
+                processing_metadata = {
+                    "file_format": processing_result.file_format.value,
+                    "document_category": processing_result.category.value,
+                    "processing_method": processing_result.processing_method,
+                    "chunk_count": processing_result.chunk_count,
+                    "original_size": len(file_content),
+                    "processing_date": datetime.utcnow().isoformat(),
+                    "processor_version": "2.0.0_multiformat"
+                }
+                
+                # Index processed documents for RAG
+                await self._index_processed_documents_for_rag(
+                    processing_result.documents, 
+                    file_record, 
+                    processing_result
+                )
+                
+                logger.info(f"✅ Multi-format processing completed: {file_path_obj.name} "
+                           f"({processing_result.file_format.value}, {processing_result.chunk_count} chunks)")
                 
                 # Update final status
                 file_record.status = "ready"
-                file_record.conversion_metadata = str(conversion_metadata) if conversion_metadata else None
+                file_record.conversion_metadata = str(processing_metadata)
                 
-            except Exception as e:
-                logger.error(f"❌ RAG indexing failed: {e}")
-                file_record.status = "error"
-                file_record.index_error = str(e)
+            except Exception as multiformat_error:
+                logger.warning(f"⚠️ Multi-format processing failed, falling back to legacy: {multiformat_error}")
+                
+                # FALLBACK: Legacy TXT zu MD Konvertierung
+                final_file_path = file_path_obj
+                conversion_metadata = {}
+                
+                if file_path_obj.suffix.lower() == '.txt':
+                    logger.info(f"🔄 Fallback: TXT-Datei erkannt: {file_path_obj.name}")
+                    
+                    try:
+                        # Bestimme optimized directory basierend auf Kategorie
+                        optimized_dir = Path(self.base_path) / "optimized" / category
+                        
+                        # Konvertiere zu Markdown
+                        from app.services.txt_to_md_converter import txt_to_md_converter
+                        md_file_path = await txt_to_md_converter.convert_txt_to_md(file_path_obj, optimized_dir)
+                        
+                        # Update file record with conversion info
+                        file_record.processed_file_path = str(md_file_path)
+                        file_record.original_format = "txt"
+                        file_record.optimized_format = "md"
+                        file_record.conversion_status = "completed"
+                        
+                        conversion_metadata = {
+                            "original_file": str(file_path_obj),
+                            "optimized_file": str(md_file_path),
+                            "conversion_date": datetime.utcnow().isoformat(),
+                            "converter_version": "1.0.0_legacy"
+                        }
+                        
+                        # Use MD file for RAG indexing
+                        final_file_path = md_file_path
+                        
+                        logger.info(f"✅ Fallback TXT zu MD Konvertierung abgeschlossen: {md_file_path.name}")
+                        
+                    except Exception as e:
+                        logger.error(f"❌ Fallback TXT zu MD Konvertierung fehlgeschlagen: {e}")
+                        file_record.conversion_status = "failed"
+                        file_record.conversion_error = str(e)
+                        # Continue with original TXT file
+                        final_file_path = file_path_obj
+                
+                # Legacy RAG indexing
+                try:
+                    await self._index_for_rag(final_file_path, category, file_record)
+                    logger.info(f"✅ Legacy file indexed for RAG: {final_file_path.name}")
+                    
+                    # Update final status
+                    file_record.status = "ready"
+                    file_record.conversion_metadata = str(conversion_metadata) if conversion_metadata else None
+                    
+                except Exception as e:
+                    logger.error(f"❌ Legacy RAG indexing failed: {e}")
+                    file_record.status = "error"
+                    file_record.index_error = str(e)
             
             await self.db.commit()
             logger.info(f"✅ File processing completed: {file_id}")
@@ -510,6 +781,70 @@ class TrainingService:
             except Exception as db_error:
                 logger.error(f"❌ Failed to update error status: {db_error}")
     
+    async def _index_processed_documents_for_rag(
+        self, 
+        documents: List[Document], 
+        file_record: TrainingFile, 
+        processing_result: FileProcessingResult
+    ):
+        """Index multi-format processed documents for RAG"""
+        
+        try:
+            # Get RAG service
+            rag_service = await self._get_or_create_rag_service()
+            
+            # Enhance document metadata for ChromaDB compatibility
+            enhanced_documents = []
+            for i, doc in enumerate(documents):
+                # Create clean metadata for ChromaDB
+                clean_metadata = {
+                    "source": str(file_record.filename),
+                    "category": str(file_record.category),
+                    "file_id": str(file_record.id),
+                    "upload_date": file_record.upload_date.isoformat(),
+                    "file_format": str(processing_result.file_format.value),
+                    "document_category": str(processing_result.category.value),
+                    "processing_method": str(processing_result.processing_method),
+                    "chunk_index": int(i),
+                    "chunk_type": str(doc.metadata.get('chunk_type', 'default')),
+                    "optimized": True,
+                    "source_type": str(getattr(file_record, 'manual_source_category', 'Testdaten') or 'Testdaten')
+                }
+                
+                # Filter and ensure ChromaDB compatibility
+                filtered_metadata = {}
+                for key, value in clean_metadata.items():
+                    if value is not None:
+                        if isinstance(value, (str, int, float, bool)):
+                            filtered_metadata[key] = value
+                        else:
+                            filtered_metadata[key] = str(value)
+                
+                # Create enhanced document
+                enhanced_doc = Document(
+                    page_content=doc.page_content,
+                    metadata=filtered_metadata
+                )
+                enhanced_documents.append(enhanced_doc)
+            
+            # Add documents to RAG system
+            chunk_count = await rag_service.add_documents(enhanced_documents)
+            
+            # Update file record
+            file_record.is_indexed = True
+            file_record.indexed_at = datetime.utcnow()
+            file_record.chunk_count = chunk_count if isinstance(chunk_count, int) else len(enhanced_documents)
+            file_record.index_status = "indexed"
+            
+            logger.info(f"✅ Multi-format documents indexed to RAG: {file_record.filename} "
+                       f"({len(enhanced_documents)} chunks, format: {processing_result.file_format.value})")
+            
+        except Exception as e:
+            logger.error(f"❌ Multi-format RAG indexing failed: {e}")
+            file_record.index_status = "failed"
+            file_record.index_error = str(e)[:500]  # Limit error message length
+            raise
+    
     async def _index_for_rag(self, file_path: Path, category: str, file_record: TrainingFile):
         """Index optimierte Datei für RAG"""
         
@@ -517,23 +852,33 @@ class TrainingService:
             # Get RAG service
             rag_service = await self._get_or_create_rag_service()
             
-            # Read file content
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            # Read file content asynchronously
+            async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                content = await f.read()
             
-            # Create document metadata
+            # Create clean document metadata (ChromaDB compatible)
             metadata = {
-                "source": file_record.filename,
-                "category": category,
-                "file_id": file_record.id,
+                "source": str(file_record.filename),
+                "category": str(category),
+                "file_id": str(file_record.id),
                 "upload_date": file_record.upload_date.isoformat(),
-                "file_type": file_path.suffix,
-                "optimized": file_path.suffix == '.md' and '_optimized' in file_path.name
+                "file_type": str(file_path.suffix),
+                "optimized": bool(file_path.suffix == '.md' and '_optimized' in file_path.name),
+                "source_type": str(getattr(file_record, 'manual_source_category', 'Testdaten') or 'Testdaten')
             }
             
+            # Filter None values and ensure all values are ChromaDB-compatible
+            clean_metadata = {}
+            for key, value in metadata.items():
+                if value is not None:
+                    if isinstance(value, (str, int, float, bool)):
+                        clean_metadata[key] = value
+                    else:
+                        clean_metadata[key] = str(value)
+            
             # Add to RAG service
-            from langchain.schema import Document
-            document = Document(page_content=content, metadata=metadata)
+            from langchain.docstore.document import Document
+            document = Document(page_content=content, metadata=clean_metadata)
             
             # Add document to RAG system
             chunk_count = await rag_service.add_documents([document])
@@ -541,7 +886,7 @@ class TrainingService:
             # Update file record
             file_record.is_indexed = True
             file_record.indexed_at = datetime.utcnow()
-            file_record.chunk_count = chunk_count
+            file_record.chunk_count = chunk_count if isinstance(chunk_count, int) else 1
             file_record.index_status = "indexed"
             
             logger.info(f"✅ File indexed to RAG: {file_path.name} ({chunk_count} chunks)")
@@ -549,5 +894,5 @@ class TrainingService:
         except Exception as e:
             logger.error(f"❌ RAG indexing failed: {e}")
             file_record.index_status = "failed"
-            file_record.index_error = str(e)
+            file_record.index_error = str(e)[:500]  # Limit error message length
             raise

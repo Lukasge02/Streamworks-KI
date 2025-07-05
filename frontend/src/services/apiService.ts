@@ -1,4 +1,21 @@
-import { ApiResponse, StreamConfig } from '../types';
+import { 
+  ApiResponse, 
+  StreamConfig, 
+  SmartSearchRequest, 
+  SmartSearchResponse, 
+  AdvancedSearchRequest, 
+  QueryAnalysis,
+  SearchStrategy,
+  FilterOptions
+} from '../types';
+
+export type SourceCategory = 'Testdaten' | 'StreamWorks Hilfe' | 'SharePoint';
+
+export interface SourceCategoryInfo {
+  value: SourceCategory;
+  description: string;
+  icon: string;
+}
 
 export interface TrainingFile {
   id: string;
@@ -15,6 +32,21 @@ export interface TrainingFile {
   chunk_count: number;
   index_status?: string;
   index_error?: string;
+  // Manual Source Categorization
+  source_category?: SourceCategory;
+  description?: string;
+  upload_timestamp?: string;
+}
+
+export interface BatchUploadResult {
+  message: string;
+  uploaded_files: number;
+  failed_files: number;
+  source_category: string;
+  details: {
+    successful: string[];
+    failed: Array<{filename: string; error: string}>;
+  };
 }
 
 export interface CategoryStats {
@@ -255,6 +287,60 @@ class ApiService {
     }
   }
 
+  // New Training API Methods with Source Categories
+  async getSourceCategories(): Promise<ApiResponse<{categories: SourceCategoryInfo[]}>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/training/source-categories`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Get source categories error:', error);
+      return { success: false, error: `Quellkategorien laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async uploadTrainingFilesBatch(
+    files: File[], 
+    sourceCategory: SourceCategory, 
+    description?: string
+  ): Promise<ApiResponse<BatchUploadResult>> {
+    try {
+      const formData = new FormData();
+      
+      // Add files
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      // Add source category and description
+      formData.append('source_category', sourceCategory);
+      if (description) {
+        formData.append('description', description);
+      }
+      
+      const response = await fetch(`${this.baseUrl}/training/upload-batch`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Batch training file upload error:', error);
+      return { success: false, error: `Batch Training-Upload fehlgeschlagen: ${error}` };
+    }
+  }
+
   // Document Management API Methods
   async getDocuments(): Promise<ApiResponse<DocumentsResponse>> {
     try {
@@ -433,6 +519,169 @@ class ApiService {
     } catch (error) {
       console.error('Get ChromaDB stats error:', error);
       return { success: false, error: `ChromaDB Statistiken laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  // Smart Search API Methods
+  async smartSearch(request: SmartSearchRequest): Promise<ApiResponse<SmartSearchResponse>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/search/smart`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Smart search error:', error);
+      return { success: false, error: `Smart Search fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async advancedSearch(request: AdvancedSearchRequest): Promise<ApiResponse<SmartSearchResponse>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/search/advanced`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Advanced search error:', error);
+      return { success: false, error: `Advanced Search fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async analyzeQuery(query: string): Promise<ApiResponse<{
+    query: string;
+    analysis: QueryAnalysis;
+    recommendations: {
+      optimal_strategy: string;
+      suggested_document_types: string[];
+      enhancement_tips: string[];
+    };
+  }>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/search/analyze-query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Query analysis error:', error);
+      return { success: false, error: `Query-Analyse fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async getSearchStrategies(): Promise<ApiResponse<{
+    available_strategies: Record<string, SearchStrategy>;
+    default_strategy: string;
+    auto_selection: string;
+  }>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/search/strategies`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Get search strategies error:', error);
+      return { success: false, error: `Search-Strategien laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async getFilterOptions(): Promise<ApiResponse<FilterOptions>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/search/filters/options`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Get filter options error:', error);
+      return { success: false, error: `Filter-Optionen laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async getSmartSearchStatistics(): Promise<ApiResponse<{
+    smart_search: {
+      total_searches: number;
+      average_response_time: number;
+      strategy_usage: Record<string, number>;
+      intent_distribution: Record<string, number>;
+      performance_metrics: Record<string, number>;
+    };
+    system_info: {
+      total_search_endpoints: number;
+      available_strategies: number;
+      smart_search_enabled: boolean;
+      last_updated: string;
+    };
+  }>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/search/smart/statistics`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Get smart search statistics error:', error);
+      return { success: false, error: `Smart Search Statistiken laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async smartSearchHealthCheck(): Promise<ApiResponse<{
+    status: string;
+    smart_search_available: boolean;
+    query_classifier_working: boolean;
+    total_searches_performed: number;
+    average_response_time_ms: number;
+    available_strategies: number;
+    features: Record<string, boolean>;
+    timestamp: string;
+  }>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/search/smart/health`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Smart search health check error:', error);
+      return { success: false, error: `Smart Search Health Check fehlgeschlagen: ${error}` };
     }
   }
 }

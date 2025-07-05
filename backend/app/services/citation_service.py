@@ -75,22 +75,50 @@ class CitationService:
     
     def _extract_source_title(self, filename: str, content: str = "") -> str:
         """Extract human-readable title from filename or content"""
-        # Try to extract title from content first
-        lines = content.split('\n')[:5]  # First 5 lines
-        for line in lines:
-            line = line.strip()
-            if line and not line.startswith('#') and len(line) > 10:
-                # Clean up the line
-                title = re.sub(r'^[^\w]*', '', line)
-                if len(title) > 5:
-                    return title[:100]  # Limit length
+        # Try to extract meaningful title from content first
+        if content:
+            lines = content.split('\n')[:10]  # Check more lines
+            for line in lines:
+                line = line.strip()
+                # Skip FAQ format markers and look for meaningful content
+                if line and not line.startswith(('F:', 'A:', '#', '-', '*', '•', '`')):
+                    # Filter out obvious non-titles (dates, numbers, etc.)
+                    if 15 < len(line) < 80 and not re.search(r'^\d+[:\.]|\d{4}-\d{2}-\d{2}', line):
+                        # Clean up and return
+                        title = re.sub(r'^[^\w]*', '', line)
+                        title = re.sub(r'\*+', '', title).strip()  # Remove markdown
+                        if len(title) > 10:
+                            return title[:80]
+            
+            # Look for FAQ questions as fallback
+            for line in lines:
+                if line.startswith('F:'):
+                    question = line[2:].strip()
+                    if 15 < len(question) < 60:
+                        return question
         
-        # Fallback to filename cleanup
-        title = filename.replace('.txt', '').replace('.md', '')
-        title = re.sub(r'[_-]', ' ', title)
+        # Improved filename cleanup
+        # Remove UUID prefixes
+        clean_filename = re.sub(r'^[a-f0-9-]{36}_', '', filename)
+        clean_filename = re.sub(r'\.(txt|md|pdf)$', '', clean_filename, flags=re.IGNORECASE)
+        
+        # Better title generation based on patterns
+        if 'faq' in clean_filename.lower():
+            return "StreamWorks FAQ - Häufig gestellte Fragen"
+        elif 'training_data' in clean_filename.lower():
+            return "StreamWorks Dokumentation"
+        elif 'batch' in clean_filename.lower():
+            return "Batch-Job Konfiguration"
+        elif 'powershell' in clean_filename.lower():
+            return "PowerShell Integration Guide"
+        elif 'csv' in clean_filename.lower():
+            return "CSV Datenverarbeitung"
+        
+        # General cleanup
+        title = clean_filename.replace('_', ' ').replace('-', ' ')
         title = ' '.join(word.capitalize() for word in title.split())
         
-        return title
+        return title or "StreamWorks Dokumentation"
     
     def _calculate_relevance_score(self, doc: Document, query: str) -> float:
         """Calculate relevance score based on content similarity"""
@@ -122,10 +150,31 @@ class CitationService:
                 metadata = doc.metadata if hasattr(doc, 'metadata') else {}
                 filename = metadata.get('source', 'unknown_source.txt')
                 
-                # Determine source and document types
-                source_type = self._determine_source_type(filename)
-                document_type = self._determine_document_type(filename, doc.page_content)
-                source_title = self._extract_source_title(filename, doc.page_content)
+                # Use manual source categorization if available
+                if 'manual_source_category' in metadata:
+                    manual_category = metadata['manual_source_category']
+                    source_type_str = metadata.get('source_type', 'Documentation')
+                    
+                    # Convert string back to SourceType enum
+                    source_type = SourceType(source_type_str)
+                    
+                    # Better source titles for manual categories
+                    if manual_category == "Testdaten":
+                        source_title = "StreamWorks Testdaten"
+                    elif manual_category == "StreamWorks Hilfe":
+                        source_title = "StreamWorks Hilfe-Dokumentation"
+                    elif manual_category == "SharePoint":
+                        source_title = "SharePoint Dokumentation"
+                    else:
+                        source_title = manual_category
+                    
+                    # Set appropriate document type
+                    document_type = self._determine_document_type(filename, doc.page_content)
+                else:
+                    # Fallback to automatic detection for legacy documents
+                    source_type = self._determine_source_type(filename)
+                    document_type = self._determine_document_type(filename, doc.page_content)
+                    source_title = self._extract_source_title(filename, doc.page_content)
                 
                 # Calculate relevance
                 relevance_score = self._calculate_relevance_score(doc, query)
@@ -197,14 +246,32 @@ class CitationService:
         # Take top citations
         top_citations = citations[:max_citations]
         
-        citation_text = "\n\n**Quellen:**\n"
+        citation_text = "\n\n**📚 Quellen:**\n"
         for i, citation in enumerate(top_citations, 1):
-            citation_text += f"{i}. **{citation.source_title}** ({citation.source_type.value}"
-            if citation.document_type:
-                citation_text += f" - {citation.document_type.value}"
-            if citation.relevance_score:
-                citation_text += f", Relevanz: {citation.relevance_score:.1%}"
-            citation_text += ")\n"
+            # Handle both Citation objects and dict formats safely
+            try:
+                if hasattr(citation, 'source_title'):
+                    title = citation.source_title or "Unbekannte Quelle"
+                    source_type = citation.source_type.value if hasattr(citation.source_type, 'value') else str(citation.source_type)
+                    doc_type = citation.document_type.value if hasattr(citation, 'document_type') and citation.document_type and hasattr(citation.document_type, 'value') else ""
+                    relevance = citation.relevance_score if hasattr(citation, 'relevance_score') else 0.0
+                else:
+                    # Handle dict format
+                    title = citation.get('source_title', 'Unbekannte Quelle')
+                    source_type = citation.get('source_type', 'Documentation')
+                    doc_type = citation.get('document_type', '')
+                    relevance = citation.get('relevance_score', 0.0)
+                
+                citation_text += f"{i}. **{title}** ({source_type}"
+                if doc_type:
+                    citation_text += f" - {doc_type}"
+                if relevance and relevance > 0:
+                    citation_text += f", Relevanz: {relevance:.1%}"
+                citation_text += ")\n"
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Citation formatting error: {e}")
+                citation_text += f"{i}. **Quelle {i}** (StreamWorks Dokumentation)\n"
         
         return citation_text
     

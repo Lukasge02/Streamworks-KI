@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Upload, FileText, Database, Search, AlertCircle, 
   CheckCircle, Clock, Trash2, RefreshCw, Archive,
-  Eye, X, Grid, List
+  Eye, X
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
-import { apiService } from '../../services/apiService';
-import BatchUploader from './BatchUploader';
+import { apiService, SourceCategory } from '../../services/apiService';
 
 interface TrainingFile {
   id: string;
@@ -47,7 +46,10 @@ const TrainingDataTabV2Fixed: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<TrainingFile | null>(null);
   const [indexingFiles, setIndexingFiles] = useState<Set<string>>(new Set());
-  const [uploadMode, setUploadMode] = useState<'single' | 'batch'>('single');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [showSourceSelector, setShowSourceSelector] = useState(false);
+  const [selectedSourceCategory, setSelectedSourceCategory] = useState<SourceCategory>('Testdaten');
+  const [uploadDescription, setUploadDescription] = useState('');
 
   // Safe console logging
   const logMessage = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -113,29 +115,58 @@ const TrainingDataTabV2Fixed: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // File upload handling
+  // File upload handling - show source selector first
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    for (const file of acceptedFiles) {
-      const category = file.name.endsWith('.xml') || file.name.endsWith('.xsd') 
-        ? 'stream_templates' 
-        : 'help_data';
-      
-      try {
-        logMessage('success', `Uploading ${file.name}...`);
-        const result = await apiService.uploadTrainingFile(file, category);
-        
-        if (result.success) {
-          logMessage('success', `${file.name} erfolgreich hochgeladen`);
-          await loadData();
-        } else {
-          logMessage('error', `Upload fehlgeschlagen: ${result.error}`);
-        }
-      } catch (error) {
-        console.error('Upload error:', error);
-        logMessage('error', `Fehler beim Upload von ${file.name}: ${error}`);
-      }
+    if (acceptedFiles.length > 0) {
+      setPendingFiles(acceptedFiles);
+      setShowSourceSelector(true);
+      logMessage('success', `${acceptedFiles.length} Dateien ausgewählt - bitte Quelle auswählen`);
     }
-  }, [loadData]);
+  }, []);
+
+  // Actual upload after source selection
+  const handleUploadWithSource = async () => {
+    if (pendingFiles.length === 0) return;
+    
+    try {
+      logMessage('success', `Uploading ${pendingFiles.length} files as ${selectedSourceCategory}...`);
+      
+      const result = await apiService.uploadTrainingFilesBatch(
+        pendingFiles,
+        selectedSourceCategory,
+        uploadDescription || undefined
+      );
+      
+      if (result.success && result.data) {
+        const uploadResult = result.data;
+        if (uploadResult.failed_files > 0) {
+          const failedList = uploadResult.details.failed.map(f => `${f.filename}: ${f.error}`).join('\n');
+          alert(`Upload abgeschlossen!\n\n✅ Erfolgreich: ${uploadResult.uploaded_files}\n❌ Fehlgeschlagen: ${uploadResult.failed_files}\n\nFehler:\n${failedList}`);
+        } else {
+          logMessage('success', `🎉 Alle ${uploadResult.uploaded_files} Dateien erfolgreich hochgeladen!`);
+        }
+        await loadData();
+      } else {
+        logMessage('error', `Upload fehlgeschlagen: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      logMessage('error', `Fehler beim Upload: ${error}`);
+    } finally {
+      // Reset
+      setPendingFiles([]);
+      setShowSourceSelector(false);
+      setUploadDescription('');
+    }
+  };
+
+  // Cancel upload
+  const handleCancelUpload = () => {
+    setPendingFiles([]);
+    setShowSourceSelector(false);
+    setUploadDescription('');
+    logMessage('warning', 'Upload abgebrochen');
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -299,37 +330,9 @@ const TrainingDataTabV2Fixed: React.FC = () => {
         )}
       </div>
 
-      {/* Upload Mode Toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Training Data Upload</h3>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setUploadMode('single')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              uploadMode === 'single'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <Upload className="h-4 w-4" />
-            Einzeln
-          </button>
-          <button
-            onClick={() => setUploadMode('batch')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              uploadMode === 'batch'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <Grid className="h-4 w-4" />
-            Batch
-          </button>
-        </div>
-      </div>
-
       {/* Upload Area */}
-      {uploadMode === 'single' ? (
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Training Data Upload</h3>
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
@@ -342,23 +345,17 @@ const TrainingDataTabV2Fixed: React.FC = () => {
             <p className="text-lg">Dateien hier ablegen...</p>
           ) : (
             <div>
-              <p className="text-lg mb-2">Datei hier ablegen oder klicken zum Auswählen</p>
+              <p className="text-lg mb-2">Dateien hier ablegen oder klicken zum Auswählen</p>
               <p className="text-sm text-gray-500">
                 Unterstützt: .txt, .csv, .bat, .md, .ps1, .xml, .xsd (max. 50MB)
               </p>
               <p className="text-xs text-gray-400 mt-2">
-                XML/XSD → Stream Templates | Andere → Help Data
+                Nach der Auswahl können Sie die Datenquelle festlegen
               </p>
             </div>
           )}
         </div>
-      ) : (
-        <BatchUploader 
-          onUploadComplete={loadData}
-          maxFiles={20}
-          allowedCategory="help_data"
-        />
-      )}
+      </div>
 
       {/* Controls */}
       <div className="flex flex-wrap gap-4 items-center">
@@ -566,6 +563,81 @@ const TrainingDataTabV2Fixed: React.FC = () => {
                 Vector DB Pfad: {chromaStats.vector_db_path}<br />
                 Dokumente in Collection: {chromaStats.collection_documents}
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Source Selection Modal */}
+      {showSourceSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">Datenquelle auswählen</h3>
+              <button
+                onClick={handleCancelUpload}
+                className="p-1 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-4">
+                  {pendingFiles.length} Datei(en) ausgewählt. Bitte wählen Sie die Datenquelle:
+                </p>
+                <div className="space-y-2">
+                  {pendingFiles.map((file, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 px-3 py-2 rounded">
+                      <FileText className="h-4 w-4" />
+                      {file.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Datenquelle *
+                </label>
+                <select
+                  value={selectedSourceCategory}
+                  onChange={(e) => setSelectedSourceCategory(e.target.value as SourceCategory)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="Testdaten">📚 Testdaten</option>
+                  <option value="StreamWorks Hilfe">🏢 StreamWorks Hilfe</option>
+                  <option value="SharePoint">☁️ SharePoint</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Beschreibung (optional)
+                </label>
+                <textarea
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                  placeholder="Optionale Beschreibung für die hochgeladenen Dateien..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={2}
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <button
+                onClick={handleCancelUpload}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleUploadWithSource}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Hochladen
+              </button>
             </div>
           </div>
         </div>
