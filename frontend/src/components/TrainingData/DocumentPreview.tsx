@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Download, Database, Clock } from 'lucide-react';
-import { apiService, TrainingFile } from '../../services/apiService';
+import { X, FileText, Database, Clock } from 'lucide-react';
+import { TrainingFile } from '../../services/apiService';
 
 interface DocumentPreviewProps {
   file: TrainingFile;

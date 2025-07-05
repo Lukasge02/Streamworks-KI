@@ -42,7 +42,7 @@ class ChatResponse(BaseModel):
     mode: str  # "mistral_rag", "mistral_llm", "fallback"
     conversation_id: Optional[str] = None
     sources_used: int = 0
-    model_used: Optional[str] = None
+    llm_model: Optional[str] = None
     processing_time: float = 0.0
 
 class DualModeChatResponse(BaseModel):
@@ -153,7 +153,7 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
                 question=request.message,  # Original-Frage ohne Kontext
                 answer=response,
                 metadata={
-                    "model_used": "mistral:7b-instruct",
+                    "llm_model": "mistral:7b-instruct",
                     "mode": "mistral_rag_with_citations",
                     "sources_used": sources_used,
                     "context_used": bool(conversation_context),
@@ -174,7 +174,7 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
             mode="mistral_rag_with_citations",
             conversation_id=conversation_id,
             sources_used=sources_used,
-            model_used="mistral:7b-instruct",
+            llm_model="mistral:7b-instruct",
             processing_time=process_time
         )
         
@@ -227,7 +227,7 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
                 mode=f"fallback_{fallback_response.fallback_type.value}",
                 conversation_id=request.conversation_id or str(uuid.uuid4()),
                 sources_used=0,
-                model_used="error_fallback",
+                llm_model="error_fallback",
                 processing_time=process_time
             )
             
@@ -240,7 +240,7 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
                 mode="critical_error",
                 conversation_id=request.conversation_id or str(uuid.uuid4()),
                 sources_used=0,
-                model_used="system_fallback",
+                llm_model="system_fallback",
                 processing_time=process_time
             )
 

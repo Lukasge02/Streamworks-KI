@@ -23,6 +23,25 @@ export interface ApiResponse<T> {
 
 export type TabType = 'chat' | 'generator' | 'docs' | 'training' | 'search';
 
+export type FileCategory = 'help_data' | 'stream_templates';
+
+export interface TrainingFile {
+  id: string;
+  filename: string;
+  display_name?: string;
+  category: FileCategory;
+  file_path: string;
+  upload_date: string;
+  file_size: number;
+  status: 'uploading' | 'processing' | 'ready' | 'error' | 'indexed';
+  error_message?: string;
+  is_indexed: boolean;
+  indexed_at?: string;
+  chunk_count: number;
+  index_status?: string;
+  index_error?: string;
+}
+
 // Smart Search Types
 export interface SmartSearchRequest {
   query: string;

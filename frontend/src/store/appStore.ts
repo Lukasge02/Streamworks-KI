@@ -18,7 +18,7 @@ interface AppState {
   clearSearchHistory: () => void;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>((set) => ({
   activeTab: 'chat',
   copiedMessageId: null,
   smartSearch: {

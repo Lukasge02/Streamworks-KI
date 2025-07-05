@@ -1,22 +1,26 @@
 import React, { useCallback, useState } from 'react';
-import { Upload, FileText, AlertCircle } from 'lucide-react';
-import { FileCategory } from './TrainingDataTab';
+import { Upload, AlertCircle } from 'lucide-react';
+import { 
+  SUPPORTED_EXTENSIONS, 
+  TOTAL_SUPPORTED_FORMATS,
+  validateFile
+} from '../../utils/fileFormats';
+import FormatInfoPanel from './FormatInfoPanel';
 
 interface UploadZoneProps {
-  category: FileCategory;
   onFilesUploaded: (files: File[]) => void;
   isLoading?: boolean;
 }
 
 export const UploadZone: React.FC<UploadZoneProps> = ({
-  category,
   onFilesUploaded,
   isLoading = false
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
-  const allowedExtensions = ['.txt', '.csv', '.md', '.pdf', '.docx', '.xml']; // Unified list
+  // Use centralized format configuration
+  const allowedExtensions = SUPPORTED_EXTENSIONS;
 
   const maxFileSize = 50 * 1024 * 1024; // 50MB
 
@@ -25,20 +29,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     const errors: string[] = [];
 
     files.forEach(file => {
-      // Check file extension
-      const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-      if (!allowedExtensions.includes(extension)) {
-        errors.push(`${file.name}: Nicht erlaubte Dateiendung. Erlaubt: ${allowedExtensions.join(', ')}`);
-        return;
+      const validation = validateFile(file, maxFileSize);
+      
+      if (validation.isValid) {
+        valid.push(file);
+      } else {
+        errors.push(`${file.name}: ${validation.error}`);
       }
-
-      // Check file size
-      if (file.size > maxFileSize) {
-        errors.push(`${file.name}: Datei zu groß (max. 50MB)`);
-        return;
-      }
-
-      valid.push(file);
     });
 
     return { valid, errors };
@@ -127,28 +124,14 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
             </p>
             
             <p className="text-gray-500 text-sm">
-              Erlaubte Formate: {allowedExtensions.join(', ')} • Max. 50MB pro Datei • Bis zu 20 Dateien gleichzeitig
+              {TOTAL_SUPPORTED_FORMATS} Formate unterstützt • Max. 50MB pro Datei • Bis zu 20 Dateien gleichzeitig
             </p>
           </div>
         </div>
       </div>
 
       {/* File Format Info */}
-      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-        <div className="flex items-start space-x-3">
-          <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-blue-900 mb-1">Unterstützte Dateiformate</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {allowedExtensions.map((ext) => (
-                <span key={ext} className="text-sm text-blue-700 font-mono">
-                  {ext}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      <FormatInfoPanel className="mt-4" />
 
       {/* Error Messages */}
       {errors.length > 0 && (

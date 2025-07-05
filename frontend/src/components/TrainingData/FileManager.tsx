@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, RefreshCw, Filter, FileText, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
-import { TrainingFile, FileCategory } from './TrainingDataTab';
+import { FileCategory, TrainingFile } from '../../types';
 
 interface FileManagerProps {
   files: TrainingFile[];

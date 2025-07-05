@@ -100,7 +100,7 @@ export interface SearchDocumentsResponse {
 }
 
 class ApiService {
-  private baseUrl = 'http://localhost:8000/api/v1';
+  private baseUrl = '/api/v1';
 
   async sendMessage(message: string): Promise<ApiResponse<string>> {
     try {

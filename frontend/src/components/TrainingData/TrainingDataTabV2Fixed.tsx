@@ -6,6 +6,12 @@ import {
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { apiService, SourceCategory } from '../../services/apiService';
+import { 
+  TOTAL_SUPPORTED_FORMATS,
+  getDropzoneAcceptConfig,
+  formatFileSize as utilFormatFileSize 
+} from '../../utils/fileFormats';
+import FormatInfoPanel from './FormatInfoPanel';
 
 interface TrainingFile {
   id: string;
@@ -170,10 +176,7 @@ const TrainingDataTabV2Fixed: React.FC = () => {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'text/*': ['.txt', '.csv', '.bat', '.md', '.ps1'],
-      'application/xml': ['.xml', '.xsd']
-    }
+    accept: getDropzoneAcceptConfig()
   });
 
   // Delete file safely
@@ -229,12 +232,8 @@ const TrainingDataTabV2Fixed: React.FC = () => {
     }
   };
 
-  // Format file size
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
+  // Use utility function for file size formatting
+  const formatFileSize = utilFormatFileSize;
 
   // Filter files safely
   const filteredFiles = files.filter(file => {
@@ -347,11 +346,14 @@ const TrainingDataTabV2Fixed: React.FC = () => {
             <div>
               <p className="text-lg mb-2">Dateien hier ablegen oder klicken zum Auswählen</p>
               <p className="text-sm text-gray-500">
-                Unterstützt: .txt, .csv, .bat, .md, .ps1, .xml, .xsd (max. 50MB)
+                {TOTAL_SUPPORTED_FORMATS} Formate unterstützt (max. 50MB pro Datei)
               </p>
               <p className="text-xs text-gray-400 mt-2">
-                Nach der Auswahl können Sie die Datenquelle festlegen
+                Office-Dokumente, Code, XML, JSON, CSV, E-Mails und mehr • Nach der Auswahl können Sie die Datenquelle festlegen
               </p>
+              <div className="mt-2">
+                <FormatInfoPanel showDetailed={false} />
+              </div>
             </div>
           )}
         </div>

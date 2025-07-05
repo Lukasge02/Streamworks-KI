@@ -5,6 +5,12 @@ import {
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { apiService } from '../../services/apiService';
+import { 
+  SUPPORTED_EXTENSIONS, 
+  TOTAL_SUPPORTED_FORMATS,
+  validateFile,
+  getDropzoneAcceptConfig 
+} from '../../utils/fileFormats';
 
 interface UploadFile {
   file: File;
@@ -31,21 +37,15 @@ const BatchUploader: React.FC<BatchUploaderProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
 
+  // Use centralized format configuration
+  const allowedExtensions = SUPPORTED_EXTENSIONS;
+
   // Drag & Drop Setup
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadFile[] = acceptedFiles
       .filter(file => {
-        // Prüfe Dateityp
-        const isValidType = file.name.endsWith('.txt') || 
-                           file.name.endsWith('.md') || 
-                           file.name.endsWith('.csv') ||
-                           file.name.endsWith('.bat') ||
-                           file.name.endsWith('.ps1');
-        
-        // Prüfe Dateigröße (50MB)
-        const isValidSize = file.size <= 50 * 1024 * 1024;
-        
-        return isValidType && isValidSize;
+        const validation = validateFile(file);
+        return validation.isValid;
       })
       .slice(0, maxFiles - files.length) // Limitiere auf maxFiles
       .map(file => ({
@@ -56,17 +56,11 @@ const BatchUploader: React.FC<BatchUploaderProps> = ({
       }));
 
     setFiles(prev => [...prev, ...newFiles]);
-  }, [files.length, maxFiles]);
+  }, [files.length, maxFiles, allowedExtensions]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'text/plain': ['.txt'],
-      'text/markdown': ['.md'],
-      'text/csv': ['.csv'],
-      'application/x-bat': ['.bat'],
-      'text/x-powershell': ['.ps1']
-    },
+    accept: getDropzoneAcceptConfig(),
     maxFiles: maxFiles - files.length,
     disabled: isUploading
   });
@@ -248,7 +242,7 @@ const BatchUploader: React.FC<BatchUploaderProps> = ({
               Mehrere Dateien gleichzeitig hochladen
             </p>
             <p className="text-sm text-gray-500">
-              Unterstützt: .txt, .md, .csv, .bat, .ps1 (max. {maxFiles} Dateien, 50MB pro Datei)
+              {TOTAL_SUPPORTED_FORMATS} Formate unterstützt (max. {maxFiles} Dateien, 50MB pro Datei)
             </p>
             <p className="text-xs text-gray-400 mt-2">
               Dateien hierher ziehen oder klicken zum Auswählen
@@ -396,7 +390,6 @@ const BatchUploader: React.FC<BatchUploaderProps> = ({
                 {uploadFile.status === 'error' && (
                   <AlertCircle 
                     className="h-6 w-6 text-red-500" 
-                    title={uploadFile.error}
                   />
                 )}
 

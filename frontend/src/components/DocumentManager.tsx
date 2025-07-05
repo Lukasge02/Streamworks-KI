@@ -27,7 +27,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({ onRefresh }) =
       
       const response = await apiService.getDocuments();
       
-      if (response.success) {
+      if (response.success && response.data) {
         setDocuments(response.data.documents);
       } else {
         setError(response.error || 'Fehler beim Laden der Dokumente');
@@ -73,7 +73,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({ onRefresh }) =
       
       const response = await apiService.searchDocuments(query, 5);
       
-      if (response.success) {
+      if (response.success && response.data) {
         setSearchResults(response.data.results);
         setShowSearch(true);
       } else {
@@ -91,7 +91,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({ onRefresh }) =
     try {
       const response = await apiService.getDocumentDetails(docId);
       
-      if (response.success) {
+      if (response.success && response.data) {
         setSelectedDocument(response.data);
         setShowDetails(true);
       } else {

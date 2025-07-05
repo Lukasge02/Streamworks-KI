@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     
     # Legacy Generation Parameters (für Kompatibilität)
     MAX_NEW_TOKENS: int = 512
-    TEMPERATURE: float = 0.7
+    # TEMPERATURE moved to MODEL_TEMPERATURE above (no duplicate)
     TOP_P: float = 0.9
     DEVICE: str = "mps"  # auto, cuda, cpu, mps
     

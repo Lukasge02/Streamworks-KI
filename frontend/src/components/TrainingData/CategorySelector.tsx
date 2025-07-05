@@ -1,6 +1,7 @@
 import React from 'react';
 import { Brain, FileText } from 'lucide-react';
-import { FileCategory } from './TrainingDataTab';
+import { FileCategory } from '../../types';
+import { FILE_FORMAT_CATEGORIES, TOTAL_SUPPORTED_FORMATS } from '../../utils/fileFormats';
 
 interface CategorySelectorProps {
   selectedCategory: FileCategory;
@@ -11,14 +12,18 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   selectedCategory,
   onCategoryChange
 }) => {
+  // Get relevant format categories for help data
+  const helpDataFormats = FILE_FORMAT_CATEGORIES.flatMap(cat => cat.extensions).slice(0, 8); // Show first 8 formats
+  const xmlFormats = FILE_FORMAT_CATEGORIES.find(cat => cat.name === 'XML Family')?.extensions || ['.xml', '.xsd'];
+  
   const categories = [
     {
       id: 'help_data' as FileCategory,
       name: 'StreamWorks Hilfe',
-      description: 'Q&A Knowledge Base (TXT, CSV, BAT, MD, PS1)',
+      description: `Q&A Knowledge Base (${TOTAL_SUPPORTED_FORMATS} Formate unterstützt)`,
       icon: Brain,
       color: 'blue',
-      extensions: ['.txt', '.csv', '.bat', '.md', '.ps1']
+      extensions: helpDataFormats
     },
     {
       id: 'stream_templates' as FileCategory,
@@ -26,7 +31,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       description: 'XML/XSD Templates für Stream-Generierung',
       icon: FileText,
       color: 'green',
-      extensions: ['.xml', '.xsd']
+      extensions: xmlFormats
     }
   ];
 
