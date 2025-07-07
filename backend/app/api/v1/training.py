@@ -119,9 +119,8 @@ async def upload_training_files_batch(
                 failed_files.append({"filename": file.filename, "error": str(e)})
                 logger.error(f"❌ Failed to upload {file.filename}: {e}")
         
-        # Add files to RAG system for immediate availability
-        if uploaded_files:
-            await training_service.add_files_to_rag(uploaded_files)
+        # Note: Files will be processed asynchronously by the Production Document Processor
+        # No need to manually add to RAG here - the async processing handles everything
         
         return {
             "message": f"Batch upload completed: {len(uploaded_files)} successful, {len(failed_files)} failed",

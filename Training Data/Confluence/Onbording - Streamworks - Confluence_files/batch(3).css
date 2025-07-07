@@ -1,0 +1,219 @@
+/* module-key = 'com.atlassian.auiplugin:aui-spinner', location = 'src/less/aui-spinner.less' */
+@keyframes spinnerRotateAnimation{to{-webkit-transform:rotate(360deg);-ms-transform:rotate(360deg);transform:rotate(360deg)}}@-webkit-keyframes spinnerRotateAnimation{to{-webkit-transform:rotate(360deg);-ms-transform:rotate(360deg);transform:rotate(360deg)}}aui-spinner{display:block;position:relative;color:#42526E;width:30px;height:30px}aui-spinner>.aui-spinner>svg{stroke-dasharray:84px;stroke-dashoffset:67.5px;stroke-width:3px}aui-spinner[filled]>.aui-spinner>svg{left:-15px}aui-spinner[size="small"]{width:20px;height:20px}aui-spinner[size="small"]>.aui-spinner>svg{stroke-dasharray:56px;stroke-dashoffset:45px;stroke-width:2px}aui-spinner[size="small"][filled]>.aui-spinner>svg{left:-10px}aui-spinner[size="large"]{width:50px;height:50px}aui-spinner[size="large"]>.aui-spinner>svg{stroke-dasharray:140px;stroke-dashoffset:112.5px;stroke-width:5px}aui-spinner[size="large"][filled]>.aui-spinner>svg{left:-25px}aui-spinner .aui-spinner{box-sizing:border-box;position:relative;width:100%;height:100%}aui-spinner .aui-spinner>svg{position:absolute;top:0;right:0;bottom:0;left:0;-webkit-animation:.86s cubic-bezier(.4, .15, .6, .85) infinite spinnerRotateAnimation;animation:.86s cubic-bezier(.4, .15, .6, .85) infinite spinnerRotateAnimation;fill:none;stroke:currentColor;stroke-linecap:round;-webkit-transform-origin:center;-ms-transform-origin:center;transform-origin:center}aui-spinner[filled]{height:0 !important;width:0 !important;margin:auto}
+/* module-key = 'com.atlassian.plugins.issue-status-plugin:issue-status-resources', location = '/css/issue-status-plugin.css' */
+.jira-issue-status-lozenge{vertical-align:text-bottom;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:12em;word-wrap:normal;word-break:normal}.jira-issue-status-render-error{color:#d04437}.aui-lozenge.jira-issue-status-lozenge-green{background-color:#14892c;border-color:#14892c;color:#fff}.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-green{background-color:#fff;border-color:#b2d8b9;color:#14892c}.aui-lozenge.jira-issue-status-lozenge-yellow{background-color:#ffd351;border-color:#ffd351;color:#594300}.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-yellow{background-color:#fff;border-color:#ffe28c;color:#594300}.aui-lozenge.jira-issue-status-lozenge-brown{background-color:#815b3a;border-color:#815b3a;color:#fff}.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-brown{background-color:#fff;border-color:#ece7e2;color:#815b3a}.aui-lozenge.jira-issue-status-lozenge-warm-red{background-color:#d04437;border-color:#d04437;color:#fff}.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-warm-red{background-color:#fff;border-color:#f8d3d1;color:#d04437}.aui-lozenge.jira-issue-status-lozenge-blue-gray{background-color:#4a6785;border-color:#4a6785;color:#fff}.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-blue-gray{background-color:#fff;border-color:#e4e8ed;color:#4a6785}.aui-lozenge.jira-issue-status-lozenge-medium-gray{background-color:#ccc;border-color:#ccc;color:#333}.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-medium-gray{background-color:#fff;border-color:#ccc;color:#333}.aui-lozenge.jira-issue-status-lozenge-compact{width:4px;text-align:left;text-indent:-9999px}.jira-issue-status-tooltip .tipsy-inner{text-align:left}.jira-issue-status-tooltip .jira-issue-status-tooltip-title{text-transform:uppercase}.jira-issue-status-tooltip .jira-issue-status-tooltip-desc{color:#ccc}.jira-issue-status-lozenge-max-width-short{max-width:8em}.jira-issue-status-lozenge-max-width-medium{max-width:12em}.jira-issue-status-lozenge-max-width-long{max-width:20em}
+/* module-key = 'com.atlassian.confluence.plugins.confluence-jira-metadata:confluence-jira-metadata-resources', location = '/css/jira-metadata.css' */
+#jira-metadata-dialog > :not(.spinner-container):not(.spinner):not(h2) {
+    opacity: 0;
+    max-height: 100px;
+}
+
+#jira-metadata-dialog.show > :not(.spinner-container):not(.spinner):not(h2) {
+    opacity: 1;
+    max-height: 1000px;
+    transition: max-height 350ms ease-in-out,
+                opacity 350ms ease-in-out;
+}
+
+#jira-metadata-dialog .title {
+    padding-bottom: 10px;
+}
+
+#jira-metadata-dialog .jira-metadata-list {
+    padding-left: 23px;
+    margin-top: 5px;
+}
+
+#jira-metadata-dialog .jira-metadata-section {
+    padding: 0 0 10px 0;
+    display: table;
+}
+
+#jira-metadata-dialog .jira-metadata-section .jira-metadata-item {
+    list-style-type: none;
+    padding-bottom: 4px;
+}
+
+#jira-metadata-dialog .jira-metadata-section .item-label {
+    display: block;
+}
+
+#jira-metadata-dialog .section-label {
+    width: 80px;
+}
+
+#jira-metadata-dialog .item-label > a,
+#jira-metadata-dialog .item-label .item-status,
+#jira-metadata-dialog .item-label .jira-issue-status-lozenge {
+    vertical-align: middle;
+}
+
+#jira-metadata-dialog .item-status,
+#jira-metadata-dialog .item-subtext {
+    font-size: 12px;
+    color: var(--ds-text-subtlest, #707070);
+}
+
+#jira-metadata-dialog .icon {
+    padding-right: 7px;
+}
+
+/* Data URI for image file: resources/img/sprint.png */
+#jira-metadata-dialog .jira-metadata-section.SPRINTS-section .icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM2MjZGODY7Ij48cGF0aCBzdHJva2U9ImN1cnJlbnRjb2xvciIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIGQ9Ik0xMy41IDYuMjVhNS41IDUuNSAwIDEgMC01LjUgNS41bTAgMEgwbTggMGg2Ljc1bS0zLTMuNSAzLjUgMy41LTMuNSAzLjUiPjwvcGF0aD48L3N2Zz4=);
+    height: 16px;
+    width: 16px;
+}
+
+html[data-color-mode=dark] .jira-metadata-section.SPRINTS-section .icon  {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM4QzlCQUI7Ij48cGF0aCBzdHJva2U9ImN1cnJlbnRjb2xvciIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIGQ9Ik0xMy41IDYuMjVhNS41IDUuNSAwIDEgMC01LjUgNS41bTAgMEgwbTggMGg2Ljc1bS0zLTMuNSAzLjUgMy41LTMuNSAzLjUiPjwvcGF0aD48L3N2Zz4=);
+    height: 16px;
+    width: 16px;
+}
+
+/* Data URI for image file: resources/img/epic.png */
+#jira-metadata-dialog .jira-metadata-section.EPICS-section .icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM2MjZGODY7Ij48cGF0aCBmaWxsPSJjdXJyZW50Y29sb3IiIGQ9Ik02IDE1LjI1aC0uNzVhLjc1Ljc1IDAgMCAwIDEuMzA0LjUwNXptNy43NS04LjUuNTU0LjUwNWEuNzUuNzUgMCAwIDAtLjQwNy0xLjI0ek0xMCA2aC0uNzV2LjYxNWwuNjAzLjEyem0wLTUuMjVoLjc1QS43NS43NSAwIDAgMCA5LjQ0Ni4yNDV6bS03Ljc1IDguNS0uNTU0LS41MDVhLjc1Ljc1IDAgMCAwIC40MDcgMS4yNHpNNiAxMGguNzV2LS42MTVsLS42MDMtLjEyem0uNTU0IDUuNzU1IDcuNzUtOC41LTEuMTA4LTEuMDEtNy43NSA4LjV6bTcuMzQzLTkuNzQtMy43NS0uNzUtLjI5NCAxLjQ3IDMuNzUuNzV6TTEwLjc1IDZWLjc1aC0xLjVWNnpNOS40NDYuMjQ1bC03Ljc1IDguNSAxLjEwOCAxLjAxIDcuNzUtOC41em0tNy4zNDMgOS43NCAzLjc1Ljc1LjI5NC0xLjQ3LTMuNzUtLjc1ek01LjI1IDEwdjUuMjVoMS41VjEweiI+PC9wYXRoPjwvc3ZnPg==);
+    height: 16px;
+    width: 16px;
+}
+
+html[data-color-mode=dark] .jira-metadata-section.EPICS-section .icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM4QzlCQUI7Ij48cGF0aCBmaWxsPSJjdXJyZW50Y29sb3IiIGQ9Ik02IDE1LjI1aC0uNzVhLjc1Ljc1IDAgMCAwIDEuMzA0LjUwNXptNy43NS04LjUuNTU0LjUwNWEuNzUuNzUgMCAwIDAtLjQwNy0xLjI0ek0xMCA2aC0uNzV2LjYxNWwuNjAzLjEyem0wLTUuMjVoLjc1QS43NS43NSAwIDAgMCA5LjQ0Ni4yNDV6bS03Ljc1IDguNS0uNTU0LS41MDVhLjc1Ljc1IDAgMCAwIC40MDcgMS4yNHpNNiAxMGguNzV2LS42MTVsLS42MDMtLjEyem0uNTU0IDUuNzU1IDcuNzUtOC41LTEuMTA4LTEuMDEtNy43NSA4LjV6bTcuMzQzLTkuNzQtMy43NS0uNzUtLjI5NCAxLjQ3IDMuNzUuNzV6TTEwLjc1IDZWLjc1aC0xLjVWNnpNOS40NDYuMjQ1bC03Ljc1IDguNSAxLjEwOCAxLjAxIDcuNzUtOC41em0tNy4zNDMgOS43NCAzLjc1Ljc1LjI5NC0xLjQ3LTMuNzUtLjc1ek01LjI1IDEwdjUuMjVoMS41VjEweiI+PC9wYXRoPjwvc3ZnPg==);
+    height: 16px;
+    width: 16px;
+}
+
+/* Data URI for image file: resources/img/version.gif */
+#jira-metadata-dialog .jira-metadata-section.VERSIONS-section .icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM2MjZGODY7Ij48cGF0aCBmaWxsPSJjdXJyZW50Y29sb3IiIGQ9Ik0uNzUgNy43NVY3YS43NS43NSAwIDAgMC0uNzUuNzV6bTE0LjUgMCAuNjQ2LjM4MkEuNzUuNzUgMCAwIDAgMTUuMjUgN3ptLTEyLjUtM1Y0YS43NS43NSAwIDAgMC0uNzUuNzV6bTYuMjUgMCAuNjQ4LS4zNzhBLjc1Ljc1IDAgMCAwIDkgNHptLTQuMjUtMlYySDR2Ljc1em0xLjUgMEg3VjJoLS43NXptNi4xMTMgOS44ODYuNjQ2LjM4MnptMi4yNDEtNS4yNjgtMi44ODcgNC44ODYgMS4yOTIuNzY0IDIuODg3LTQuODg2ek0xMS4yODcgMTIuNUgyVjE0aDkuMjg3ek0xLjUgMTJWNy43NUgwVjEyek0uNzUgOC41aDJWN2gtMnptMi43NS0uNzV2LTNIMnYzem0tLjc1Ljc1aDhWN2gtOHptOCAwaDQuNVY3aC00LjV6TTguMzUyIDUuMTI4bDEuNzUgMyAxLjI5Ni0uNzU2LTEuNzUtM3pNMi43NSA1LjVoMlY0aC0yem0yLjc1LS43NXYtMkg0djJ6TTQuNzUgMy41aDEuNVYyaC0xLjV6bTAgMmgxLjVWNGgtMS41em0xLjUgMEg5VjRINi4yNXpNNS41IDIuNzV2Mkg3di0yek0yIDEyLjVhLjUuNSAwIDAgMS0uNS0uNUgwYTIgMiAwIDAgMCAyIDJ6bTkuNzE3LS4yNDZhLjUuNSAwIDAgMS0uNDMuMjQ2VjE0YTIgMiAwIDAgMCAxLjcyMi0uOTgyeiI+PC9wYXRoPjwvc3ZnPg==);
+    height: 16px;
+    width: 16px;
+}
+
+html[data-color-mode=dark] .jira-metadata-section.VERSIONS-section .icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM4QzlCQUI7Ij48cGF0aCBmaWxsPSJjdXJyZW50Y29sb3IiIGQ9Ik0uNzUgNy43NVY3YS43NS43NSAwIDAgMC0uNzUuNzV6bTE0LjUgMCAuNjQ2LjM4MkEuNzUuNzUgMCAwIDAgMTUuMjUgN3ptLTEyLjUtM1Y0YS43NS43NSAwIDAgMC0uNzUuNzV6bTYuMjUgMCAuNjQ4LS4zNzhBLjc1Ljc1IDAgMCAwIDkgNHptLTQuMjUtMlYySDR2Ljc1em0xLjUgMEg3VjJoLS43NXptNi4xMTMgOS44ODYuNjQ2LjM4MnptMi4yNDEtNS4yNjgtMi44ODcgNC44ODYgMS4yOTIuNzY0IDIuODg3LTQuODg2ek0xMS4yODcgMTIuNUgyVjE0aDkuMjg3ek0xLjUgMTJWNy43NUgwVjEyek0uNzUgOC41aDJWN2gtMnptMi43NS0uNzV2LTNIMnYzem0tLjc1Ljc1aDhWN2gtOHptOCAwaDQuNVY3aC00LjV6TTguMzUyIDUuMTI4bDEuNzUgMyAxLjI5Ni0uNzU2LTEuNzUtM3pNMi43NSA1LjVoMlY0aC0yem0yLjc1LS43NXYtMkg0djJ6TTQuNzUgMy41aDEuNVYyaC0xLjV6bTAgMmgxLjVWNGgtMS41em0xLjUgMEg5VjRINi4yNXpNNS41IDIuNzV2Mkg3di0yek0yIDEyLjVhLjUuNSAwIDAgMS0uNS0uNUgwYTIgMiAwIDAgMCAyIDJ6bTkuNzE3LS4yNDZhLjUuNSAwIDAgMS0uNDMuMjQ2VjE0YTIgMiAwIDAgMCAxLjcyMi0uOTgyeiI+PC9wYXRoPjwvc3ZnPg==);
+    height: 16px;
+    width: 16px;
+}
+
+/* Data URI for image file: resources/img/issue.png */
+#jira-metadata-dialog .jira-metadata-section.ISSUES-section .icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM2MjZGODY7Ij48cGF0aCBzdHJva2U9ImN1cnJlbnRjb2xvciIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIGQ9Im01IDcuODc1IDIgMi4zNzUgNC00Ljc1bS05IDcuNzVoMTJjLjY5IDAgMS4yNS0uNTYgMS4yNS0xLjI1VjRjMC0uNjktLjU2LTEuMjUtMS4yNS0xLjI1SDJDMS4zMSAyLjc1Ljc1IDMuMzEuNzUgNHY4YzAgLjY5LjU2IDEuMjUgMS4yNSAxLjI1WiI+PC9wYXRoPjwvc3ZnPg==);
+    height: 16px;
+    width: 16px;
+}
+
+html[data-color-mode=dark] .jira-metadata-section.ISSUES-section .icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM4QzlCQUI7Ij48cGF0aCBzdHJva2U9ImN1cnJlbnRjb2xvciIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIGQ9Im01IDcuODc1IDIgMi4zNzUgNC00Ljc1bS05IDcuNzVoMTJjLjY5IDAgMS4yNS0uNTYgMS4yNS0xLjI1VjRjMC0uNjktLjU2LTEuMjUtMS4yNS0xLjI1SDJDMS4zMSAyLjc1Ljc1IDMuMzEuNzUgNHY4YzAgLjY5LjU2IDEuMjUgMS4yNSAxLjI1WiI+PC9wYXRoPjwvc3ZnPg==);
+    height: 16px;
+    width: 16px;
+}
+
+#jira-metadata-dialog .spinner-container {
+    height: 100px;
+    position: relative;
+}
+
+#jira-metadata-dialog .spinner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-top: -5px;
+}
+
+#content-metadata-jira .aui-icon {
+    margin-top: -1px;
+    padding-right: 4px;
+}
+
+#content-metadata-jira::before {
+    margin: 1px 5px 0 0;
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM4QzlCQUI7Ij48cGF0aCBzdHJva2U9ImN1cnJlbnRjb2xvciIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIGQ9Ik0xMS4yNSA0Ljc1djEuNjI1YzAgMS4wMzYuODQgMS44NzUgMS44NzUgMS44NzVoMS42MjV2LTdoLTd2MS42MjVjMCAxLjAzNi44NCAxLjg3NSAxLjg3NSAxLjg3NXptMCAwaC03djEuNjI1YzAgMS4wMzYuODQgMS44NzUgMS44NzUgMS44NzVINy43NW0zLjUtMy41djdIOS42MjVBMS44NzUgMS44NzUgMCAwIDEgNy43NSA5Ljg3NVY4LjI1bTAgMGgtN3YxLjYyNWMwIDEuMDM2Ljg0IDEuODc1IDEuODc1IDEuODc1SDQuMjV2MS42MjVjMCAxLjAzNi44NCAxLjg3NSAxLjg3NSAxLjg3NUg3Ljc1eiI+PC9wYXRoPjwvc3ZnPg==);
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    content:"";
+}
+
+html[data-color-mode=dark] #content-metadata-jira::before {
+    margin: 1px 5px 0 0;
+    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMTYgMTYiIHJvbGU9InByZXNlbnRhdGlvbiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iY29sb3I6ICM4QzlCQUI7Ij48cGF0aCBzdHJva2U9ImN1cnJlbnRjb2xvciIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIGQ9Ik0xMS4yNSA0Ljc1djEuNjI1YzAgMS4wMzYuODQgMS44NzUgMS44NzUgMS44NzVoMS42MjV2LTdoLTd2MS42MjVjMCAxLjAzNi44NCAxLjg3NSAxLjg3NSAxLjg3NXptMCAwaC03djEuNjI1YzAgMS4wMzYuODQgMS44NzUgMS44NzUgMS44NzVINy43NW0zLjUtMy41djdIOS42MjVBMS44NzUgMS44NzUgMCAwIDEgNy43NSA5Ljg3NVY4LjI1bTAgMGgtN3YxLjYyNWMwIDEuMDM2Ljg0IDEuODc1IDEuODc1IDEuODc1SDQuMjV2MS42MjVjMCAxLjAzNi44NCAxLjg3NSAxLjg3NSAxLjg3NUg3Ljc1eiI+PC9wYXRoPjwvc3ZnPg==);
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    content:"";
+}
+
+/* PAGE-METADATA-BANNER OVERRIDES */
+#page-metadata-banner .page-metadata-item .content-metadata-jira .page-banner-item-icon {
+    margin: 1px 5px 0 0;
+}
+
+#page-metadata-banner #content-metadata-jira-wrapper {
+    padding: 0 10px 0 0;
+}
+
+/* AUI OVERRIDES */
+#page-metadata-banner .banner #content-metadata-jira.active {
+    border: 1px solid var(--ds-border, #ccc);
+    border-radius: 3.01px;
+}
+
+#page-metadata-banner .banner #content-metadata-jira:hover {
+    border-color: var(--ds-border-bold, #999);
+}
+
+/*******
+   temporary status macro color overrides
+   DO NOT touch these without first reaching out to #cc-fe-performance-and-platform
+   (context: https://hello.atlassian.net/wiki/spaces/CCPERF/pages/2631730520/Lozenge+Color+Alignment+Plan)
+   These colors were taken to match from the status-editor.scss file in the confluence-frontend.
+   *******/
+/* atlassian/issue-status-plugin:issue-status-plugin.css overrides */
+.jira-issue-status-render-error {
+    color: var(--ds-text-danger, #d04437);
+}
+.aui-lozenge.jira-issue-status-lozenge-green {
+    background-color: var(--ds-background-success-bold, #1f845a);
+    border-color: var(--ds-background-success-bold, #1f845a);
+    color: var(--ds-text-inverse, #fff);
+}
+.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-green {
+    background-color: var(--ds-background-success, #dffcf0);
+    border-color: var(--ds-background-success, #dffcf0);
+    color: var(--ds-text-success, #216e4e);
+}
+.aui-lozenge.jira-issue-status-lozenge-yellow {
+    background-color: var(--ds-background-warning-bold, #e2b203);
+    border-color: var(--ds-background-warning-bold, #e2b203);
+    color: var(--ds-text-warning-inverse, #172b4d);
+}
+.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-yellow {
+    background-color: var(--ds-background-warning, #fff7d6);
+    border-color: var(--ds-background-warning, #fff7d6);
+    color: var(--ds-text-warning, #974f0c);
+}
+.aui-lozenge.jira-issue-status-lozenge-warm-red {
+    background-color: var(--ds-background-danger-bold, #ca3521);
+    border-color: var(--ds-background-danger-bold, #ca3521);
+    color: var(--ds-text-inverse, #fff);
+}
+.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-warm-red {
+    background-color: var(--ds-background-danger, #ffedeb);
+    border-color: var(--ds-background-danger, #ffedeb);
+    color: var(--ds-text-danger, #ae2a19);
+}
+.aui-lozenge.jira-issue-status-lozenge-blue-gray {
+    background-color: var(--ds-background-neutral-bold, #44546f);
+    border-color: var(--ds-background-neutral-bold, #44546f);
+    color: var(--ds-text-inverse, #fff);
+}
+.aui-lozenge.aui-lozenge-subtle.jira-issue-status-lozenge-blue-gray {
+    background-color: var(--ds-background-neutral, #091e420f);
+    border-color: transparent;
+    color: var(--ds-text-subtle, #44546f);
+}
+.jira-issue-status-tooltip .jira-issue-status-tooltip-desc {
+    color: var(--ds-text-subtle, #ccc);
+}

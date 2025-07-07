@@ -1,0 +1,2 @@
+var e=globalThis.parcelRequired477;(0,e.register)("9RjLU",function(t,a){Object.defineProperty(t.exports,"__esModule",{value:!0}),t.exports.default=void 0;var l=u(e("gwFzn")),r=u(e("kNHXO")),o=u(e("cCp8H"));function u(e){return e&&e.__esModule?e:{default:e}}let n=e=>l.default.createElement(r.default,Object.assign({LEGACY_fallbackIcon:o.default},e));n.Name="AppSwitcherIconMigration",t.exports.default=n});
+//# sourceMappingURL=app-switcher.a99cabcf.js.map

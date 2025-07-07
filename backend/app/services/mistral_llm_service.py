@@ -3,6 +3,7 @@ Mistral 7B LLM Service - Deutsche Optimierung
 Spezialisiert für StreamWorks-KI mit professionellen deutschen Antworten
 """
 import logging
+import re
 import aiohttp
 import asyncio
 from typing import Dict, Any, Optional
@@ -135,49 +136,138 @@ class MistralLLMService:
         return german_response
     
     def post_process_german(self, response: str) -> str:
-        """Nachbearbeitung für perfekte deutsche Antworten"""
+        """Nachbearbeitung für perfekte deutsche Antworten (v3.0 - Enhanced)"""
         
         if not response:
             return "Entschuldigung, ich konnte keine Antwort generieren."
         
-        # Englische Fachbegriffe ersetzen
-        for eng, ger in self.german_replacements.items():
+        # KRITISCHE QUALITÄTSVERBESSERUNGEN
+        
+        # 1. Englische Fachbegriffe aggressiv ersetzen
+        enhanced_replacements = {
+            **self.german_replacements,
+            # Zusätzliche kritische Begriffe
+            "Batch Job": "Batch-Job",
+            "batch job": "Batch-Job", 
+            "Data Processing": "Datenverarbeitung",
+            "data processing": "Datenverarbeitung",
+            "Config File": "Konfigurationsdatei",
+            "config file": "Konfigurationsdatei",
+            "Workflow": "Ablaufsteuerung",
+            "workflow": "Ablaufsteuerung",
+            "Error Handling": "Fehlerbehandlung",
+            "error handling": "Fehlerbehandlung",
+            "Best Practice": "Bewährte Verfahren",
+            "best practice": "bewährte Verfahren",
+            "Use Case": "Anwendungsfall",
+            "use case": "Anwendungsfall",
+            "File Path": "Dateipfad",
+            "file path": "Dateipfad",
+            "Output": "Ausgabe",
+            "output": "Ausgabe",
+            "Input": "Eingabe",
+            "input": "Eingabe"
+        }
+        
+        for eng, ger in enhanced_replacements.items():
             response = response.replace(eng, ger)
         
-        # Höflichkeitsformen sicherstellen (nur wenn nötig)
-        if " du " in response or " dich " in response:
-            response = response.replace(" du ", " Sie ")
-            response = response.replace(" dich ", " Sie ")
-            response = response.replace(" dein ", " Ihr ")
-            response = response.replace(" deine ", " Ihre ")
-            response = response.replace(" dir ", " Ihnen ")
+        # 2. Höflichkeitsformen konsistent durchsetzen
+        informal_patterns = [
+            (r'\b[Dd]u\b', 'Sie'),
+            (r'\b[Dd]ich\b', 'Sie'), 
+            (r'\b[Dd]ein\b', 'Ihr'),
+            (r'\b[Dd]eine\b', 'Ihre'),
+            (r'\b[Dd]ir\b', 'Ihnen'),
+            (r'\b[Kk]annst du\b', 'Können Sie'),
+            (r'\b[Ss]ollst du\b', 'Sollten Sie'),
+            (r'\b[Mm]usst du\b', 'Müssen Sie')
+        ]
         
-        # Markdown-Formatierung verbessern
+        for pattern, replacement in informal_patterns:
+            response = re.sub(pattern, replacement, response)
+        
+        # 3. Entferne chaotische englische Titel aus Citations
+        response = re.sub(r'A:\s*Yes,.*?StreamWorks.*?supports', 'StreamWorks unterstützt', response, flags=re.IGNORECASE)
+        response = re.sub(r'Q:\s*.*?\?', '', response)  # Entferne englische Fragen
+        
+        # 4. Markdown-Formatierung verbessern
         response = self.enhance_markdown_formatting(response)
+        
+        # 5. Deutsche Satzstruktur optimieren
+        response = self._optimize_german_sentence_structure(response)
         
         return response
     
+    def _optimize_german_sentence_structure(self, text: str) -> str:
+        """Optimiert deutsche Satzstruktur"""
+        # Verbessere typische englische Konstruktionen
+        text = re.sub(r'Um zu (.+), (.+)', r'Für \1 \2', text)  # "Um zu" -> "Für"
+        text = re.sub(r'Sie können (.+) verwenden um', r'Verwenden Sie \1, um', text)  # Besserer Satzbau
+        
+        # Deutsche Konjunktionen bevorzugen
+        text = text.replace('sowie auch', 'sowie')
+        text = text.replace('aber auch', 'jedoch auch')
+        
+        return text
+    
     def enhance_markdown_formatting(self, text: str) -> str:
-        """Verbessere Markdown-Formatierung"""
+        """Verbessere Markdown-Formatierung (v3.0 - Structure Enforcement)"""
         
         lines = text.split('\n')
         formatted_lines = []
         
-        for line in lines:
+        # Struktur-Enforcement: Erzwinge das gewünschte Schema
+        has_main_header = any(line.strip().startswith('## 🔧') for line in lines)
+        
+        for i, line in enumerate(lines):
             line = line.strip()
             
-            # Fettgedruckten Text zu Überschrift machen
+            # Hauptheader sicherstellen
+            if not has_main_header and i == 0 and line and not line.startswith('#'):
+                formatted_lines.append('## 🔧 StreamWorks-Lösung')
+                formatted_lines.append('')
+                
+            # Fettgedruckten Text zu korrekten Unterheadern machen
             if line.startswith('**') and line.endswith('**') and len(line) > 4:
-                line = f"### {line.replace('**', '')}"
+                header_text = line.replace('**', '').strip()
+                # Bestimme den korrekten Header-Typ basierend auf Inhalt
+                if any(word in header_text.lower() for word in ['überblick', 'zusammenfassung', 'erklärung']):
+                    line = f"### 📋 {header_text}"
+                elif any(word in header_text.lower() for word in ['umsetzung', 'implementierung', 'schritte', 'anleitung']):
+                    line = f"### 💻 {header_text}"
+                elif any(word in header_text.lower() for word in ['hinweise', 'wichtig', 'beachten', 'tipp']):
+                    line = f"### 💡 {header_text}"
+                else:
+                    line = f"### {header_text}"
             
-            # Sicherstellen dass Überschriften korrekt formatiert sind
-            elif line.startswith('#') and not line.startswith('##'):
-                if not line.startswith('## '):
-                    line = f"## {line.lstrip('#').strip()}"
+            # Überschriften-Hierarchie korrigieren
+            elif line.startswith('#'):
+                level = len(line) - len(line.lstrip('#'))
+                content = line.lstrip('#').strip()
+                
+                # Hauptüberschrift
+                if level == 1 or (level == 2 and not content.startswith('🔧')):
+                    line = f"## 🔧 {content}"
+                # Unterüberschriften
+                elif level >= 3 or (level == 2 and content.startswith('🔧')):
+                    line = f"### {content}"
             
             formatted_lines.append(line)
         
-        return '\n'.join(formatted_lines)
+        # Leere Zeilen bereinigen (max 2 aufeinanderfolgende)
+        cleaned_lines = []
+        empty_count = 0
+        for line in formatted_lines:
+            if not line.strip():
+                empty_count += 1
+                if empty_count <= 1:
+                    cleaned_lines.append(line)
+            else:
+                empty_count = 0
+                cleaned_lines.append(line)
+        
+        return '\n'.join(cleaned_lines)
     
     async def get_stats(self) -> Dict[str, Any]:
         """Mistral Service Statistiken"""
@@ -198,12 +288,22 @@ class MistralLLMService:
     async def health_check(self) -> bool:
         """Health Check für Mistral Service"""
         try:
-            test_response = await self.generate_german_response(
-                user_message="Test",
-                context=""
+            # Quick health check with timeout
+            test_response = await asyncio.wait_for(
+                self.ollama_generate(
+                    prompt="Reply with 'OK' if working",
+                    model=self.model_name,
+                    options={
+                        "temperature": 0.1,
+                        "num_predict": 10,  # Very short response
+                        "num_ctx": 512  # Minimal context
+                    }
+                ),
+                timeout=5.0  # 5 second timeout
             )
             return len(test_response) > 0
-        except Exception:
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
             return False
 
 # Global instance

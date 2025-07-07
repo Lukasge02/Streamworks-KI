@@ -166,12 +166,17 @@ class ComponentHealthChecker:
             
             # Get LLM service stats
             stats = await mistral_llm_service.get_stats()
+            
+            # Also do a real health check
+            is_healthy = await mistral_llm_service.health_check()
+            stats["health_check_passed"] = is_healthy
+            
             response_time = (time.time() - start_time) * 1000
             
-            # Determine status based on initialization and connectivity
-            if stats.get("status") == "healthy":
+            # Determine status based on initialization and health check
+            if stats.get("status") == "ready" and is_healthy:
                 status = "healthy"
-            elif stats.get("status") == "not_initialized":
+            elif stats.get("status") == "initializing" or (stats.get("status") == "ready" and not is_healthy):
                 status = "degraded"
             else:
                 status = "unhealthy"

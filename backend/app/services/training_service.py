@@ -14,6 +14,8 @@ from app.core.config import settings
 from app.services.rag_service import RAGService
 from app.services.txt_to_md_converter import txt_to_md_converter
 from app.services.multi_format_processor import multi_format_processor, FileProcessingResult
+from app.services.enterprise_markdown_converter import enterprise_markdown_converter
+from app.services.production_document_processor import production_document_processor, ProcessingResult
 from pathlib import Path
 from langchain.schema import Document
 
@@ -164,7 +166,9 @@ class TrainingService:
             logger.info(f"📝 Database record created: {file_id}")
             
             # Process file asynchronously with separate DB session
-            asyncio.create_task(self._process_uploaded_file_async(file_id, original_path, category))
+            task = asyncio.create_task(self._process_uploaded_file_async(file_id, original_path, category))
+            # Add error callback to log any unhandled exceptions
+            task.add_done_callback(self._log_async_task_result)
             
             # Convert to response model
             return TrainingFileResponse(
@@ -188,6 +192,16 @@ class TrainingService:
             if os.path.exists(original_path):
                 os.remove(original_path)
             raise e
+    
+    def _log_async_task_result(self, task: asyncio.Task):
+        """Log the result of an async task to catch any unhandled exceptions"""
+        try:
+            if task.exception():
+                logger.error(f"❌ Async document processing task failed: {task.exception()}")
+            else:
+                logger.info(f"✅ Async document processing task completed successfully")
+        except Exception as e:
+            logger.error(f"❌ Error in async task callback: {e}")
     
     async def get_training_files(
         self,
@@ -352,31 +366,9 @@ class TrainingService:
                 files_deleted.append(f"Original: {file_record.file_path}")
                 logger.info(f"🗑️ Original file deleted: {file_record.file_path}")
             
-            # Delete optimized MD file if it exists (Cascade Delete)
-            if file_record.processed_file_path and os.path.exists(file_record.processed_file_path):
-                os.remove(file_record.processed_file_path)
-                files_deleted.append(f"Optimized: {file_record.processed_file_path}")
-                logger.info(f"🗑️ Optimized MD file deleted: {file_record.processed_file_path}")
-            
-            # Also try to find and delete MD files by pattern (fallback)
-            # Pattern: {file_id}_{filename}_optimized.md
-            base_filename = os.path.splitext(file_record.filename)[0]
-            optimized_pattern = f"{file_record.id}_{base_filename}_optimized.md"
-            
-            # Check common optimized directories
-            optimized_dirs = [
-                "/Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend/data/training_data/optimized/help_data",
-                "/Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend/data/training_data/optimized/stream_templates"
-            ]
-            
-            for opt_dir in optimized_dirs:
-                if os.path.exists(opt_dir):
-                    for filename in os.listdir(opt_dir):
-                        if file_record.id in filename and filename.endswith('_optimized.md'):
-                            opt_file_path = os.path.join(opt_dir, filename)
-                            os.remove(opt_file_path)
-                            files_deleted.append(f"Found optimized: {opt_file_path}")
-                            logger.info(f"🗑️ Found and deleted optimized file: {opt_file_path}")
+            # Delete all associated markdown files (comprehensive cleanup)
+            markdown_files_deleted = await self._delete_associated_markdown_files(file_record)
+            files_deleted.extend(markdown_files_deleted)
             
             # Remove from ChromaDB if indexed
             if file_record.is_indexed:
@@ -397,6 +389,103 @@ class TrainingService:
             logger.error(f"❌ Failed to delete file {file_id}: {e}")
             await self.db.rollback()
             raise e
+    
+    async def _delete_associated_markdown_files(self, file_record: TrainingFile) -> List[str]:
+        """
+        Comprehensive markdown file cleanup for a deleted training file.
+        Handles all possible markdown file locations and patterns.
+        """
+        from ..core.config import settings
+        
+        files_deleted = []
+        base_filename = os.path.splitext(file_record.filename)[0]
+        
+        try:
+            # 1. Delete processed_file_path if exists (database tracked)
+            if file_record.processed_file_path and os.path.exists(file_record.processed_file_path):
+                os.remove(file_record.processed_file_path)
+                files_deleted.append(f"DB-tracked MD: {file_record.processed_file_path}")
+                logger.info(f"🗑️ DB-tracked markdown deleted: {file_record.processed_file_path}")
+            
+            # 2. Search all possible markdown directories
+            markdown_search_dirs = []
+            
+            # Build search paths from config
+            if hasattr(settings, 'TRAINING_DATA_PATH'):
+                base_path = settings.TRAINING_DATA_PATH
+                markdown_search_dirs.extend([
+                    os.path.join(base_path, "optimized", "help_data"),
+                    os.path.join(base_path, "optimized", "stream_templates"),
+                    os.path.join(base_path, "optimized"),
+                    os.path.join(base_path, "processed"),
+                    base_path
+                ])
+            
+            # Fallback to hardcoded paths if config not available
+            if not markdown_search_dirs:
+                markdown_search_dirs = [
+                    "./data/training_data/optimized/help_data",
+                    "./data/training_data/optimized/stream_templates", 
+                    "./data/training_data/optimized",
+                    "./data/training_data/processed",
+                    "./data/training_data"
+                ]
+            
+            # 3. Search patterns for markdown files
+            search_patterns = [
+                f"{file_record.id}_{base_filename}_optimized.md",
+                f"{file_record.id}_{base_filename}.md", 
+                f"{file_record.id}_*_optimized.md",
+                f"{file_record.id}_*.md",
+                f"{base_filename}_optimized.md",
+                f"{base_filename}.md"
+            ]
+            
+            # 4. Search and delete matching files
+            for search_dir in markdown_search_dirs:
+                if not os.path.exists(search_dir):
+                    continue
+                    
+                try:
+                    for filename in os.listdir(search_dir):
+                        # Check if file matches any pattern
+                        file_matches = False
+                        
+                        # Direct pattern matching
+                        for pattern in search_patterns:
+                            if "*" in pattern:
+                                # Handle wildcard patterns
+                                pattern_parts = pattern.split("*")
+                                if (filename.startswith(pattern_parts[0]) and 
+                                    filename.endswith(pattern_parts[1])):
+                                    file_matches = True
+                                    break
+                            elif filename == pattern:
+                                file_matches = True
+                                break
+                        
+                        # Also check if file contains file_id and is markdown
+                        if not file_matches and file_record.id in filename and filename.endswith('.md'):
+                            file_matches = True
+                        
+                        if file_matches:
+                            markdown_path = os.path.join(search_dir, filename)
+                            try:
+                                os.remove(markdown_path)
+                                files_deleted.append(f"Pattern-matched MD: {markdown_path}")
+                                logger.info(f"🗑️ Pattern-matched markdown deleted: {markdown_path}")
+                            except OSError as e:
+                                logger.warning(f"⚠️ Could not delete {markdown_path}: {e}")
+                                
+                except OSError as e:
+                    logger.warning(f"⚠️ Could not list directory {search_dir}: {e}")
+            
+            logger.info(f"🗑️ Markdown cleanup completed for {file_record.id}: {len(files_deleted)} files deleted")
+            return files_deleted
+            
+        except Exception as e:
+            logger.error(f"❌ Error during markdown cleanup for {file_record.id}: {e}")
+            return files_deleted  # Return what we managed to delete
     
     async def get_training_status(self) -> TrainingStatusResponse:
         """Get training status statistics for both categories"""
@@ -632,11 +721,30 @@ class TrainingService:
     
     async def _process_uploaded_file_async(self, file_id: str, file_path: str, category: str):
         """Process uploaded file with separate DB session"""
-        # Create NEW database session for async processing
-        from app.models.database import AsyncSessionLocal
-        async with AsyncSessionLocal() as db_session:
-            service = TrainingService(db_session)
-            await service._process_uploaded_file(file_id, file_path, category)
+        try:
+            # Create NEW database session for async processing
+            from app.models.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as db_session:
+                service = TrainingService(db_session)
+                await service._process_uploaded_file(file_id, file_path, category)
+                logger.info(f"✅ Async processing completed for file: {file_id}")
+        except Exception as e:
+            logger.error(f"❌ Async processing failed for file {file_id}: {e}")
+            # Try to update file status to error in a separate session
+            try:
+                from app.models.database import AsyncSessionLocal
+                async with AsyncSessionLocal() as error_db_session:
+                    query = select(TrainingFile).where(TrainingFile.id == file_id)
+                    result = await error_db_session.execute(query)
+                    file_record = result.scalar_one_or_none()
+                    if file_record:
+                        file_record.status = "error"
+                        file_record.processing_error = str(e)[:500]  # Limit error message length
+                        await error_db_session.commit()
+                        logger.info(f"📝 Updated file {file_id} status to error")
+            except Exception as db_error:
+                logger.error(f"❌ Failed to update error status for file {file_id}: {db_error}")
+            raise e
 
     async def _process_uploaded_file(self, file_id: str, file_path: str, category: str):
         """Enhanced file processing with Multi-Format support"""
@@ -659,27 +767,63 @@ class TrainingService:
             file_record.status = "processing"
             await self.db.commit()
             
-            # 🚀 NEW: Multi-Format Processing
+            # 🏭 NEW: Production Document Processing
             try:
                 # Read file content
                 with open(file_path, 'rb') as f:
                     file_content = f.read()
                 
-                # Process with Multi-Format Processor
-                processing_result: FileProcessingResult = await multi_format_processor.process_file(
+                logger.info(f"🏭 Starting production document processing: {file_path_obj.name} ({len(file_content)} bytes)")
+                
+                # Process with Production Document Processor
+                processing_result: ProcessingResult = await production_document_processor.process_document(
                     file_path=str(file_path_obj),
-                    content=file_content
+                    content=file_content,
+                    filename=file_path_obj.name
                 )
                 
                 if not processing_result.success:
-                    raise ValueError(f"Multi-format processing failed: {processing_result.error_message}")
+                    logger.warning(f"⚠️ Production processing had issues but continuing: {processing_result.error_message}")
+                    if not processing_result.documents:
+                        raise ValueError(f"Production processing failed completely: {processing_result.error_message}")
+                
+                # 🚀 Convert chunks to enterprise-grade markdown
+                optimized_dir = Path(self.base_path) / "optimized" / category
+                optimized_dir.mkdir(parents=True, exist_ok=True)
+                
+                markdown_result = await enterprise_markdown_converter.convert_to_markdown(
+                    chunks=processing_result.documents,
+                    source_file_path=file_path_obj,
+                    output_dir=optimized_dir,
+                    metadata={
+                        "file_format": processing_result.file_format.value,
+                        "category": processing_result.category.value,
+                        "processing_method": processing_result.processing_method,
+                        "chunk_count": processing_result.chunk_count,
+                        "original_size": len(file_content),
+                        "processing_quality": processing_result.quality.value,
+                        "extraction_confidence": processing_result.extraction_confidence
+                    }
+                )
+                
+                if not markdown_result.success:
+                    logger.warning(f"⚠️ Markdown conversion failed, proceeding with original documents: {markdown_result.error_message}")
                 
                 # Update file record with enhanced metadata
                 file_record.original_format = processing_result.file_format.value
-                file_record.optimized_format = "chunked_documents"
-                file_record.conversion_status = "completed"
                 file_record.document_category = processing_result.category.value
                 file_record.processing_method = processing_result.processing_method
+                file_record.processing_quality = processing_result.quality.value
+                file_record.extraction_confidence = str(processing_result.extraction_confidence)
+                
+                # Set conversion status based on results
+                if markdown_result.success:
+                    file_record.optimized_format = "md"
+                    file_record.processed_file_path = str(markdown_result.markdown_file_path)
+                    file_record.conversion_status = "completed"
+                else:
+                    file_record.optimized_format = "processed"
+                    file_record.conversion_status = "partial"  # Processed but no markdown
                 
                 processing_metadata = {
                     "file_format": processing_result.file_format.value,
@@ -688,25 +832,36 @@ class TrainingService:
                     "chunk_count": processing_result.chunk_count,
                     "original_size": len(file_content),
                     "processing_date": datetime.utcnow().isoformat(),
-                    "processor_version": "2.0.0_multiformat"
+                    "processor_version": "2.0.0_production",
+                    "processing_quality": processing_result.quality.value,
+                    "extraction_confidence": processing_result.extraction_confidence,
+                    "processing_time": processing_result.processing_time,
+                    "warnings": processing_result.warnings,
+                    # Markdown conversion metadata
+                    "markdown_converter_version": "1.0.0_enterprise" if markdown_result.success else None,
+                    "markdown_quality_score": markdown_result.quality_metrics.quality_score if markdown_result.success and markdown_result.quality_metrics else 0.0,
+                    "markdown_file_path": str(markdown_result.markdown_file_path) if markdown_result.success else None,
+                    "markdown_size": len(markdown_result.markdown_content) if markdown_result.success and markdown_result.markdown_content else 0
                 }
                 
-                # Index processed documents for RAG
+                # Index processed documents for RAG (with markdown reference)
                 await self._index_processed_documents_for_rag(
                     processing_result.documents, 
                     file_record, 
-                    processing_result
+                    processing_result,
+                    markdown_path=Path(markdown_result.markdown_file_path) if markdown_result.success and markdown_result.markdown_file_path else None
                 )
                 
-                logger.info(f"✅ Multi-format processing completed: {file_path_obj.name} "
-                           f"({processing_result.file_format.value}, {processing_result.chunk_count} chunks)")
+                logger.info(f"✅ Production processing completed: {file_path_obj.name} "
+                           f"({processing_result.file_format.value}, {processing_result.chunk_count} chunks, "
+                           f"{processing_result.quality.value} quality, {processing_result.extraction_confidence:.2f} confidence)")
                 
                 # Update final status
                 file_record.status = "ready"
                 file_record.conversion_metadata = str(processing_metadata)
                 
-            except Exception as multiformat_error:
-                logger.warning(f"⚠️ Multi-format processing failed, falling back to legacy: {multiformat_error}")
+            except Exception as production_error:
+                logger.warning(f"⚠️ Production processing failed, falling back to legacy: {production_error}")
                 
                 # FALLBACK: Legacy TXT zu MD Konvertierung
                 final_file_path = file_path_obj
@@ -785,7 +940,8 @@ class TrainingService:
         self, 
         documents: List[Document], 
         file_record: TrainingFile, 
-        processing_result: FileProcessingResult
+        processing_result: ProcessingResult,
+        markdown_path: Optional[Path] = None
     ):
         """Index multi-format processed documents for RAG"""
         
@@ -808,7 +964,11 @@ class TrainingService:
                     "chunk_index": int(i),
                     "chunk_type": str(doc.metadata.get('chunk_type', 'default')),
                     "optimized": True,
-                    "source_type": str(getattr(file_record, 'manual_source_category', 'Testdaten') or 'Testdaten')
+                    "source_type": str(getattr(file_record, 'manual_source_category', 'Testdaten') or 'Testdaten'),
+                    "markdown_file_path": str(markdown_path) if markdown_path else None,
+                    "processing_quality": str(processing_result.quality.value),
+                    "extraction_confidence": float(processing_result.extraction_confidence),
+                    "extraction_method": str(doc.metadata.get('extraction_method', 'unknown'))
                 }
                 
                 # Filter and ensure ChromaDB compatibility
@@ -836,11 +996,12 @@ class TrainingService:
             file_record.chunk_count = chunk_count if isinstance(chunk_count, int) else len(enhanced_documents)
             file_record.index_status = "indexed"
             
-            logger.info(f"✅ Multi-format documents indexed to RAG: {file_record.filename} "
-                       f"({len(enhanced_documents)} chunks, format: {processing_result.file_format.value})")
+            logger.info(f"✅ Production documents indexed to RAG: {file_record.filename} "
+                       f"({len(enhanced_documents)} chunks, format: {processing_result.file_format.value}, "
+                       f"quality: {processing_result.quality.value})")
             
         except Exception as e:
-            logger.error(f"❌ Multi-format RAG indexing failed: {e}")
+            logger.error(f"❌ Production RAG indexing failed: {e}")
             file_record.index_status = "failed"
             file_record.index_error = str(e)[:500]  # Limit error message length
             raise

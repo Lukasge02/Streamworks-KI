@@ -3,6 +3,7 @@ Mistral RAG Service - ChromaDB + Mistral 7B Integration
 Optimiert für deutsche StreamWorks-Dokumentation mit Citations
 """
 import logging
+import asyncio
 from typing import List, Dict, Any
 from app.core.config import settings
 from app.services.rag_service import RAGService
@@ -96,10 +97,14 @@ class MistralRAGService:
                 sources_used = len(set(c.filename for c in citations))
             else:
                 # Search for documents with citations (OPTIMIZED - single call)
-                search_result = await self.rag_service.search_documents_with_citations(
-                    query=question,
-                    top_k=5,  # Reduced from 7 for performance
-                    include_citations=True
+                # Performance optimization: Use concurrent search
+                search_result = await asyncio.wait_for(
+                    self.rag_service.search_documents_with_citations(
+                        query=question,
+                        top_k=3,  # Further reduced for faster response
+                        include_citations=True
+                    ),
+                    timeout=5.0  # 5 second timeout for search
                 )
                 
                 documents = search_result["documents"]
@@ -120,35 +125,61 @@ class MistralRAGService:
                     "sources_used": 0
                 }
             
-            # Generate response with Mistral (ENHANCED PROMPT)
-            mistral_rag_prompt = f"""[INST] Du bist SKI, ein freundlicher StreamWorks-Experte bei Arvato Systems. 
+            # Generate response with Mistral (v3.0 QUALITY-OPTIMIZED PROMPT)
+            mistral_rag_prompt = f"""[INST] Du bist SKI, eine hochspezialisierte deutschsprachige StreamWorks-Expertin bei Arvato Systems.
 
-Beantworte die Frage präzise und hilfreich basierend auf der StreamWorks-Dokumentation.
+=== KRITISCHE QUALITÄTSREGELN ===
+- Antworte AUSSCHLIESSLICH auf Deutsch (KEINE englischen Begriffe)
+- Verwende professionelle Höflichkeitsformen (Sie/Ihnen)
+- STRUKTURIERE jede Antwort EXAKT nach diesem Schema:
+  ## 🔧 [Präziser Titel der Lösung]
+  ### 📋 Überblick
+  [Kurze Zusammenfassung in 1-2 Sätzen]
+  ### 💻 Konkrete Umsetzung
+  [Detaillierte Schritte mit Code/XML-Beispielen]
+  ### 💡 Wichtige Hinweise
+  [Besonderheiten, Fallstricke, Best Practices]
+  ### 📚 Quellen
+  [EXAKT: Quelle: dateiname.ext - ohne weitere Beschreibung]
 
-WICHTIG:
-- Antworte nur auf Deutsch
-- Nutze eine klare, strukturierte Antwort
-- Gib konkrete Beispiele wenn möglich
-- Verwende Emojis sparsam (nur 1-2 pro Antwort)
+=== CITATION-REGELN (KRITISCH) ===
+- NIEMALS doppelte Quellen auflisten
+- Format: [Quelle: dateiname.ext] - KEINE Zusatztexte
+- Sammle alle Quellen am Ende unter "### 📚 Quellen"
+- Verwende deutsche Dateinamen wenn verfügbar
+- KEINE englischen Titel wie "A: Yes, StreamWorks supports..."
 
-VERFÜGBARE DOKUMENTATION:
+=== STREAMWORKS XML-STANDARD ===
+- Nutze IMMER vollständige XML-Struktur mit <?xml version="1.0" encoding="UTF-8"?>
+- Root-Element: <StreamWorksConfig>
+- Hauptelemente: <BatchJob>, <DataSource>, <ProcessingSteps>, <OutputTarget>
+- Verwende deutsche Attribute: beschreibung="", typ="", pfad=""
+
+=== VERFÜGBARE DOKUMENTATION ===
 {context}
 
-FRAGE: {question} [/INST]
+=== BENUTZERANFRAGE ===
+{question} [/INST]
+
+## 🔧 StreamWorks-Lösung
 
 """
             
-            response = await self.mistral_service.ollama_generate(
-                prompt=mistral_rag_prompt,
-                model=settings.OLLAMA_MODEL,
-                options={
-                    "temperature": 0.1,  # Lower for faster, more focused responses
-                    "top_p": 0.9,
-                    "top_k": 20,  # Reduced from default for speed
-                    "repeat_penalty": 1.1,
-                    "num_predict": 1024,  # Balanced token limit for reasonable responses
-                    "num_ctx": 8192  # Standard context window
-                }
+            # Performance optimization: Add timeout to LLM generation
+            response = await asyncio.wait_for(
+                self.mistral_service.ollama_generate(
+                    prompt=mistral_rag_prompt,
+                    model=settings.OLLAMA_MODEL,
+                    options={
+                        "temperature": 0.3,  # Optimized for consistent German responses
+                        "top_p": 0.9,        # Focused for better quality
+                        "top_k": 25,         # Reduced for clearer language selection
+                        "repeat_penalty": 1.2,  # Increased against repetitions
+                        "num_predict": 512,    # Reduced for faster response
+                        "num_ctx": 4096        # Reduced context for performance
+                    }
+                ),
+                timeout=20.0  # 20 second timeout for generation
             )
             
             if response:
@@ -307,17 +338,21 @@ FRAGE: {question} [/INST]
 """
             
             # 4. Mistral-Generation
-            response = await self.mistral_service.ollama_generate(
-                prompt=mistral_rag_prompt,
-                model=settings.OLLAMA_MODEL,
-                options={
-                    "temperature": 0.1,  # Lower for faster, more focused responses
-                    "top_p": 0.9,
-                    "top_k": 20,  # Reduced from default for speed
-                    "repeat_penalty": 1.1,
-                    "num_predict": 1024,  # Balanced token limit for reasonable responses
-                    "num_ctx": 8192  # Standard context window
-                }
+            # Performance optimization: Add timeout to LLM generation
+            response = await asyncio.wait_for(
+                self.mistral_service.ollama_generate(
+                    prompt=mistral_rag_prompt,
+                    model=settings.OLLAMA_MODEL,
+                    options={
+                        "temperature": 0.3,  # Optimized for consistent German responses
+                        "top_p": 0.9,        # Focused for better quality
+                        "top_k": 25,         # Reduced for clearer language selection
+                        "repeat_penalty": 1.2,  # Increased against repetitions
+                        "num_predict": 512,    # Reduced for faster response
+                        "num_ctx": 4096        # Reduced context for performance
+                    }
+                ),
+                timeout=20.0  # 20 second timeout for generation
             )
             
             # 5. Deutsche Nachbearbeitung

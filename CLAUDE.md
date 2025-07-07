@@ -62,12 +62,13 @@ user_profiles (id, user_role, preferences, created_at)
 
 ## 🎯 **CURRENT DEVELOPMENT PHASE**
 
-### **Status: RAG OPTIMIZATION PHASE 1 & 2 COMPLETED**
-- ✅ **Foundation**: Backend + Frontend + RAG Service komplett
-- ✅ **Multi-Source Citations**: Vollständig implementiert mit benutzerfreundlichen Quellenangaben
-- ✅ **RAG PHASE 1**: Multi-Format Document Processing (39+ Formate) COMPLETED
-- ✅ **RAG PHASE 2**: Smart Search & Enhanced Metadata COMPLETED
-- 🎯 **Next**: RAG Phase 3 oder Production Deployment vorbereiten
+### **Status: CRITICAL BUG FIXING PHASE** ⚠️
+- ✅ **Document Processing**: 40+ Formate, Quality Scoring - FUNKTIONAL
+- ✅ **Vector Database**: ChromaDB mit 23K+ Chunks - FUNKTIONAL  
+- ✅ **Infrastructure**: Health Monitoring, Error Handling - FUNKTIONAL
+- ❌ **CRITICAL**: Q&A Chat System timeouts (>10s) - DEFEKT
+- ❌ **CRITICAL**: LLM Service marked as "unhealthy" - DEFEKT
+- 🎯 **URGENT**: Core functionality repair required for thesis success
 
 ### **Recently Completed (2025-07-05)**
 1. ✅ **RAG PHASE 1**: Multi-Format Document Processor - 39+ Dateiformate, 8 Chunking-Strategien
@@ -75,13 +76,13 @@ user_profiles (id, user_role, preferences, created_at)
 3. ✅ **API Integration**: 10+ neue Endpoints für Multi-Format + Smart Search
 4. ✅ **Error Resolution**: Comprehensive error logging und fixes
 
-### **This Week's Priority**
-1. **UserGroupService**: Langchain Chains für verschiedene User Roles
-2. **Frontend Integration**: Citation Display + User Role Selection  
-3. **Test Coverage**: Finalize coverage reporting
-4. **Final Polish**: Production deployment preparation
+### **This Week's CRITICAL Priority**
+1. **🚨 LLM Service Repair**: Fix Ollama/Mistral connection issues
+2. **🚨 Q&A System**: Resolve timeout problems (>10s → <2s)
+3. **🚨 End-to-End Testing**: Verify core functionality works
+4. **🚨 Health Check Fix**: Get LLM service back to "healthy" status
 
-### **Architecture Score: 97+/100** (Production Ready++)
+### **Architecture Score: 75/100** (Strong foundation, core functionality issues)
 
 ---
 
@@ -279,6 +280,11 @@ curl http://localhost:8000/api/v1/health
 
 # Run quality checks
 python tools/quality_metrics.py
+
+# Clean up orphaned files and database entries
+python3 -m app.scripts.cleanup_orphaned_files --dry-run    # Preview cleanup
+python3 -m app.scripts.cleanup_orphaned_files --force      # Execute cleanup
+python3 -m app.scripts.cleanup_orphaned_files --verbose    # Detailed output
 ```
 
 ---

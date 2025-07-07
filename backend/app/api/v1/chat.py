@@ -141,9 +141,19 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
             conversation_context = ""
         
         # RAG-Antwort mit Mistral + Citations (mit Kontext)
-        rag_result = await mistral_rag_service.generate_response(enhanced_message)
-        response = rag_result.get("response", "Keine Antwort generiert.")
-        sources_used = rag_result.get("sources_used", 0)
+        try:
+            import asyncio
+            # Add timeout to prevent hanging requests
+            rag_result = await asyncio.wait_for(
+                mistral_rag_service.generate_response(enhanced_message),
+                timeout=settings.CHAT_TIMEOUT_SECONDS if hasattr(settings, 'CHAT_TIMEOUT_SECONDS') else 30.0
+            )
+            response = rag_result.get("response", "Keine Antwort generiert.")
+            sources_used = rag_result.get("sources_used", 0)
+        except asyncio.TimeoutError:
+            logger.error(f"❌ Chat request timed out after {settings.CHAT_TIMEOUT_SECONDS if hasattr(settings, 'CHAT_TIMEOUT_SECONDS') else 30}s")
+            response = "Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es mit einer kürzeren oder spezifischeren Frage erneut."
+            sources_used = 0
         
         # Speichere Konversation in Memory
         try:

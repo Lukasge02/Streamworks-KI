@@ -4,10 +4,11 @@
 [![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-00B4A6.svg)](https://fastapi.tiangolo.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6.svg)](https://typescriptlang.org)
+[![Status](https://img.shields.io/badge/Status-In_Development-yellow.svg)](https://github.com)
 
 **Bachelor Thesis Project - Fachhochschule der Wirtschaft (FHDW), Paderborn**
 
-Ein intelligentes Self-Service-System für StreamWorks-Automatisierung mit fortschrittlicher RAG-Technologie, Multi-Format-Dokumentenverarbeitung und Smart Search.
+⚠️ **Current Status**: Ein intelligentes Self-Service-System für StreamWorks-Automatisierung in Entwicklung. Fortschrittliche Dokumentenverarbeitung funktional, aber **Kern-Q&A-System benötigt Fehlerbehebung** (LLM-Service-Probleme).
 
 ## 📋 Übersicht
 
@@ -15,12 +16,19 @@ StreamWorks-KI automatisiert komplexe Workload-Managementaufgaben durch KI-gest�
 
 ### 🎯 Hauptfunktionen
 
-- **🧠 Advanced RAG System**: Multi-Format-Dokumentenverarbeitung mit intelligenter Chunking-Strategie
-- **🔍 Smart Search**: 5 automatisch ausgewählte Suchstrategien mit Query-Klassifikation
-- **📄 39+ Format Support**: Von Office-Dokumenten bis Code-Dateien mit spezialisierten Verarbeitungsstrategien
-- **🤖 Intelligent Q&A**: Kontextbewusste Antwortgenerierung mit Quellenangaben
-- **⚡ XML Stream Generator**: Template-basierte StreamWorks-Konfigurationserstellung
-- **📊 Performance Monitoring**: Umfassende Metriken und Leistungsüberwachung
+#### ✅ **Funktional**
+- **📄 Document Processing**: 40+ Dateiformate mit Qualitätsbewertung und robuster Pipeline
+- **🗃️ Vector Database**: ChromaDB mit 23K+ erfolgreich indizierten Dokumenten-Chunks
+- **📊 Health Monitoring**: Umfassende Systemüberwachung mit 7 Komponenten
+- **⚡ File Upload**: Training-Data-Pipeline verarbeitet PDFs und HTML korrekt
+
+#### ⚠️ **Teilweise Funktional**
+- **🧠 RAG Backend**: Basis-Infrastructure läuft, aber LLM-Service-Verbindungsprobleme
+- **🔍 Smart Search**: Backend implementiert, aber durch LLM-Probleme beeinträchtigt
+
+#### ❌ **Aktuell Defekt**
+- **🤖 Q&A Chat System**: Timeout-Probleme (>10s), für Benutzer nicht verwendbar
+- **🎯 Mistral Integration**: Ollama/Mistral-Service als "unhealthy" markiert
 
 ## 🏗️ Architektur
 
@@ -103,6 +111,12 @@ npm run dev
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Dokumentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/api/v1/health
+
+### ⚠️ **Bekannte Probleme**
+- **Q&A System**: Timeout-Probleme - LLM-Service-Verbindung prüfen
+- **Ollama**: Stelle sicher, dass Ollama läuft: `ollama serve`
+- **Mistral Model**: Download Model: `ollama pull mistral:7b-instruct`
 
 ## 📚 Funktionen im Detail
 

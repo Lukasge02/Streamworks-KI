@@ -239,39 +239,61 @@ class CitationService:
         )
     
     def format_citations_for_response(self, citations: List[Citation], max_citations: int = 3) -> str:
-        """Format citations for inclusion in response text"""
+        """Format citations for inclusion in response text (v3.0 - Clean Format)"""
         if not citations:
             return ""
         
-        # Take top citations
-        top_citations = citations[:max_citations]
+        # Remove duplicates by source filename
+        seen_sources = set()
+        unique_citations = []
         
-        citation_text = "\n\n**📚 Quellen:**\n"
-        for i, citation in enumerate(top_citations, 1):
-            # Handle both Citation objects and dict formats safely
+        for citation in citations[:max_citations * 2]:  # Check more to find unique ones
             try:
-                if hasattr(citation, 'source_title'):
-                    title = citation.source_title or "Unbekannte Quelle"
-                    source_type = citation.source_type.value if hasattr(citation.source_type, 'value') else str(citation.source_type)
-                    doc_type = citation.document_type.value if hasattr(citation, 'document_type') and citation.document_type and hasattr(citation.document_type, 'value') else ""
-                    relevance = citation.relevance_score if hasattr(citation, 'relevance_score') else 0.0
-                else:
-                    # Handle dict format
-                    title = citation.get('source_title', 'Unbekannte Quelle')
-                    source_type = citation.get('source_type', 'Documentation')
-                    doc_type = citation.get('document_type', '')
-                    relevance = citation.get('relevance_score', 0.0)
+                # Extract filename from source
+                source_name = citation.source_filename if hasattr(citation, 'source_filename') else citation.get('source_filename', '')
+                if not source_name:
+                    source_name = citation.source_title if hasattr(citation, 'source_title') else citation.get('source_title', '')
                 
-                citation_text += f"{i}. **{title}** ({source_type}"
-                if doc_type:
-                    citation_text += f" - {doc_type}"
-                if relevance and relevance > 0:
-                    citation_text += f", Relevanz: {relevance:.1%}"
-                citation_text += ")\n"
+                # Clean filename for comparison
+                clean_name = re.sub(r'^[a-f0-9-]{36}_', '', source_name)
+                clean_name = re.sub(r'\.(txt|md|pdf)$', '', clean_name, flags=re.IGNORECASE)
+                
+                if clean_name not in seen_sources:
+                    seen_sources.add(clean_name)
+                    unique_citations.append(citation)
+                    if len(unique_citations) >= max_citations:
+                        break
+                        
+            except Exception as e:
+                logger.warning(f"⚠️ Citation deduplication error: {e}")
+                continue
+        
+        if not unique_citations:
+            return ""
+        
+        # Simple, clean citation format
+        citation_text = "\n\n### 📚 Quellen\n"
+        for citation in unique_citations:
+            try:
+                # Get source filename
+                source_name = citation.source_filename if hasattr(citation, 'source_filename') else citation.get('source_filename', '')
+                if not source_name:
+                    source_name = citation.source_title if hasattr(citation, 'source_title') else citation.get('source_title', 'Unbekannte Quelle')
+                
+                # Clean up filename for display
+                display_name = re.sub(r'^[a-f0-9-]{36}_', '', source_name)
+                display_name = re.sub(r'\.(txt|md|pdf)$', '', display_name, flags=re.IGNORECASE)
+                display_name = display_name.replace('_', ' ').replace('-', ' ')
+                
+                # Simple format: [Quelle: filename.ext]
+                if '.' not in source_name:
+                    source_name += '.txt'  # Add extension if missing
+                    
+                citation_text += f"- [Quelle: {source_name}]\n"
                     
             except Exception as e:
                 logger.warning(f"⚠️ Citation formatting error: {e}")
-                citation_text += f"{i}. **Quelle {i}** (StreamWorks Dokumentation)\n"
+                citation_text += f"- [Quelle: StreamWorks Dokumentation]\n"
         
         return citation_text
     

@@ -1,0 +1,2 @@
+var e=globalThis.parcelRequired477;(0,e.register)("8zun0",function(n,t){Object.defineProperty(n.exports,"CommentsSection",{get:()=>o,set:void 0,enumerable:!0,configurable:!0});var l=e("gwFzn");let o=({contentId:e,classicComments:n,handlePageCommentsRender:t})=>n?(l&&l.__esModule?l.default:l).createElement(n,{contentId:e,handlePageCommentsRender:t}):null});
+//# sourceMappingURL=CommentsSection.969d1d99.js.map

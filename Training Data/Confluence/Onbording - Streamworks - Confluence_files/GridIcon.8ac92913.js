@@ -1,0 +1,2 @@
+function e(e){return e&&e.__esModule?e.default:e}var r=globalThis.parcelRequired477;(0,r.register)("7vo4i",function(l,o){Object.defineProperty(l.exports,"GridIcon",{get:()=>c,set:void 0,enumerable:!0,configurable:!0});var t=r("gwFzn");let c=({isSelected:l})=>{let o=(0,r("luv00").useSSRPlaceholderReplaceIdProp)();return e(t).createElement(e(r("dk0le")),{spacing:"spacious",color:l?"var(--ds-icon-selected, #0C66E4)":"var(--ds-icon, #44546F)",label:"",...o})}});
+//# sourceMappingURL=GridIcon.8ac92913.js.map

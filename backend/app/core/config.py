@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
+    # Chat & API Settings
+    CHAT_TIMEOUT_SECONDS: float = 30.0  # Timeout for chat requests
+    API_REQUEST_TIMEOUT: float = 60.0  # General API timeout
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
