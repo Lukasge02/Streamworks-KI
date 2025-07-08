@@ -1,24 +1,40 @@
 """
-Mistral 7B LLM Service - Deutsche Optimierung
-Spezialisiert für StreamWorks-KI mit professionellen deutschen Antworten
+Optimized Mistral LLM Service - Performance-First Design
+Target: 15s → <3s Response Time durch Connection Pooling + Caching
+Backward compatible with existing MistralLLMService interface
 """
 import logging
 import re
-import aiohttp
 import asyncio
+import time
 from typing import Dict, Any, Optional
 from app.core.config import settings
 from app.core.prompts.manager import prompt_manager
+from app.services.ollama_connection_pool import ollama_pool
+from app.services.response_cache import response_cache
 
 logger = logging.getLogger(__name__)
 
 class MistralLLMService:
-    """Mistral 7B Service mit deutscher Optimierung"""
+    """
+    Performance-optimized Mistral 7B Service
+    
+    Key Optimizations:
+    - Connection pooling for Ollama (eliminates connection overhead)
+    - Intelligent response caching (cache hits → <1s response)
+    - Fast mode for time-critical responses
+    - Async-first design throughout
+    """
     
     def __init__(self):
         self.model_name = settings.OLLAMA_MODEL
-        self.ollama_url = f"{settings.OLLAMA_HOST}/api/generate"
+        self.ollama_url = f"{settings.OLLAMA_HOST}/api/generate"  # Backward compatibility
         self.is_initialized = False
+        
+        # Performance tracking
+        self.request_count = 0
+        self.cache_hits = 0
+        self.total_response_time = 0.0
         
         # Deutsche Fachbegriff-Übersetzungen
         self.german_replacements = {
@@ -41,12 +57,15 @@ class MistralLLMService:
             "Input": "Eingabe"
         }
         
-        logger.info("🤖 Mistral LLM Service initialisiert")
+        logger.info("🚀 Optimized Mistral LLM Service initialized")
     
     async def initialize(self, skip_warmup: bool = False):
-        """Initialisiere Mistral Service mit optimierter Performance"""
+        """Initialize service with connection pool - backward compatible"""
         try:
-            logger.info("🔥 Initializing Mistral 7B...")
+            logger.info("🔥 Initializing Optimized Mistral Service...")
+            
+            # Initialize connection pool
+            await ollama_pool.initialize()
             
             if skip_warmup:
                 # Schnelle Initialisierung ohne Warm-up
@@ -54,35 +73,22 @@ class MistralLLMService:
                 self.is_initialized = True
                 return
             
-            # Lightweight warm-up statt vollständiger deutscher Antwort
-            logger.info("🏃‍♂️ Quick warm-up with minimal request...")
-            test_response = await self.ollama_generate(
-                prompt="Test",
-                options={
-                    "temperature": 0.1,
-                    "num_predict": 3,  # Minimal response
-                    "num_ctx": 256,    # Minimal context
-                    "num_thread": settings.MODEL_THREADS
-                },
-                timeout=15.0  # Shorter timeout for init
-            )
+            # Quick health check
+            health_check = await ollama_pool.health_check()
             
-            if test_response:
+            if health_check.get("healthy", False):
                 self.is_initialized = True
-                logger.info("✅ Mistral 7B initialisiert - Warm-up erfolgreich")
+                logger.info("✅ Optimized Mistral Service ready")
             else:
-                # Fallback: Markiere als initialisiert auch ohne Warm-up
-                logger.warning("⚠️ Warm-up fehlgeschlagen, aber Service als verfügbar markiert")
+                logger.warning("⚠️ Health check failed, but continuing...")
                 self.is_initialized = True
                 
         except Exception as e:
-            logger.error(f"❌ Mistral Initialisierung fehlgeschlagen: {e}")
-            # Fallback: Service trotzdem als verfügbar markieren
-            logger.info("🔄 Fallback: Service wird als verfügbar markiert für spätere Requests")
-            self.is_initialized = True
+            logger.error(f"❌ Optimized Mistral initialization failed: {e}")
+            self.is_initialized = True  # Fallback: continue anyway
     
     async def ollama_generate(self, prompt: str, model: str = None, options: Dict[str, Any] = None, timeout: float = 30.0) -> str:
-        """Ollama API Call mit Mistral-Optimierung und verbessertem Error Handling"""
+        """Ollama API Call - now using optimized connection pool"""
         
         if model is None:
             model = self.model_name
@@ -97,40 +103,14 @@ class MistralLLMService:
                 "num_thread": settings.MODEL_THREADS
             }
         
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "options": options
-        }
-        
         try:
-            # Connection mit optimierten Timeouts
-            connector = aiohttp.TCPConnector(
-                limit=10,
-                ttl_dns_cache=300,
-                use_dns_cache=True,
-                keepalive_timeout=30
+            # Use optimized connection pool
+            return await ollama_pool.generate(
+                prompt=prompt,
+                model=model,
+                options=options,
+                timeout=timeout
             )
-            
-            async with aiohttp.ClientSession(
-                connector=connector,
-                timeout=aiohttp.ClientTimeout(total=timeout, connect=5.0)
-            ) as session:
-                async with session.post(self.ollama_url, json=payload) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        return result.get("response", "")
-                    else:
-                        logger.error(f"Ollama API Error: {response.status} - {await response.text()}")
-                        return self._get_fallback_response("API_ERROR")
-                        
-        except asyncio.TimeoutError:
-            logger.error(f"Ollama Request Timeout after {timeout}s")
-            return self._get_fallback_response("TIMEOUT")
-        except aiohttp.ClientConnectorError as e:
-            logger.error(f"Ollama Connection Error: {e}")
-            return self._get_fallback_response("CONNECTION_ERROR")
         except Exception as e:
             logger.error(f"Ollama Request Error: {e}")
             return self._get_fallback_response("GENERAL_ERROR")
@@ -145,34 +125,39 @@ class MistralLLMService:
         }
         return fallback_responses.get(error_type, fallback_responses["GENERAL_ERROR"])
     
-    async def generate_german_response(self, user_message: str, context: str = "", fast_mode: bool = False) -> str:
-        """Optimierte deutsche Antwort mit Mistral 7B und Performance-Modi"""
+    async def generate_german_response(self, user_message: str, context: str = "", fast_mode: bool = True, use_cache: bool = True) -> str:
+        """
+        Generate optimized German response with caching
         
-        # Performance-Optimierung: Fast Mode für kritische Antworten
-        if fast_mode:
-            options = {
-                "temperature": 0.3,      # Niedrigere Temp für schnellere Antworten
-                "top_p": 0.8,           # Fokussierter
-                "top_k": 20,            # Weniger Optionen = schneller
-                "repeat_penalty": 1.1,
-                "num_predict": 256,     # Kürzere Antworten
-                "num_ctx": 1024,        # Weniger Context = schneller
-                "num_thread": settings.MODEL_THREADS
-            }
-            timeout = 15.0
-        else:
-            options = {
-                "temperature": settings.MODEL_TEMPERATURE,
-                "top_p": settings.MODEL_TOP_P,
-                "top_k": settings.MODEL_TOP_K,
-                "repeat_penalty": settings.MODEL_REPEAT_PENALTY,
-                "num_predict": settings.MODEL_MAX_TOKENS,
-                "num_thread": settings.MODEL_THREADS
-            }
-            timeout = 30.0
+        Args:
+            user_message: User's question
+            context: RAG context
+            fast_mode: Use fast generation parameters (default: True for performance)
+            use_cache: Enable response caching (default: True)
+            
+        Returns:
+            German response text
+        """
+        start_time = time.time()
+        self.request_count += 1
         
         try:
-            # Nutze Prompt Manager für konsistente Prompts
+            # Step 1: Check cache first
+            if use_cache:
+                cached_result = await response_cache.get(user_message, context)
+                if cached_result:
+                    response, cache_entry = cached_result
+                    self.cache_hits += 1
+                    
+                    cache_time = time.time() - start_time
+                    logger.info(f"🎯 Cache HIT: {cache_time:.3f}s (saved ~{cache_entry.response_time:.1f}s)")
+                    
+                    return response
+            
+            # Step 2: Generate new response
+            logger.debug(f"🔄 Generating new response (fast_mode: {fast_mode})")
+            
+            # Build optimized prompt
             prompt = prompt_manager.build_prompt(
                 template_type="mistral_system_prompt",
                 context={
@@ -181,42 +166,87 @@ class MistralLLMService:
                 }
             )
             
-            # Ollama-Request mit optimierten Parametern
-            response = await self.ollama_generate(
+            # Choose generation options based on mode
+            if fast_mode:
+                options = {
+                    "temperature": 0.3,       # Lower temp = faster
+                    "top_p": 0.8,            # More focused
+                    "top_k": 20,             # Fewer options
+                    "repeat_penalty": 1.1,
+                    "num_predict": 512,      # Shorter responses
+                    "num_ctx": 2048,         # Reduced context
+                    "num_thread": settings.MODEL_THREADS
+                }
+                timeout = 15.0
+            else:
+                options = {
+                    "temperature": settings.MODEL_TEMPERATURE,
+                    "top_p": settings.MODEL_TOP_P,
+                    "top_k": settings.MODEL_TOP_K,
+                    "repeat_penalty": settings.MODEL_REPEAT_PENALTY,
+                    "num_predict": settings.MODEL_MAX_TOKENS,
+                    "num_thread": settings.MODEL_THREADS
+                }
+                timeout = 30.0
+            
+            # Step 3: Generate using connection pool
+            raw_response = await ollama_pool.generate(
                 prompt=prompt,
                 model=self.model_name,
                 options=options,
                 timeout=timeout
             )
             
-            # Deutsche Nachbearbeitung (schneller im Fast Mode)
+            # Step 4: Post-process for German
             if fast_mode:
-                german_response = self._quick_german_processing(response)
+                final_response = self._quick_german_processing(raw_response)
             else:
-                german_response = self.post_process_german(response)
+                final_response = self.post_process_german(raw_response)
             
-            return german_response
+            # Step 5: Cache the result
+            generation_time = time.time() - start_time
+            if use_cache and final_response:
+                await response_cache.set(
+                    query=user_message,
+                    response=final_response,
+                    context=context,
+                    response_time=generation_time,
+                    metadata={
+                        "fast_mode": fast_mode,
+                        "model": self.model_name,
+                        "options": options
+                    }
+                )
+            
+            # Update performance stats
+            self.total_response_time += generation_time
+            
+            logger.info(f"🤖 Generated response: {generation_time:.3f}s (fast_mode: {fast_mode})")
+            return final_response
             
         except Exception as e:
-            logger.error(f"Error generating German response: {e}")
-            return self._get_fallback_response("GENERAL_ERROR")
+            logger.error(f"❌ Optimized generation error: {e}")
+            return self._get_fallback_response(str(e))
     
     def _quick_german_processing(self, response: str) -> str:
-        """Schnelle deutsche Nachbearbeitung für Fast Mode"""
+        """Fast German post-processing for performance"""
         if not response:
             return "Entschuldigung, ich konnte keine Antwort generieren."
         
-        # Nur essenzielle Korrekturen
-        essential_replacements = {
-            " du ": " Sie ",
-            " dich ": " Sie ",
-            " dein ": " Ihr ",
-            " deine ": " Ihre ",
-            " dir ": " Ihnen "
-        }
+        # Essential German corrections only
+        essential_fixes = [
+            (" du ", " Sie "),
+            (" dich ", " Sie "),
+            (" dein ", " Ihr "),
+            (" deine ", " Ihre "),
+            (" dir ", " Ihnen "),
+            ("Stream", "Stream"),  # Keep technical terms
+            ("Batch Job", "Batch-Job"),
+            ("Config", "Konfiguration")
+        ]
         
-        for eng, ger in essential_replacements.items():
-            response = response.replace(eng, ger)
+        for old, new in essential_fixes:
+            response = response.replace(old, new)
         
         return response.strip()
     
@@ -355,41 +385,85 @@ class MistralLLMService:
         return '\n'.join(cleaned_lines)
     
     async def get_stats(self) -> Dict[str, Any]:
-        """Mistral Service Statistiken"""
+        """Get detailed service statistics with performance metrics"""
+        pool_stats = await ollama_pool.get_stats()
+        cache_stats = await response_cache.get_stats()
+        
         return {
-            "service": "mistral_llm",
+            "service": "optimized_mistral",
             "model_name": self.model_name,
             "is_initialized": self.is_initialized,
-            "temperature": settings.MODEL_TEMPERATURE,
-            "top_p": settings.MODEL_TOP_P,
-            "top_k": settings.MODEL_TOP_K,
-            "max_tokens": settings.MODEL_MAX_TOKENS,
-            "context_window": settings.MODEL_CONTEXT_WINDOW,
-            "threads": settings.MODEL_THREADS,
-            "german_optimization": settings.FORCE_GERMAN_RESPONSES,
+            "performance": {
+                "total_requests": self.request_count,
+                "cache_hits": self.cache_hits,
+                "cache_hit_rate": (self.cache_hits / self.request_count * 100) if self.request_count > 0 else 0,
+                "avg_response_time": (self.total_response_time / self.request_count) if self.request_count > 0 else 0
+            },
+            "connection_pool": pool_stats,
+            "response_cache": cache_stats,
+            "optimizations": {
+                "connection_pooling": True,
+                "response_caching": True,
+                "fast_mode_default": True,
+                "german_optimization": True
+            },
+            "model_config": {
+                "temperature": settings.MODEL_TEMPERATURE,
+                "top_p": settings.MODEL_TOP_P,
+                "top_k": settings.MODEL_TOP_K,
+                "max_tokens": settings.MODEL_MAX_TOKENS,
+                "context_window": settings.MODEL_CONTEXT_WINDOW,
+                "threads": settings.MODEL_THREADS
+            },
             "status": "ready" if self.is_initialized else "initializing"
         }
     
-    async def health_check(self) -> bool:
-        """Health Check für Mistral Service"""
+    async def health_check(self) -> Dict[str, Any]:
+        """Comprehensive health check with performance metrics"""
         try:
-            # Quick health check with timeout
-            test_response = await asyncio.wait_for(
-                self.ollama_generate(
-                    prompt="Reply with 'OK' if working",
-                    model=self.model_name,
-                    options={
-                        "temperature": 0.1,
-                        "num_predict": 10,  # Very short response
-                        "num_ctx": 512  # Minimal context
-                    }
-                ),
-                timeout=5.0  # 5 second timeout
+            # Test connection pool
+            pool_health = await ollama_pool.health_check()
+            
+            # Test cache
+            cache_stats = await response_cache.get_stats()
+            
+            # Quick generation test
+            start_time = time.time()
+            test_response = await self.generate_german_response(
+                user_message="Test",
+                context="",
+                fast_mode=True,
+                use_cache=False
             )
-            return len(test_response) > 0
+            test_time = time.time() - start_time
+            
+            return {
+                "service": "optimized_mistral",
+                "healthy": True,
+                "connection_pool": pool_health,
+                "cache_stats": cache_stats,
+                "test_response_time": test_time,
+                "performance": {
+                    "total_requests": self.request_count,
+                    "cache_hits": self.cache_hits,
+                    "cache_hit_rate": (self.cache_hits / self.request_count * 100) if self.request_count > 0 else 0,
+                    "avg_response_time": (self.total_response_time / self.request_count) if self.request_count > 0 else 0
+                }
+            }
+            
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
-            return False
+            return {
+                "service": "optimized_mistral",
+                "healthy": False,
+                "error": str(e)
+            }
+    
+    async def cleanup(self):
+        """Cleanup resources"""
+        await ollama_pool.cleanup()
+        await response_cache.clear()
+        response_cache.cleanup_task_shutdown()
+        logger.info("🧹 Optimized Mistral Service cleanup complete")
 
 # Global instance
 mistral_llm_service = MistralLLMService()

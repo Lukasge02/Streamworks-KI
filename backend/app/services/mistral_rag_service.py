@@ -130,13 +130,14 @@ class MistralRAGService:
                         "performance_mode": "search_timeout"
                     }
             
-            # PERFORMANCE CRITICAL: Fast Mistral response generation
+            # PERFORMANCE CRITICAL: Fast Mistral response generation (optimized)
             try:
                 mistral_response = await asyncio.wait_for(
                     self.mistral_service.generate_german_response(
                         user_message=question,
                         context=context,
-                        fast_mode=True  # Always use fast mode
+                        fast_mode=True,  # Always use fast mode
+                        use_cache=True   # Enable caching for better performance
                     ),
                     timeout=15.0  # Aggressive timeout
                 )

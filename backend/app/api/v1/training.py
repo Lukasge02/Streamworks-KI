@@ -80,6 +80,7 @@ async def upload_training_files_batch(
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         
         for file in files:
             try:
@@ -161,6 +162,7 @@ async def list_training_files(
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         files = await training_service.get_training_files(category=category, status=status)
         
         logger.info(f"✅ Retrieved {len(files)} training files")
@@ -204,6 +206,7 @@ async def delete_training_file(
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         success = await training_service.delete_training_file(file_id)
         
         if not success:
@@ -226,6 +229,7 @@ async def get_training_status(db: AsyncSession = Depends(get_db)):
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         status = await training_service.get_training_status()
         
         logger.info("✅ Training status retrieved successfully")
@@ -246,6 +250,7 @@ async def process_training_file(
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         success = await training_service.process_training_file(file_id)
         
         if not success:
@@ -271,6 +276,7 @@ async def index_to_chromadb(
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         result = await training_service.index_file_to_chromadb(file_id)
         
         if not result:
@@ -296,6 +302,7 @@ async def batch_index_to_chromadb(
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         results = await training_service.batch_index_to_chromadb(file_ids)
         
         logger.info(f"✅ Batch indexing completed")
@@ -316,6 +323,7 @@ async def remove_from_chromadb(
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         success = await training_service.remove_from_chromadb(file_id)
         
         if not success:
@@ -338,6 +346,7 @@ async def get_chromadb_stats(db: AsyncSession = Depends(get_db)):
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         stats = await training_service.get_chromadb_stats()
         
         logger.info("✅ ChromaDB stats retrieved successfully")
@@ -354,6 +363,7 @@ async def get_conversion_status(file_id: str, db: AsyncSession = Depends(get_db)
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         
         # Get file record
         files = await training_service.get_training_files()
@@ -386,6 +396,7 @@ async def get_optimized_content(file_id: str, db: AsyncSession = Depends(get_db)
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         
         # Get file record
         files = await training_service.get_training_files()
@@ -426,6 +437,7 @@ async def get_conversion_stats(db: AsyncSession = Depends(get_db)):
     
     try:
         training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         files = await training_service.get_training_files()
         
         # Filter TXT files
@@ -626,6 +638,60 @@ async def test_multi_format_processing(
         raise HTTPException(status_code=500, detail=f"Failed to test processing: {str(e)}")
 
 
+@router.post("/sync-filesystem")
+async def sync_filesystem(db: AsyncSession = Depends(get_db)):
+    """Sync database with filesystem - remove DB entries for deleted files and orphaned MD files"""
+    try:
+        training_service = TrainingService(db)
+        await training_service.initialize()  # CRITICAL: Initialize RAG service connection
+        files = await training_service.get_training_files()
+        
+        cleaned_count = 0
+        orphaned_md_count = 0
+        
+        # Check database entries for missing original files
+        for file in files:
+            # Check if original file still exists
+            if file.file_path and not os.path.exists(file.file_path):
+                logger.info(f"🧹 Removing orphaned DB entry: {file.filename}")
+                await training_service.delete_training_file(file.id)
+                cleaned_count += 1
+        
+        # Check for orphaned MD files in optimized directory
+        from pathlib import Path
+        optimized_dir = Path("data/training_data/optimized/help_data")
+        
+        if optimized_dir.exists():
+            # Get all MD files in optimized directory
+            md_files = list(optimized_dir.glob("*.md"))
+            
+            for md_file in md_files:
+                # Extract original filename pattern (remove _optimized.md suffix)
+                original_name = md_file.stem.replace("_optimized", "") + ".txt"
+                
+                # Check if corresponding original TXT file exists
+                original_file_path = Path("data/training_data/originals/help_data") / original_name
+                
+                if not original_file_path.exists():
+                    logger.info(f"🧹 Removing orphaned MD file: {md_file.name}")
+                    try:
+                        md_file.unlink()  # Delete the orphaned MD file
+                        orphaned_md_count += 1
+                    except Exception as e:
+                        logger.error(f"❌ Failed to delete orphaned MD file {md_file.name}: {e}")
+        
+        return {
+            "message": f"Filesystem sync completed",
+            "cleaned_db_entries": cleaned_count,
+            "cleaned_md_files": orphaned_md_count,
+            "remaining_files": len(files) - cleaned_count,
+            "total_cleaned": cleaned_count + orphaned_md_count
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Filesystem sync failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
 @router.get("/health")
 async def training_health_check():
     """Health check for training API"""
@@ -638,6 +704,7 @@ async def training_health_check():
         "features": {
             "txt_to_md_conversion": True,
             "rag_indexing": True,
-            "conversion_tracking": True
+            "conversion_tracking": True,
+            "filesystem_sync": True
         }
     }

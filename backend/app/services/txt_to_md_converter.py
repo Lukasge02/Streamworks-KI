@@ -593,5 +593,38 @@ class TxtToMdConverter:
         
         return ', '.join(sorted(search_terms)[:15])  # Limitiere auf 15 Begriffe
 
+    async def convert_file(self, file_path: str) -> Optional[str]:
+        """
+        Convert TXT file to optimized Markdown (compatibility method for TrainingService)
+        
+        Args:
+            file_path: Path to the TXT file
+            
+        Returns:
+            Path to the generated MD file, or None if conversion failed
+        """
+        try:
+            txt_path = Path(file_path)
+            if not txt_path.exists():
+                logger.error(f"TXT file not found: {file_path}")
+                return None
+            
+            # Create optimized directory (correct path structure)
+            # From: data/training_data/originals/help_data/file.txt
+            # To:   data/training_data/optimized/help_data/file.md
+            base_data_dir = txt_path.parent.parent.parent  # Go up to data/training_data/
+            optimized_dir = base_data_dir / "optimized" / "help_data" 
+            optimized_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Convert TXT to MD
+            md_path = await self.convert_txt_to_md(txt_path, optimized_dir)
+            
+            logger.info(f"✅ TXT to MD conversion completed: {txt_path.name} → {md_path.name}")
+            return str(md_path)
+            
+        except Exception as e:
+            logger.error(f"❌ TXT to MD conversion failed for {file_path}: {e}")
+            return None
+
 # Global instance
 txt_to_md_converter = TxtToMdConverter()
