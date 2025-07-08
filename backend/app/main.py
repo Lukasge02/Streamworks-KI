@@ -21,6 +21,7 @@ from app.api.v1.conversations import router as conversations_router
 from app.api.v1.evaluation import router as evaluation_router
 from app.api.v1.health import router as health_router
 from app.api.v1.ab_testing import router as ab_testing_router
+from app.api.v1.chromadb_sync import router as chromadb_sync_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -191,6 +192,12 @@ app.include_router(
     ab_testing_router,
     prefix="/api/v1/ab-testing",
     tags=["ab_testing"]
+)
+
+app.include_router(
+    chromadb_sync_router,
+    prefix="/api/v1",
+    tags=["chromadb_sync"]
 )
 
 @app.get("/")

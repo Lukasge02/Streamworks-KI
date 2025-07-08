@@ -9,6 +9,7 @@ from enum import Enum
 import logging
 import time
 import uuid
+import asyncio
 from datetime import datetime
 
 from app.services.rag_service import rag_service
@@ -862,13 +863,21 @@ async def chat_with_citations(request: ChatRequestValidator, raw_request: Reques
                 coverage_score=0.0
             )
         else:
-            # Generate response using Mistral with RAG
-            rag_result = await mistral_rag_service.generate_response(
-                question=request.message,
-                documents=documents
-            )
-            
-            response_text = rag_result.get("response", "Keine Antwort generiert.")
+            # PERFORMANCE OPTIMIZED: Generate response using Mistral with RAG
+            try:
+                rag_result = await asyncio.wait_for(
+                    mistral_rag_service.generate_response(
+                        question=request.message,
+                        documents=documents,
+                        fast_mode=True  # Enable fast mode for better performance
+                    ),
+                    timeout=settings.CHAT_TIMEOUT_SECONDS if hasattr(settings, 'CHAT_TIMEOUT_SECONDS') else 20.0
+                )
+                
+                response_text = rag_result.get("response", "Keine Antwort generiert.")
+            except asyncio.TimeoutError:
+                logger.error("Chat response timeout - using fallback")
+                response_text = "Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es mit einer einfacheren Frage erneut."
             
             # Add citation information to response
             if citations:

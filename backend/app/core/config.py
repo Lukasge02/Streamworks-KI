@@ -1,84 +1,384 @@
-from pydantic_settings import BaseSettings
-from typing import List
+"""
+Unified Configuration Management
+Combines config.py and config_v2.py with backward compatibility
+"""
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, validator
+from typing import List, Optional, Dict, Any
+from enum import Enum
+from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class Environment(str, Enum):
+    """Environment types"""
+    DEVELOPMENT = "development"
+    TESTING = "testing"
+    STAGING = "staging"
+    PRODUCTION = "production"
+
+
+class LogLevel(str, Enum):
+    """Log levels"""
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
 
 class Settings(BaseSettings):
-    # Environment
-    ENV: str = "development"
+    """
+    Unified application settings with validation and backward compatibility
+    Supports both legacy (config.py) and new (config_v2.py) field names
+    """
     
-    # API Settings
-    API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "StreamWorks-KI"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True  # Keep True for backward compatibility
+    )
     
-    # CORS
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000", 
-        "http://127.0.0.1:3000",
-        "http://localhost:3001", 
-        "http://127.0.0.1:3001"
-    ]
+    # === CORE APPLICATION SETTINGS ===
     
-    # Database
-    DATABASE_URL: str = "sqlite:///./streamworks_ki.db"
+    # Legacy naming (config.py) with new features
+    ENV: str = Field(default="development", description="Environment (legacy name)")
+    PROJECT_NAME: str = Field(default="StreamWorks-KI", description="Application name")
+    API_V1_STR: str = Field(default="/api/v1", description="API v1 prefix")
     
-    # RAG Settings (Q&A System)
-    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"  # Fast & good
-    VECTOR_DB_PATH: str = "./data/vector_db"
-    RAG_CHUNK_SIZE: int = 500
-    RAG_CHUNK_OVERLAP: int = 50
-    RAG_TOP_K: int = 5
+    # New naming (config_v2.py) mapped to legacy
+    @property
+    def environment(self) -> Environment:
+        """Map ENV to environment enum"""
+        return Environment(self.ENV.lower())
     
-    # ChromaDB Settings (disable telemetry)
-    CHROMA_TELEMETRY_ENABLED: bool = False
+    @property
+    def app_name(self) -> str:
+        """Alias for PROJECT_NAME"""
+        return self.PROJECT_NAME
     
-    # === MISTRAL 7B OPTIMIERUNG ===
-    OLLAMA_MODEL: str = "mistral:7b-instruct"
-    LLM_ENABLED: bool = True
-    OLLAMA_HOST: str = "http://localhost:11434"
+    @property
+    def api_v1_prefix(self) -> str:
+        """Alias for API_V1_STR"""
+        return self.API_V1_STR
     
-    # Mistral-spezifische Parameter
-    MODEL_TEMPERATURE: float = 0.7    # Kreativ aber konsistent
-    MODEL_TOP_P: float = 0.95        # Mistral arbeitet gut mit hohem top_p
-    MODEL_TOP_K: int = 40            # Reduziert für Fokus
-    MODEL_MAX_TOKENS: int = 2048     # Ausreichend für strukturierte Antworten
-    MODEL_REPEAT_PENALTY: float = 1.1 # Verhindert Wiederholungen
+    # API Configuration
+    api_host: str = Field(default="0.0.0.0", description="API host")
+    api_port: int = Field(default=8000, ge=1000, le=65535, description="API port")
+    debug: bool = Field(default=False, description="Debug mode")
     
-    # Performance-Optimierung
-    MODEL_THREADS: int = 8           # Für M4 MacBook optimal
-    MODEL_BATCH_SIZE: int = 1        # Einzelne Requests
-    MODEL_CONTEXT_WINDOW: int = 8192 # Mistral kann 8k Context
+    # Security
+    secret_key: str = Field(default="dev-secret-key-change-in-production", min_length=32)
+    access_token_expire_minutes: int = Field(default=30, ge=1, le=10080)
     
-    # Deutsche Spezialisierung
-    FORCE_GERMAN_RESPONSES: bool = True
-    GERMAN_PROMPT_STYLE: str = "professional"
-    USE_GERMAN_TECHNICAL_TERMS: bool = True
+    # === CORS CONFIGURATION ===
     
-    # XML Generation Settings (RAG-basiert)  
-    XML_GENERATION_ENABLED: bool = True  # RAG-basierte Generierung
+    ALLOWED_ORIGINS: List[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001", 
+            "http://127.0.0.1:3001"
+        ],
+        description="Allowed CORS origins"
+    )
     
-    # Legacy Generation Parameters (für Kompatibilität)
-    MAX_NEW_TOKENS: int = 512
-    # TEMPERATURE moved to MODEL_TEMPERATURE above (no duplicate)
-    TOP_P: float = 0.9
-    DEVICE: str = "mps"  # auto, cuda, cpu, mps
+    @property
+    def allowed_origins(self) -> List[str]:
+        """Alias for ALLOWED_ORIGINS"""
+        return self.ALLOWED_ORIGINS
     
-    # Training Data Paths
-    TRAINING_DATA_PATH: str = "./data/training_data"
-    HELP_DATA_PATH: str = "./data/training_data/optimized/help_data"
-    XML_TEMPLATE_PATH: str = "./data/training_data/stream_templates"
+    # === DATABASE CONFIGURATION ===
     
-    # Services Toggle
-    RAG_ENABLED: bool = True
-    TRAINING_ENABLED: bool = True
+    DATABASE_URL: str = Field(
+        default="sqlite:///./streamworks_ki.db",
+        description="Database connection URL"
+    )
     
-    # Logging
-    LOG_LEVEL: str = "INFO"
+    @property
+    def database_url(self) -> str:
+        """Alias for DATABASE_URL"""
+        return self.DATABASE_URL
     
-    # Chat & API Settings
-    CHAT_TIMEOUT_SECONDS: float = 30.0  # Timeout for chat requests
-    API_REQUEST_TIMEOUT: float = 60.0  # General API timeout
+    # Database Connection Pool (new features)
+    db_pool_size: int = Field(default=10, ge=1, le=100)
+    db_max_overflow: int = Field(default=20, ge=0, le=100)
+    db_pool_timeout: int = Field(default=30, ge=1, le=300)
+    db_pool_recycle: int = Field(default=3600, ge=300, le=86400)
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # === FILE STORAGE CONFIGURATION ===
+    
+    TRAINING_DATA_PATH: str = Field(default="./data/training_data")
+    HELP_DATA_PATH: str = Field(default="./data/training_data/optimized/help_data")
+    XML_TEMPLATE_PATH: str = Field(default="./data/training_data/stream_templates")
+    VECTOR_DB_PATH: str = Field(default="./data/vector_db")
+    
+    @property
+    def data_directory(self) -> Path:
+        """Base data directory"""
+        return Path("./data")
+    
+    @property
+    def training_data_path(self) -> Path:
+        """Path object for training data"""
+        return Path(self.TRAINING_DATA_PATH)
+    
+    @property
+    def vector_db_path(self) -> Path:
+        """Path object for vector DB"""
+        return Path(self.VECTOR_DB_PATH)
+    
+    upload_max_size: int = Field(default=50 * 1024 * 1024, description="Max upload size (50MB)")
+    
+    # === RAG SYSTEM CONFIGURATION ===
+    
+    # Embedding Model
+    EMBEDDING_MODEL: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        description="Sentence transformer model"
+    )
+    embedding_device: str = Field(default="cpu", description="Device for embeddings")
+    
+    # Text Processing
+    RAG_CHUNK_SIZE: int = Field(default=500, ge=100, le=2000)
+    RAG_CHUNK_OVERLAP: int = Field(default=50, ge=0, le=500)
+    RAG_TOP_K: int = Field(default=5, ge=1, le=50)
+    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    
+    # Property aliases for new naming
+    @property
+    def embedding_model(self) -> str:
+        return self.EMBEDDING_MODEL
+    
+    @property
+    def chunk_size(self) -> int:
+        return self.RAG_CHUNK_SIZE
+    
+    @property
+    def chunk_overlap(self) -> int:
+        return self.RAG_CHUNK_OVERLAP
+    
+    @property
+    def rag_top_k(self) -> int:
+        return self.RAG_TOP_K
+    
+    # ChromaDB
+    CHROMA_TELEMETRY_ENABLED: bool = Field(default=False)
+    chroma_collection_name: str = Field(default="streamworks_docs")
+    
+    @property
+    def chroma_telemetry(self) -> bool:
+        return not self.CHROMA_TELEMETRY_ENABLED
+    
+    # === LLM CONFIGURATION ===
+    
+    # Ollama Connection
+    OLLAMA_HOST: str = Field(default="http://localhost:11434")
+    OLLAMA_MODEL: str = Field(default="mistral:7b-instruct")
+    ollama_timeout: int = Field(default=120, ge=30, le=600)
+    
+    @property
+    def ollama_host(self) -> str:
+        return self.OLLAMA_HOST
+    
+    @property
+    def ollama_model(self) -> str:
+        return self.OLLAMA_MODEL
+    
+    # Model Parameters (legacy naming)
+    MODEL_TEMPERATURE: float = Field(default=0.7, ge=0.0, le=2.0)
+    MODEL_TOP_P: float = Field(default=0.95, ge=0.1, le=1.0)
+    MODEL_TOP_K: int = Field(default=40, ge=1, le=100)
+    MODEL_MAX_TOKENS: int = Field(default=2048, ge=100, le=8192)
+    MODEL_REPEAT_PENALTY: float = Field(default=1.1, ge=1.0, le=2.0)
+    MODEL_CONTEXT_WINDOW: int = Field(default=8192, ge=1024, le=32768)
+    MODEL_BATCH_SIZE: int = Field(default=1, ge=1, le=10)
+    MODEL_THREADS: int = Field(default=8, ge=1, le=32)
+    
+    # Property aliases for new naming
+    @property
+    def llm_temperature(self) -> float:
+        return self.MODEL_TEMPERATURE
+    
+    @property
+    def llm_top_p(self) -> float:
+        return self.MODEL_TOP_P
+    
+    @property
+    def llm_top_k(self) -> int:
+        return self.MODEL_TOP_K
+    
+    @property
+    def llm_max_tokens(self) -> int:
+        return self.MODEL_MAX_TOKENS
+    
+    @property
+    def llm_repeat_penalty(self) -> float:
+        return self.MODEL_REPEAT_PENALTY
+    
+    @property
+    def llm_context_window(self) -> int:
+        return self.MODEL_CONTEXT_WINDOW
+    
+    @property
+    def llm_batch_size(self) -> int:
+        return self.MODEL_BATCH_SIZE
+    
+    @property
+    def llm_threads(self) -> int:
+        return self.MODEL_THREADS
+    
+    # Language Settings
+    FORCE_GERMAN_RESPONSES: bool = Field(default=True)
+    GERMAN_PROMPT_STYLE: str = Field(default="professional")
+    USE_GERMAN_TECHNICAL_TERMS: bool = Field(default=True)
+    
+    @property
+    def force_german(self) -> bool:
+        return self.FORCE_GERMAN_RESPONSES
+    
+    @property
+    def prompt_style(self) -> str:
+        return self.GERMAN_PROMPT_STYLE
+    
+    @property
+    def use_german_terms(self) -> bool:
+        return self.USE_GERMAN_TECHNICAL_TERMS
+    
+    # === SERVICE TOGGLES ===
+    
+    LLM_ENABLED: bool = Field(default=True)
+    RAG_ENABLED: bool = Field(default=True)
+    TRAINING_ENABLED: bool = Field(default=True)
+    XML_GENERATION_ENABLED: bool = Field(default=True)
+    
+    # Feature flags (new)
+    enable_citation_service: bool = Field(default=True)
+    enable_smart_search: bool = Field(default=True)
+    enable_file_processing: bool = Field(default=True)
+    experimental_features: bool = Field(default=False)
+    
+    # === LOGGING CONFIGURATION ===
+    
+    LOG_LEVEL: str = Field(default="INFO")
+    log_format: str = Field(
+        default="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    log_file: Optional[str] = Field(default=None)
+    log_rotation: bool = Field(default=True)
+    log_max_size: str = Field(default="100MB")
+    log_backup_count: int = Field(default=5, ge=1, le=20)
+    
+    @property
+    def log_level(self) -> LogLevel:
+        return LogLevel(self.LOG_LEVEL)
+    
+    # === PERFORMANCE & MONITORING ===
+    
+    CHAT_TIMEOUT_SECONDS: float = Field(default=30.0)
+    API_REQUEST_TIMEOUT: float = Field(default=60.0)
+    
+    # New monitoring features
+    enable_metrics: bool = Field(default=True)
+    metrics_port: int = Field(default=8001, ge=1000, le=65535)
+    health_check_interval: int = Field(default=30, ge=10, le=300)
+    slow_request_threshold: float = Field(default=2.0, ge=0.1, le=60.0)
+    memory_warning_threshold: float = Field(default=0.8, ge=0.5, le=0.95)
+    
+    # === CACHING CONFIGURATION ===
+    
+    enable_caching: bool = Field(default=True)
+    cache_ttl: int = Field(default=3600, ge=60, le=86400)
+    cache_max_size: int = Field(default=1000, ge=10, le=10000)
+    
+    # === LEGACY COMPATIBILITY ===
+    
+    MAX_NEW_TOKENS: int = Field(default=512)  # Legacy
+    TOP_P: float = Field(default=0.9)  # Legacy duplicate
+    DEVICE: str = Field(default="mps")  # auto, cuda, cpu, mps
+    
+    # === VALIDATORS ===
+    
+    @validator("DATABASE_URL")
+    def validate_database_url(cls, v):
+        """Validate database URL format"""
+        if not v or len(v.strip()) == 0:
+            raise ValueError("Database URL cannot be empty")
+        return v
+    
+    @validator("TRAINING_DATA_PATH", "VECTOR_DB_PATH")
+    def validate_paths(cls, v):
+        """Ensure paths can be created"""
+        try:
+            Path(v).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"Could not create directory {v}: {e}")
+        return v
+    
+    @validator("OLLAMA_HOST")
+    def validate_ollama_host(cls, v):
+        """Validate Ollama host URL"""
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("Ollama host must be a valid HTTP/HTTPS URL")
+        return v
+    
+    # === COMPUTED PROPERTIES ===
+    
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development mode"""
+        return self.ENV.lower() == "development"
+    
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production mode"""
+        return self.ENV.lower() == "production"
+    
+    @property
+    def database_echo(self) -> bool:
+        """Whether to echo SQL statements"""
+        return self.is_development and self.debug
+    
+    # === CONFIGURATION METHODS ===
+    
+    def get_database_config(self) -> Dict[str, Any]:
+        """Get database configuration dict"""
+        return {
+            "url": self.DATABASE_URL,
+            "echo": self.database_echo,
+            "pool_size": self.db_pool_size,
+            "max_overflow": self.db_max_overflow,
+            "pool_timeout": self.db_pool_timeout,
+            "pool_recycle": self.db_pool_recycle,
+        }
+    
+    def get_llm_config(self) -> Dict[str, Any]:
+        """Get LLM configuration dict"""
+        return {
+            "host": self.OLLAMA_HOST,
+            "model": self.OLLAMA_MODEL,
+            "timeout": self.ollama_timeout,
+            "temperature": self.MODEL_TEMPERATURE,
+            "top_p": self.MODEL_TOP_P,
+            "top_k": self.MODEL_TOP_K,
+            "max_tokens": self.MODEL_MAX_TOKENS,
+            "repeat_penalty": self.MODEL_REPEAT_PENALTY,
+            "context_window": self.MODEL_CONTEXT_WINDOW,
+        }
+    
+    def get_rag_config(self) -> Dict[str, Any]:
+        """Get RAG configuration dict"""
+        return {
+            "embedding_model": self.EMBEDDING_MODEL,
+            "chunk_size": self.RAG_CHUNK_SIZE,
+            "chunk_overlap": self.RAG_CHUNK_OVERLAP,
+            "top_k": self.RAG_TOP_K,
+            "similarity_threshold": self.similarity_threshold,
+            "vector_db_path": str(self.vector_db_path),
+        }
 
+
+# Create global settings instance
 settings = Settings()

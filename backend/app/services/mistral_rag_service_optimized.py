@@ -1,7 +1,6 @@
 """
-Mistral RAG Service - ChromaDB + Mistral 7B Integration
-Optimiert für deutsche StreamWorks-Dokumentation mit Citations
-PERFORMANCE OPTIMIZED VERSION
+Mistral RAG Service - PERFORMANCE OPTIMIZED Version
+ChromaDB + Mistral 7B Integration mit verbesserter Performance
 """
 import logging
 import asyncio
@@ -13,8 +12,8 @@ from app.services.citation_service import citation_service
 
 logger = logging.getLogger(__name__)
 
-class MistralRAGService:
-    """RAG Service optimiert für Mistral 7B mit Citation Support - PERFORMANCE EDITION"""
+class MistralRAGServiceOptimized:
+    """RAG Service optimiert für Mistral 7B mit Citations - PERFORMANCE EDITION"""
     
     def __init__(self):
         self.rag_service = None
@@ -38,47 +37,11 @@ class MistralRAGService:
                 await self.mistral_service.initialize(skip_warmup=True)  # Fast startup
             
             self.is_initialized = True
-            logger.info("✅ Mistral RAG Service erfolgreich initialisiert")
+            logger.info("✅ Mistral RAG Service (OPTIMIZED) erfolgreich initialisiert")
             
         except Exception as e:
             logger.error(f"❌ Mistral RAG Service Initialisierung fehlgeschlagen: {e}")
             self.is_initialized = False
-    
-    async def search_for_mistral(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Optimierte Dokumentensuche für Mistral's Context Window"""
-        
-        if not self.rag_service or not self.rag_service.is_initialized:
-            logger.warning("RAG Service nicht verfügbar")
-            return []
-        
-        try:
-            # Normale Dokumentensuche mit Timeout
-            docs = await asyncio.wait_for(
-                self.rag_service.search_documents(query, top_k),
-                timeout=8.0
-            )
-            
-            if not docs:
-                logger.info(f"Keine Dokumente für Query gefunden: {query}")
-                return []
-            
-            # Konvertiere zu Mistral-Format
-            context_docs = []
-            for i, doc in enumerate(docs):
-                # Nutze distance als relevance score
-                relevance = 1.0 - (i * 0.1)  # 1.0, 0.9, 0.8, etc.
-                
-                context_docs.append({
-                    'content': doc.page_content,
-                    'source': doc.metadata.get('source', doc.metadata.get('filename', 'unknown')),
-                    'relevance': max(0.1, relevance)  # Minimum 0.1
-                })
-            
-            return context_docs
-            
-        except Exception as e:
-            logger.error(f"Fehler bei Dokumentensuche: {e}")
-            return []
     
     async def generate_response(self, question: str, documents: List = None, fast_mode: bool = True) -> Dict[str, Any]:
         """Generate response with citations - PERFORMANCE OPTIMIZED"""
@@ -120,7 +83,7 @@ class MistralRAGService:
                     documents = search_result.get("documents", [])
                     citations = search_result.get("citations", [])
                     context = search_result.get("context", "")
-                    sources_used = len(set(c.filename for c in citations)) if citations else 0
+                    sources_used = len(set(c.filename for c in citations))
                 except asyncio.TimeoutError:
                     logger.warning("Document search timeout - using fallback")
                     return {
@@ -152,7 +115,7 @@ class MistralRAGService:
             
             return {
                 "response": mistral_response,
-                "citations": citations if citations else [],
+                "citations": citations,
                 "sources_used": sources_used,
                 "performance_mode": "optimized",
                 "response_time": round(total_time, 2)
@@ -249,30 +212,14 @@ Das System ist momentan eingeschränkt verfügbar.
         
         return "\n".join(context_parts) if context_parts else "Keine passenden Dokumente gefunden."
     
-    async def answer_with_mistral_rag(self, question: str) -> str:
-        """RAG-Antwort mit Mistral 7B - LEGACY COMPATIBILITY"""
-        result = await self.generate_response(question, fast_mode=True)
-        return result.get("response", "Keine Antwort verfügbar.")
-    
     async def get_stats(self) -> Dict[str, Any]:
         """Service Statistiken"""
-        rag_stats = {}
-        if self.rag_service:
-            try:
-                rag_stats = await self.rag_service.get_stats()
-            except:
-                rag_stats = {"status": "error"}
-        
-        mistral_stats = await self.mistral_service.get_stats()
-        
         return {
             "service": "mistral_rag_optimized",
             "is_initialized": self.is_initialized,
-            "rag_service": rag_stats,
-            "mistral_service": mistral_stats,
             "performance_mode": "high_speed",
             "optimization_level": "maximum"
         }
 
 # Global instance
-mistral_rag_service = MistralRAGService()
+mistral_rag_service_optimized = MistralRAGServiceOptimized()
