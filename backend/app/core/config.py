@@ -8,6 +8,14 @@ from typing import List, Optional, Dict, Any
 from enum import Enum
 from pathlib import Path
 import logging
+import os
+from .security import (
+    get_secure_config_value, 
+    SecureConfigValidator, 
+    ProductionSecrets,
+    validate_production_config,
+    SecurityError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +77,22 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1000, le=65535, description="API port")
     debug: bool = Field(default=False, description="Debug mode")
     
-    # Security
-    secret_key: str = Field(default="dev-secret-key-change-in-production", min_length=32)
+    # Security - PRODUCTION HARDENED
+    secret_key: str = Field(
+        default_factory=lambda: get_secure_config_value(
+            "SECRET_KEY", 
+            ProductionSecrets.generate_secret_key()
+        ),
+        min_length=32,
+        description="Cryptographically secure secret key"
+    )
     access_token_expire_minutes: int = Field(default=30, ge=1, le=10080)
+    
+    # Additional security settings
+    jwt_algorithm: str = Field(default="HS256")
+    password_reset_expire_minutes: int = Field(default=15, ge=5, le=60)
+    max_login_attempts: int = Field(default=5, ge=3, le=10)
+    lockout_duration_minutes: int = Field(default=30, ge=10, le=1440)
     
     # === CORS CONFIGURATION ===
     
@@ -93,8 +114,25 @@ class Settings(BaseSettings):
     # === DATABASE CONFIGURATION ===
     
     DATABASE_URL: str = Field(
-        default="sqlite:///./streamworks_ki.db",
-        description="Database connection URL"
+        default_factory=lambda: get_secure_config_value(
+            "DATABASE_URL", 
+            "sqlite:///./streamworks_ki.db" if os.getenv("ENV", "development") == "development" else None
+        ),
+        description="Database connection URL with security validation"
+    )
+    
+    # Database security settings
+    db_ssl_required: bool = Field(
+        default_factory=lambda: os.getenv("ENV", "development") == "production"
+    )
+    db_ssl_ca_cert: Optional[str] = Field(
+        default_factory=lambda: get_secure_config_value("DB_SSL_CA_CERT")
+    )
+    db_ssl_client_cert: Optional[str] = Field(
+        default_factory=lambda: get_secure_config_value("DB_SSL_CLIENT_CERT")
+    )
+    db_ssl_client_key: Optional[str] = Field(
+        default_factory=lambda: get_secure_config_value("DB_SSL_CLIENT_KEY")
     )
     
     @property
@@ -302,10 +340,36 @@ class Settings(BaseSettings):
     # === VALIDATORS ===
     
     @validator("DATABASE_URL")
-    def validate_database_url(cls, v):
-        """Validate database URL format"""
+    def validate_database_url(cls, v, values):
+        """Validate database URL format and security"""
         if not v or len(v.strip()) == 0:
             raise ValueError("Database URL cannot be empty")
+        
+        # Get environment from values or ENV variable
+        env = values.get('ENV') or os.getenv('ENV', 'development')
+        
+        # Security validation
+        validator = SecureConfigValidator()
+        if not validator.validate_database_url(v, env):
+            raise ValueError(f"Database URL fails security validation for {env} environment")
+        
+        return v
+    
+    @validator("secret_key")
+    def validate_secret_key(cls, v):
+        """Validate secret key strength"""
+        validator = SecureConfigValidator()
+        if not validator.validate_secret_key(v):
+            raise ValueError("Secret key is too weak or uses default value. Use a cryptographically secure key.")
+        return v
+    
+    @validator("ALLOWED_ORIGINS")
+    def validate_cors_origins(cls, v, values):
+        """Validate CORS origins for security"""
+        env = values.get('ENV') or os.getenv('ENV', 'development')
+        validator = SecureConfigValidator()
+        if not validator.validate_cors_origins(v, env):
+            raise ValueError(f"CORS origins configuration not secure for {env} environment")
         return v
     
     @validator("TRAINING_DATA_PATH", "VECTOR_DB_PATH")

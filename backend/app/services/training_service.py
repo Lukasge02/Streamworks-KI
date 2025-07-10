@@ -15,6 +15,8 @@ import logging
 from pathlib import Path
 
 from app.core.base_service import BaseService, ServiceOperationError, ServiceConfigurationError
+from app.core.async_manager import task_manager, managed_task
+from app.core.security import SecurityError
 from app.models.database import TrainingFile
 from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse, CategoryStats
 from app.core.config import settings
@@ -22,7 +24,8 @@ from app.services.rag_service import RAGService
 from app.services.txt_to_md_converter import txt_to_md_converter
 from app.services.multi_format_processor import multi_format_processor, FileProcessingResult
 from app.services.enterprise_markdown_converter import enterprise_markdown_converter
-from app.services.production_document_processor import production_document_processor, ProcessingResult
+from app.services.production_document_processor import production_document_processor
+from app.services.production_document_processor import ProcessingResult as ProductionProcessingResult
 from langchain.schema import Document
 
 logger = logging.getLogger(__name__)
@@ -161,10 +164,20 @@ class TrainingService(BaseService):
             await self.db.commit()
             await self.db.refresh(training_file)
             
-            # Process file asynchronously with new DB session
-            task = asyncio.create_task(self._process_file_async_safe(training_file.id))
-            # Add error callback to log any unhandled exceptions
-            task.add_done_callback(self._log_async_task_result)
+            # Process file asynchronously with managed task system
+            task_id = await task_manager.submit_task(
+                self._process_file_async_safe(str(training_file.id)),
+                name=f"process_file_{training_file.filename}",
+                timeout=600.0,  # 10 minutes timeout
+                max_retries=2,
+                metadata={
+                    "file_id": str(training_file.id),
+                    "filename": training_file.filename,
+                    "file_size": len(file_content)
+                }
+            )
+            
+            logger.info(f"📋 File processing task submitted: {task_id}")
             
             return TrainingFileResponse.model_validate(training_file)
             
@@ -217,10 +230,20 @@ class TrainingService(BaseService):
             
             logger.info(f"📝 Database record created: {file_id}")
             
-            # Process file asynchronously with new DB session
-            task = asyncio.create_task(self._process_file_async_safe(training_file.id))
-            # Add error callback to log any unhandled exceptions
-            task.add_done_callback(self._log_async_task_result)
+            # Process file asynchronously with managed task system
+            task_id = await task_manager.submit_task(
+                self._process_file_async_safe(str(training_file.id)),
+                name=f"process_file_{training_file.filename}",
+                timeout=600.0,  # 10 minutes timeout
+                max_retries=2,
+                metadata={
+                    "file_id": str(training_file.id),
+                    "filename": training_file.filename,
+                    "category": category
+                }
+            )
+            
+            logger.info(f"📋 File processing task submitted: {task_id}")
             
             return TrainingFileResponse.model_validate(training_file)
             
@@ -232,83 +255,136 @@ class TrainingService(BaseService):
             logger.error(f"Save training file failed: {e}")
             raise ServiceOperationError(f"Failed to save training file: {e}")
     
-    def _log_async_task_result(self, task: asyncio.Task):
-        """Log the result of an async task to catch any unhandled exceptions"""
-        try:
-            if task.exception():
-                logger.error(f"❌ Async document processing task failed: {task.exception()}")
-            else:
-                logger.info(f"✅ Async document processing task completed successfully")
-        except Exception as e:
-            logger.error(f"❌ Error in async task callback: {e}")
-    
-    async def _process_file_async_safe(self, file_id: str) -> None:
-        """Process uploaded file with separate DB session to avoid rollback issues"""
-        from app.models.database import AsyncSessionLocal
+    async def upload_file_with_validation(self, file_content: bytes, filename: str, 
+                                         manual_category: Optional[str] = None) -> TrainingFileResponse:
+        """Upload file with comprehensive security validation"""
+        if not self.is_initialized:
+            await self.initialize()
         
         try:
-            # Create new database session for async processing
+            # Basic security validation
+            if not filename:
+                raise SecurityError("Filename cannot be empty")
+            
+            if not file_content:
+                raise SecurityError("File content cannot be empty")
+            
+            # Check file size (max 100MB)
+            file_size = len(file_content)
+            if file_size > 100 * 1024 * 1024:
+                raise SecurityError(f"File too large: {file_size} bytes (max 100MB)")
+            
+            # Check file extension
+            file_extension = Path(filename).suffix.lower()
+            if file_extension not in ['.txt', '.md', '.pdf', '.docx', '.xlsx', '.json', '.xml', '.csv', '.html']:
+                raise SecurityError(f"Unsupported file type: {file_extension}")
+            
+            logger.info(f"📄 Validated file upload: {filename} ({file_size} bytes)")
+            
+            # Use regular upload after validation
+            return await self.upload_file(file_content, filename, manual_category)
+            
+        except SecurityError as e:
+            logger.error(f"🚨 Security validation failed for {filename}: {e}")
+            raise ServiceOperationError(f"File upload blocked by security validation: {e}")
+        except Exception as e:
+            logger.error(f"❌ File upload validation failed: {e}")
+            raise ServiceOperationError(f"File upload failed: {e}")
+    
+    @managed_task(timeout=600.0, max_retries=2)
+    async def _process_file_async_safe(self, file_id: str) -> None:
+        """Process uploaded file with separate DB session and managed task execution"""
+        from app.models.database import AsyncSessionLocal
+        
+        # Create new database session for async processing
+        new_db = None
+        try:
             new_db = AsyncSessionLocal()
+            
+            # Get file record with new session
+            query = select(TrainingFile).where(TrainingFile.id == file_id)
+            result = await new_db.execute(query)
+            training_file = result.scalar_one_or_none()
+            
+            if not training_file:
+                logger.error(f"Training file not found for async processing: {file_id}")
+                return
+            
+            # Update status to processing
+            training_file.status = "processing"
+            await new_db.commit()
+            
+            logger.info(f"🔄 Starting file processing: {training_file.filename}")
+            
+            # Choose processor based on file type with timeout
             try:
-                # Get file record with new session
-                query = select(TrainingFile).where(TrainingFile.id == file_id)
-                result = await new_db.execute(query)
-                training_file = result.scalar_one_or_none()
+                processor_result = await asyncio.wait_for(
+                    self._choose_and_run_processor_safe(getattr(training_file, 'file_path', ''), getattr(training_file, 'filename', '')),
+                    timeout=300.0  # 5 minute timeout for individual processing
+                )
+            except asyncio.TimeoutError:
+                raise ServiceOperationError(f"File processing timed out for {training_file.filename}")
+            
+            logger.info(f"🔍 Processing result for {training_file.filename}: success={processor_result.success}")
+            
+            if processor_result.success:
+                # Update file with processing results
+                training_file.status = "ready"
+                training_file.processed_file_path = processor_result.output_path
+                training_file.markdown_file_path = processor_result.markdown_path
+                training_file.processing_method = processor_result.processor_used
+                training_file.processing_quality = processor_result.quality_score
+                training_file.conversion_status = "completed"
                 
-                if not training_file:
-                    logger.error(f"Training file not found for async processing: {file_id}")
-                    return
-                
-                # Update status to processing
-                training_file.status = "processing"
-                await new_db.commit()
-                
-                # Choose processor based on file type (pass file info, not object)
-                processor_result = await self._choose_and_run_processor_safe(training_file.file_path, training_file.filename)
-                
-                logger.info(f"🔍 Processing result for {training_file.filename}: success={processor_result.success}, error={processor_result.error_message}")
-                
-                if processor_result.success:
-                    # Update file with processing results
-                    training_file.status = "ready"
-                    training_file.processed_file_path = processor_result.output_path
-                    training_file.markdown_file_path = processor_result.markdown_path
-                    training_file.processing_method = processor_result.processor_used
-                    training_file.processing_quality = processor_result.quality_score
-                    training_file.conversion_status = "completed"
-                    
-                    # Index in RAG if available
-                    if self.rag_service and processor_result.markdown_path:
-                        await self._index_in_rag_safe(training_file, processor_result.markdown_path)
-                else:
-                    training_file.status = "error"
-                    training_file.processing_error = processor_result.error_message
-                    training_file.error_message = processor_result.error_message  # For API compatibility
-                    training_file.conversion_status = "failed"
-                
-                await new_db.commit()
-                logger.info(f"✅ File processing completed: {file_id}")
-                
-            finally:
-                await new_db.close()
-                
+                # Index in RAG if available with timeout
+                if self.rag_service and processor_result.markdown_path:
+                    try:
+                        await asyncio.wait_for(
+                            self._index_in_rag_safe(training_file, processor_result.markdown_path),
+                            timeout=120.0  # 2 minute timeout for RAG indexing
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning(f"⏰ RAG indexing timed out for {training_file.filename}")
+                        training_file.index_status = "timeout"
+            else:
+                training_file.status = "error"
+                training_file.processing_error = processor_result.error_message
+                training_file.error_message = processor_result.error_message
+                training_file.conversion_status = "failed"
+            
+            await new_db.commit()
+            logger.info(f"✅ File processing completed: {file_id}")
+            
         except Exception as e:
             logger.error(f"❌ Async file processing failed for {file_id}: {e}")
-            # Try to mark file as error
-            try:
-                error_db = AsyncSessionLocal()
+            
+            # Try to mark file as error with proper error handling
+            if new_db:
                 try:
                     query = select(TrainingFile).where(TrainingFile.id == file_id)
-                    result = await error_db.execute(query)
+                    result = await new_db.execute(query)
                     training_file = result.scalar_one_or_none()
+                    
                     if training_file:
                         training_file.status = "error"
-                        training_file.processing_error = str(e)
-                        await error_db.commit()
-                finally:
-                    await error_db.close()
-            except Exception as cleanup_error:
-                logger.error(f"❌ Failed to mark file as error: {cleanup_error}")
+                        training_file.processing_error = str(e)[:1000]  # Limit error message length
+                        training_file.error_message = str(e)[:1000]
+                        training_file.conversion_status = "failed"
+                        await new_db.commit()
+                        
+                except Exception as cleanup_error:
+                    logger.error(f"❌ Failed to mark file as error: {cleanup_error}")
+            
+            # Re-raise the original exception
+            raise
+            
+        finally:
+            # Ensure database session is always closed
+            if new_db:
+                try:
+                    await new_db.close()
+                except Exception as e:
+                    logger.error(f"❌ Error closing database session: {e}")
     
     async def _index_in_rag_safe(self, training_file: TrainingFile, markdown_path: str) -> None:
         """Index processed file in RAG system with error handling"""
@@ -371,17 +447,16 @@ class TrainingService(BaseService):
             # Try production document processor for other formats
             if 'production_doc' in self._file_processors:
                 logger.info(f"🔄 Processing file with production document processor: {filename}")
-                result = await production_document_processor.process_file(file_path)
+                with open(file_path, 'rb') as f:
+                    content = f.read()
+                result = await production_document_processor.process_document(file_path, content)
                 if result.success:
                     return result
             
             # Fallback to multi-format processor
             if 'multi_format' in self._file_processors:
                 logger.info(f"🔄 Processing file with multi-format processor: {filename}")
-                result = await multi_format_processor.process_file(
-                    file_path, 
-                    target_format='markdown'
-                )
+                result = await multi_format_processor.process_file(file_path)
                 if result.success:
                     return result
             
@@ -419,17 +494,16 @@ class TrainingService(BaseService):
             # Try production document processor for other formats
             if 'production_doc' in self._file_processors:
                 logger.info(f"🔄 Processing file with production document processor: {training_file.filename}")
-                result = await production_document_processor.process_file(str(file_path))
+                with open(str(file_path), 'rb') as f:
+                    content = f.read()
+                result = await production_document_processor.process_document(str(file_path), content)
                 if result.success:
                     return result
             
             # Fallback to multi-format processor
             if 'multi_format' in self._file_processors:
                 logger.info(f"🔄 Processing file with multi-format processor: {training_file.filename}")
-                result = await multi_format_processor.process_file(
-                    str(file_path), 
-                    target_format='markdown'
-                )
+                result = await multi_format_processor.process_file(str(file_path))
                 if result.success:
                     return result
             
@@ -526,9 +600,11 @@ class TrainingService(BaseService):
             await self._delete_physical_files(training_file)
             
             # Remove from RAG if indexed
-            if training_file.is_indexed and self.rag_service:
+            if getattr(training_file, 'is_indexed', False) and self.rag_service:
                 try:
-                    await self.rag_service.remove_documents_by_source(training_file.filename)
+                    # TODO: Implement remove_documents_by_source method in RAG service
+                    # await self.rag_service.remove_documents_by_source(training_file.filename)
+                    logger.warning("RAG document removal not implemented yet")
                 except Exception as e:
                     logger.warning(f"Failed to remove from RAG: {e}")
             
@@ -571,11 +647,10 @@ class TrainingService(BaseService):
             indexed_files = len(indexed_result.scalars().all())
             
             return CategoryStats(
-                total_files=total_files,
-                indexed_files=indexed_files,
-                ready_files=total_files,  # Simplified
-                processing_files=0,
-                categories={}
+                total=total_files,
+                ready=total_files,  # Simplified
+                processing=0,
+                error=0
             )
             
         except Exception as e:
@@ -605,7 +680,7 @@ class TrainingService(BaseService):
                 stats["files"].append({
                     "filename": file.filename,
                     "chunk_count": file.chunk_count or 0,
-                    "indexed_at": file.indexed_at.isoformat() if file.indexed_at else None,
+                    "indexed_at": getattr(file, 'indexed_at', None).isoformat() if getattr(file, 'indexed_at', None) else None,
                     "index_status": file.index_status
                 })
             
@@ -630,17 +705,18 @@ class TrainingService(BaseService):
             files_deleted = []
             
             # Delete original file from filesystem
-            if file_record.file_path and os.path.exists(file_record.file_path):
-                os.remove(file_record.file_path)
-                files_deleted.append(f"Original: {file_record.file_path}")
-                logger.info(f"🗑️ Original file deleted: {file_record.file_path}")
+            file_path = getattr(file_record, 'file_path', None)
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+                files_deleted.append(f"Original: {file_path}")
+                logger.info(f"🗑️ Original file deleted: {file_path}")
             
             # Delete processed files if they exist
-            if hasattr(file_record, 'processed_file_path') and file_record.processed_file_path:
-                if os.path.exists(file_record.processed_file_path):
-                    os.remove(file_record.processed_file_path)
-                    files_deleted.append(f"Processed: {file_record.processed_file_path}")
-                    logger.info(f"🗑️ Processed file deleted: {file_record.processed_file_path}")
+            processed_file_path = getattr(file_record, 'processed_file_path', None)
+            if processed_file_path and os.path.exists(processed_file_path):
+                os.remove(processed_file_path)
+                files_deleted.append(f"Processed: {processed_file_path}")
+                logger.info(f"🗑️ Processed file deleted: {processed_file_path}")
             
             # Delete markdown file if it exists
             if hasattr(file_record, 'markdown_file_path') and file_record.markdown_file_path:
@@ -650,10 +726,12 @@ class TrainingService(BaseService):
                     logger.info(f"🗑️ Markdown file deleted: {file_record.markdown_file_path}")
             
             # Also check for optimized MD files in standard location (for TXT files)
-            if file_record.filename.lower().endswith('.txt'):
+            filename = getattr(file_record, 'filename', '')
+            if filename.lower().endswith('.txt'):
                 from pathlib import Path
                 # Extract original filename from file path (remove UUID prefix)
-                original_filename = Path(file_record.file_path).name
+                record_file_path = getattr(file_record, 'file_path', '')
+                original_filename = Path(record_file_path).name
                 # Create expected optimized MD filename
                 optimized_filename = original_filename.replace('.txt', '_optimized.md')
                 optimized_path = Path("data/training_data/optimized/help_data") / optimized_filename
@@ -664,7 +742,7 @@ class TrainingService(BaseService):
                     logger.info(f"🗑️ Optimized MD file deleted: {optimized_path}")
             
             # Remove from ChromaDB if indexed
-            if file_record.is_indexed:
+            if getattr(file_record, 'is_indexed', False):
                 try:
                     await self.remove_from_chromadb(file_id)
                     logger.info(f"🗑️ Removed from ChromaDB: {file_id}")
@@ -726,9 +804,16 @@ class TrainingService(BaseService):
             
             logger.info(f"🔄 Manually processing file: {training_file.filename}")
             
-            # Trigger async processing
-            task = asyncio.create_task(self._process_file_async_safe(file_id))
-            task.add_done_callback(self._log_async_task_result)
+            # Trigger async processing with managed task
+            task_id = await task_manager.submit_task(
+                self._process_file_async_safe(file_id),
+                name=f"reprocess_file_{training_file.filename}",
+                timeout=600.0,
+                max_retries=1,
+                metadata={"file_id": file_id, "type": "reprocessing"}
+            )
+            
+            logger.info(f"📋 File reprocessing task submitted: {task_id}")
             
             return True
             
@@ -752,7 +837,7 @@ class TrainingService(BaseService):
                 return None
             
             # Check if already indexed
-            if training_file.is_indexed:
+            if getattr(training_file, 'is_indexed', False):
                 logger.info(f"File already indexed: {training_file.filename}")
                 return {
                     "file_id": file_id,
@@ -774,13 +859,14 @@ class TrainingService(BaseService):
                     markdown_path = str(optimized_path)
             
             # Fall back to processed file path
-            if not markdown_path and hasattr(training_file, 'processed_file_path') and training_file.processed_file_path:
-                if os.path.exists(training_file.processed_file_path):
-                    markdown_path = training_file.processed_file_path
+            processed_file_path = getattr(training_file, 'processed_file_path', None)
+            if not markdown_path and processed_file_path and os.path.exists(processed_file_path):
+                markdown_path = processed_file_path
             
             # Fall back to original file
-            if not markdown_path and os.path.exists(training_file.file_path):
-                markdown_path = training_file.file_path
+            original_file_path = getattr(training_file, 'file_path', None)
+            if not markdown_path and original_file_path and os.path.exists(original_file_path):
+                markdown_path = original_file_path
             
             if not markdown_path:
                 logger.error(f"No processable file found for {training_file.filename}")
@@ -796,7 +882,7 @@ class TrainingService(BaseService):
                 "filename": training_file.filename,
                 "status": "indexed",
                 "chunk_count": training_file.chunk_count or 0,
-                "indexed_at": training_file.indexed_at.isoformat() if training_file.indexed_at else None
+                "indexed_at": getattr(training_file, 'indexed_at', None).isoformat() if getattr(training_file, 'indexed_at', None) else None
             }
             
         except Exception as e:

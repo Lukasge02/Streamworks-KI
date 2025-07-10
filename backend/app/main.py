@@ -11,8 +11,11 @@ from app.services.rag_service import rag_service
 from app.services.xml_generator import xml_generator
 from app.services.mistral_rag_service import mistral_rag_service
 from app.services.mistral_llm_service import mistral_llm_service
+from app.services.simple_qa_service import simple_qa_service
+from app.services.fast_qa_service import fast_qa_service
 from app.models.database import init_db
 from app.api.v1.chat import router as chat_router
+from app.api.v1.qa import router as qa_router
 from app.api.v1.xml_generation import router as xml_router
 from app.api.v1.xml_validation import router as validation_router
 from app.api.v1.training import router as training_router
@@ -22,12 +25,19 @@ from app.api.v1.evaluation import router as evaluation_router
 from app.api.v1.health import router as health_router
 from app.api.v1.ab_testing import router as ab_testing_router
 from app.api.v1.chromadb_sync import router as chromadb_sync_router
+from app.api.v1.monitoring import router as monitoring_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
     StreamWorksMetricsMiddleware
 )
 from app.middleware.mistral_monitoring import MistralPerformanceMiddleware
+from app.middleware.production_monitoring import (
+    create_monitoring_middleware,
+    start_monitoring,
+    log_alert_handler,
+    webhook_alert_handler
+)
 
 # Setup logging
 logging.basicConfig(
@@ -48,6 +58,13 @@ async def lifespan(app: FastAPI):
     logger.info(f"🔧 XML Generation Enabled: {settings.XML_GENERATION_ENABLED}")
     
     try:
+        # Start production monitoring
+        try:
+            await start_monitoring()
+            logger.info("📈 Production monitoring started")
+        except Exception as e:
+            logger.error(f"❌ Monitoring startup failed: {e}")
+        
         # Initialize Database
         logger.info("🗄️ Initializing Database...")
         await init_db()
@@ -82,6 +99,15 @@ async def lifespan(app: FastAPI):
             logger.info("🔍 Initializing Mistral RAG Service...")
             await mistral_rag_service.initialize()
             logger.info("✅ Mistral RAG Service ready")
+            
+            # Initialize Q&A Services
+            logger.info("🎯 Initializing Simple Q&A Service...")
+            await simple_qa_service.initialize()
+            logger.info("✅ Simple Q&A Service ready")
+            
+            logger.info("⚡ Initializing Fast Q&A Service...")
+            await fast_qa_service.initialize()
+            logger.info("✅ Fast Q&A Service ready")
         
         # 4. XML Generator
         if settings.XML_GENERATION_ENABLED:
@@ -126,13 +152,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add Performance Monitoring Middleware
+# Add Production Monitoring Middleware (replaces old monitoring)
+production_monitoring = create_monitoring_middleware(
+    app,
+    enable_prometheus=True,
+    enable_alerts=True,
+    enable_system_monitoring=True,
+    system_monitor_interval=10.0
+)
+
+# Add alert handlers
+if production_monitoring.alert_manager:
+    production_monitoring.alert_manager.add_alert_handler(log_alert_handler)
+    # Add webhook handler if URL is configured
+    import os
+    if os.environ.get('ALERT_WEBHOOK_URL'):
+        production_monitoring.alert_manager.add_alert_handler(webhook_alert_handler)
+
+# Add legacy monitoring for backward compatibility
 app.add_middleware(PerformanceMonitoringMiddleware)
-
-# Add StreamWorks-specific Metrics
 app.add_middleware(StreamWorksMetricsMiddleware)
-
-# Add Mistral Performance Monitoring
 app.add_middleware(MistralPerformanceMiddleware)
 
 # Add Request Logging in development
@@ -144,6 +183,12 @@ app.include_router(
     chat_router,
     prefix="/api/v1/chat",
     tags=["chat"]
+)
+
+app.include_router(
+    qa_router,
+    prefix="/api/v1/qa",
+    tags=["qa"]
 )
 
 app.include_router(
@@ -198,6 +243,12 @@ app.include_router(
     chromadb_sync_router,
     prefix="/api/v1",
     tags=["chromadb_sync"]
+)
+
+app.include_router(
+    monitoring_router,
+    prefix="/api/v1/monitoring",
+    tags=["monitoring", "metrics", "health"]
 )
 
 @app.get("/")

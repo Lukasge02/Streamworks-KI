@@ -25,18 +25,13 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-class ChatMode(str, Enum):
-    QA = "qa"
-    XML_GENERATOR = "xml_generator"
+# ChatMode enum removed - using dedicated endpoints instead
 
 class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[str] = None
 
-class DualModeChatRequest(BaseModel):
-    message: str
-    mode: ChatMode = ChatMode.QA
-    session_id: Optional[str] = None
+# DualMode models removed - using dedicated endpoints instead
 
 class ChatResponse(BaseModel):
     response: str
@@ -46,12 +41,7 @@ class ChatResponse(BaseModel):
     llm_model: Optional[str] = None
     processing_time: float = 0.0
 
-class DualModeChatResponse(BaseModel):
-    response: str
-    mode_used: str
-    processing_time: float
-    metadata: dict
-    sources: Optional[List[dict]] = None  # Changed to List[dict] for Citation objects
+# DualModeChatResponse removed - using dedicated endpoints instead
 
 class DocumentUploadRequest(BaseModel):
     source_category: ManualSourceCategory = Field(..., description="Manual source category")
@@ -149,12 +139,16 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
                 mistral_rag_service.generate_response(enhanced_message),
                 timeout=settings.CHAT_TIMEOUT_SECONDS if hasattr(settings, 'CHAT_TIMEOUT_SECONDS') else 30.0
             )
-            response = rag_result.get("response", "Keine Antwort generiert.")
+            response = rag_result.get("response")
+            if not response:
+                raise Exception("Keine Antwort vom System erhalten")
             sources_used = rag_result.get("sources_used", 0)
         except asyncio.TimeoutError:
             logger.error(f"❌ Chat request timed out after {settings.CHAT_TIMEOUT_SECONDS if hasattr(settings, 'CHAT_TIMEOUT_SECONDS') else 30}s")
-            response = "Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es mit einer kürzeren oder spezifischeren Frage erneut."
-            sources_used = 0
+            raise HTTPException(
+                status_code=504,
+                detail="Die Anfrage hat zu lange gedauert. Das System konnte keine Antwort generieren."
+            )
         
         # Speichere Konversation in Memory
         try:
@@ -203,140 +197,47 @@ async def chat_with_mistral(request: ChatRequestValidator, raw_request: Request)
         
     except Exception as e:
         logger.error(f"❌ Chat endpoint error: {e}")
-        process_time = time.time() - start_time
         
-        # Use error handler for graceful fallback
-        try:
-            # Determine error type based on the exception
-            if "mistral" in str(e).lower() or "llm" in str(e).lower():
-                fallback_response = await error_handler.handle_llm_error(e, {"query": request.message})
-            elif "rag" in str(e).lower() or "vector" in str(e).lower():
-                fallback_response = await error_handler.handle_rag_error(e, {"query": request.message})
-            else:
-                # Generic service error
-                fallback_response = await error_handler.handle_llm_error(e, {"query": request.message})
-            
-            # Save error to conversation memory
-            try:
-                if 'conversation_id' in locals():
-                    from app.services.conversation_memory import conversation_memory
-                    conversation_memory.add_message(
-                        session_id=conversation_id,
-                        question=request.message,
-                        answer=f"[Fallback] {fallback_response.message}",
-                        metadata={
-                            "error": str(e), 
-                            "processing_time": process_time,
-                            "fallback_type": fallback_response.fallback_type.value
-                        }
-                    )
-            except Exception as save_error:
-                logger.warning(f"Could not save to conversation memory: {save_error}")
-            
-            return ChatResponse(
-                response=fallback_response.message,
-                mode=f"fallback_{fallback_response.fallback_type.value}",
-                conversation_id=request.conversation_id or str(uuid.uuid4()),
-                sources_used=0,
-                llm_model="error_fallback",
-                processing_time=process_time
-            )
-            
-        except Exception as fallback_error:
-            logger.error(f"❌ Even fallback failed: {fallback_error}")
-            
-            # Ultimate fallback
-            return ChatResponse(
-                response="Ein technischer Fehler ist aufgetreten. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support.",
-                mode="critical_error",
-                conversation_id=request.conversation_id or str(uuid.uuid4()),
-                sources_used=0,
-                llm_model="system_fallback",
-                processing_time=process_time
-            )
+        # Don't use fallback - just raise error
+        raise HTTPException(
+            status_code=500,
+            detail=f"Systemfehler: {str(e)}"
+        )
 
-@router.post("/dual-mode", response_model=DualModeChatResponse)
-async def dual_mode_chat(request: DualModeChatRequest):
-    """Dual-Mode Chat mit Mode-Selection für Q&A und XML Generation"""
+@router.post("/dual-mode")
+async def dual_mode_redirect(request: dict):
+    """Temporary redirect for frontend compatibility - redirects to smart Q&A"""
+    from fastapi import HTTPException
     
-    start_time = time.time()
+    # Extract message from request
+    message = request.get("message", "")
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    
+    # Redirect to smart Q&A endpoint
+    from app.services.intelligent_qa_service import intelligent_qa_service
     
     try:
-        logger.info(f"🤖 Dual-Mode Chat Request: {request.mode.value} - {request.message[:50]}...")
+        result = await intelligent_qa_service.answer_question(message)
         
-        if request.mode == ChatMode.QA:
-            # Nutze Mistral RAG Service mit Citations für Q&A
-            rag_result = await mistral_rag_service.generate_response(request.message)
-            
-            # Convert citations to proper format
-            citations = rag_result.get("citations", [])
-            sources_list = []
-            
-            if citations:
-                for citation in citations:
-                    if isinstance(citation, dict):
-                        # Extract essential info for sources list
-                        source_info = {
-                            "title": citation.get("source_title", "Unknown Source"),
-                            "type": citation.get("source_type", "Unknown"),
-                            "relevance": citation.get("relevance_score", 0.0),
-                            "filename": citation.get("filename", "")
-                        }
-                        sources_list.append(source_info)
-                    else:
-                        # Handle Citation object
-                        source_info = {
-                            "title": getattr(citation, 'source_title', 'Unknown Source'),
-                            "type": getattr(citation, 'source_type', 'Unknown'),
-                            "relevance": getattr(citation, 'relevance_score', 0.0),
-                            "filename": getattr(citation, 'filename', '')
-                        }
-                        sources_list.append(source_info)
-            
-            response = DualModeChatResponse(
-                response=rag_result.get("response", "Keine Antwort generiert."),
-                mode_used="qa_with_citations",
-                processing_time=time.time() - start_time,
-                metadata={
-                    "confidence": 0.9, 
-                    "model": "mistral_rag_with_citations",
-                    "sources_used": rag_result.get("sources_used", 0),
-                    "citations_count": len(citations)
-                },
-                sources=sources_list
-            )
-            
-        elif request.mode == ChatMode.XML_GENERATOR:
-            # Extrahiere XML-Anforderungen aus User-Message
-            xml_requirements = extract_xml_requirements(request.message)
-            
-            # Nutze bestehenden XML Generator Service
-            xml_content = await xml_generator.generate_xml_stream(xml_requirements)
-            
-            response = DualModeChatResponse(
-                response=f"```xml\n{xml_content}\n```",
-                mode_used="xml_generator",
-                processing_time=time.time() - start_time,
-                metadata={"xml_valid": True, "requirements": xml_requirements},
-                sources=None
-            )
-        
-        else:
-            raise HTTPException(status_code=400, detail=f"Unsupported mode: {request.mode}")
-            
-        logger.info(f"✅ Dual-Mode response generated in {response.processing_time:.2f}s")
-        return response
+        # Format response to match expected dual-mode format
+        return {
+            "response": result["response"],
+            "mode_used": "smart_qa",
+            "processing_time": result["processing_time"],
+            "metadata": {
+                "intent": result.get("intent", "unknown"),
+                "documents_used": result["documents_used"],
+                "redirected_from": "dual_mode"
+            },
+            "sources": []
+        }
         
     except Exception as e:
-        logger.error(f"❌ Dual-Mode chat error: {e}")
-        process_time = time.time() - start_time
-        
-        return DualModeChatResponse(
-            response="Entschuldigung, bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
-            mode_used="error_fallback",
-            processing_time=process_time,
-            metadata={"error": str(e)},
-            sources=None
+        raise HTTPException(
+            status_code=500,
+            detail=f"Q&A service error: {str(e)}"
         )
 
 def extract_xml_requirements(message: str) -> dict:
