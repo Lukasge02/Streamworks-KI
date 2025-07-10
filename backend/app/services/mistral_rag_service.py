@@ -83,20 +83,16 @@ class MistralRAGService:
     async def generate_response(self, question: str, documents: List = None, fast_mode: bool = True) -> Dict[str, Any]:
         """Generate response with citations - PERFORMANCE OPTIMIZED"""
         
-        # Quick fallback check
+        # Quick initialization check
         if not self.is_initialized:
             try:
-                await asyncio.wait_for(self.initialize(), timeout=8.0)
+                await asyncio.wait_for(self.initialize(), timeout=5.0)
             except asyncio.TimeoutError:
-                logger.warning("RAG service initialization timeout - using fallback")
+                logger.error("RAG service initialization timeout")
+                raise Exception("Service nicht verfügbar")
         
         if not self.is_initialized:
-            return {
-                "response": self._get_quick_fallback_response(question),
-                "citations": [],
-                "sources_used": 0,
-                "performance_mode": "fallback"
-            }
+            raise Exception("RAG Service ist nicht initialisiert. Das System kann keine Antworten generieren.")
         
         try:
             start_time = asyncio.get_event_loop().time()
@@ -116,19 +112,18 @@ class MistralRAGService:
                 )
                 
                 try:
-                    search_result = await asyncio.wait_for(search_task, timeout=6.0)
+                    search_result = await asyncio.wait_for(search_task, timeout=3.0)  # Faster timeout
                     documents = search_result.get("documents", [])
                     citations = search_result.get("citations", [])
                     context = search_result.get("context", "")
                     sources_used = len(set(c.filename for c in citations)) if citations else 0
+                    
+                    if not documents:
+                        raise Exception("Keine relevanten Dokumente gefunden")
+                        
                 except asyncio.TimeoutError:
-                    logger.warning("Document search timeout - using fallback")
-                    return {
-                        "response": self._get_quick_fallback_response(question),
-                        "citations": [],
-                        "sources_used": 0,
-                        "performance_mode": "search_timeout"
-                    }
+                    logger.error("Document search timeout")
+                    raise Exception("Dokumentensuche zu langsam")
             
             # PERFORMANCE CRITICAL: Fast Mistral response generation (optimized)
             try:
@@ -139,11 +134,11 @@ class MistralRAGService:
                         fast_mode=True,  # Always use fast mode
                         use_cache=True   # Enable caching for better performance
                     ),
-                    timeout=15.0  # Aggressive timeout
+                    timeout=10.0  # Much more aggressive timeout
                 )
             except asyncio.TimeoutError:
-                logger.error("Mistral response timeout - using fallback")
-                mistral_response = self._get_quick_fallback_response(question)
+                logger.error("Mistral response timeout")
+                raise asyncio.TimeoutError("Die Anfrage hat zu lange gedauert. Das System konnte keine Antwort generieren.")
             
             # Performance tracking
             total_time = asyncio.get_event_loop().time() - start_time
@@ -161,76 +156,13 @@ class MistralRAGService:
             
         except Exception as e:
             logger.error(f"Error generating RAG response: {e}")
-            return {
-                "response": self._get_quick_fallback_response(question),
-                "citations": [],
-                "sources_used": 0,
-                "performance_mode": "error_fallback",
-                "error": str(e)
-            }
+            raise Exception(f"Fehler beim Generieren der Antwort: {str(e)}")
     
-    def _get_quick_fallback_response(self, question: str) -> str:
-        """Schnelle Fallback-Antwort ohne LLM-Aufruf"""
-        question_lower = question.lower()
-        
-        if "streamworks" in question_lower:
-            return """## 🔧 StreamWorks-Information
-
-### 📋 Überblick
-StreamWorks ist eine Plattform für die Datenverarbeitung und Batch-Job-Automatisierung bei Arvato Systems.
-
-### 💻 Grundfunktionen
-- XML-basierte Stream-Konfiguration
-- Automatisierte Batch-Jobs
-- Datenverarbeitung und -transformation
-- Zeitgesteuerte Ausführung
-
-### 💡 Wichtiger Hinweis
-Aufgrund technischer Probleme kann ich Ihnen momentan keine detaillierte Antwort geben. Bitte versuchen Sie es später erneut oder konsultieren Sie die StreamWorks-Dokumentation."""
-        
-        elif any(word in question_lower for word in ["xml", "template", "stream", "batch"]):
-            return """## 🔧 StreamWorks-Konfiguration
-
-### 📋 Überblick
-Für XML-Templates und Stream-Konfigurationen stehen verschiedene Optionen zur Verfügung.
-
-### 💻 Grundstruktur
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<StreamWorksConfig>
-  <BatchJob beschreibung="Job-Beschreibung">
-    <DataSource typ="..." pfad="..." />
-    <ProcessingSteps>
-      <!-- Verarbeitungsschritte -->
-    </ProcessingSteps>
-    <OutputTarget pfad="..." format="..." />
-  </BatchJob>
-</StreamWorksConfig>
-```
-
-### 💡 Wichtiger Hinweis
-Für detaillierte Konfigurationen empfehle ich Ihnen, die StreamWorks-Dokumentation zu konsultieren."""
-        
-        else:
-            return """## ❓ Entschuldigung
-
-Das System ist momentan eingeschränkt verfügbar. 
-
-### 💡 Vorschläge
-- Versuchen Sie es in wenigen Minuten erneut
-- Nutzen Sie spezifischere Begriffe zu StreamWorks
-- Wenden Sie sich an den Support bei dringenden Fragen
-
-### 📚 Verfügbare Themen
-- StreamWorks-Konfiguration
-- XML-Templates
-- Batch-Jobs
-- Datenverarbeitung"""
     
     def _build_context_from_documents(self, documents: List, citations: List, max_tokens: int = 2000) -> str:
         """Build optimized context string - reduced for performance"""
         if not documents:
-            return "Keine relevanten Dokumente gefunden."
+            raise Exception("Keine relevanten Dokumente gefunden. Das System kann keine Antwort generieren.")
         
         context_parts = []
         current_length = 0
@@ -248,7 +180,9 @@ Das System ist momentan eingeschränkt verfügbar.
             context_parts.append(context_part)
             current_length += doc_tokens
         
-        return "\n".join(context_parts) if context_parts else "Keine passenden Dokumente gefunden."
+        if not context_parts:
+            raise Exception("Keine passenden Dokumente gefunden. Das System kann keine Antwort generieren.")
+        return "\n".join(context_parts)
     
     async def answer_with_mistral_rag(self, question: str) -> str:
         """RAG-Antwort mit Mistral 7B - LEGACY COMPATIBILITY"""

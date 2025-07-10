@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from datetime import datetime
 from app.core.config import settings
 import logging
@@ -106,9 +107,8 @@ engine = create_async_engine(
     **engine_kwargs
 )
 
-AsyncSessionLocal = sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
+AsyncSessionLocal = async_sessionmaker(
+    engine,
     expire_on_commit=False,
     autoflush=False  # Better control over flush timing
 )
@@ -121,11 +121,11 @@ async def get_db():
         yield session
     except Exception as e:
         logger.error(f"❌ Database session error: {e}")
-        if session:
+        if session is not None:
             await session.rollback()
         raise
     finally:
-        if session:
+        if session is not None:
             await session.close()
 
 async def get_db_session():
@@ -211,7 +211,8 @@ class DatabaseManager:
                 session = self.session_factory()
                 self.performance_stats["total_queries"] += 1
                 yield session
-                await session.commit()
+                if session is not None:
+                    await session.commit()
                 
                 # Track performance
                 response_time = time.time() - start_time
@@ -220,7 +221,7 @@ class DatabaseManager:
                 
             except Exception as e:
                 self.performance_stats["failed_queries"] += 1
-                if session:
+                if session is not None:
                     await session.rollback()
                 
                 if attempt < self.max_retries - 1:
@@ -230,7 +231,7 @@ class DatabaseManager:
                     logger.error(f"❌ Database operation failed after {self.max_retries} attempts: {e}")
                     raise
             finally:
-                if session:
+                if session is not None:
                     await session.close()
     
     async def _run_in_session(self, func, *args, **kwargs):

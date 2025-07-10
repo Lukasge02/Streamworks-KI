@@ -1,0 +1,163 @@
+StreamWorks Installation und Setup
+
+SYSTEMANFORDERUNGEN:
+Für die Installation von StreamWorks benötigen Sie folgende Systemvoraussetzungen:
+
+MINDESTANFORDERUNGEN:
+- CPU: 4 Cores
+- RAM: 8 GB
+- Speicher: 100 GB verfügbarer Festplattenspeicher
+- Betriebssystem: Linux (Ubuntu 20.04+, CentOS 7+)
+- Java: OpenJDK 11 oder höher
+- Datenbank: PostgreSQL 12+ oder MySQL 8+
+
+EMPFOHLENE KONFIGURATION:
+- CPU: 8 Cores
+- RAM: 16 GB
+- Speicher: 500 GB SSD
+- Netzwerk: Gigabit Ethernet
+- Backup-Lösung
+
+INSTALLATION:
+
+SCHRITT 1: SYSTEM VORBEREITEN
+sudo apt update
+sudo apt install openjdk-11-jdk postgresql-12
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+
+SCHRITT 2: BENUTZER ERSTELLEN
+sudo adduser streamworks
+sudo usermod -aG sudo streamworks
+su - streamworks
+
+SCHRITT 3: STREAMWORKS HERUNTERLADEN
+wget https://releases.streamworks.com/latest/streamworks-server.tar.gz
+tar -xzf streamworks-server.tar.gz
+cd streamworks-server
+
+SCHRITT 4: DATENBANK KONFIGURIEREN
+sudo -u postgres psql
+CREATE DATABASE streamworks;
+CREATE USER streamworks WITH PASSWORD 'secure_password';
+GRANT ALL PRIVILEGES ON DATABASE streamworks TO streamworks;
+
+SCHRITT 5: KONFIGURATION
+cp config/streamworks.conf.example config/streamworks.conf
+nano config/streamworks.conf
+
+WICHTIGE KONFIGURATIONEN:
+
+DATABASE CONFIG:
+db.url=jdbc:postgresql://localhost:5432/streamworks
+db.username=streamworks
+db.password=secure_password
+db.pool.size=20
+
+SERVER CONFIG:
+server.port=8080
+server.host=0.0.0.0
+server.ssl.enabled=true
+server.ssl.keystore=/path/to/keystore.jks
+
+MEMORY CONFIG:
+jvm.heap.min=2g
+jvm.heap.max=8g
+jvm.threads=100
+jvm.gc.type=G1
+
+SCHRITT 6: DIENST STARTEN
+./bin/streamworks start
+./bin/streamworks status
+
+SCHRITT 7: SYSTEMD SERVICE (Optional)
+sudo nano /etc/systemd/system/streamworks.service
+
+[Unit]
+Description=StreamWorks Server
+After=network.target postgresql.service
+
+[Service]
+Type=forking
+User=streamworks
+ExecStart=/home/streamworks/streamworks-server/bin/streamworks start
+ExecStop=/home/streamworks/streamworks-server/bin/streamworks stop
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl enable streamworks
+sudo systemctl start streamworks
+
+ERSTE SCHRITTE:
+
+WEBINTERFACE:
+Öffnen Sie https://localhost:8080 in Ihrem Browser
+Standard-Login: admin / admin
+Ändern Sie das Passwort nach der ersten Anmeldung
+
+LIZENZIERUNG:
+Laden Sie Ihre Lizenz-Datei hoch unter:
+Administration → License → Upload License File
+
+BENUTZER ERSTELLEN:
+Administration → Users → Add User
+Vergeben Sie entsprechende Rollen und Berechtigungen
+
+NETZWERK-KONFIGURATION:
+
+FIREWALL:
+sudo ufw allow 8080/tcp
+sudo ufw allow 8443/tcp
+sudo ufw allow 22/tcp
+
+REVERSE PROXY (Optional):
+Nginx-Konfiguration für bessere Performance:
+upstream streamworks {
+    server localhost:8080;
+}
+
+server {
+    listen 80;
+    server_name streamworks.company.com;
+    
+    location / {
+        proxy_pass http://streamworks;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+BACKUP UND RECOVERY:
+
+DATENBANK-BACKUP:
+pg_dump -U streamworks -d streamworks > backup.sql
+Automatisches Backup via Cron:
+0 2 * * * pg_dump -U streamworks -d streamworks > /backups/streamworks_$(date +%Y%m%d).sql
+
+KONFIGURATION-BACKUP:
+tar -czf config_backup.tar.gz config/ logs/
+
+MONITORING:
+
+HEALTH-CHECK:
+curl http://localhost:8080/health
+Sollte Status 200 und "healthy" zurückgeben
+
+LOG-DATEIEN:
+tail -f logs/streamworks.log
+tail -f logs/jobs.log
+
+TROUBLESHOOTING:
+
+HÄUFIGE PROBLEME:
+- Port bereits in Verwendung: netstat -tulpn | grep 8080
+- Datenbankverbindung fehlgeschlagen: Verbindungsparameter prüfen
+- Speicherplatz voll: df -h
+- Prozess hängt: ps aux | grep streamworks
+
+SUPPORT:
+- Dokumentation: https://docs.streamworks.com
+- Community Forum: https://community.streamworks.com
+- Support-Ticket: support@streamworks.com

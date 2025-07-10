@@ -1,0 +1,118 @@
+StreamWorks Häufige Fragen und Antworten
+
+ALLGEMEINE FRAGEN:
+F: Linux Ansprechperson?
+A: Arne Thiele
+
+F: Was ist StreamWorks?
+A: StreamWorks ist eine Enterprise-Plattform für die Automatisierung von Datenverarbeitungsprozessen. Sie ermöglicht die Erstellung, Verwaltung und Überwachung von Batch-Jobs und Streaming-Workflows.
+
+F: Welche Datenformate werden unterstützt?
+A: StreamWorks unterstützt CSV, JSON, XML, Parquet, Avro, Excel und viele weitere Formate. Zusätzlich können custom Parser für proprietäre Formate implementiert werden.
+
+F: Kann StreamWorks in der Cloud betrieben werden?
+A: Ja, StreamWorks ist Cloud-ready und kann in AWS, Azure, Google Cloud sowie in hybriden Umgebungen betrieben werden.
+
+INSTALLATION UND SETUP:
+
+F: Wie lange dauert eine typische Installation?
+A: Eine Standardinstallation dauert etwa 2-4 Stunden, abhängig von der Komplexität der Umgebung und den Anpassungen.
+
+F: Können bestehende Datenbanken verwendet werden?
+A: Ja, StreamWorks unterstützt PostgreSQL, MySQL, Oracle, SQL Server und weitere Datenbanken als Metadaten-Store.
+
+F: Ist eine Cluster-Installation möglich?
+A: Ja, StreamWorks unterstützt Cluster-Deployments für High Availability und horizontale Skalierung.
+
+JOB-VERWALTUNG:
+
+F: Wie erstelle ich einen neuen Job?
+A: Jobs können über die Web-UI, REST-API oder durch XML-Konfigurationsdateien erstellt werden. Der Job-Wizard führt Sie durch den Erstellungsprozess.
+
+F: Können Jobs voneinander abhängen?
+A: Ja, StreamWorks unterstützt Job-Dependencies. Jobs können sequenziell oder parallel ausgeführt werden, basierend auf definierten Abhängigkeiten.
+
+F: Wie kann ich einen Job manuell starten?
+A: Jobs können manuell über das Dashboard, per API-Call oder Kommandozeile gestartet werden.
+
+SCHEDULING:
+
+F: Welche Scheduling-Optionen gibt es?
+A: StreamWorks verwendet Cron-Ausdrücke für flexible Zeitplanung. Zusätzlich sind event-basierte Trigger und manuelle Ausführung möglich.
+
+F: Kann ich Jobs zu bestimmten Geschäftszeiten ausführen?
+A: Ja, Sie können Blackout-Zeiten definieren und Jobs nur in definierten Zeitfenstern ausführen lassen.
+
+F: Was passiert, wenn ein Job zur geplanten Zeit bereits läuft?
+A: StreamWorks bietet verschiedene Overlap-Strategien: Skip, Queue, Force Kill oder Parallel Execution.
+
+MONITORING UND TROUBLESHOOTING:
+
+F: Wie überwache ich Job-Ausführungen?
+A: Das Dashboard zeigt Echtzeitinformationen über alle Jobs. Zusätzlich können E-Mail-Alerts, Slack-Notifications und SNMP-Traps konfiguriert werden.
+
+F: Wo finde ich Log-Dateien?
+A: Log-Dateien sind über das Dashboard zugänglich oder direkt im Dateisystem unter /var/log/streamworks/ zu finden.
+
+F: Ein Job schlägt regelmäßig fehl. Wie debugge ich das?
+A: Prüfen Sie die Job-Logs, Systemressourcen und Netzwerkverbindungen. Aktivieren Sie Debug-Logging für detaillierte Informationen.
+
+PERFORMANCE:
+
+F: Wie kann ich die Performance optimieren?
+A: Optimieren Sie Memory-Settings, verwenden Sie Parallelverarbeitung, implementieren Sie Caching und überwachen Sie Ressourcenverbrauch.
+
+F: Unterstützt StreamWorks Parallel Processing?
+A: Ja, Jobs können parallel ausgeführt werden. Die Anzahl der Worker-Threads ist konfigurierbar.
+
+F: Kann ich die Ausführungsreihenfolge von Jobs prioritisieren?
+A: Ja, Jobs können mit Prioritäten versehen werden. High-Priority-Jobs werden vor Low-Priority-Jobs ausgeführt.
+
+SICHERHEIT:
+
+F: Wie werden Passwörter gespeichert?
+A: Passwörter werden gehashed und gesalzen gespeichert. Plaintext-Passwörter sind niemals sichtbar.
+
+F: Unterstützt StreamWorks SSL/TLS?
+A: Ja, alle Verbindungen können über SSL/TLS verschlüsselt werden. TLS 1.3 wird unterstützt.
+
+F: Kann ich LDAP für die Benutzerauthentifizierung verwenden?
+A: Ja, StreamWorks unterstützt LDAP, Active Directory und SAML-basierte SSO-Lösungen.
+
+DATENVERARBEITUNG:
+
+F: Können große Dateien verarbeitet werden?
+A: Ja, StreamWorks kann Dateien jeder Größe verarbeiten. Für sehr große Dateien wird Streaming-Processing empfohlen.
+
+F: Unterstützt StreamWorks Datenvalidierung?
+A: Ja, Sie können Schema-Validierung, Datentyp-Checks und Custom-Validierungsregeln implementieren.
+
+F: Kann ich Daten in Echtzeit verarbeiten?
+A: Ja, StreamWorks unterstützt sowohl Batch- als auch Stream-Processing für Echtzeitdaten.
+
+INTEGRATION:
+
+F: Wie integriere ich StreamWorks in bestehende Systeme?
+A: StreamWorks bietet REST-APIs, SDKs für verschiedene Programmiersprachen und vorgefertigte Konnektoren für populäre Systeme.
+
+F: Unterstützt StreamWorks Webhooks?
+A: Ja, Sie können Webhooks für verschiedene Events konfigurieren (Job-Start, Job-Ende, Fehler, etc.).
+
+F: Kann ich eigene Plugins entwickeln?
+A: Ja, StreamWorks bietet ein Plugin-Framework für Custom-Entwicklungen.
+
+LIZENZIERUNG:
+
+F: Welche Lizenzmodelle gibt es?
+A: StreamWorks bietet verschiedene Lizenzmodelle: Per CPU, Per Job, Enterprise-Lizenz und Cloud-basierte Abrechnung.
+
+F: Gibt es eine Testversion?
+A: Ja, eine 30-Tage-Testversion steht kostenlos zur Verfügung.
+
+SUPPORT:
+
+F: Welche Support-Optionen gibt es?
+A: Business Hours Support, 24/7 Support, Dedicated Support Engineer und Professional Services sind verfügbar.
+
+F: Wo finde ich zusätzliche Dokumentation?
+A: Umfassende Dokumentation ist verfügbar unter docs.streamworks.com. Zusätzlich gibt es Video-Tutorials und Community-Forum.
