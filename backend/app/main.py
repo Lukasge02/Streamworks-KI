@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from app.core.config import settings
+from app.core.async_manager import initialize_async_manager, shutdown_async_manager
 from app.services.rag_service import rag_service
 from app.services.xml_generator import xml_generator
 from app.services.mistral_rag_service import mistral_rag_service
@@ -58,6 +59,11 @@ async def lifespan(app: FastAPI):
     logger.info(f"🔧 XML Generation Enabled: {settings.XML_GENERATION_ENABLED}")
     
     try:
+        # Initialize AsyncTaskManager first
+        logger.info("⚙️ Initializing AsyncTaskManager...")
+        await initialize_async_manager()
+        logger.info("✅ AsyncTaskManager started")
+        
         # Start production monitoring
         try:
             await start_monitoring()
@@ -133,6 +139,15 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("🔄 Shutting down StreamWorks-KI Backend...")
+    
+    # Shutdown AsyncTaskManager
+    try:
+        logger.info("⚙️ Shutting down AsyncTaskManager...")
+        await shutdown_async_manager()
+        logger.info("✅ AsyncTaskManager shutdown complete")
+    except Exception as e:
+        logger.error(f"❌ AsyncTaskManager shutdown error: {e}")
+    
     logger.info("✅ Shutdown complete")
 
 # Create FastAPI app
