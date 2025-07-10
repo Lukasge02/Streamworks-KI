@@ -784,6 +784,43 @@ Was möchtest du wissen?"""
             logger.error(f"❌ Error getting document count: {e}")
             return 0
     
+    async def get_all_chunks(self, limit: int = 100, offset: int = 0) -> List[Document]:
+        """Get all chunks from the vector store with pagination"""
+        if not self.is_initialized:
+            await self.initialize()
+        
+        try:
+            collection = self.vector_store._collection
+            
+            # Get chunks with pagination
+            results = collection.get(
+                limit=limit,
+                offset=offset,
+                include=['documents', 'metadatas', 'ids']
+            )
+            
+            documents = []
+            if results['documents']:
+                for i, doc_content in enumerate(results['documents']):
+                    metadata = results['metadatas'][i] if results['metadatas'] else {}
+                    doc_id = results['ids'][i] if results['ids'] else f"chunk_{i}"
+                    
+                    # Create Document object
+                    doc = Document(
+                        page_content=doc_content,
+                        metadata=metadata
+                    )
+                    # Add ID as an attribute for compatibility
+                    doc.id = doc_id
+                    documents.append(doc)
+            
+            logger.debug(f"📋 Retrieved {len(documents)} chunks (offset: {offset}, limit: {limit})")
+            return documents
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting all chunks: {e}")
+            return []
+    
     def _update_performance_stats(self, response_time: float):
         """Update performance statistics"""
         # Update average response time

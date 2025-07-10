@@ -9,7 +9,6 @@ import logging
 from app.core.config import settings
 from app.core.async_manager import initialize_async_manager, shutdown_async_manager
 from app.services.rag_service import rag_service
-from app.services.xml_generator import xml_generator
 from app.services.mistral_rag_service import mistral_rag_service
 from app.services.mistral_llm_service import mistral_llm_service
 from app.services.simple_qa_service import simple_qa_service
@@ -17,16 +16,14 @@ from app.services.fast_qa_service import fast_qa_service
 from app.models.database import init_db
 from app.api.v1.chat import router as chat_router
 from app.api.v1.qa import router as qa_router
-from app.api.v1.xml_generation import router as xml_router
-from app.api.v1.xml_validation import router as validation_router
 from app.api.v1.training import router as training_router
-from app.api.v1.search import router as search_router
 from app.api.v1.conversations import router as conversations_router
 from app.api.v1.evaluation import router as evaluation_router
 from app.api.v1.health import router as health_router
 from app.api.v1.ab_testing import router as ab_testing_router
 from app.api.v1.chromadb_sync import router as chromadb_sync_router
 from app.api.v1.monitoring import router as monitoring_router
+from app.api.v1.chunks import router as chunks_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -56,7 +53,6 @@ async def lifespan(app: FastAPI):
     logger.info(f"🔧 Environment: {settings.ENV}")
     logger.info(f"🔍 RAG Enabled: {settings.RAG_ENABLED}")
     logger.info(f"🤖 LLM Enabled: {settings.LLM_ENABLED}")
-    logger.info(f"🔧 XML Generation Enabled: {settings.XML_GENERATION_ENABLED}")
     
     try:
         # Initialize AsyncTaskManager first
@@ -114,16 +110,6 @@ async def lifespan(app: FastAPI):
             logger.info("⚡ Initializing Fast Q&A Service...")
             await fast_qa_service.initialize()
             logger.info("✅ Fast Q&A Service ready")
-        
-        # 4. XML Generator
-        if settings.XML_GENERATION_ENABLED:
-            logger.info("🔧 Initializing XML Generator...")
-            await xml_generator.initialize()
-            
-            xml_stats = await xml_generator.get_stats()
-            logger.info(f"✅ XML Generator ready - LoRA: {xml_stats.get('is_fine_tuned', False)}")
-        else:
-            logger.info("⏭️ XML Generator disabled (Mock mode)")
         
         logger.info("✅ StreamWorks-KI ready with Mistral 7B optimization")
         
@@ -207,27 +193,9 @@ app.include_router(
 )
 
 app.include_router(
-    xml_router,
-    prefix="/api/v1/xml",
-    tags=["xml_generation"]
-)
-
-app.include_router(
-    validation_router,
-    prefix="/api/v1/validate",
-    tags=["xml_validation"]
-)
-
-app.include_router(
     training_router,
     prefix="/api/v1/training",
     tags=["training"]
-)
-
-app.include_router(
-    search_router,
-    prefix="/api/v1/search",
-    tags=["intelligent_search"]
 )
 
 app.include_router(
@@ -266,17 +234,23 @@ app.include_router(
     tags=["monitoring", "metrics", "health"]
 )
 
+app.include_router(
+    chunks_router,
+    prefix="/api/v1/chunks",
+    tags=["chunks", "chromadb", "vectors"]
+)
+
 @app.get("/")
 async def root():
     """Root endpoint"""
     return {
-        "message": "StreamWorks-KI API v2.0",
-        "description": "RAG-based Q&A + LoRA-tuned XML Generation",
-        "version": "2.0.0",
-        "architecture": "RAG + LoRA",
+        "message": "StreamWorks-KI API v2.1",
+        "description": "RAG-based Q&A System for StreamWorks Support",
+        "version": "2.1.0",
+        "architecture": "Mistral 7B + RAG",
         "services": {
             "rag_enabled": settings.RAG_ENABLED,
-            "xml_generation_enabled": settings.XML_GENERATION_ENABLED,
+            "llm_enabled": settings.LLM_ENABLED,
             "training_enabled": settings.TRAINING_ENABLED
         }
     }
@@ -289,18 +263,16 @@ async def health_check():
         rag_stats = await rag_service.get_stats() if settings.RAG_ENABLED else {"status": "disabled"}
         mistral_stats = await mistral_llm_service.get_stats() if settings.LLM_ENABLED else {"status": "disabled"}
         mistral_rag_stats = await mistral_rag_service.get_stats() if settings.RAG_ENABLED and settings.LLM_ENABLED else {"status": "disabled"}
-        xml_stats = await xml_generator.get_stats()
         
         return {
             "status": "healthy",
             "timestamp": "2025-07-04T12:40:00Z",
             "version": "2.1.0",
-            "architecture": "Mistral 7B + RAG + LoRA",
+            "architecture": "Mistral 7B + RAG",
             "services": {
                 "rag": rag_stats,
                 "mistral_llm": mistral_stats,
                 "mistral_rag": mistral_rag_stats,
-                "xml_generation": xml_stats,
                 "database": "operational"
             },
             "config": {
@@ -327,12 +299,10 @@ async def system_status():
     """Detailed system status"""
     return {
         "backend_version": "2.1.0",
-        "architecture": "Mistral 7B + RAG + LoRA",
+        "architecture": "Mistral 7B + RAG",
         "features": {
             "mistral_rag_qa": settings.RAG_ENABLED and settings.LLM_ENABLED,
             "german_optimization": settings.FORCE_GERMAN_RESPONSES,
-            "xml_generation": settings.XML_GENERATION_ENABLED,
-            "lora_training": settings.TRAINING_ENABLED,
             "document_upload": settings.RAG_ENABLED,
             "vector_search": settings.RAG_ENABLED,
             "performance_monitoring": True
