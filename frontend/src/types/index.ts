@@ -12,7 +12,7 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export type TabType = 'chat' | 'training' | 'chunks';
+export type TabType = 'chat' | 'training' | 'chunks' | 'xml';
 
 export type MessageType = 'text' | 'code' | 'xml';
 

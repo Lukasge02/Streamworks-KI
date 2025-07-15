@@ -13,17 +13,9 @@ from app.services.mistral_rag_service import mistral_rag_service
 from app.services.mistral_llm_service import mistral_llm_service
 # Legacy services removed - only perfect_qa_service remains
 from app.models.database import init_db
-from app.api.v1.chat import router as chat_router
-# Legacy qa_router removed - only perfect_qa_router remains
+# Only import existing routers
 from app.api.v1.perfect_qa import router as perfect_qa_router
 from app.api.v1.training import router as training_router
-from app.api.v1.conversations import router as conversations_router
-from app.api.v1.evaluation import router as evaluation_router
-from app.api.v1.health import router as health_router
-from app.api.v1.ab_testing import router as ab_testing_router
-from app.api.v1.chromadb_sync import router as chromadb_sync_router
-from app.api.v1.monitoring import router as monitoring_router
-from app.api.v1.chunks import router as chunks_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -147,12 +139,7 @@ app.add_middleware(StreamWorksMetricsMiddleware)
 if settings.ENV == "development":
     app.add_middleware(RequestLoggingMiddleware)
 
-# Include API routes
-app.include_router(
-    chat_router,
-    prefix="/api/v1/chat",
-    tags=["chat"]
-)
+# Include API routes (only the two that exist)
 
 # 🎯 Perfect Q&A - Production Ready System
 app.include_router(
@@ -161,59 +148,11 @@ app.include_router(
     tags=["perfect-qa"]
 )
 
-# Legacy Q&A (disabled)
-# app.include_router(
-#     qa_router,
-#     prefix="/api/v1/qa-legacy",
-#     tags=["qa-legacy"]
-# )
-
+# Training/Upload endpoint
 app.include_router(
     training_router,
     prefix="/api/v1/training",
     tags=["training"]
-)
-
-app.include_router(
-    conversations_router,
-    prefix="/api/v1/conversations",
-    tags=["conversation_memory"]
-)
-
-app.include_router(
-    evaluation_router,
-    prefix="/api/v1/evaluation",
-    tags=["evaluation"]
-)
-
-app.include_router(
-    health_router,
-    prefix="/api/v1/health",
-    tags=["health"]
-)
-
-app.include_router(
-    ab_testing_router,
-    prefix="/api/v1/ab-testing",
-    tags=["ab_testing"]
-)
-
-app.include_router(
-    chromadb_sync_router,
-    prefix="/api/v1",
-    tags=["chromadb_sync"]
-)
-
-app.include_router(
-    monitoring_router,
-    prefix="/api/v1/monitoring",
-    tags=["monitoring", "metrics", "health"]
-)
-
-app.include_router(
-    chunks_router,
-    prefix="/api/v1/chunks",
-    tags=["chunks", "chromadb", "vectors"]
 )
 
 @app.get("/")
