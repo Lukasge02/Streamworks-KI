@@ -5,7 +5,7 @@ from typing import List, Optional
 import os
 import aiofiles
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.core.config import settings
@@ -375,11 +375,11 @@ async def get_conversion_status(file_id: str, db: AsyncSession = Depends(get_db)
         return {
             "file_id": file_id,
             "filename": file_record.filename,
-            "original_format": getattr(file_record, 'original_format', None),
-            "optimized_format": getattr(file_record, 'optimized_format', None),
-            "conversion_status": getattr(file_record, 'conversion_status', None),
-            "processed_file_path": getattr(file_record, 'processed_file_path', None),
-            "conversion_error": getattr(file_record, 'conversion_error', None),
+            "original_format": file_record.original_format,
+            "optimized_format": file_record.optimized_format,
+            "conversion_status": file_record.conversion_status,
+            "processed_file_path": file_record.processed_file_path,
+            "conversion_error": file_record.conversion_error,
             "file_status": file_record.status
         }
         
@@ -406,7 +406,7 @@ async def get_optimized_content(file_id: str, db: AsyncSession = Depends(get_db)
             raise HTTPException(status_code=404, detail="File not found")
         
         # Check if optimized file exists
-        processed_file_path = getattr(file_record, 'processed_file_path', None)
+        processed_file_path = file_record.processed_file_path
         if not processed_file_path or not os.path.exists(processed_file_path):
             raise HTTPException(status_code=404, detail="Optimized file not found")
         
@@ -419,9 +419,9 @@ async def get_optimized_content(file_id: str, db: AsyncSession = Depends(get_db)
             "original_filename": file_record.filename,
             "optimized_filename": os.path.basename(processed_file_path),
             "optimized_content": optimized_content,
-            "conversion_metadata": getattr(file_record, 'conversion_metadata', None),
+            "conversion_metadata": file_record.conversion_metadata,
             "file_size": len(optimized_content),
-            "conversion_status": getattr(file_record, 'conversion_status', None)
+            "conversion_status": file_record.conversion_status
         }
         
     except HTTPException:
@@ -446,10 +446,10 @@ async def get_conversion_stats(db: AsyncSession = Depends(get_db)):
         # Count conversion statuses
         conversion_stats = {
             "total_txt_files": len(txt_files),
-            "conversions_completed": len([f for f in txt_files if getattr(f, 'conversion_status', None) == 'completed']),
-            "conversions_failed": len([f for f in txt_files if getattr(f, 'conversion_status', None) == 'failed']),
-            "conversions_pending": len([f for f in txt_files if getattr(f, 'conversion_status', None) is None]),
-            "optimized_files_created": len([f for f in txt_files if getattr(f, 'processed_file_path', None) is not None])
+            "conversions_completed": len([f for f in txt_files if f.conversion_status == 'completed']),
+            "conversions_failed": len([f for f in txt_files if f.conversion_status == 'failed']),
+            "conversions_pending": len([f for f in txt_files if f.conversion_status is None]),
+            "optimized_files_created": len([f for f in txt_files if f.processed_file_path is not None])
         }
         
         # Calculate success rate
@@ -541,7 +541,7 @@ async def analyze_file_format(
                 "is_supported": is_supported,
                 "processing_method": multi_format_processor._get_chunk_strategy(detected_format),
                 "content_preview": content.decode('utf-8', errors='ignore')[:200] + "..." if len(content) > 200 else content.decode('utf-8', errors='ignore'),
-                "analysis_timestamp": datetime.utcnow().isoformat()
+                "analysis_timestamp": datetime.now(timezone.utc).isoformat()
             }
             
             logger.info(f"✅ File analysis completed: {file.filename} -> {detected_format.value}")
@@ -621,7 +621,7 @@ async def test_multi_format_processing(
                     for i, doc in enumerate(processing_result.documents[:3])  # First 3 chunks only
                 ] if processing_result.success else [],
                 "metadata": processing_result.metadata,
-                "test_timestamp": datetime.utcnow().isoformat()
+                "test_timestamp": datetime.now(timezone.utc).isoformat()
             }
             
             logger.info(f"✅ Test processing completed: {file.filename}")
@@ -697,7 +697,7 @@ async def training_health_check():
     """Health check for training API"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "service": "training_api",
         "allowed_extensions": ALLOWED_EXTENSIONS,
         "max_file_size_mb": MAX_FILE_SIZE // (1024*1024),

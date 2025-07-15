@@ -6,7 +6,7 @@ import json
 import os
 import aiofiles
 from typing import Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
@@ -107,13 +107,13 @@ class ConversationMemory:
             message = ConversationMessage(
                 question=question,
                 answer=answer,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 metadata=metadata or {}
             )
             
             # Nachricht hinzufügen
             session.messages.append(message)
-            session.last_activity = datetime.utcnow()
+            session.last_activity = datetime.now(timezone.utc)
             
             # Session-Größe begrenzen
             if len(session.messages) > self.max_messages_per_session:
@@ -211,7 +211,7 @@ class ConversationMemory:
         """
         try:
             deleted_count = 0
-            cutoff_time = datetime.utcnow() - timedelta(hours=self.session_timeout_hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=self.session_timeout_hours)
             
             # Durchsuche alle Session-Dateien
             for session_file in self.storage_path.glob("session_*.json"):
@@ -280,8 +280,8 @@ class ConversationMemory:
             session = ConversationSession(
                 session_id=session_id,
                 messages=[],
-                created_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                last_activity=datetime.now(timezone.utc),
                 metadata={}
             )
             self.sessions[session_id] = session

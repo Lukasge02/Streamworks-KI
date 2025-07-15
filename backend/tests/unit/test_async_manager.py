@@ -6,7 +6,7 @@ import pytest
 import asyncio
 import time
 from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.async_manager import (
     AsyncTaskManager,
@@ -37,7 +37,7 @@ class TestTaskInfo:
     
     def test_task_info_with_custom_values(self):
         """Test TaskInfo with custom values"""
-        custom_time = datetime.utcnow()
+        custom_time = datetime.now(timezone.utc)
         task_info = TaskInfo(
             task_id="custom_task",
             name="custom_name",

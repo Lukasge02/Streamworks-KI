@@ -16,7 +16,7 @@ from app.models.evaluation import (
     ABTestResult,
     EvaluationAlert,
     get_recent_metrics,
-    get_performance_trends,
+    get_performance_trends as get_performance_trends_service,
     get_active_alerts
 )
 
@@ -190,7 +190,7 @@ async def get_performance_trends(
     metric: str = Query(
         default="overall_score",
         description="Metrik für Trend-Analyse",
-        regex="^(overall_score|relevance_score|completeness_score|hallucination_score|response_time)$"
+        pattern="^(overall_score|relevance_score|completeness_score|hallucination_score|response_time)$"
     ),
     days: int = Query(default=7, ge=1, le=30, description="Zeitraum in Tagen")
 ):

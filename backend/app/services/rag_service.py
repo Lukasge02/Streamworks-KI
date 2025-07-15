@@ -49,16 +49,38 @@ class RAGService:
         
         logger.info("🔍 RAG Service initialisiert mit Performance-Optimierung")
     
+    def _prepare_text_for_e5(self, text: str, is_query: bool = False) -> str:
+        """Prepare text with appropriate E5 prefixes for optimal performance"""
+        if settings.EMBEDDING_MODEL.startswith("intfloat/multilingual-e5"):
+            if is_query:
+                return f"query: {text}"
+            else:
+                return f"passage: {text}"
+        return text
+    
     async def initialize(self):
         """Initialize RAG components"""
         try:
             logger.info("🚀 RAG Service wird initialisiert...")
             
-            # Initialize embeddings
+            # Initialize embeddings with Apple Silicon optimization
             logger.info(f"📊 Lade Embedding Model: {settings.EMBEDDING_MODEL}")
+            
+            # Enable MPS fallback for optimal Apple Silicon performance
+            import os
+            os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+            
+            # Determine optimal device
+            device = settings.embedding_device
+            if device == "mps":
+                import torch
+                if not torch.backends.mps.is_available():
+                    device = "cpu"
+                    logger.warning("⚠️ MPS not available, falling back to CPU")
+            
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=settings.EMBEDDING_MODEL,
-                model_kwargs={'device': 'cpu'},  # Embeddings auf CPU
+                model_kwargs={'device': device},
                 encode_kwargs={'normalize_embeddings': True}
             )
             
@@ -159,6 +181,9 @@ class RAGService:
             chunks = []
             for doc in documents:
                 doc_chunks = self.text_splitter.split_documents([doc])
+                # Prepare chunks with E5 passage prefix for optimal embeddings
+                for chunk in doc_chunks:
+                    chunk.page_content = self._prepare_text_for_e5(chunk.page_content, is_query=False)
                 chunks.extend(doc_chunks)
             
             logger.info(f"📄 Verarbeite {len(chunks)} Text-Chunks...")
@@ -194,9 +219,12 @@ class RAGService:
             # Cache miss - perform search
             self.performance_stats["cache_misses"] += 1
             
+            # Prepare query with E5 prefix for optimal performance
+            prepared_query = self._prepare_text_for_e5(query, is_query=True)
+            
             # Similarity search with error handling
             docs = self.vector_store.similarity_search(
-                query=query,
+                query=prepared_query,
                 k=top_k
             )
             

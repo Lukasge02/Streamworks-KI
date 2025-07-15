@@ -11,11 +11,11 @@ from app.core.async_manager import initialize_async_manager, shutdown_async_mana
 from app.services.rag_service import rag_service
 from app.services.mistral_rag_service import mistral_rag_service
 from app.services.mistral_llm_service import mistral_llm_service
-from app.services.simple_qa_service import simple_qa_service
-from app.services.fast_qa_service import fast_qa_service
+# Legacy services removed - only perfect_qa_service remains
 from app.models.database import init_db
 from app.api.v1.chat import router as chat_router
-from app.api.v1.qa import router as qa_router
+# Legacy qa_router removed - only perfect_qa_router remains
+from app.api.v1.perfect_qa import router as perfect_qa_router
 from app.api.v1.training import router as training_router
 from app.api.v1.conversations import router as conversations_router
 from app.api.v1.evaluation import router as evaluation_router
@@ -29,13 +29,7 @@ from app.middleware.monitoring import (
     RequestLoggingMiddleware,
     StreamWorksMetricsMiddleware
 )
-from app.middleware.mistral_monitoring import MistralPerformanceMiddleware
-from app.middleware.production_monitoring import (
-    create_monitoring_middleware,
-    start_monitoring,
-    log_alert_handler,
-    webhook_alert_handler
-)
+# Legacy monitoring removed - using enhanced_monitoring instead
 
 # Setup logging
 logging.basicConfig(
@@ -102,14 +96,7 @@ async def lifespan(app: FastAPI):
             await mistral_rag_service.initialize()
             logger.info("✅ Mistral RAG Service ready")
             
-            # Initialize Q&A Services
-            logger.info("🎯 Initializing Simple Q&A Service...")
-            await simple_qa_service.initialize()
-            logger.info("✅ Simple Q&A Service ready")
-            
-            logger.info("⚡ Initializing Fast Q&A Service...")
-            await fast_qa_service.initialize()
-            logger.info("✅ Fast Q&A Service ready")
+            # Perfect Q&A Service initialization handled by endpoint on-demand
         
         logger.info("✅ StreamWorks-KI ready with Mistral 7B optimization")
         
@@ -153,27 +140,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add Production Monitoring Middleware (replaces old monitoring)
-production_monitoring = create_monitoring_middleware(
-    app,
-    enable_prometheus=True,
-    enable_alerts=True,
-    enable_system_monitoring=True,
-    system_monitor_interval=10.0
-)
-
-# Add alert handlers
-if production_monitoring.alert_manager:
-    production_monitoring.alert_manager.add_alert_handler(log_alert_handler)
-    # Add webhook handler if URL is configured
-    import os
-    if os.environ.get('ALERT_WEBHOOK_URL'):
-        production_monitoring.alert_manager.add_alert_handler(webhook_alert_handler)
+# Legacy production monitoring removed - using enhanced_monitoring
 
 # Add legacy monitoring for backward compatibility
 app.add_middleware(PerformanceMonitoringMiddleware)
 app.add_middleware(StreamWorksMetricsMiddleware)
-app.add_middleware(MistralPerformanceMiddleware)
+# Legacy MistralPerformanceMiddleware removed
 
 # Add Request Logging in development
 if settings.ENV == "development":
@@ -186,11 +158,19 @@ app.include_router(
     tags=["chat"]
 )
 
+# 🎯 Perfect Q&A - Production Ready System
 app.include_router(
-    qa_router,
+    perfect_qa_router,
     prefix="/api/v1/qa",
-    tags=["qa"]
+    tags=["perfect-qa"]
 )
+
+# Legacy Q&A (disabled)
+# app.include_router(
+#     qa_router,
+#     prefix="/api/v1/qa-legacy",
+#     tags=["qa-legacy"]
+# )
 
 app.include_router(
     training_router,
@@ -362,16 +342,4 @@ async def get_metrics():
             "status": "error"
         }
 
-@app.get("/api/v1/mistral-metrics")
-async def get_mistral_metrics():
-    """Dedicated Mistral performance metrics"""
-    # Find Mistral middleware
-    for middleware in app.middleware:
-        if hasattr(middleware, 'cls') and middleware.cls == MistralPerformanceMiddleware:
-            if hasattr(middleware, 'get_metrics'):
-                return middleware.get_metrics()
-    
-    return {
-        "error": "Mistral Performance Middleware not found",
-        "status": "metrics_unavailable"
-    }
+# Legacy mistral metrics endpoint removed

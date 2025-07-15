@@ -12,7 +12,7 @@ import asyncio
 import hashlib
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -193,7 +193,7 @@ class EnterpriseMarkdownConverter:
             ConversionResult with comprehensive metrics and quality assurance
         """
         
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         conversion_id = str(uuid4())
         
         try:
@@ -256,7 +256,7 @@ class EnterpriseMarkdownConverter:
             # Update statistics
             self._update_conversion_stats(quality_metrics, file_format, True)
             
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             
             logger.info(f"✅ Enterprise conversion completed: {md_filename} "
                        f"({quality_metrics.quality_level.value}, {processing_time:.2f}s)")
@@ -280,7 +280,7 @@ class EnterpriseMarkdownConverter:
             )
             
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             self._update_conversion_stats(None, file_format, False)
             
             logger.error(f"❌ Enterprise conversion failed: {original_filename} - {e}")
@@ -691,7 +691,7 @@ class EnterpriseMarkdownConverter:
     ) -> str:
         """Add comprehensive metadata header to markdown"""
         
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         
         header = f"""---
 title: "{original_filename}"
@@ -725,7 +725,7 @@ project: "StreamWorks-KI"
     ) -> MarkdownQualityMetrics:
         """Comprehensive quality assessment of generated markdown"""
         
-        processing_time = (datetime.utcnow() - start_time).total_seconds()
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
         
         # Content analysis
         lines = markdown_content.split('\n')

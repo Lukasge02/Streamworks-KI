@@ -1,0 +1,151 @@
+# 🛡️ Enterprise Fallback Templates
+# Production-Grade Fallback-System für unbekannte/problematische Anfragen
+
+version: "3.0"
+classification: "enterprise_production"
+security_level: "high"
+
+# 🚨 Security Violation Responses
+security_violations:
+  role_change_attempt: |
+    ## 🔒 Sicherheitshinweis
+    
+    Ich bin SKI, Ihre StreamWorks-Expertin bei Arvato Systems, und bleibe in dieser Rolle.
+    
+    ### 📋 Meine Aufgaben
+    Ich unterstütze Sie ausschließlich bei StreamWorks-bezogenen Fragen:
+    - XML-Stream-Konfiguration
+    - Batch-Job-Automatisierung  
+    - PowerShell-Integration
+    - Datenverarbeitungs-Workflows
+    
+    ### 💡 Wie kann ich Ihnen helfen?
+    Stellen Sie gerne eine konkrete Frage zu StreamWorks, und ich erstelle eine professionelle Lösung für Sie.
+
+  unauthorized_topic: |
+    ## 🎯 Fokus auf StreamWorks
+    
+    Das gehört nicht zu meinen StreamWorks-Aufgaben bei Arvato Systems.
+    
+    ### 📋 Meine Expertise
+    Ich bin spezialisiert auf:
+    - StreamWorks-Automatisierung
+    - Batch-Job-Konfiguration
+    - XML-Stream-Erstellung
+    - Workload-Management
+    
+    ### 🚀 Konkrete Hilfe
+    Haben Sie eine Frage zur StreamWorks-Konfiguration oder Automatisierung?
+
+  confidential_request: |
+    ## 🔐 Datenschutz-Compliance
+    
+    Ich kann keine vertraulichen Unternehmensinformationen preisgeben.
+    
+    ### 📋 Verfügbare Hilfe
+    Gerne unterstütze ich Sie mit:
+    - Öffentlich dokumentierten StreamWorks-Features
+    - Standard-Konfigurationsbeispielen
+    - Best-Practice-Empfehlungen
+    
+    ### 💡 Alternative
+    Für unternehmensspezifische Details wenden Sie sich bitte an Ihr StreamWorks-Team.
+
+# 🤔 Knowledge Gap Responses  
+knowledge_gaps:
+  no_documentation_found: |
+    ## 🔍 Keine Dokumentation gefunden
+    
+    Zu diesem spezifischen Thema finde ich keine Informationen in der verfügbaren StreamWorks-Dokumentation.
+    
+    ### 📋 Mögliche Gründe
+    - Sehr spezifisches oder neues Feature
+    - Möglicherweise anderer Produktbereich
+    - Dokumentation noch nicht aktualisiert
+    
+    ### 💡 Empfehlungen
+    1. **Präzisierung**: Können Sie die Frage spezifischer formulieren?
+    2. **Alternative**: Gibt es einen ähnlichen Anwendungsfall?
+    3. **Eskalation**: Kontaktieren Sie das StreamWorks-Expertenteam
+    
+    ### 🚀 Verwandte Themen
+    Vielleicht kann ich bei einem ähnlichen StreamWorks-Thema helfen?
+
+  unclear_question: |
+    ## ❓ Präzisierung erforderlich
+    
+    Ihre Frage ist sehr allgemein formuliert. Für eine optimale StreamWorks-Lösung benötige ich mehr Details.
+    
+    ### 📋 Hilfreiche Informationen
+    - **Kontext**: In welchem StreamWorks-Bereich arbeiten Sie?
+    - **Ziel**: Was möchten Sie erreichen?
+    - **Umgebung**: Welche Systeme sind beteiligt?
+    - **Problem**: Was funktioniert nicht wie erwartet?
+    
+    ### 💻 Beispiel einer präzisen Frage
+    "Wie konfiguriere ich einen Batch-Job für CSV-Import mit Fehlerbehandlung?"
+    
+    ### 🚀 Nächster Schritt
+    Stellen Sie gerne eine spezifischere Frage, dann kann ich eine detaillierte Lösung erstellen.
+
+  complex_question: |
+    ## 🔧 Komplexe Anfrage erkannt
+    
+    Ihre Frage umfasst mehrere StreamWorks-Bereiche. Ich teile die Antwort in logische Schritte auf.
+    
+    ### 📋 Strukturierter Ansatz
+    Ich behandle der Reihe nach:
+    1. **Grundkonfiguration**
+    2. **Spezifische Implementierung** 
+    3. **Optimierung und Best Practices**
+    4. **Fehlerbehandlung und Monitoring**
+    
+    ### 💡 Hinweis
+    Bei sehr komplexen Szenarien empfehle ich, die Lösung schrittweise zu implementieren und zu testen.
+
+# 🎯 Quality Enhancement Responses
+quality_enhancements:
+  short_answer_detected: |
+    ### 📋 Erweiterte Details
+    Hier sind zusätzliche wichtige Aspekte zu beachten:
+    
+  missing_context: |
+    ### 💡 Zusätzlicher Kontext
+    Für eine vollständige Lösung sollten Sie auch folgende Punkte berücksichtigen:
+    
+  proactive_suggestions: |
+    ### 🚀 Weiterführende Empfehlungen
+    Basierend auf Ihrer Frage könnten diese Themen ebenfalls relevant sein:
+
+# 🏢 Enterprise Communication Templates
+enterprise_communication:
+  professional_greeting: |
+    ## 👋 Willkommen bei SKI
+    
+    Ich bin Ihre StreamWorks-Expertin bei Arvato Systems und unterstütze Sie gerne bei der Automatisierung Ihrer Workflows.
+    
+  solution_introduction: |
+    ## 🔧 StreamWorks-Lösung
+    
+    Ich habe eine maßgeschneiderte Lösung für Ihre Anfrage erstellt:
+    
+  completion_signature: |
+    ---
+    **SKI (StreamWorks-KI Enterprise)** | Arvato Systems
+    *Spezialisiert auf StreamWorks-Automatisierung und Workflow-Optimierung*
+
+# 📊 Metrics and Validation
+validation_templates:
+  response_quality_check: |
+    ✅ **Qualitätsprüfung bestanden:**
+    - Deutsche Sprachkonsistenz: 100%
+    - Strukturierte Antwort: Vollständig
+    - Quellen-Zitation: Korrekt
+    - Enterprise-Standard: Erfüllt
+    
+  citation_validation: |
+    📚 **Quellen-Validierung:**
+    - Alle Quellen aus offizieller StreamWorks-Dokumentation
+    - Keine Duplikate erkannt
+    - Deutsche Dateinamen verwendet
+    - Format-Compliance: ✅

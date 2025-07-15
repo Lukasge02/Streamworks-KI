@@ -10,7 +10,7 @@ import logging
 
 from app.models.database import get_db
 from app.services.chromadb_sync_service import ChromaDBSyncService
-from app.core.responses import ApiResponse
+from app.core.responses import ApiResponse, ResponseBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,7 @@ async def analyze_orphaned_chunks(
         sync_service = ChromaDBSyncService(db)
         analysis = await sync_service.analyze_orphaned_chunks()
         
-        return ApiResponse(
-            success=True,
+        return ResponseBuilder.success(
             message=f"Found {analysis['orphaned_chunk_count']} orphaned chunks in {len(analysis['orphaned_files'])} files",
             data=analysis
         )
@@ -65,8 +64,7 @@ async def cleanup_orphaned_chunks(
         
         action_type = "Simulated" if dry_run else "Performed"
         
-        return ApiResponse(
-            success=True,
+        return ResponseBuilder.success(
             message=f"{action_type} cleanup of {result['cleaned_chunks']} orphaned chunks from {result['cleaned_files']} files",
             data=result
         )
@@ -100,8 +98,7 @@ async def sync_database_with_filesystem(
         
         action_type = "Simulated" if dry_run else "Performed"
         
-        return ApiResponse(
-            success=True,
+        return ResponseBuilder.success(
             message=f"{action_type} database sync: {result['files_removed']} orphaned entries removed from {result['files_checked']} checked",
             data=result
         )
@@ -135,8 +132,7 @@ async def full_sync_check(
             analysis['sync_issues']['unindexed_files']
         )
         
-        return ApiResponse(
-            success=True,
+        return ResponseBuilder.success(
             message=f"Full sync check completed - {total_issues} issues found across all systems",
             data=analysis
         )
@@ -175,8 +171,7 @@ async def get_sync_stats(
             'last_check': analysis['timestamp']
         }
         
-        return ApiResponse(
-            success=True,
+        return ResponseBuilder.success(
             message="Sync statistics retrieved successfully",
             data=stats
         )
@@ -230,8 +225,7 @@ async def repair_sync_issues(
         
         action_type = "Simulated" if dry_run else "Performed"
         
-        return ApiResponse(
-            success=True,
+        return ResponseBuilder.success(
             message=f"{action_type} comprehensive repair: {repair_results['total_issues_fixed']} issues fixed",
             data=repair_results
         )

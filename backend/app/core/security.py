@@ -6,7 +6,7 @@ import os
 import secrets
 import hashlib
 import base64
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 import logging
 
@@ -51,12 +51,17 @@ class SecretManager:
                 logger.info("🔐 Secret manager initialized with existing key")
             else:
                 # Generate new key for first-time setup
-                self._encryption_key = Fernet.generate_key()
-                if not key_file.exists():
-                    # Save key (in production, use proper key management service)
-                    with open(key_file, "wb") as f:
-                        f.write(self._encryption_key)
-                    logger.info("🔑 New encryption key generated and saved")
+                if CRYPTOGRAPHY_AVAILABLE and Fernet is not None:
+                    self._encryption_key = Fernet.generate_key()
+                    if not key_file.exists():
+                        # Save key (in production, use proper key management service)
+                        with open(key_file, "wb") as f:
+                            f.write(self._encryption_key)
+                        logger.info("🔑 New encryption key generated and saved")
+                else:
+                    # Fallback for development
+                    self._encryption_key = b"fallback_key_dev_only"
+                    logger.warning("🔒 Using fallback encryption key")
                     
             self._initialized = True
             
@@ -74,20 +79,24 @@ class SecretManager:
             return hashlib.sha256(password.encode()).digest()
             
         salt = b"streamworks_ki_salt_2024"  # In production: use random salt per installation
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-        )
-        return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+        if PBKDF2HMAC is not None and hashes is not None:
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+        else:
+            # Fallback for when cryptography is not available
+            return hashlib.sha256(password.encode() + salt).digest()
     
     def encrypt_secret(self, secret: str) -> str:
         """Encrypt a secret value"""
         if not self._initialized:
             raise SecurityError("Secret manager not initialized")
         
-        if not CRYPTOGRAPHY_AVAILABLE:
+        if not CRYPTOGRAPHY_AVAILABLE or Fernet is None or self._encryption_key is None:
             # Fallback to base64 encoding for development
             return base64.urlsafe_b64encode(secret.encode()).decode()
             
@@ -101,7 +110,7 @@ class SecretManager:
             raise SecurityError("Secret manager not initialized")
         
         try:
-            if not CRYPTOGRAPHY_AVAILABLE:
+            if not CRYPTOGRAPHY_AVAILABLE or Fernet is None or self._encryption_key is None:
                 # Fallback to base64 decoding for development
                 return base64.urlsafe_b64decode(encrypted_secret.encode()).decode()
                 
@@ -195,8 +204,11 @@ class SecureConfigValidator:
         return True
     
     @staticmethod
-    def validate_cors_origins(origins: list, environment: str) -> bool:
+    def validate_cors_origins(origins: Optional[List[str]], environment: str) -> bool:
         """Validate CORS origins"""
+        if not origins:
+            return True
+            
         if environment == "production":
             # No localhost in production CORS
             for origin in origins:
@@ -268,7 +280,7 @@ def get_secure_config_value(key: str, default: Optional[str] = None, required: b
     return value
 
 
-def validate_production_config(config_dict: Dict[str, Any], environment: str) -> Dict[str, str]:
+def validate_production_config(config_dict: Dict[str, Any], environment: str) -> Dict[str, Any]:
     """Validate configuration for production deployment"""
     issues = []
     validator = SecureConfigValidator()
@@ -299,7 +311,7 @@ def validate_production_config(config_dict: Dict[str, Any], environment: str) ->
 
 
 # Security middleware functions
-def mask_sensitive_data(data: str, patterns: list = None) -> str:
+def mask_sensitive_data(data: str, patterns: Optional[List[str]] = None) -> str:
     """Mask sensitive data in logs/responses"""
     if patterns is None:
         patterns = [

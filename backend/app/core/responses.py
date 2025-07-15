@@ -4,7 +4,7 @@ Provides consistent response formats across all endpoints
 """
 from typing import Any, Dict, Optional, List, Union, Generic, TypeVar
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 
@@ -55,7 +55,7 @@ class MetaInfo(BaseModel):
         """Create meta info with default values"""
         return cls(
             request_id=request_id or str(uuid.uuid4()),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             processing_time_ms=processing_time_ms
         )
 
@@ -207,7 +207,7 @@ class HealthCheckResponse(BaseModel):
             version=version,
             uptime_seconds=uptime_seconds,
             checks=checks,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
 
 

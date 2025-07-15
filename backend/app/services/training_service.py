@@ -7,10 +7,10 @@ import os
 import uuid
 import aiofiles
 import asyncio
-from datetime import datetime
-from typing import List, Optional, Dict, Any, Union
+from datetime import datetime, timezone
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, desc
 import logging
 from pathlib import Path
 
@@ -18,14 +18,13 @@ from app.core.base_service import BaseService, ServiceOperationError, ServiceCon
 from app.core.async_manager import task_manager, managed_task
 from app.core.security import SecurityError
 from app.models.database import TrainingFile
-from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse, CategoryStats
+from app.models.schemas import TrainingFileResponse, CategoryStats
 from app.core.config import settings
 from app.services.rag_service import RAGService
 from app.services.txt_to_md_converter import txt_to_md_converter
-from app.services.multi_format_processor import multi_format_processor, FileProcessingResult
+from app.services.multi_format_processor import multi_format_processor
 from app.services.enterprise_markdown_converter import enterprise_markdown_converter
 from app.services.production_document_processor import production_document_processor
-from app.services.production_document_processor import ProcessingResult as ProductionProcessingResult
 from langchain.schema import Document
 
 logger = logging.getLogger(__name__)
@@ -102,7 +101,7 @@ class TrainingService(BaseService):
             total_files = len(result.scalars().all())
             
             # Count indexed files
-            indexed_query = select(TrainingFile).where(TrainingFile.is_indexed == True)
+            indexed_query = select(TrainingFile).where(TrainingFile.is_indexed.is_(True))
             indexed_result = await self.db.execute(indexed_query)
             indexed_files = len(indexed_result.scalars().all())
             
@@ -152,8 +151,8 @@ class TrainingService(BaseService):
                 display_name=filename,
                 file_path=str(original_path),
                 file_size=len(file_content),
-                upload_date=datetime.utcnow(),
-                upload_timestamp=datetime.utcnow(),
+                upload_date=datetime.now(timezone.utc),
+                upload_timestamp=datetime.now(timezone.utc),
                 status="uploaded",
                 original_format=file_extension.lstrip('.'),
                 manual_source_category=manual_category,
@@ -169,7 +168,7 @@ class TrainingService(BaseService):
                 self._process_file_async_safe(str(training_file.id)),
                 name=f"process_file_{training_file.filename}",
                 timeout=600.0,  # 10 minutes timeout
-                max_retries=2,
+                max_retries=0,  # Disable retries to prevent coroutine reuse
                 metadata={
                     "file_id": str(training_file.id),
                     "filename": training_file.filename,
@@ -216,8 +215,8 @@ class TrainingService(BaseService):
                 category=category,
                 file_path=str(original_path),
                 file_size=len(file_content),
-                upload_date=datetime.utcnow(),
-                upload_timestamp=datetime.utcnow(),
+                upload_date=datetime.now(timezone.utc),
+                upload_timestamp=datetime.now(timezone.utc),
                 status="ready",
                 is_indexed=False,
                 chunk_count=0,
@@ -235,7 +234,7 @@ class TrainingService(BaseService):
                 self._process_file_async_safe(str(training_file.id)),
                 name=f"process_file_{training_file.filename}",
                 timeout=600.0,  # 10 minutes timeout
-                max_retries=2,
+                max_retries=0,  # Disable retries to prevent coroutine reuse
                 metadata={
                     "file_id": str(training_file.id),
                     "filename": training_file.filename,
@@ -319,7 +318,12 @@ class TrainingService(BaseService):
             # Choose processor based on file type with timeout
             try:
                 processor_result = await asyncio.wait_for(
-                    self._choose_and_run_processor_safe(getattr(training_file, 'file_path', ''), getattr(training_file, 'filename', '')),
+                    self._choose_and_run_processor_safe(
+                        training_file.file_path, 
+                        training_file.filename,
+                        training_file.category,
+                        file_id
+                    ),
                     timeout=300.0  # 5 minute timeout for individual processing
                 )
             except asyncio.TimeoutError:
@@ -333,7 +337,7 @@ class TrainingService(BaseService):
                 training_file.processed_file_path = processor_result.output_path
                 training_file.markdown_file_path = processor_result.markdown_path
                 training_file.processing_method = processor_result.processor_used
-                training_file.processing_quality = processor_result.quality_score
+                training_file.processing_quality = str(processor_result.quality_score) if processor_result.quality_score is not None else None
                 training_file.conversion_status = "completed"
                 
                 # Index in RAG if available with timeout
@@ -413,7 +417,7 @@ class TrainingService(BaseService):
             
             # Update indexing status
             training_file.is_indexed = True
-            training_file.indexed_at = datetime.utcnow()
+            training_file.indexed_at = datetime.now(timezone.utc)
             training_file.index_status = "indexed"
             training_file.chunk_count = chunk_count  # Store chunk count
             
@@ -425,7 +429,7 @@ class TrainingService(BaseService):
             training_file.index_error = str(e)
     
     
-    async def _choose_and_run_processor_safe(self, file_path: str, filename: str) -> 'ProcessingResult':
+    async def _choose_and_run_processor_safe(self, file_path: str, filename: str, category: str = "help_data", file_id: Optional[str] = None) -> 'ProcessingResult':
         """Choose appropriate processor and run it (safe version for async processing)"""
         file_path_obj = Path(file_path)
         file_extension = file_path_obj.suffix.lower().lstrip('.')
@@ -451,14 +455,98 @@ class TrainingService(BaseService):
                     content = f.read()
                 result = await production_document_processor.process_document(file_path, content)
                 if result.success:
-                    return result
+                    # Convert production result to expected format
+                    # Create optimized output path based on category
+                    if category == "help_data":
+                        optimized_dir = Path(settings.HELP_DATA_PATH)
+                    elif category == "stream_templates":
+                        optimized_dir = Path(settings.XML_TEMPLATE_PATH)
+                    else:
+                        optimized_dir = Path(settings.TRAINING_DATA_PATH) / "optimized" / category
+                    
+                    optimized_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Use the same UUID as the original file
+                    if file_id:
+                        # Use provided file_id
+                        unique_id = file_id
+                    else:
+                        # Extract UUID from original filename (format: UUID_filename)
+                        original_filename = file_path_obj.name
+                        if '_' in original_filename and len(original_filename.split('_')[0]) == 36:
+                            unique_id = original_filename.split('_')[0]
+                        else:
+                            # Fallback to new UUID if not found
+                            unique_id = str(uuid.uuid4())
+                    
+                    optimized_filename = f"{unique_id}_{file_path_obj.stem}.md"
+                    output_path = str(optimized_dir / optimized_filename)
+                    
+                    # Save documents to markdown file
+                    markdown_content = []
+                    for doc in result.documents:
+                        markdown_content.append(doc.page_content)
+                    
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        f.write('\n\n'.join(markdown_content))
+                    
+                    return ProcessingResult(
+                        success=True,
+                        output_path=output_path,
+                        markdown_path=output_path,
+                        processor_used=result.processing_method,
+                        quality_score=result.extraction_confidence,
+                        error_message=result.error_message or "Unknown error"
+                    )
             
             # Fallback to multi-format processor
             if 'multi_format' in self._file_processors:
                 logger.info(f"🔄 Processing file with multi-format processor: {filename}")
                 result = await multi_format_processor.process_file(file_path)
                 if result.success:
-                    return result
+                    # Convert multi-format result to expected format
+                    # Create optimized output path based on category
+                    if category == "help_data":
+                        optimized_dir = Path(settings.HELP_DATA_PATH)
+                    elif category == "stream_templates":
+                        optimized_dir = Path(settings.XML_TEMPLATE_PATH)
+                    else:
+                        optimized_dir = Path(settings.TRAINING_DATA_PATH) / "optimized" / category
+                    
+                    optimized_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Use the same UUID as the original file
+                    if file_id:
+                        # Use provided file_id
+                        unique_id = file_id
+                    else:
+                        # Extract UUID from original filename (format: UUID_filename)
+                        original_filename = file_path_obj.name
+                        if '_' in original_filename and len(original_filename.split('_')[0]) == 36:
+                            unique_id = original_filename.split('_')[0]
+                        else:
+                            # Fallback to new UUID if not found
+                            unique_id = str(uuid.uuid4())
+                    
+                    optimized_filename = f"{unique_id}_{file_path_obj.stem}.md"
+                    output_path = str(optimized_dir / optimized_filename)
+                    
+                    # Save documents to markdown file
+                    markdown_content = []
+                    for doc in result.documents:
+                        markdown_content.append(doc.page_content)
+                    
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        f.write('\n\n'.join(markdown_content))
+                    
+                    return ProcessingResult(
+                        success=True,
+                        output_path=output_path,
+                        markdown_path=output_path,
+                        processor_used=result.processing_method,
+                        quality_score=0.8,  # Default quality score
+                        error_message=result.error_message or "Unknown error"
+                    )
             
             # If all processors fail
             return ProcessingResult(
@@ -498,14 +586,78 @@ class TrainingService(BaseService):
                     content = f.read()
                 result = await production_document_processor.process_document(str(file_path), content)
                 if result.success:
-                    return result
+                    # Convert production result to expected format
+                    # Create optimized output path based on category
+                    category = getattr(training_file, 'category', 'help_data')
+                    if category == "help_data":
+                        optimized_dir = Path(settings.HELP_DATA_PATH)
+                    elif category == "stream_templates":
+                        optimized_dir = Path(settings.XML_TEMPLATE_PATH)
+                    else:
+                        optimized_dir = Path(settings.TRAINING_DATA_PATH) / "optimized" / category
+                    
+                    optimized_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Use the same UUID as the original file
+                    unique_id = getattr(training_file, 'id', str(uuid.uuid4()))
+                    optimized_filename = f"{unique_id}_{file_path.stem}.md"
+                    output_path = str(optimized_dir / optimized_filename)
+                    
+                    # Save documents to markdown file
+                    markdown_content = []
+                    for doc in result.documents:
+                        markdown_content.append(doc.page_content)
+                    
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        f.write('\n\n'.join(markdown_content))
+                    
+                    return ProcessingResult(
+                        success=True,
+                        output_path=output_path,
+                        markdown_path=output_path,
+                        processor_used=result.processing_method,
+                        quality_score=result.extraction_confidence,
+                        error_message=result.error_message or "Unknown error"
+                    )
             
             # Fallback to multi-format processor
             if 'multi_format' in self._file_processors:
                 logger.info(f"🔄 Processing file with multi-format processor: {training_file.filename}")
                 result = await multi_format_processor.process_file(str(file_path))
                 if result.success:
-                    return result
+                    # Convert multi-format result to expected format
+                    # Create optimized output path based on category
+                    category = getattr(training_file, 'category', 'help_data')
+                    if category == "help_data":
+                        optimized_dir = Path(settings.HELP_DATA_PATH)
+                    elif category == "stream_templates":
+                        optimized_dir = Path(settings.XML_TEMPLATE_PATH)
+                    else:
+                        optimized_dir = Path(settings.TRAINING_DATA_PATH) / "optimized" / category
+                    
+                    optimized_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Use the same UUID as the original file
+                    unique_id = getattr(training_file, 'id', str(uuid.uuid4()))
+                    optimized_filename = f"{unique_id}_{file_path.stem}.md"
+                    output_path = str(optimized_dir / optimized_filename)
+                    
+                    # Save documents to markdown file
+                    markdown_content = []
+                    for doc in result.documents:
+                        markdown_content.append(doc.page_content)
+                    
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        f.write('\n\n'.join(markdown_content))
+                    
+                    return ProcessingResult(
+                        success=True,
+                        output_path=output_path,
+                        markdown_path=output_path,
+                        processor_used=result.processing_method,
+                        quality_score=0.8,  # Default quality score
+                        error_message=result.error_message or "Unknown error"
+                    )
             
             # If all processors fail
             return ProcessingResult(
@@ -546,7 +698,7 @@ class TrainingService(BaseService):
             
             # Update indexing status
             training_file.is_indexed = True
-            training_file.indexed_at = datetime.utcnow()
+            training_file.indexed_at = datetime.now(timezone.utc)
             training_file.index_status = "indexed"
             
         except Exception as e:
@@ -557,7 +709,7 @@ class TrainingService(BaseService):
     async def get_all_files(self, skip: int = 0, limit: int = 100) -> List[TrainingFileResponse]:
         """Get all training files with pagination"""
         try:
-            query = select(TrainingFile).offset(skip).limit(limit).order_by(TrainingFile.upload_timestamp.desc())
+            query = select(TrainingFile).offset(skip).limit(limit).order_by(desc(TrainingFile.upload_date))
             result = await self.db.execute(query)
             files = result.scalars().all()
             return [TrainingFileResponse.model_validate(file) for file in files]
@@ -577,7 +729,7 @@ class TrainingService(BaseService):
             if status:
                 query = query.where(TrainingFile.status == status)
                 
-            query = query.offset(skip).limit(limit).order_by(TrainingFile.upload_timestamp.desc())
+            query = query.offset(skip).limit(limit).order_by(desc(TrainingFile.upload_date))
             result = await self.db.execute(query)
             files = result.scalars().all()
             return [TrainingFileResponse.model_validate(file) for file in files]
@@ -600,7 +752,7 @@ class TrainingService(BaseService):
             await self._delete_physical_files(training_file)
             
             # Remove from RAG if indexed
-            if getattr(training_file, 'is_indexed', False) and self.rag_service:
+            if training_file.is_indexed and self.rag_service:
                 try:
                     # TODO: Implement remove_documents_by_source method in RAG service
                     # await self.rag_service.remove_documents_by_source(training_file.filename)
@@ -634,6 +786,10 @@ class TrainingService(BaseService):
                 except Exception as e:
                     logger.warning(f"Failed to delete {file_path}: {e}")
     
+    async def get_training_status(self) -> CategoryStats:
+        """Get training status (alias for get_stats)"""
+        return await self.get_stats()
+    
     async def get_stats(self) -> CategoryStats:
         """Get training data statistics"""
         try:
@@ -642,7 +798,7 @@ class TrainingService(BaseService):
             total_result = await self.db.execute(total_query)
             total_files = len(total_result.scalars().all())
             
-            indexed_query = select(TrainingFile).where(TrainingFile.is_indexed == True)
+            indexed_query = select(TrainingFile).where(TrainingFile.is_indexed.is_(True))
             indexed_result = await self.db.execute(indexed_query)
             indexed_files = len(indexed_result.scalars().all())
             
@@ -661,7 +817,7 @@ class TrainingService(BaseService):
         """Get ChromaDB statistics"""
         try:
             # Get files with chunk counts
-            query = select(TrainingFile).where(TrainingFile.is_indexed == True)
+            query = select(TrainingFile).where(TrainingFile.is_indexed.is_(True))
             result = await self.db.execute(query)
             indexed_files = result.scalars().all()
             
@@ -680,7 +836,7 @@ class TrainingService(BaseService):
                 stats["files"].append({
                     "filename": file.filename,
                     "chunk_count": file.chunk_count or 0,
-                    "indexed_at": getattr(file, 'indexed_at', None).isoformat() if getattr(file, 'indexed_at', None) else None,
+                    "indexed_at": file.indexed_at.isoformat() if file.indexed_at else None,
                     "index_status": file.index_status
                 })
             
@@ -809,7 +965,7 @@ class TrainingService(BaseService):
                 self._process_file_async_safe(file_id),
                 name=f"reprocess_file_{training_file.filename}",
                 timeout=600.0,
-                max_retries=1,
+                max_retries=0,  # Disable retries to prevent coroutine reuse
                 metadata={"file_id": file_id, "type": "reprocessing"}
             )
             
@@ -882,7 +1038,7 @@ class TrainingService(BaseService):
                 "filename": training_file.filename,
                 "status": "indexed",
                 "chunk_count": training_file.chunk_count or 0,
-                "indexed_at": getattr(training_file, 'indexed_at', None).isoformat() if getattr(training_file, 'indexed_at', None) else None
+                "indexed_at": training_file.indexed_at.isoformat() if training_file.indexed_at else None
             }
             
         except Exception as e:
@@ -938,11 +1094,57 @@ class TrainingService(BaseService):
                 "results": []
             }
 
+    async def get_training_status(self) -> Dict[str, Any]:
+        """Get training status for both categories"""
+        try:
+            if not self.is_initialized:
+                await self.initialize()
+            
+            # Get all files
+            files = await self.get_training_files()
+            
+            # Initialize stats
+            help_data_stats = CategoryStats(total=0, ready=0, processing=0, error=0)
+            stream_template_stats = CategoryStats(total=0, ready=0, processing=0, error=0)
+            
+            # Count files by category and status
+            for file in files:
+                category = getattr(file, 'category', 'help_data')
+                status = getattr(file, 'status', 'error')
+                
+                if category == 'help_data':
+                    help_data_stats.total += 1
+                    if status == 'ready':
+                        help_data_stats.ready += 1
+                    elif status == 'processing':
+                        help_data_stats.processing += 1
+                    elif status == 'error':
+                        help_data_stats.error += 1
+                else:
+                    stream_template_stats.total += 1
+                    if status == 'ready':
+                        stream_template_stats.ready += 1
+                    elif status == 'processing':
+                        stream_template_stats.processing += 1
+                    elif status == 'error':
+                        stream_template_stats.error += 1
+            
+            from app.models.schemas import TrainingStatusResponse
+            return TrainingStatusResponse(
+                help_data_stats=help_data_stats,
+                stream_template_stats=stream_template_stats,
+                last_updated=datetime.now(timezone.utc).isoformat()
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to get training status: {e}")
+            raise ServiceOperationError(f"Failed to get training status: {e}")
+
 # Utility class for legacy compatibility
 class ProcessingResult:
     """Result of file processing operation"""
-    def __init__(self, success: bool, output_path: str = None, markdown_path: str = None, 
-                 processor_used: str = None, quality_score: float = 0.0, error_message: str = None):
+    def __init__(self, success: bool, output_path: Optional[str] = None, markdown_path: Optional[str] = None, 
+                 processor_used: Optional[str] = None, quality_score: float = 0.0, error_message: Optional[str] = None):
         self.success = success
         self.output_path = output_path
         self.markdown_path = markdown_path

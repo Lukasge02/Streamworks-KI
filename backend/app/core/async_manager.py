@@ -5,7 +5,7 @@ Provides robust async task management with proper resource cleanup and error han
 import asyncio
 import logging
 from typing import Optional, Dict, Any, List, Callable, Awaitable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 import weakref
@@ -34,7 +34,7 @@ class TaskInfo:
     task_id: str
     name: str
     status: TaskStatus = TaskStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     result: Any = None
@@ -152,7 +152,7 @@ class AsyncTaskManager:
         # Generate task ID
         async with self._lock:
             self._task_counter += 1
-            task_id = f"task_{self._task_counter}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+            task_id = f"task_{self._task_counter}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
         
         # Create task info
         task_info = TaskInfo(
@@ -190,7 +190,7 @@ class AsyncTaskManager:
             # Wait for semaphore (resource limiting)
             async with self._task_semaphore:
                 task_info.status = TaskStatus.RUNNING
-                task_info.started_at = datetime.utcnow()
+                task_info.started_at = datetime.now(timezone.utc)
                 
                 logger.debug(f"🏃 Task started: {task_id}")
                 
@@ -199,7 +199,7 @@ class AsyncTaskManager:
                 
                 # Task completed successfully
                 task_info.status = TaskStatus.COMPLETED
-                task_info.completed_at = datetime.utcnow()
+                task_info.completed_at = datetime.now(timezone.utc)
                 task_info.result = result
                 
                 self.stats["completed_tasks"] += 1
@@ -210,7 +210,7 @@ class AsyncTaskManager:
                 
         except asyncio.TimeoutError:
             task_info.status = TaskStatus.TIMEOUT
-            task_info.completed_at = datetime.utcnow()
+            task_info.completed_at = datetime.now(timezone.utc)
             task_info.error = f"Task timed out after {task_info.timeout_seconds}s"
             
             self.stats["timeout_tasks"] += 1
@@ -222,7 +222,7 @@ class AsyncTaskManager:
             
         except asyncio.CancelledError:
             task_info.status = TaskStatus.CANCELLED
-            task_info.completed_at = datetime.utcnow()
+            task_info.completed_at = datetime.now(timezone.utc)
             task_info.error = "Task was cancelled"
             
             self.stats["cancelled_tasks"] += 1
@@ -233,7 +233,7 @@ class AsyncTaskManager:
             
         except Exception as e:
             task_info.status = TaskStatus.FAILED
-            task_info.completed_at = datetime.utcnow()
+            task_info.completed_at = datetime.now(timezone.utc)
             task_info.error = str(e)
             
             self.stats["failed_tasks"] += 1
@@ -251,8 +251,8 @@ class AsyncTaskManager:
                 delay = min(2 ** task_info.retry_count, 60)
                 await asyncio.sleep(delay)
                 
-                # Retry
-                return await self._manage_task(coro, task_info)
+                # Cannot retry coroutines - they can only be awaited once
+                logger.warning(f"⚠️ Cannot retry coroutine-based task: {task_id}. Coroutines cannot be reused.")
             
             await self._cleanup_task_references(task_id)
             raise
@@ -328,7 +328,7 @@ class AsyncTaskManager:
     
     async def _cleanup_completed_tasks(self) -> None:
         """Clean up references to completed tasks"""
-        cutoff_time = datetime.utcnow() - timedelta(minutes=30)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=30)
         
         completed_task_ids = []
         for task_id, task_info in self._task_info.items():

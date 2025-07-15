@@ -629,10 +629,24 @@ async def list_documents():
         
         documents = await rag_service.get_all_documents()
         
+        # Convert dict objects to DocumentInfo objects
+        document_infos = [
+            DocumentInfo(
+                id=doc.get("id", ""),
+                filename=doc.get("filename", ""),
+                source_path=doc.get("source_path", ""),
+                chunks=doc.get("chunks", 0),
+                total_size=doc.get("total_size", 0),
+                upload_date=doc.get("upload_date"),
+                status=doc.get("status", "indexed")
+            )
+            for doc in documents
+        ]
+        
         return DocumentsResponse(
-            documents=documents,
-            total_count=len(documents),
-            total_chunks=sum(doc.chunks for doc in documents)
+            documents=document_infos,
+            total_count=len(document_infos),
+            total_chunks=sum(doc.chunks for doc in document_infos)
         )
         
     except Exception as e:
@@ -814,7 +828,7 @@ async def chat_with_citations(request: ChatRequestValidator, raw_request: Reques
                 coverage_score=0.0
             ),
             conversation_id=conversation_id,
-            timestamp=time.time(),
+            timestamp=datetime.fromtimestamp(time.time()),
             response_quality=citation_summary.coverage_score if citation_summary else 0.0
         )
         
@@ -840,7 +854,7 @@ async def chat_with_citations(request: ChatRequestValidator, raw_request: Reques
                     coverage_score=0.0
                 ),
                 conversation_id=conversation_id,
-                timestamp=time.time(),
+                timestamp=datetime.fromtimestamp(time.time()),
                 response_quality=0.0
             )
             

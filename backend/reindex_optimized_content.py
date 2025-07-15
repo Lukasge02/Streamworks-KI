@@ -29,7 +29,7 @@ async def reindex_optimized_content():
         # Step 2: Initialize services
         from app.services.rag_service import rag_service
         from app.services.training_service import TrainingService
-        from app.models.database import get_db_session
+        from app.models.database import AsyncSessionLocal
         
         logger.info("🔧 Initializing RAG service...")
         await rag_service.initialize()
@@ -41,7 +41,7 @@ async def reindex_optimized_content():
         logger.info(f"📚 Found {len(md_files)} optimized markdown files")
         
         # Step 4: Process each file
-        async with get_db_session() as db:
+        async with AsyncSessionLocal() as db:
             training_service = TrainingService(db)
             await training_service.initialize()
             

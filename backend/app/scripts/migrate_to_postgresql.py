@@ -8,7 +8,7 @@ import logging
 import sqlite3
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import argparse
@@ -186,7 +186,7 @@ class SQLiteToPostgreSQLMigrator:
                 "original_path": sqlite_row.get("original_path"),
                 "file_size": sqlite_row.get("file_size", 0) or 0,
                 "upload_date": convert_timestamp(sqlite_row.get("upload_date")),
-                "upload_timestamp": convert_timestamp(sqlite_row.get("upload_timestamp")) or datetime.utcnow(),
+                "upload_timestamp": convert_timestamp(sqlite_row.get("upload_timestamp")) or datetime.now(timezone.utc),
                 "status": sqlite_row.get("status", "uploaded"),
                 "is_indexed": bool(sqlite_row.get("is_indexed", False)),
                 "indexed_at": convert_timestamp(sqlite_row.get("indexed_at")),
@@ -219,8 +219,8 @@ class SQLiteToPostgreSQLMigrator:
                 "description": sqlite_row.get("description"),
                 "priority": sqlite_row.get("priority", 1) or 1,
                 "tags": sqlite_row.get("tags", "").split(",") if sqlite_row.get("tags") else [],
-                "created_at": convert_timestamp(sqlite_row.get("upload_date")) or datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "created_at": convert_timestamp(sqlite_row.get("upload_date")) or datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
             }
             
             return pg_row

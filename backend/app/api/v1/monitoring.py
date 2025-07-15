@@ -5,16 +5,17 @@ Provides comprehensive monitoring, metrics, and health check endpoints
 import asyncio
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from app.middleware.production_monitoring import (
-    get_monitoring_summary,
-    get_prometheus_metrics,
-    monitoring_middleware
-)
+# Legacy production monitoring removed - keeping endpoint for backward compatibility
+# from app.middleware.production_monitoring import (
+#     get_monitoring_summary,
+#     get_prometheus_metrics as get_prometheus_metrics_service,
+#     monitoring_middleware
+# )
 from app.core.async_manager import task_manager
 from app.core.config import settings
 
@@ -64,15 +65,16 @@ async def health_check():
     
     Checks all critical system components and returns detailed status
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     checks = {}
     overall_status = "healthy"
     
     # Database health check
     try:
         from app.models.database import AsyncSessionLocal
+        from sqlalchemy import text
         async with AsyncSessionLocal() as db:
-            await db.execute("SELECT 1")
+            await db.execute(text("SELECT 1"))
         checks["database"] = {"status": "healthy", "details": "Connection successful"}
     except Exception as e:
         checks["database"] = {"status": "unhealthy", "details": str(e)}
@@ -183,11 +185,11 @@ async def health_check():
         checks["system_resources"] = {"status": "unknown", "details": str(e)}
     
     # Calculate uptime
-    uptime_seconds = (datetime.utcnow() - start_time).total_seconds()
+    uptime_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
     
     return HealthCheckResponse(
         status=overall_status,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         version=getattr(settings, 'VERSION', '1.0.0'),
         uptime_seconds=uptime_seconds,
         checks=checks
@@ -201,7 +203,7 @@ async def simple_health_check():
     
     Returns 200 OK if the service is responding
     """
-    return {"status": "ok", "timestamp": datetime.utcnow()}
+    return {"status": "ok", "timestamp": datetime.now(timezone.utc)}
 
 
 @router.get("/metrics", response_model=MetricsSummaryResponse)
@@ -212,13 +214,12 @@ async def get_metrics():
     Returns detailed performance and usage metrics
     """
     try:
-        summary = get_monitoring_summary()
-        
+        # Legacy monitoring removed - return basic metrics
         return MetricsSummaryResponse(
-            overview=summary.get("overview", {}),
-            endpoints=summary.get("endpoints", {}),
-            system=summary.get("system"),
-            timestamp=datetime.utcnow()
+            overview={"status": "legacy_monitoring_removed"},
+            endpoints={},
+            system=None,
+            timestamp=datetime.now(timezone.utc)
         )
     except Exception as e:
         logger.error(f"Failed to get metrics: {e}")
@@ -233,10 +234,8 @@ async def get_prometheus_metrics():
     Returns metrics in Prometheus text exposition format
     """
     try:
-        metrics = get_prometheus_metrics()
-        if not metrics:
-            return "# No metrics available\n"
-        return metrics
+        # Legacy monitoring removed - return basic metrics
+        return "# Legacy monitoring removed\n# streamworks_ki_status 1\n"
     except Exception as e:
         logger.error(f"Failed to get Prometheus metrics: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve Prometheus metrics")
@@ -272,7 +271,7 @@ async def get_system_status():
             disk_usage_percent=disk.percent,
             active_connections=active_connections,
             task_manager_stats=task_stats,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
     except Exception as e:
@@ -288,23 +287,10 @@ async def get_alerts():
     Returns active alerts, alert history, and thresholds
     """
     try:
+        # Legacy monitoring removed - return empty alerts
         active_alerts = []
         alert_history = []
-        alert_thresholds = {}
-        
-        if monitoring_middleware and monitoring_middleware.alert_manager:
-            alert_manager = monitoring_middleware.alert_manager
-            
-            # Convert active alerts
-            for alert_key, timestamp in alert_manager.active_alerts.items():
-                active_alerts.append({
-                    "alert_key": alert_key,
-                    "triggered_at": timestamp.isoformat(),
-                    "age_minutes": (datetime.utcnow() - timestamp).total_seconds() / 60
-                })
-            
-            # Get alert thresholds
-            alert_thresholds = alert_manager.alert_thresholds
+        alert_thresholds = {"status": "legacy_monitoring_removed"}
         
         return AlertsResponse(
             active_alerts=active_alerts,
@@ -325,20 +311,14 @@ async def get_endpoint_performance():
     Returns response times, error rates, and request counts per endpoint
     """
     try:
-        summary = get_monitoring_summary()
-        endpoints = summary.get("endpoints", {})
-        
-        # Sort endpoints by request count
-        sorted_endpoints = sorted(
-            endpoints.items(),
-            key=lambda x: x[1].get("request_count", 0),
-            reverse=True
-        )
+        # Legacy monitoring removed - return empty endpoints
+        endpoints = {}
         
         return {
-            "endpoints": dict(sorted_endpoints),
-            "total_endpoints": len(endpoints),
-            "timestamp": datetime.utcnow()
+            "endpoints": endpoints,
+            "total_endpoints": 0,
+            "timestamp": datetime.now(timezone.utc),
+            "status": "legacy_monitoring_removed"
         }
         
     except Exception as e:
@@ -354,28 +334,11 @@ async def get_slowest_endpoints(limit: int = 10):
     Returns the endpoints with highest average response times
     """
     try:
-        summary = get_monitoring_summary()
-        endpoints = summary.get("endpoints", {})
-        
-        # Sort by average duration
-        slowest = sorted(
-            endpoints.items(),
-            key=lambda x: x[1].get("avg_duration", 0),
-            reverse=True
-        )[:limit]
-        
+        # Legacy monitoring removed - return empty data
         return {
-            "slowest_endpoints": [
-                {
-                    "endpoint": endpoint,
-                    "avg_duration": data.get("avg_duration", 0),
-                    "max_duration": data.get("max_duration", 0),
-                    "request_count": data.get("request_count", 0),
-                    "error_rate": data.get("error_rate", 0)
-                }
-                for endpoint, data in slowest
-            ],
-            "timestamp": datetime.utcnow()
+            "slowest_endpoints": [],
+            "timestamp": datetime.now(timezone.utc),
+            "status": "legacy_monitoring_removed"
         }
         
     except Exception as e:
@@ -391,29 +354,12 @@ async def get_error_metrics():
     Returns endpoints with highest error rates and recent error patterns
     """
     try:
-        summary = get_monitoring_summary()
-        endpoints = summary.get("endpoints", {})
-        
-        # Find endpoints with errors
-        error_endpoints = [
-            {
-                "endpoint": endpoint,
-                "error_rate": data.get("error_rate", 0),
-                "error_count": data.get("request_count", 0) * data.get("error_rate", 0),
-                "total_requests": data.get("request_count", 0),
-                "status_codes": data.get("status_codes", {})
-            }
-            for endpoint, data in endpoints.items()
-            if data.get("error_rate", 0) > 0
-        ]
-        
-        # Sort by error rate
-        error_endpoints.sort(key=lambda x: x["error_rate"], reverse=True)
-        
+        # Legacy monitoring removed - return empty data
         return {
-            "error_endpoints": error_endpoints,
-            "total_endpoints_with_errors": len(error_endpoints),
-            "timestamp": datetime.utcnow()
+            "error_endpoints": [],
+            "total_endpoints_with_errors": 0,
+            "timestamp": datetime.now(timezone.utc),
+            "status": "legacy_monitoring_removed"
         }
         
     except Exception as e:
@@ -429,36 +375,12 @@ async def test_alert_system():
     Useful for verifying alert handlers and notification systems
     """
     try:
-        if monitoring_middleware and monitoring_middleware.alert_manager:
-            alert_manager = monitoring_middleware.alert_manager
-            
-            # Trigger a test alert
-            test_alert_data = {
-                "metric": "test_metric",
-                "value": 999.0,
-                "threshold": 100.0,
-                "timestamp": datetime.utcnow().isoformat(),
-                "context": {"test": True}
-            }
-            
-            for handler in alert_manager.alert_handlers:
-                try:
-                    handler("test_alert", test_alert_data)
-                except Exception as e:
-                    logger.error(f"Test alert handler failed: {e}")
-            
-            return {
-                "status": "success",
-                "message": "Test alert triggered",
-                "handlers_called": len(alert_manager.alert_handlers),
-                "timestamp": datetime.utcnow()
-            }
-        else:
-            return {
-                "status": "warning",
-                "message": "Alert manager not available",
-                "timestamp": datetime.utcnow()
-            }
+        # Legacy monitoring removed - return warning
+        return {
+            "status": "warning",
+            "message": "Legacy monitoring removed - alert system not available",
+            "timestamp": datetime.now(timezone.utc)
+        }
             
     except Exception as e:
         logger.error(f"Failed to test alert system: {e}")
@@ -483,7 +405,7 @@ async def trigger_garbage_collection(background_tasks: BackgroundTasks):
     return {
         "status": "scheduled",
         "message": "Garbage collection scheduled",
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now(timezone.utc)
     }
 
 
@@ -495,39 +417,12 @@ async def get_performance_history(minutes: int = 60):
     Returns historical performance data for analysis and trending
     """
     try:
-        if not monitoring_middleware or not monitoring_middleware.system_monitor:
-            raise HTTPException(status_code=503, detail="System monitoring not available")
-        
-        recent_metrics = monitoring_middleware.system_monitor.get_recent_metrics(minutes)
-        
-        if not recent_metrics:
-            return {
-                "message": "No historical data available",
-                "minutes_requested": minutes,
-                "timestamp": datetime.utcnow()
-            }
-        
-        # Process metrics for response
-        history = []
-        for metric in recent_metrics:
-            history.append({
-                "timestamp": metric.timestamp.isoformat(),
-                "cpu_percent": metric.cpu_percent,
-                "memory_percent": metric.memory_percent,
-                "memory_mb": metric.memory_mb,
-                "disk_usage_percent": metric.disk_usage_percent,
-                "active_connections": metric.active_connections
-            })
-        
-        # Calculate averages
-        avg_metrics = monitoring_middleware.system_monitor.get_average_metrics(minutes)
-        
+        # Legacy monitoring removed - return message
         return {
-            "history": history,
-            "averages": avg_metrics,
-            "data_points": len(history),
-            "time_range_minutes": minutes,
-            "timestamp": datetime.utcnow()
+            "message": "Legacy monitoring removed - no historical data available",
+            "minutes_requested": minutes,
+            "timestamp": datetime.now(timezone.utc),
+            "status": "legacy_monitoring_removed"
         }
         
     except Exception as e:
@@ -543,40 +438,16 @@ async def get_middleware_debug_info():
     Returns internal state and configuration for troubleshooting
     """
     try:
-        if not monitoring_middleware:
-            return {
-                "status": "not_available",
-                "message": "Monitoring middleware not initialized",
-                "timestamp": datetime.utcnow()
-            }
-        
-        debug_info = {
-            "middleware_active": monitoring_middleware is not None,
-            "prometheus_enabled": monitoring_middleware.prometheus_metrics is not None,
-            "alert_manager_enabled": monitoring_middleware.alert_manager is not None,
-            "system_monitor_enabled": monitoring_middleware.system_monitor is not None,
-            "active_requests": monitoring_middleware.active_requests,
-            "peak_concurrent_requests": monitoring_middleware.peak_concurrent_requests,
-            "endpoint_count": len(monitoring_middleware.endpoint_metrics),
-            "request_history_size": len(monitoring_middleware.request_history),
-            "timestamp": datetime.utcnow()
+        # Legacy monitoring removed - return debug info
+        return {
+            "status": "legacy_monitoring_removed",
+            "message": "Legacy monitoring middleware was removed during cleanup",
+            "timestamp": datetime.now(timezone.utc),
+            "middleware_active": False,
+            "prometheus_enabled": False,
+            "alert_manager_enabled": False,
+            "system_monitor_enabled": False
         }
-        
-        if monitoring_middleware.system_monitor:
-            debug_info["system_monitor"] = {
-                "running": monitoring_middleware.system_monitor.running,
-                "collection_interval": monitoring_middleware.system_monitor.collection_interval,
-                "metrics_history_size": len(monitoring_middleware.system_monitor.metrics_history)
-            }
-        
-        if monitoring_middleware.alert_manager:
-            debug_info["alert_manager"] = {
-                "active_alerts_count": len(monitoring_middleware.alert_manager.active_alerts),
-                "alert_handlers_count": len(monitoring_middleware.alert_manager.alert_handlers),
-                "alert_thresholds": monitoring_middleware.alert_manager.alert_thresholds
-            }
-        
-        return debug_info
         
     except Exception as e:
         logger.error(f"Failed to get middleware debug info: {e}")

@@ -172,18 +172,18 @@ class Settings(BaseSettings):
     
     # === RAG SYSTEM CONFIGURATION ===
     
-    # Embedding Model
+    # Embedding Model - Updated for better German language support
     EMBEDDING_MODEL: str = Field(
-        default="sentence-transformers/all-MiniLM-L6-v2",
-        description="Sentence transformer model"
+        default="intfloat/multilingual-e5-large",
+        description="Multilingual E5 Large - excellent German support with 1024 dimensions"
     )
-    embedding_device: str = Field(default="cpu", description="Device for embeddings")
+    embedding_device: str = Field(default="mps", description="Device for embeddings (MPS for Apple Silicon)")
     
-    # Text Processing
-    RAG_CHUNK_SIZE: int = Field(default=500, ge=100, le=2000)
-    RAG_CHUNK_OVERLAP: int = Field(default=50, ge=0, le=500)
-    RAG_TOP_K: int = Field(default=5, ge=1, le=50)
-    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    # Text Processing - OPTIMIZED FOR GERMAN PRODUCTION DOCUMENTS
+    RAG_CHUNK_SIZE: int = Field(default=800, ge=100, le=2000, description="Larger chunks preserve context better")
+    RAG_CHUNK_OVERLAP: int = Field(default=150, ge=0, le=500, description="Generous overlap prevents context loss")
+    RAG_TOP_K: int = Field(default=7, ge=1, le=50, description="More results for better coverage")
+    similarity_threshold: float = Field(default=0.6, ge=0.0, le=1.0, description="Lower threshold for better recall")
     
     # Property aliases for new naming
     @property

@@ -4,7 +4,7 @@ Conversation Memory API Endpoints
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -170,7 +170,7 @@ async def get_conversation_stats():
     
     try:
         from app.services.conversation_memory import conversation_memory
-        from datetime import datetime, timedelta
+        from datetime import timedelta
         import os
         
         # Get all sessions
@@ -181,7 +181,7 @@ async def get_conversation_stats():
         total_messages = sum(session.get("message_count", 0) for session in all_sessions)
         
         # Active sessions (last 24 hours)
-        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
         active_sessions = [
             session for session in all_sessions
             if datetime.fromisoformat(session.get("last_activity", "1970-01-01")) > cutoff_time

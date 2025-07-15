@@ -4,12 +4,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.config import settings
 import logging
 import asyncio
 import time
 from contextlib import asynccontextmanager
+from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +21,14 @@ Base = declarative_base()
 class TrainingFile(Base):
     __tablename__ = "training_files"
     
+    
+    # SQLAlchemy Column definitions
     id = Column(String, primary_key=True)
     filename = Column(String, nullable=False)        # Original filename (clean)
     display_name = Column(String, nullable=False)    # User-friendly display name
     category = Column(String, nullable=False)        # help_data, stream_templates
     file_path = Column(String, nullable=False)       # Path to original file
-    upload_date = Column(DateTime, default=datetime.utcnow)
+    upload_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     file_size = Column(Integer, nullable=False)
     status = Column(String, default="processing")  # uploading, processing, ready, error, indexed
     error_message = Column(Text, nullable=True)

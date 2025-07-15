@@ -168,7 +168,7 @@ async def record_experiment_result(request: RecordResultRequest):
             user_satisfaction=request.user_satisfaction,
             response_quality=request.response_quality,
             conversion=request.conversion,
-            metadata=request.metadata
+            metadata=request.metadata or {}
         )
         
         if not success:

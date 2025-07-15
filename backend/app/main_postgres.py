@@ -19,14 +19,13 @@ from app.models.database_postgres import postgres_db_manager as db_manager
 from app.services.mistral_llm_service import mistral_llm_service
 from app.services.rag_service import rag_service
 from app.services.mistral_rag_service import mistral_rag_service
-from app.services.xml_generator import xml_generator
+# XML generator removed - not properly implemented
 
 # Import API routers
 from app.api.v1.chat import router as chat_router
 from app.api.v1.training import router as training_router
 from app.api.v1.health import router as health_router
-from app.api.v1.search import router as search_router
-from app.api.v1.xml_generation import router as xml_router
+# Removed non-existent imports for search and xml_generation
 from app.api.v1.chromadb_sync import router as chromadb_sync_router
 
 # Import middleware
@@ -43,7 +42,6 @@ async def lifespan(app: FastAPI):
     logger.info(f"🔧 Environment: {settings.ENV}")
     logger.info(f"🔍 RAG Enabled: {settings.RAG_ENABLED}")
     logger.info(f"🤖 LLM Enabled: {settings.LLM_ENABLED}")
-    logger.info(f"🔧 XML Generation Enabled: {settings.XML_GENERATION_ENABLED}")
     
     # Initialize PostgreSQL with enhanced connection pooling
     logger.info("🗄️ Initializing PostgreSQL Database...")
@@ -102,18 +100,6 @@ async def lifespan(app: FastAPI):
             logger.warning("⚠️ Mistral RAG Service initialization incomplete")
     except Exception as e:
         logger.error(f"❌ Mistral RAG Service initialization failed: {e}")
-    
-    # Initialize XML Generator
-    logger.info("🔧 Initializing XML Generator...")
-    try:
-        await xml_generator.initialize()
-        if xml_generator.is_initialized:
-            templates_count = len(xml_generator.templates)
-            logger.info(f"✅ XML Generator ready - {templates_count} templates loaded")
-        else:
-            logger.warning("⚠️ XML Generator initialization incomplete")
-    except Exception as e:
-        logger.error(f"❌ XML Generator initialization failed: {e}")
     
     logger.info("✅ StreamWorks-KI ready with PostgreSQL optimization")
     
@@ -201,8 +187,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(health_router, prefix=settings.API_V1_STR + "/health", tags=["Health"])
 app.include_router(chat_router, prefix=settings.API_V1_STR + "/chat", tags=["Chat"])
 app.include_router(training_router, prefix=settings.API_V1_STR + "/training", tags=["Training"])
-app.include_router(search_router, prefix=settings.API_V1_STR + "/search", tags=["Search"])
-app.include_router(xml_router, prefix=settings.API_V1_STR + "/xml", tags=["XML Generation"])
+# Removed routes for non-existent search and xml_generation endpoints
 app.include_router(chromadb_sync_router, prefix=settings.API_V1_STR + "/chromadb-sync", tags=["ChromaDB Sync"])
 
 # PostgreSQL-specific endpoints

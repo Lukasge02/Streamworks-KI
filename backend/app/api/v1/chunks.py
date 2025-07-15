@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 
 from app.services.rag_service import rag_service
@@ -79,7 +79,7 @@ class ChunkSearchRequest(BaseModel):
     limit: int = Field(10, ge=1, le=100, description="Number of results to return")
     similarity_threshold: float = Field(0.3, ge=0.0, le=1.0, description="Minimum similarity threshold")
     include_metadata: bool = Field(True, description="Include full metadata in results")
-    search_type: str = Field("semantic", regex="^(semantic|hybrid|fulltext)$", description="Type of search")
+    search_type: str = Field("semantic", pattern="^(semantic|hybrid|fulltext)$", description="Type of search")
 
 
 class ChunkSearchResponse(BaseModel):
@@ -200,9 +200,10 @@ async def list_chunks(
         chunks = []
         for chunk_data in chunks_data['chunks']:
             try:
+                content = chunk_data['content']
                 chunk = ChunkContent(
                     chunk_id=chunk_data['id'],
-                    content=chunk_data['content'],
+                    content=content,
                     metadata=ChunkMetadata(
                         chunk_id=chunk_data['id'],
                         source_file=chunk_data.get('metadata', {}).get('source', ''),
@@ -212,10 +213,12 @@ async def list_chunks(
                         chunk_index=chunk_data.get('metadata', {}).get('chunk_index'),
                         total_chunks=chunk_data.get('metadata', {}).get('total_chunks'),
                         creation_date=chunk_data.get('metadata', {}).get('created_at'),
-                        size=len(chunk_data['content']),
+                        size=len(content),
                         embedding_model=chunk_data.get('metadata', {}).get('embedding_model')
                     ),
-                    size=len(chunk_data['content'])
+                    preview=content[:200] + "..." if len(content) > 200 else content,
+                    word_count=len(content.split()),
+                    line_count=len(content.split('\n'))
                 )
                 chunks.append(chunk)
             except Exception as e:
@@ -280,9 +283,10 @@ async def get_chunk_details(chunk_id: str):
             raise HTTPException(status_code=404, detail=f"Chunk {chunk_id} not found")
         
         # Create chunk content model
+        content = chunk_data['content']
         chunk = ChunkContent(
             chunk_id=chunk_data['id'],
-            content=chunk_data['content'],
+            content=content,
             metadata=ChunkMetadata(
                 chunk_id=chunk_data['id'],
                 source_file=chunk_data.get('metadata', {}).get('source', ''),
@@ -292,10 +296,12 @@ async def get_chunk_details(chunk_id: str):
                 chunk_index=chunk_data.get('metadata', {}).get('chunk_index'),
                 total_chunks=chunk_data.get('metadata', {}).get('total_chunks'),
                 creation_date=chunk_data.get('metadata', {}).get('created_at'),
-                size=len(chunk_data['content']),
+                size=len(content),
                 embedding_model=chunk_data.get('metadata', {}).get('embedding_model')
             ),
-            size=len(chunk_data['content'])
+            preview=content[:200] + "..." if len(content) > 200 else content,
+            word_count=len(content.split()),
+            line_count=len(content.split('\n'))
         )
         
         # Get related chunks from same document
@@ -362,7 +368,7 @@ async def get_chunks_stats():
             category_distribution=category_distribution,
             embedding_model=settings.EMBEDDING_MODEL,
             index_health=index_health,
-            last_updated=datetime.utcnow().isoformat()
+            last_updated=datetime.now(timezone.utc).isoformat()
         )
         
         logger.info(f"📊 Generated ChromaDB statistics: {response.total_chunks} chunks, {response.total_files} files")
@@ -416,9 +422,10 @@ async def search_chunks(request: ChunkSearchRequest):
         
         for result in search_results:
             try:
+                content = result['content']
                 chunk = ChunkContent(
                     chunk_id=result['id'],
-                    content=result['content'],
+                    content=content,
                     metadata=ChunkMetadata(
                         chunk_id=result['id'],
                         source_file=result.get('metadata', {}).get('source', ''),
@@ -427,11 +434,13 @@ async def search_chunks(request: ChunkSearchRequest):
                         file_id=result.get('metadata', {}).get('file_id', ''),
                         chunk_index=result.get('metadata', {}).get('chunk_index'),
                         creation_date=result.get('metadata', {}).get('created_at'),
-                        size=len(result['content']),
+                        size=len(content),
                         distance=result.get('distance'),
                         embedding_model=result.get('metadata', {}).get('embedding_model')
                     ),
-                    size=len(result['content'])
+                    preview=content[:200] + "..." if len(content) > 200 else content,
+                    word_count=len(content.split()),
+                    line_count=len(content.split('\n'))
                 )
                 chunks.append(chunk)
                 similarity_scores.append(1.0 - (result.get('distance', 0.0)))  # Convert distance to similarity
@@ -658,7 +667,7 @@ async def _check_index_health() -> Dict[str, Any]:
     try:
         return {
             "status": "healthy",
-            "last_indexed": datetime.utcnow().isoformat(),
+            "last_indexed": datetime.now(timezone.utc).isoformat(),
             "index_version": "1.0",
             "consistency_check": "passed"
         }
@@ -674,7 +683,8 @@ async def _semantic_search(request: ChunkSearchRequest) -> List[Dict[str, Any]]:
         
         results = []
         for doc in documents:
-            if hasattr(doc, 'score') and doc.score < request.similarity_threshold:
+            score = getattr(doc, 'score', 1.0)  # Default to 1.0 if no score
+            if score < request.similarity_threshold:
                 continue
                 
             results.append({
