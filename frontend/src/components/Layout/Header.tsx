@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Sparkles, Zap } from 'lucide-react';
+import { Settings, Sparkles } from 'lucide-react';
 
 export const Header: React.FC = () => {
   return (
@@ -8,21 +8,23 @@ export const Header: React.FC = () => {
         <div className="flex justify-between items-center py-6">
           <div className="flex items-center space-x-4">
             <div className="relative">
-              <div className="w-14 h-14 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg border border-white/20">
-                <Zap className="w-8 h-8 text-white" />
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="StreamWorks-KI Logo" 
+                className="w-14 h-14 object-contain rounded-2xl bg-white/10 backdrop-blur-sm shadow-lg border border-white/20 p-2"
+              />
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white mb-1">StreamWorks-KI</h1>
-              <p className="text-blue-100 text-sm font-medium">Powered by Advanced AI Technology</p>
+              <p className="text-blue-100 text-sm font-medium">Intelligente Workload-Automatisierung</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-full">
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
-                <span className="text-white text-sm font-medium">Production Ready</span>
+                <span className="text-white text-sm font-medium">Online</span>
               </div>
             </div>
             <button className="p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl hover:bg-white/20 transition-all">

@@ -145,7 +145,7 @@ export const ModernChatInterface: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-800">StreamWorks AI Assistant</h2>
-              <p className="text-sm text-gray-500">Powered by Advanced RAG Technology</p>
+              <p className="text-sm text-gray-500">Intelligente Workload-Automatisierung</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -170,7 +170,7 @@ export const ModernChatInterface: React.FC = () => {
                   <Bot className="w-12 h-12 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-800 mb-3">
-                  Willkommen bei StreamWorks AI
+                  Willkommen bei SKI - Ihrer StreamWorks KI
                 </h3>
                 <p className="text-gray-600 mb-6">
                   Ihre intelligente Assistenz für alle Fragen rund um StreamWorks. 
@@ -355,7 +355,7 @@ export const ModernChatInterface: React.FC = () => {
             </button>
           </div>
           <div className="mt-2 text-xs text-gray-500 text-center">
-            Powered by E5 Multilingual Embeddings & Mistral 7B
+            StreamWorks Intelligente Workload-Automatisierung
           </div>
         </div>
       </form>
