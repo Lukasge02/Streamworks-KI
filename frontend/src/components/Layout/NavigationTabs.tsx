@@ -4,7 +4,7 @@ import { TabType } from '../../types';
 import { useAppStore } from '../../store/appStore';
 
 const tabs = [
-  { id: 'chat' as TabType, label: 'AI Chat', icon: MessageSquare, description: 'Intelligente Unterhaltung', color: 'from-blue-500 to-purple-600' },
+  { id: 'chat' as TabType, label: 'SKI Q&A', icon: MessageSquare, description: 'Intelligente Unterhaltung', color: 'from-blue-500 to-purple-600' },
   { id: 'training' as TabType, label: 'Training Data', icon: Database, description: 'Dokumentenverwaltung', color: 'from-green-500 to-teal-600' },
   { id: 'chunks' as TabType, label: 'Vector Database', icon: Grid, description: 'ChromaDB Chunks', color: 'from-orange-500 to-red-600' },
   { id: 'xml' as TabType, label: 'XML Generator', icon: Code, description: 'Stream-Generierung', color: 'from-purple-500 to-pink-600' }
