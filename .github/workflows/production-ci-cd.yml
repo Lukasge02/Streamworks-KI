@@ -1,0 +1,382 @@
+name: StreamWorks-KI Production CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # Security and Quality Checks
+  security-scan:
+    name: 🔐 Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install security tools
+        run: |
+          pip install bandit safety semgrep
+          
+      - name: Run Bandit security linter
+        run: |
+          bandit -r backend/app/ -f json -o bandit-report.json || true
+          bandit -r backend/app/ -ll
+          
+      - name: Check dependencies for vulnerabilities
+        run: |
+          safety check --json --output safety-report.json || true
+          safety check
+          
+      - name: Run Semgrep
+        run: |
+          semgrep --config=auto backend/app/ --json --output=semgrep-report.json || true
+          
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+            semgrep-report.json
+
+  # Code Quality and Linting
+  code-quality:
+    name: 📊 Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install flake8 black isort mypy
+          
+      - name: Run Black formatter check
+        run: |
+          black --check --diff backend/app/
+          
+      - name: Run isort import sorting check
+        run: |
+          isort --check-only --diff backend/app/
+          
+      - name: Run flake8 linting
+        run: |
+          flake8 backend/app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 backend/app/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          
+      - name: Run MyPy type checking
+        run: |
+          mypy backend/app/ --ignore-missing-imports --no-strict-optional
+
+  # Unit and Integration Tests
+  test-backend:
+    name: 🧪 Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_streamworks
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmagic1
+          
+      - name: Install Python dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest-xdist pytest-benchmark
+          
+      - name: Set up test environment
+        run: |
+          cp backend/.env.template backend/.env
+          echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_streamworks" >> backend/.env
+          echo "REDIS_URL=redis://localhost:6379/0" >> backend/.env
+          echo "ENV=testing" >> backend/.env
+          
+      - name: Run unit tests
+        run: |
+          cd backend
+          pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=html --junit-xml=test-results.xml
+          
+      - name: Run integration tests
+        run: |
+          cd backend
+          pytest tests/integration/ -v --junit-xml=integration-test-results.xml
+          
+      - name: Run performance tests
+        run: |
+          cd backend
+          pytest tests/performance/ -v --benchmark-json=benchmark-results.json
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: |
+            backend/test-results.xml
+            backend/integration-test-results.xml
+            backend/benchmark-results.json
+            backend/htmlcov/
+            backend/coverage.xml
+
+  # Frontend Tests (if applicable)
+  test-frontend:
+    name: 🌐 Frontend Tests
+    runs-on: ubuntu-latest
+    if: false  # Enable if frontend exists
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          
+      - name: Run tests
+        run: |
+          cd frontend
+          npm test
+          
+      - name: Run E2E tests
+        run: |
+          cd frontend
+          npm run test:e2e
+
+  # Docker Build and Security Scan
+  docker-build:
+    name: 🐳 Docker Build & Scan
+    runs-on: ubuntu-latest
+    needs: [security-scan, code-quality, test-backend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build Docker image
+        run: |
+          docker build -t streamworks-ki:${{ github.sha }} backend/
+          
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'streamworks-ki:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Performance and Load Testing
+  performance-tests:
+    name: ⚡ Performance Tests
+    runs-on: ubuntu-latest
+    needs: [test-backend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install locust
+          
+      - name: Start application for testing
+        run: |
+          cd backend
+          cp .env.template .env
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 30  # Wait for app to start
+          
+      - name: Run load tests
+        run: |
+          cd backend
+          locust -f tests/performance/locustfile.py --host=http://localhost:8000 --users 10 --spawn-rate 2 --run-time 60s --html=load-test-report.html --csv=load-test
+          
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: |
+            backend/load-test-report.html
+            backend/load-test_stats.csv
+
+  # Deployment to Staging
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [docker-build, performance-tests]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+          
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ secrets.REGISTRY_URL }}/streamworks-ki:staging-${{ github.sha }} backend/
+          docker push ${{ secrets.REGISTRY_URL }}/streamworks-ki:staging-${{ github.sha }}
+          
+      - name: Deploy to staging environment
+        run: |
+          # This would typically involve updating Kubernetes manifests,
+          # Docker Swarm services, or other deployment mechanisms
+          echo "Deploying to staging environment..."
+          # kubectl set image deployment/streamworks-ki streamworks-ki=${{ secrets.REGISTRY_URL }}/streamworks-ki:staging-${{ github.sha }}
+
+  # Production Deployment
+  deploy-production:
+    name: 🌟 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [docker-build, performance-tests]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Production readiness checks
+        run: |
+          echo "Running production readiness checks..."
+          # Add specific production checks here
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+          
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ secrets.REGISTRY_URL }}/streamworks-ki:prod-${{ github.sha }} backend/
+          docker build -t ${{ secrets.REGISTRY_URL }}/streamworks-ki:latest backend/
+          docker push ${{ secrets.REGISTRY_URL }}/streamworks-ki:prod-${{ github.sha }}
+          docker push ${{ secrets.REGISTRY_URL }}/streamworks-ki:latest
+          
+      - name: Deploy to production environment
+        run: |
+          echo "Deploying to production environment..."
+          # Production deployment commands would go here
+          
+      - name: Health check after deployment
+        run: |
+          echo "Performing post-deployment health checks..."
+          # Add health check commands here
+          
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            Automated release from main branch
+            Commit: ${{ github.sha }}
+          draft: false
+          prerelease: false
+
+  # Notification
+  notify:
+    name: 📢 Notify Teams
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Send Slack notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"StreamWorks-KI deployment completed: ${{ job.status }}"}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+            
+      - name: Send email notification
+        if: env.EMAIL_NOTIFICATIONS == 'true'
+        run: |
+          echo "Deployment notification would be sent via email"

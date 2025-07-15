@@ -3,16 +3,7 @@ export interface Message {
   text: string;
   sender: 'user' | 'ai';
   timestamp: Date;
-  type?: 'text' | 'xml' | 'code';
-}
-
-export interface StreamConfig {
-  streamName: string;
-  jobName: string;
-  startTime: string;
-  dataSource: string;
-  outputPath: string;
-  schedule: string;
+  type?: MessageType;
 }
 
 export interface ApiResponse<T> {
@@ -21,7 +12,9 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export type TabType = 'chat' | 'generator' | 'docs' | 'training' | 'search';
+export type TabType = 'chat' | 'training' | 'chunks';
+
+export type MessageType = 'text' | 'code' | 'xml';
 
 export type FileCategory = 'help_data' | 'stream_templates';
 
@@ -42,92 +35,60 @@ export interface TrainingFile {
   index_error?: string;
 }
 
-// Smart Search Types
-export interface SmartSearchRequest {
-  query: string;
-  top_k?: number;
-  include_analysis?: boolean;
+// ChromaDB Chunks Types
+export interface ChunkMetadata {
+  chunk_id?: number;
+  chunk_index?: number;
+  content_type?: string;
+  file_path?: string;
+  file_type?: string;
+  filename?: string;
+  page?: number;
+  section?: string;
+  source?: string;
+  timestamp?: string;
+  total_chunks?: number;
+  [key: string]: any;
 }
 
-export interface SearchFilter {
-  document_types?: string[];
-  file_formats?: string[];
-  chunk_types?: string[];
-  source_categories?: string[];
-  processing_methods?: string[];
-  complexity_min?: number;
-  complexity_max?: number;
-}
-
-export interface AdvancedSearchRequest {
-  query: string;
-  top_k?: number;
-  filters?: SearchFilter;
-  include_analysis?: boolean;
-}
-
-export interface QueryAnalysis {
-  primary_intent: string;
-  confidence: number;
-  complexity_level: number;
-  search_strategy: string;
-  preferred_doc_types: string[];
-  enhancement_suggestions: string[];
-  detected_entities: string[];
-  query_categories: string[];
-}
-
-export interface SearchResult {
+export interface Chunk {
+  id: string;
   content: string;
-  metadata: {
-    filename: string;
-    source_type: string;
-    chunk_type: string;
-    processing_method: string;
-    complexity_score: number;
-    relevance_score: number;
-    [key: string]: any;
-  };
-  score: number;
-  source: string;
-  explanation?: string;
+  metadata: ChunkMetadata;
+  embedding?: number[];
+  score?: number;
 }
 
-export interface SmartSearchResponse {
-  query: string;
-  total_results: number;
-  results: SearchResult[];
-  search_strategy_used: string;
-  response_time_ms: number;
-  query_analysis?: QueryAnalysis;
-  filter_applied?: SearchFilter;
-  performance_metrics?: {
-    strategy_selection_time: number;
-    search_execution_time: number;
-    result_processing_time: number;
+export interface ChunksListResponse {
+  chunks: Chunk[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+export interface ChunkDetailsResponse {
+  chunk: Chunk;
+  similar_chunks: Chunk[];
+  statistics: {
+    content_length: number;
+    word_count: number;
+    unique_words: number;
+    metadata_keys: string[];
   };
 }
 
-export interface FilterOptions {
-  document_types: string[];
-  file_formats: string[];
-  chunk_types: string[];
-  processing_methods: string[];
-  source_categories: string[];
-  complexity_range: {
-    min: number;
-    max: number;
-    levels: {
-      basic: string;
-      intermediate: string;
-      advanced: string;
-    };
-  };
-}
-
-export interface SearchStrategy {
-  name: string;
-  description: string;
-  best_for: string[];
-  performance: string;
+export interface ChunksStatisticsResponse {
+  total_chunks: number;
+  total_documents: number;
+  chunk_size_avg: number;
+  chunk_size_min: number;
+  chunk_size_max: number;
+  metadata_keys: string[];
+  source_distribution: Record<string, number>;
+  file_type_distribution: Record<string, number>;
+  creation_timeline: Array<{
+    date: string;
+    count: number;
+  }>;
 }

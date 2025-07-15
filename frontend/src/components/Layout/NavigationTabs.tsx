@@ -1,14 +1,12 @@
 import React from 'react';
-import { MessageSquare, Zap, FileText, Database, Search } from 'lucide-react';
+import { MessageSquare, Database, Grid } from 'lucide-react';
 import { TabType } from '../../types';
 import { useAppStore } from '../../store/appStore';
 
 const tabs = [
   { id: 'chat' as TabType, label: 'Chat', icon: MessageSquare },
-  { id: 'search' as TabType, label: 'Smart Search', icon: Search },
-  { id: 'generator' as TabType, label: 'Stream Generator', icon: Zap },
   { id: 'training' as TabType, label: 'Training Data', icon: Database },
-  { id: 'docs' as TabType, label: 'Dokumentation', icon: FileText }
+  { id: 'chunks' as TabType, label: 'ChromaDB Chunks', icon: Grid }
 ];
 
 export const NavigationTabs: React.FC = () => {

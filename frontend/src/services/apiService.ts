@@ -1,12 +1,8 @@
 import { 
   ApiResponse, 
-  StreamConfig, 
-  SmartSearchRequest, 
-  SmartSearchResponse, 
-  AdvancedSearchRequest, 
-  QueryAnalysis,
-  SearchStrategy,
-  FilterOptions
+  ChunksListResponse,
+  ChunkDetailsResponse,
+  ChunksStatisticsResponse
 } from '../types';
 
 export type SourceCategory = 'Testdaten' | 'StreamWorks Hilfe' | 'SharePoint';
@@ -133,13 +129,12 @@ class ApiService {
     sources?: string[];
   }> {
     try {
-      const response = await fetch(`${this.baseUrl}/chat/dual-mode`, {
+      // Use the new Perfect Q&A endpoint
+      const response = await fetch(`${this.baseUrl}/qa/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          message, 
-          mode,
-          session_id: 'current_session'
+          question: message
         }),
       });
       
@@ -148,27 +143,24 @@ class ApiService {
       }
       
       const data = await response.json();
-      return data;
+      
+      // Transform response to match expected format
+      return {
+        response: data.answer,
+        mode_used: 'perfect_qa',
+        processing_time: data.processing_time,
+        metadata: {
+          confidence: data.confidence,
+          question: data.question
+        },
+        sources: data.sources || []
+      };
     } catch (error) {
       console.error('Dual-Mode API Error:', error);
       throw new Error(`Dual-Mode Chat fehlgeschlagen: ${error}`);
     }
   }
 
-  async generateStream(config: StreamConfig): Promise<ApiResponse<string>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/streams/generate-stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      
-      const data = await response.json();
-      return { success: true, data: data.xml };
-    } catch (error) {
-      return { success: false, error: 'Stream-Generierung fehlgeschlagen' };
-    }
-  }
 
   async uploadFile(file: File): Promise<ApiResponse<string>> {
     try {
@@ -522,85 +514,27 @@ class ApiService {
     }
   }
 
-  // Smart Search API Methods
-  async smartSearch(request: SmartSearchRequest): Promise<ApiResponse<SmartSearchResponse>> {
+  // ChromaDB Chunks API Methods
+  async getChunks(
+    limit: number = 20,
+    offset: number = 0,
+    search?: string,
+    sourceFile?: string,
+    category?: string,
+    sortBy: string = 'creation_date',
+    sortOrder: string = 'desc'
+  ): Promise<ApiResponse<ChunksListResponse>> {
     try {
-      const response = await fetch(`${this.baseUrl}/search/smart`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-      });
+      const params = new URLSearchParams();
+      params.append('limit', limit.toString());
+      params.append('offset', offset.toString());
+      if (search) params.append('search', search);
+      if (sourceFile) params.append('source_file', sourceFile);
+      if (category) params.append('category', category);
+      params.append('sort_by', sortBy);
+      params.append('sort_order', sortOrder);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error) {
-      console.error('Smart search error:', error);
-      return { success: false, error: `Smart Search fehlgeschlagen: ${error}` };
-    }
-  }
-
-  async advancedSearch(request: AdvancedSearchRequest): Promise<ApiResponse<SmartSearchResponse>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/search/advanced`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error) {
-      console.error('Advanced search error:', error);
-      return { success: false, error: `Advanced Search fehlgeschlagen: ${error}` };
-    }
-  }
-
-  async analyzeQuery(query: string): Promise<ApiResponse<{
-    query: string;
-    analysis: QueryAnalysis;
-    recommendations: {
-      optimal_strategy: string;
-      suggested_document_types: string[];
-      enhancement_tips: string[];
-    };
-  }>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/search/analyze-query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error) {
-      console.error('Query analysis error:', error);
-      return { success: false, error: `Query-Analyse fehlgeschlagen: ${error}` };
-    }
-  }
-
-  async getSearchStrategies(): Promise<ApiResponse<{
-    available_strategies: Record<string, SearchStrategy>;
-    default_strategy: string;
-    auto_selection: string;
-  }>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/search/strategies`);
+      const response = await fetch(`${this.baseUrl}/chunks?${params.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -609,14 +543,14 @@ class ApiService {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Get search strategies error:', error);
-      return { success: false, error: `Search-Strategien laden fehlgeschlagen: ${error}` };
+      console.error('Get chunks error:', error);
+      return { success: false, error: `Chunks laden fehlgeschlagen: ${error}` };
     }
   }
 
-  async getFilterOptions(): Promise<ApiResponse<FilterOptions>> {
+  async getChunkDetails(chunkId: string): Promise<ApiResponse<ChunkDetailsResponse>> {
     try {
-      const response = await fetch(`${this.baseUrl}/search/filters/options`);
+      const response = await fetch(`${this.baseUrl}/chunks/${encodeURIComponent(chunkId)}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -625,28 +559,18 @@ class ApiService {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Get filter options error:', error);
-      return { success: false, error: `Filter-Optionen laden fehlgeschlagen: ${error}` };
+      console.error('Get chunk details error:', error);
+      return { success: false, error: `Chunk-Details laden fehlgeschlagen: ${error}` };
     }
   }
 
-  async getSmartSearchStatistics(): Promise<ApiResponse<{
-    smart_search: {
-      total_searches: number;
-      average_response_time: number;
-      strategy_usage: Record<string, number>;
-      intent_distribution: Record<string, number>;
-      performance_metrics: Record<string, number>;
-    };
-    system_info: {
-      total_search_endpoints: number;
-      available_strategies: number;
-      smart_search_enabled: boolean;
-      last_updated: string;
-    };
-  }>> {
+  async searchChunks(query: string, limit: number = 10): Promise<ApiResponse<ChunksListResponse>> {
     try {
-      const response = await fetch(`${this.baseUrl}/search/smart/statistics`);
+      const params = new URLSearchParams();
+      params.append('query', query);
+      params.append('limit', limit.toString());
+      
+      const response = await fetch(`${this.baseUrl}/chunks/search?${params.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -655,23 +579,14 @@ class ApiService {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Get smart search statistics error:', error);
-      return { success: false, error: `Smart Search Statistiken laden fehlgeschlagen: ${error}` };
+      console.error('Search chunks error:', error);
+      return { success: false, error: `Chunks suchen fehlgeschlagen: ${error}` };
     }
   }
 
-  async smartSearchHealthCheck(): Promise<ApiResponse<{
-    status: string;
-    smart_search_available: boolean;
-    query_classifier_working: boolean;
-    total_searches_performed: number;
-    average_response_time_ms: number;
-    available_strategies: number;
-    features: Record<string, boolean>;
-    timestamp: string;
-  }>> {
+  async getChunksStatistics(): Promise<ApiResponse<ChunksStatisticsResponse>> {
     try {
-      const response = await fetch(`${this.baseUrl}/search/smart/health`);
+      const response = await fetch(`${this.baseUrl}/chunks/statistics`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -680,8 +595,8 @@ class ApiService {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Smart search health check error:', error);
-      return { success: false, error: `Smart Search Health Check fehlgeschlagen: ${error}` };
+      console.error('Get chunks statistics error:', error);
+      return { success: false, error: `Chunks-Statistiken laden fehlgeschlagen: ${error}` };
     }
   }
 }

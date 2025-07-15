@@ -1,10 +1,9 @@
 import { Header } from './components/Layout/Header';
 import { NavigationTabs } from './components/Layout/NavigationTabs';
 import { DualModeChat } from './components/Chat/DualModeChat';
-import { SmartSearchTab } from './components/SmartSearch/SmartSearchTab';
-import { StreamGeneratorForm } from './components/StreamGenerator/StreamGeneratorForm';
 import TrainingDataTabV2Fixed from './components/TrainingData/TrainingDataTabV2Fixed';
-import { DocumentationTab } from './components/Documentation/DocumentationTab';
+import { EnhancedChunksTab } from './components/Chunks/EnhancedChunksTab';
+import { ErrorBoundary } from './components/ErrorHandling/ErrorBoundary';
 import { useAppStore } from './store/appStore';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -16,17 +15,25 @@ function App() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'chat':
-        return <DualModeChat />;
-      case 'search':
-        return <SmartSearchTab />;
-      case 'generator':
-        return <StreamGeneratorForm />;
+        return (
+          <ErrorBoundary>
+            <DualModeChat />
+          </ErrorBoundary>
+        );
       case 'training':
-        return <TrainingDataTabV2Fixed />;
-      case 'docs':
-        return <DocumentationTab />;
+        return (
+          <ErrorBoundary>
+            <TrainingDataTabV2Fixed />
+          </ErrorBoundary>
+        );
+      case 'chunks':
+        return <EnhancedChunksTab />;
       default:
-        return <DualModeChat />;
+        return (
+          <ErrorBoundary>
+            <DualModeChat />
+          </ErrorBoundary>
+        );
     }
   };
 

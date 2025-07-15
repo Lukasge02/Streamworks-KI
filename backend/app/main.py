@@ -54,12 +54,8 @@ async def lifespan(app: FastAPI):
         await initialize_async_manager()
         logger.info("✅ AsyncTaskManager started")
         
-        # Start production monitoring
-        try:
-            await start_monitoring()
-            logger.info("📈 Production monitoring started")
-        except Exception as e:
-            logger.error(f"❌ Monitoring startup failed: {e}")
+        # Production monitoring handled by middleware
+        logger.info("📈 Monitoring configured via middleware")
         
         # Initialize Database
         logger.info("🗄️ Initializing Database...")

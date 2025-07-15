@@ -215,23 +215,23 @@ async def dual_mode_redirect(request: dict):
     if not message:
         raise HTTPException(status_code=400, detail="Message is required")
     
-    # Redirect to smart Q&A endpoint
-    from app.services.intelligent_qa_service import intelligent_qa_service
+    # Use production RAG service for Q&A
+    from app.services.production_rag_service import production_rag
     
     try:
-        result = await intelligent_qa_service.answer_question(message)
+        result = await production_rag.ask(message)
         
         # Format response to match expected dual-mode format
         return {
-            "response": result["response"],
-            "mode_used": "smart_qa",
-            "processing_time": result["processing_time"],
+            "response": result.answer,
+            "mode_used": "production_qa",
+            "processing_time": result.processing_time,
             "metadata": {
-                "intent": result.get("intent", "unknown"),
-                "documents_used": result["documents_used"],
-                "redirected_from": "dual_mode"
+                "confidence": result.confidence,
+                "chunks_analyzed": result.chunks_analyzed,
+                "answer_type": result.answer_type
             },
-            "sources": []
+            "sources": result.sources
         }
         
     except Exception as e:

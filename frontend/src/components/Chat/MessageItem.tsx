@@ -2,7 +2,6 @@ import React from 'react';
 import { Message } from '../../types';
 import { Copy, Download, Bot, User } from 'lucide-react';
 import { FormatUtils } from '../../utils/formatUtils';
-import { StreamService } from '../../services/streamService';
 
 interface MessageItemProps {
   message: Message;
@@ -17,7 +16,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   
   const handleDownload = () => {
     if (message.type === 'xml') {
-      StreamService.downloadXmlFile(message.text, 'stream.xml');
+      const blob = new Blob([message.text], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'stream.xml';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   };
 
