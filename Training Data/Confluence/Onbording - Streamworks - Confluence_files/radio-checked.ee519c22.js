@@ -1,2 +1,0 @@
-var e=globalThis.parcelRequired477;(0,e.register)("2kmFP",function(l,r){Object.defineProperty(l.exports,"__esModule",{value:!0}),l.exports.default=void 0;var t=d(e("gwFzn")),a=d(e("aSNrY"));function d(e){return e&&e.__esModule?e:{default:e}}let o=e=>t.default.createElement(a.default,Object.assign({dangerouslySetGlyph:'<path fill="currentcolor" fill-rule="evenodd" d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0m0 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6" clip-rule="evenodd"/>'},e));o.displayName="RadioCheckedIcon",l.exports.default=o});
-//# sourceMappingURL=radio-checked.ee519c22.js.map

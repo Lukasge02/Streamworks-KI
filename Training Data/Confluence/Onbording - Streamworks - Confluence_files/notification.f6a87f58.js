@@ -1,2 +1,0 @@
-var e=globalThis.parcelRequired477;(0,e.register)("3bb5K",function(t,a){Object.defineProperty(t.exports,"__esModule",{value:!0}),t.exports.default=void 0;var l=i(e("gwFzn")),o=i(e("ckcSY")),r=i(e("jOLOx"));function i(e){return e&&e.__esModule?e:{default:e}}let n=e=>l.default.createElement(o.default,Object.assign({LEGACY_fallbackIcon:r.default},e));n.Name="NotificationIconMigration",t.exports.default=n});
-//# sourceMappingURL=notification.f6a87f58.js.map

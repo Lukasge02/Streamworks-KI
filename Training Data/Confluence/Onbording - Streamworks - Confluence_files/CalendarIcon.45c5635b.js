@@ -1,2 +1,0 @@
-function e(e){return e&&e.__esModule?e.default:e}var r=globalThis.parcelRequired477;(0,r.register)("dntIc",function(l,t){Object.defineProperty(l.exports,"CalendarIcon",{get:()=>c,set:void 0,enumerable:!0,configurable:!0});var a=r("gwFzn");let c=({isSelected:l})=>{let t=(0,r("luv00").useSSRPlaceholderReplaceIdProp)();return e(a).createElement(e(r("8DN9t")),{spacing:"spacious",color:l?"var(--ds-icon-selected, #0C66E4)":"var(--ds-icon, #44546F)",...t,label:""})}});
-//# sourceMappingURL=CalendarIcon.45c5635b.js.map

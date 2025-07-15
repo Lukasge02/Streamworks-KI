@@ -120,7 +120,7 @@ class ApiService {
 
   async sendDualModeMessage(
     message: string, 
-    mode: 'qa' | 'xml_generator'
+    _mode: 'qa' | 'xml_generator'
   ): Promise<{
     response: string;
     mode_used: string;

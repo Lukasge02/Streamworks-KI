@@ -1,2 +1,0 @@
-var e=globalThis.parcelRequired477;(0,e.register)("gYFpk",function(t,a){Object.defineProperty(t.exports,"__esModule",{value:!0}),t.exports.default=void 0;var l=n(e("gwFzn")),r=n(e("ilSNM")),o=n(e("iRXVy"));function n(e){return e&&e.__esModule?e:{default:e}}let u=e=>l.default.createElement(r.default,Object.assign({LEGACY_fallbackIcon:o.default},e));u.Name="LogInIconMigration",t.exports.default=u});
-//# sourceMappingURL=log-in--sign-in.7f99aafe.js.map
