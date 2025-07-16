@@ -1,13 +1,18 @@
 import { Header } from './components/Layout/Header';
-import { NavigationTabs } from './components/Layout/NavigationTabs';
+import { NavigationSidebar } from './components/Layout/NavigationTabs';
 import { ModernChatInterface } from './components/Chat/ModernChatInterface';
-import TrainingDataTabV2Fixed from './components/TrainingData/TrainingDataTabV2Fixed';
-import { EnhancedChunksTab } from './components/Chunks/EnhancedChunksTab';
+import PerfectTrainingDataTab from './components/TrainingData/PerfectTrainingDataTab';
+import { EnterpriseChunksAnalysis } from './components/Chunks/EnterpriseChunksAnalysis';
+import SettingsTab from './components/Settings/SettingsTab';
 import { ErrorBoundary } from './components/ErrorHandling/ErrorBoundary';
+import { DarkModeInitializer } from './components/Layout/DarkModeInitializer';
 import { useAppStore } from './store/appStore';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
+// Enterprise Components
+// import EnterpriseTrainingData from './components/Training/EnterpriseTrainingData';
+import SimpleAnalytics from './components/Analytics/SimpleAnalytics';
 
 function App() {
   const { activeTab } = useAppStore();
@@ -23,25 +28,47 @@ function App() {
       case 'training':
         return (
           <ErrorBoundary>
-            <TrainingDataTabV2Fixed />
+            <div className="h-full overflow-y-auto">
+              <PerfectTrainingDataTab />
+            </div>
           </ErrorBoundary>
         );
       case 'chunks':
-        return <EnhancedChunksTab />;
+        return (
+          <ErrorBoundary>
+            <div className="h-full overflow-y-auto">
+              <EnterpriseChunksAnalysis />
+            </div>
+          </ErrorBoundary>
+        );
+      case 'analytics':
+        return (
+          <ErrorBoundary>
+            <div className="h-full overflow-y-auto">
+              <SimpleAnalytics />
+            </div>
+          </ErrorBoundary>
+        );
       case 'xml':
         return (
           <ErrorBoundary>
-            <div className="h-[calc(100vh-200px)] bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-lg border border-gray-200/50 flex items-center justify-center">
+            <div className="h-full bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-lg border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">XML Generator</h3>
-                <p className="text-gray-600">Coming Soon - Stream XML Generation</p>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">XML Generator</h3>
+                <p className="text-gray-600 dark:text-gray-300">Coming Soon - Stream XML Generation</p>
               </div>
             </div>
+          </ErrorBoundary>
+        );
+      case 'settings':
+        return (
+          <ErrorBoundary>
+            <SettingsTab />
           </ErrorBoundary>
         );
       default:
@@ -54,12 +81,15 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden flex flex-col">
       <Header />
-      <NavigationTabs />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderActiveTab()}
-      </main>
+      <div className="flex-1 flex overflow-hidden">
+        <NavigationSidebar />
+        <main className="flex-1 px-4 py-4 overflow-hidden">
+          {renderActiveTab()}
+        </main>
+      </div>
+      <DarkModeInitializer />
       <ToastContainer
         position="bottom-right"
         autoClose={5000}

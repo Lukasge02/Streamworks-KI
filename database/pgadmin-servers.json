@@ -1,0 +1,28 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "StreamWorks-KI Development",
+      "Group": "StreamWorks-KI",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "streamworks_ki_dev",
+      "Username": "streamworks",
+      "Password": "streamworks_dev_2025",
+      "SSLMode": "prefer",
+      "Favorite": true,
+      "Comment": "StreamWorks-KI Development Database"
+    },
+    "2": {
+      "Name": "StreamWorks-KI Production",
+      "Group": "StreamWorks-KI",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "streamworks_ki",
+      "Username": "streamworks",
+      "Password": "streamworks_secure_2025",
+      "SSLMode": "require",
+      "Favorite": false,
+      "Comment": "StreamWorks-KI Production Database"
+    }
+  }
+}

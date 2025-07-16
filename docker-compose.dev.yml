@@ -1,0 +1,164 @@
+# StreamWorks-KI Development Environment
+# Vollständiges Development Setup mit Hot-Reload
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: streamworks-ki-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: streamworks_ki_dev
+      POSTGRES_USER: streamworks
+      POSTGRES_PASSWORD: streamworks_dev_2025
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=de_DE.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/dev-setup.sql:/docker-entrypoint-initdb.d/99-dev-setup.sql
+    command: |
+      postgres 
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c log_statement=all
+      -c log_duration=on
+      -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamworks -d streamworks_ki_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin Web Interface
+  postgres-admin:
+    image: dpage/pgadmin4:latest
+    container_name: streamworks-ki-pgadmin-dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@streamworks-ki.local
+      PGADMIN_DEFAULT_PASSWORD: dev_admin_2025
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "8080:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+      - ./database/pgadmin-servers.json:/pgadmin4/servers.json
+
+  # Backend Development Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.production
+      target: development
+    container_name: streamworks-ki-backend-dev
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql://streamworks:streamworks_dev_2025@postgres:5432/streamworks_ki_dev
+      - PYTHONPATH=/app
+      - LOG_LEVEL=DEBUG
+      - ENABLE_CORS=true
+      - RELOAD=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_dev_cache:/app/.cache
+      - ./backend/data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Development Server  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: streamworks-ki-frontend-dev
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+      - VITE_HOT_RELOAD=true
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_dev_modules:/app/node_modules
+      - frontend_dev_cache:/app/.vite
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Caching (Optional but recommended)
+  redis:
+    image: redis:7-alpine
+    container_name: streamworks-ki-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: streamworks-ki-chromadb-dev
+    restart: unless-stopped
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8001
+    ports:
+      - "8001:8001"
+    volumes:
+      - chromadb_dev_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  pgadmin_dev_data:
+    driver: local
+  backend_dev_cache:
+    driver: local
+  frontend_dev_modules:
+    driver: local
+  frontend_dev_cache:
+    driver: local
+  redis_dev_data:
+    driver: local
+  chromadb_dev_data:
+    driver: local
+
+networks:
+  default:
+    name: streamworks-ki-dev-network
+    driver: bridge

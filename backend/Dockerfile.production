@@ -137,8 +137,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install development Python packages
-COPY requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt
+COPY requirements-dev-simple.txt ./
+RUN pip install --no-cache-dir -r requirements-dev-simple.txt
 
 # Switch back to streamworks user
 USER streamworks

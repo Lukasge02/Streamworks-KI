@@ -92,8 +92,10 @@ if not settings.DATABASE_URL.startswith("sqlite"):
         "pool_timeout": 30,  # Timeout for getting connection from pool
         "pool_reset_on_return": "commit",  # Reset connections on return
         "connect_args": {
-            "application_name": "streamworks-ki",
-            "connect_timeout": 10
+            "server_settings": {
+                "application_name": "streamworks-ki"
+            },
+            "command_timeout": 10
         }
     })
 else:
@@ -106,7 +108,7 @@ else:
     })
 
 engine = create_async_engine(
-    settings.DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://"),
+    settings.DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://").replace("postgresql://", "postgresql+asyncpg://"),
     **engine_kwargs
 )
 

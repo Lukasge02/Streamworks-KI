@@ -1,11 +1,14 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from typing import List, Optional
 import os
 import aiofiles
 import uuid
+import hashlib
 from datetime import datetime, timezone
+from pathlib import Path
 import logging
 
 from app.core.config import settings
@@ -138,17 +141,165 @@ async def upload_training_files_batch(
         logger.error(f"❌ Batch upload failed: {e}")
         raise HTTPException(status_code=500, detail=f"Batch upload failed: {str(e)}")
 
-# Legacy single file upload (keep for compatibility)
-@router.post("/upload", response_model=TrainingFileResponse)
+# Enterprise single file upload (with dynamic categories)
+@router.post("/upload")
 async def upload_training_file(
     file: UploadFile = File(...),
-    source_category: str = Form("Testdaten"),
-    description: Optional[str] = Form(None),
+    category_slug: str = Form(..., description="Category slug (e.g. 'qa', 'stream-xml')"),
+    folder_slug: Optional[str] = Form(None, description="Optional folder slug"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload a single training file (legacy compatibility)"""
-    # Convert to batch upload
-    return await upload_training_files_batch([file], source_category, description, db)
+    """Upload a single training file to the enterprise system with dynamic categories"""
+    
+    try:
+        # Validate file
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
+        
+        file_extension = os.path.splitext(file.filename)[1].lower()
+        if file_extension not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file extension. Allowed: {ALLOWED_EXTENSIONS}"
+            )
+        
+        # Read file content
+        file_content = await file.read()
+        if len(file_content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum {MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+        
+        # Get category by slug
+        category_result = await db.execute(
+            text("SELECT id, name FROM document_categories WHERE slug = :slug AND is_active = true"),
+            {"slug": category_slug}
+        )
+        category_row = category_result.first()
+        
+        if not category_row:
+            raise HTTPException(status_code=400, detail=f"Invalid category slug: {category_slug}")
+        
+        category_id = category_row.id
+        category_name = category_row.name
+        
+        # Get folder ID if specified
+        folder_id = None
+        folder_name = None
+        if folder_slug:
+            folder_result = await db.execute(
+                text("SELECT id, name FROM document_folders WHERE slug = :slug AND category_id = :category_id AND is_active = true"),
+                {"slug": folder_slug, "category_id": category_id}
+            )
+            folder_row = folder_result.first()
+            if folder_row:
+                folder_id = folder_row.id
+                folder_name = folder_row.name
+            else:
+                raise HTTPException(status_code=400, detail=f"Invalid folder slug: {folder_slug} for category {category_slug}")
+        
+        # Create storage path - check if file exists and handle duplicates
+        storage_path = f"data/documents/{category_slug}"
+        if folder_slug:
+            storage_path += f"/{folder_slug}"
+        
+        # Check if file already exists
+        existing_file = await db.execute(
+            text("SELECT id FROM training_files_v2 WHERE original_filename = :filename AND category_id = :category_id AND folder_id = :folder_id"),
+            {"filename": file.filename, "category_id": category_id, "folder_id": folder_id}
+        )
+        
+        if existing_file.scalar():
+            # Update existing file instead of creating new one
+            await db.execute(
+                text("UPDATE training_files_v2 SET file_hash = :file_hash, file_size = :file_size, processing_status = 'pending' WHERE original_filename = :filename AND category_id = :category_id AND folder_id = :folder_id"),
+                {"file_hash": hashlib.sha256(file_content).hexdigest(), "file_size": len(file_content), "filename": file.filename, "category_id": category_id, "folder_id": folder_id}
+            )
+            await db.commit()
+            return {
+                "message": "File updated successfully",
+                "filename": file.filename,
+                "category": category_name,
+                "folder": folder_name,
+                "size": len(file_content),
+                "status": "updated"
+            }
+        
+        storage_path += f"/{file.filename}"
+        
+        # Save file to disk
+        file_path = Path(storage_path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(file_path, 'wb') as f:
+            f.write(file_content)
+        
+        # Save to database
+        file_id = str(uuid.uuid4())
+        await db.execute(
+            text("""
+                INSERT INTO training_files_v2 (
+                    id, category_id, folder_id, original_filename, 
+                    storage_path, file_hash, file_size, file_type,
+                    processing_status, created_at
+                ) VALUES (
+                    :id, :category_id, :folder_id, :filename,
+                    :storage_path, :file_hash, :file_size, :file_type,
+                    'pending', :created_at
+                )
+            """),
+            {
+                "id": file_id,
+                "category_id": category_id,
+                "folder_id": folder_id,
+                "filename": file.filename,
+                "storage_path": str(file_path),
+                "file_hash": hashlib.sha256(file_content).hexdigest(),
+                "file_size": len(file_content),
+                "file_type": file_extension,
+                "created_at": datetime.now(timezone.utc)
+            }
+        )
+        
+        await db.commit()
+        
+        return {
+            "message": "File uploaded successfully",
+            "id": file_id,
+            "filename": file.filename,
+            "category": category_name,
+            "folder": folder_name,
+            "size": len(file_content),
+            "status": "pending"
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"❌ Upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+# Backward compatibility upload route for old frontend
+@router.post("/upload-legacy")
+async def upload_training_file_legacy(
+    file: UploadFile = File(...),
+    category: str = Form("help_data"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Legacy upload endpoint for backward compatibility"""
+    
+    # Map old categories to new slugs
+    category_mapping = {
+        "help_data": "qa",
+        "stream_templates": "stream-xml"
+    }
+    
+    category_slug = category_mapping.get(category, category)
+    folder_slug = "streamworks-f1" if category == "help_data" else None
+    
+    # Use the new upload function
+    return await upload_training_file(file, category_slug, folder_slug, db)
 
 
 @router.get("/files", response_model=List[TrainingFileResponse])
@@ -157,13 +308,32 @@ async def list_training_files(
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Get list of all training files"""
+    """Get list of all training files (backward compatible)"""
     logger.info(f"📋 Listing training files - category: {category}, status: {status}")
     
     try:
+        # Store original category for response mapping
+        original_category = category
+        
+        # Backward compatibility: Map old category values to new ones
+        if category == "help_data":
+            category = None  # Show all files for help_data (they're all in qa now)
+        elif category == "stream_templates":
+            category = None  # Show all files for stream_templates
+        
         training_service = TrainingService(db)
         await training_service.initialize()  # CRITICAL: Initialize RAG service connection
         files = await training_service.get_training_files(category=category, status=status)
+        
+        # Backward compatibility: Map new category values back to old ones in response
+        if original_category == "help_data":
+            for file in files:
+                if file.category == "qa":
+                    file.category = "help_data"
+        elif original_category == "stream_templates":
+            for file in files:
+                if file.category == "stream-xml":
+                    file.category = "stream_templates"
         
         logger.info(f"✅ Retrieved {len(files)} training files")
         return files

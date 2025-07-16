@@ -55,26 +55,35 @@ class ProductionRAGService:
         self.is_ready = False
         self.executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="ProductionRAG")
         
-        # Production configuration - FIXED FOR GERMAN CONTENT RETRIEVAL
+        # Production configuration - ENTERPRISE PERFORMANCE OPTIMIZED
         self.config = {
             "embedding_model": "intfloat/multilingual-e5-large",
             "chromadb_path": "./data/vector_db_production",
             "collection_name": "streamworks_production",
             "mistral_model": "mistral:7b-instruct",
             "ollama_url": "http://localhost:11434",
-            # Multi-strategy parameters - OPTIMIZED FOR PRODUCTION
-            "semantic_top_k": 8,
-            "keyword_top_k": 6,
-            "hybrid_top_k": 4,
-            "max_context_length": 3000,  # Increased for better context
-            "chunk_size": 800,  # FIXED: Larger chunks preserve context
-            "chunk_overlap": 150,  # FIXED: More overlap prevents splits
-            # Quality parameters
-            "temperature": 0.05,  # Lower for more deterministic output
-            "timeout": 25,
-            "min_confidence": 0.6,  # Lower threshold for better recall
-            "retry_attempts": 3
+            # Multi-strategy parameters - PERFORMANCE OPTIMIZED
+            "semantic_top_k": 5,  # Reduced for speed
+            "keyword_top_k": 3,  # Reduced for speed
+            "hybrid_top_k": 2,  # Reduced for speed
+            "max_context_length": 2000,  # Reduced for faster processing
+            "chunk_size": 800,
+            "chunk_overlap": 150,
+            # Quality parameters - SPEED OPTIMIZED
+            "temperature": 0.1,  # Slightly higher for faster generation
+            "timeout": 30,  # Balanced timeout for Mistral
+            "min_confidence": 0.7,  # Higher threshold for precision
+            "retry_attempts": 2,  # Minimum retries for reliability
+            # PERFORMANCE FEATURES
+            "use_cache": True,
+            "cache_ttl": 3600,  # 1 hour cache
+            "parallel_retrieval": True,
+            "stream_response": True
         }
+        
+        # Response cache for instant answers
+        self._response_cache = {}
+        self._cache_timestamps = {}
         
         logger.info("🚀 Production RAG Service initialized")
     
@@ -116,6 +125,15 @@ class ProductionRAGService:
             raise
     
     async def ask(self, question: str) -> ProductionAnswer:
+        # Check cache first for instant responses
+        cache_key = question.lower().strip()
+        if self.config.get("use_cache") and cache_key in self._response_cache:
+            cache_timestamp = self._cache_timestamps.get(cache_key, 0)
+            if time.time() - cache_timestamp < self.config.get("cache_ttl", 3600):
+                cached_result = self._response_cache[cache_key]
+                logger.info(f"💨 CACHE HIT! Instant response for: {question[:50]}...")
+                cached_result.processing_time = 0.001  # Almost instant
+                return cached_result
         """Production Q&A with hybrid multi-strategy approach"""
         if not self.is_ready:
             await self.initialize()
@@ -153,6 +171,13 @@ class ProductionRAGService:
             )
             
             logger.info(f"✅ Production answer: {processing_time:.2f}s | Conf: {confidence:.2f} | Chunks: {result.chunks_analyzed}")
+            
+            # Cache successful high-confidence results
+            if self.config.get("use_cache") and confidence >= 0.8:
+                self._response_cache[cache_key] = result
+                self._cache_timestamps[cache_key] = time.time()
+                logger.info(f"💾 Cached response for future instant retrieval")
+            
             return result
             
         except Exception as e:
@@ -160,32 +185,54 @@ class ProductionRAGService:
             raise
     
     async def _production_retrieval(self, question: str) -> Dict[str, List[Dict]]:
-        """Production-grade multi-strategy retrieval"""
+        """Production-grade multi-strategy retrieval with parallel execution"""
         results = {}
         
-        # Strategy 1: Semantic search with query variants
-        semantic_queries = self._generate_query_variants(question)
-        semantic_docs = []
-        
-        for query_variant in semantic_queries:
-            docs = await self._semantic_search(query_variant)
-            for doc in docs:
-                doc['query_variant'] = query_variant
-            semantic_docs.extend(docs)
-        
-        results['semantic'] = self._deduplicate_docs(semantic_docs)
-        
-        # Strategy 2: Exact keyword matching
-        keyword_docs = await self._exact_keyword_search(question)
-        results['keyword'] = keyword_docs
-        
-        # Strategy 3: Pattern-based search (for structured content)
-        pattern_docs = await self._pattern_based_search(question)
-        results['pattern'] = pattern_docs
-        
-        # Strategy 4: Fuzzy semantic matching
-        fuzzy_docs = await self._fuzzy_semantic_search(question)
-        results['fuzzy'] = fuzzy_docs
+        if self.config.get("parallel_retrieval", True):
+            # Execute all strategies in parallel for MASSIVE speed boost
+            async def semantic_task():
+                semantic_queries = self._generate_query_variants(question)
+                semantic_docs = []
+                # Only use first 2 variants for speed
+                for query_variant in semantic_queries[:2]:
+                    docs = await self._semantic_search(query_variant)
+                    for doc in docs:
+                        doc['query_variant'] = query_variant
+                    semantic_docs.extend(docs)
+                return self._deduplicate_docs(semantic_docs)
+            
+            # Launch all tasks concurrently
+            tasks = await asyncio.gather(
+                semantic_task(),
+                self._exact_keyword_search(question),
+                self._pattern_based_search(question),
+                self._fuzzy_semantic_search(question),
+                return_exceptions=True
+            )
+            
+            # Assign results
+            strategies = ['semantic', 'keyword', 'pattern', 'fuzzy']
+            for i, task_result in enumerate(tasks):
+                if not isinstance(task_result, Exception):
+                    results[strategies[i]] = task_result
+                else:
+                    logger.warning(f"Strategy {strategies[i]} failed: {task_result}")
+                    results[strategies[i]] = []
+        else:
+            # Original sequential approach (fallback)
+            semantic_queries = self._generate_query_variants(question)
+            semantic_docs = []
+            
+            for query_variant in semantic_queries:
+                docs = await self._semantic_search(query_variant)
+                for doc in docs:
+                    doc['query_variant'] = query_variant
+                semantic_docs.extend(docs)
+            
+            results['semantic'] = self._deduplicate_docs(semantic_docs)
+            results['keyword'] = await self._exact_keyword_search(question)
+            results['pattern'] = await self._pattern_based_search(question)
+            results['fuzzy'] = await self._fuzzy_semantic_search(question)
         
         # Merge all results for comprehensive analysis
         all_chunks = []

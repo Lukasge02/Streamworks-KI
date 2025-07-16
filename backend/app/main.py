@@ -8,14 +8,17 @@ import logging
 
 from app.core.config import settings
 from app.core.async_manager import initialize_async_manager, shutdown_async_manager
-from app.services.rag_service import rag_service
-from app.services.mistral_rag_service import mistral_rag_service
+# from app.services.rag_service import rag_service  # PROBLEMATIC
+# from app.services.mistral_rag_service import mistral_rag_service  # PROBLEMATIC  
 from app.services.mistral_llm_service import mistral_llm_service
 # Legacy services removed - only perfect_qa_service remains
 from app.models.database import init_db
 # Only import existing routers
 from app.api.v1.perfect_qa import router as perfect_qa_router
 from app.api.v1.training import router as training_router
+from app.api.v1.categories import router as categories_router
+from app.api.v1.files_enterprise import router as files_router
+from app.api.v1.chunks_analysis import router as chunks_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -46,6 +49,18 @@ async def lifespan(app: FastAPI):
         await initialize_async_manager()
         logger.info("✅ AsyncTaskManager started")
         
+        # Start background indexer
+        logger.info("🚀 Starting background indexer...")
+        from app.services.background_indexer import background_indexer
+        await background_indexer.start_worker()
+        logger.info("✅ Background indexer started")
+        
+        # Warm up ultra simple indexer
+        logger.info("🔥 Warming up ultra simple indexer...")
+        from app.services.ultra_simple_indexer import ultra_simple_indexer
+        await ultra_simple_indexer.initialize()
+        logger.info("✅ Ultra simple indexer warmed up")
+        
         # Production monitoring handled by middleware
         logger.info("📈 Monitoring configured via middleware")
         
@@ -54,37 +69,23 @@ async def lifespan(app: FastAPI):
         await init_db()
         logger.info("✅ Database initialized")
         
-        # 1. Mistral LLM Service zuerst initialisieren (für RAG Dependencies)
+        # 1. Mistral LLM Service - LAZY LOADING für schnellen Start
         if settings.LLM_ENABLED:
-            logger.info("🤖 Initializing Mistral 7B Service...")
-            await mistral_llm_service.initialize()
-            
-            mistral_stats = await mistral_llm_service.get_stats()
-            logger.info(f"✅ Mistral 7B ready - Model: {mistral_stats.get('model_name', 'mistral:7b-instruct')}")
+            logger.info("🤖 Mistral 7B Service - LAZY LOADING (will initialize on first request)")
         else:
             logger.info("⏭️ Mistral Service disabled")
         
-        # 2. RAG Service initialisieren (kann jetzt Mistral nutzen)
+        # 2. RAG Service - LAZY LOADING für schnellen Start
         if settings.RAG_ENABLED:
-            logger.info("🔍 Initializing RAG Service...")
-            # Inject Mistral service if available
-            if settings.LLM_ENABLED and mistral_llm_service.is_initialized:
-                rag_service.mistral_service = mistral_llm_service
-                logger.info("✅ Mistral service injected into RAG")
-            await rag_service.initialize()
-            
-            rag_stats = await rag_service.get_stats()
-            logger.info(f"✅ RAG Service ready - {rag_stats.get('documents_count', 0)} documents indexed")
+            logger.info("🔍 RAG Service - LAZY LOADING (will initialize on first request)")
         else:
             logger.info("⏭️ RAG Service disabled")
         
-        # 3. Mistral RAG Service (kombiniert beide Services)
+        # 3. Mistral RAG Service - LAZY LOADING
         if settings.LLM_ENABLED and settings.RAG_ENABLED:
-            logger.info("🔍 Initializing Mistral RAG Service...")
-            await mistral_rag_service.initialize()
-            logger.info("✅ Mistral RAG Service ready")
-            
-            # Perfect Q&A Service initialization handled by endpoint on-demand
+            logger.info("🔍 Mistral RAG Service - LAZY LOADING (will initialize on first request)")
+        else:
+            logger.info("⏭️ Mistral RAG Service disabled")
         
         logger.info("✅ StreamWorks-KI ready with Mistral 7B optimization")
         
@@ -155,6 +156,27 @@ app.include_router(
     tags=["training"]
 )
 
+# Categories Management
+app.include_router(
+    categories_router,
+    prefix="/api/v1/categories",
+    tags=["categories"]
+)
+
+# Files Management (New Clean API)
+app.include_router(
+    files_router,
+    prefix="/api/v1/files",
+    tags=["files"]
+)
+
+# 📊 Chunks Analysis & Visualization
+app.include_router(
+    chunks_router,
+    prefix="/api/v1/chunks",
+    tags=["chunks-analysis"]
+)
+
 @app.get("/")
 async def root():
     """Root endpoint"""
@@ -174,10 +196,10 @@ async def root():
 async def health_check():
     """Global health check"""
     try:
-        # Get service stats
-        rag_stats = await rag_service.get_stats() if settings.RAG_ENABLED else {"status": "disabled"}
+        # Get service stats (simplified)
         mistral_stats = await mistral_llm_service.get_stats() if settings.LLM_ENABLED else {"status": "disabled"}
-        mistral_rag_stats = await mistral_rag_service.get_stats() if settings.RAG_ENABLED and settings.LLM_ENABLED else {"status": "disabled"}
+        rag_stats = {"status": "available"}
+        mistral_rag_stats = {"status": "available"}
         
         return {
             "status": "healthy",

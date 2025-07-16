@@ -116,3 +116,48 @@ max-complexity = 10
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamworks-ki-backend"
+version = "1.0.0"
+description = "StreamWorks-KI Backend API"
+authors = [
+    {name = "StreamWorks-KI Team", email = "dev@streamworks-ki.local"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy[asyncio]>=2.0.23",
+    "asyncpg>=0.29.0",
+    "psycopg2-binary>=2.9.9",
+    "python-multipart>=0.0.6",
+    "python-magic>=0.4.27",
+    "passlib[bcrypt]>=1.7.4",
+    "python-jose[cryptography]>=3.3.0",
+    "pydantic-settings>=2.1.0",
+    "structlog>=23.2.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "httpx>=0.25.2",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "bandit",
+    "coverage",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*", "data*", "alembic*"]
+
+[tool.setuptools.package-data]
+app = ["**/*.yaml", "**/*.yml", "**/*.json"]

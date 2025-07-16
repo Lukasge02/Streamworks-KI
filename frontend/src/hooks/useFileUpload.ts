@@ -7,7 +7,7 @@ export const useFileUpload = () => {
   const uploadFile = useCallback(async (file: File) => {
     setIsUploading(true);
     try {
-      const response = await apiService.uploadFile(file);
+      const response = await apiService.uploadFile(file, 'qa_docs');
       if (response.success) {
         return response.data;
       }

@@ -98,6 +98,45 @@ export interface SearchDocumentsResponse {
 class ApiService {
   private baseUrl = '/api/v1';
 
+  // Generic HTTP methods
+  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('GET request error:', error);
+      return { success: false, error: `GET request failed: ${error}` };
+    }
+  }
+
+  async post<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('POST request error:', error);
+      return { success: false, error: `POST request failed: ${error}` };
+    }
+  }
+
   async sendMessage(message: string): Promise<ApiResponse<string>> {
     try {
       const response = await fetch(`${this.baseUrl}/chat/`, {
@@ -162,7 +201,7 @@ class ApiService {
   }
 
 
-  async uploadFile(file: File): Promise<ApiResponse<string>> {
+  async uploadFileLegacy(file: File): Promise<ApiResponse<string>> {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -179,14 +218,201 @@ class ApiService {
     }
   }
 
-  // Training Data API Methods
+  // New Files API Methods
+  async getCategories(): Promise<ApiResponse<{id: string, slug: string, name: string, description?: string, folder_count: number}[]>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/files/categories`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Get categories error:', error);
+      return { success: false, error: `Kategorien laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async createCategory(name: string, description?: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/categories/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Create category error:', error);
+      return { success: false, error: `Kategorie erstellen fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async deleteCategory(categoryId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/categories/categories/${categoryId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Delete category error:', error);
+      return { success: false, error: `Kategorie löschen fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async getFolders(categorySlug: string): Promise<ApiResponse<{id: string, slug: string, name: string, description?: string}[]>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/files/categories/${categorySlug}/folders`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Get folders error:', error);
+      return { success: false, error: `Ordner laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async createFolder(categorySlug: string, name: string, description?: string): Promise<ApiResponse<any>> {
+    try {
+      const formData = new FormData();
+      formData.append('name', name);
+      if (description) {
+        formData.append('description', description);
+      }
+      
+      const response = await fetch(`${this.baseUrl}/files/categories/${categorySlug}/folders`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Create folder error:', error);
+      return { success: false, error: `Ordner erstellen fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async deleteFolder(folderId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/files/folders/${folderId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Delete folder error:', error);
+      return { success: false, error: `Ordner löschen fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async uploadFile(file: File, categorySlug: string, folderSlug?: string): Promise<ApiResponse<any>> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category_slug', categorySlug);
+      if (folderSlug) {
+        formData.append('folder_slug', folderSlug);
+      }
+      
+      const response = await fetch(`${this.baseUrl}/files/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('File upload error:', error);
+      return { success: false, error: `Datei Upload fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async getFiles(categorySlug?: string, folderSlug?: string): Promise<ApiResponse<any[]>> {
+    try {
+      const params = new URLSearchParams();
+      if (categorySlug) params.append('category_slug', categorySlug);
+      if (folderSlug) params.append('folder_slug', folderSlug);
+      
+      const queryString = params.toString();
+      const url = `${this.baseUrl}/files/files${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Get files error:', error);
+      return { success: false, error: `Dateien laden fehlgeschlagen: ${error}` };
+    }
+  }
+
+  async deleteFile(fileId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/files/files/${fileId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Delete file error:', error);
+      return { success: false, error: `Datei löschen fehlgeschlagen: ${error}` };
+    }
+  }
+
+  // Training Data API Methods (Legacy - kept for compatibility)
   async uploadTrainingFile(file: File, category: 'help_data' | 'stream_templates'): Promise<ApiResponse<TrainingFile>> {
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('category', category);
       
-      const response = await fetch(`${this.baseUrl}/training/upload`, {
+      const response = await fetch(`${this.baseUrl}/training/upload-legacy`, {
         method: 'POST',
         body: formData,
       });

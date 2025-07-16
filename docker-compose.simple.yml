@@ -1,0 +1,48 @@
+# Vereinfachtes Setup für erste Tests
+
+services:
+  # Nur PostgreSQL für den Anfang
+  postgres:
+    image: postgres:15-alpine
+    container_name: streamworks-ki-postgres-simple
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: streamworks_ki_dev
+      POSTGRES_USER: streamworks
+      POSTGRES_PASSWORD: streamworks_dev_2025
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_simple_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamworks -d streamworks_ki_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin Web Interface
+  postgres-admin:
+    image: dpage/pgadmin4:latest
+    container_name: streamworks-ki-pgadmin-simple
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@streamworks-ki.local
+      PGADMIN_DEFAULT_PASSWORD: dev_admin_2025
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_simple_data:/var/lib/pgladmin
+
+volumes:
+  postgres_simple_data:
+    driver: local
+  pgladmin_simple_data:
+    driver: local
+
+networks:
+  default:
+    name: streamworks-ki-simple-network
