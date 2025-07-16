@@ -19,7 +19,6 @@ from app.main import app
 from app.models.database import Base, get_db
 from app.services.rag_service import RAGService
 from app.services.mistral_llm_service import MistralLLMService
-from app.services.xml_generator import XMLGeneratorService
 from app.services.error_handler import StreamWorksErrorHandler
 
 # Test database URL
@@ -76,11 +75,6 @@ def mock_llm_service():
     # Configure mock behavior
     return service
 
-@pytest.fixture
-def mock_xml_generator():
-    """Mock XML generator for testing"""
-    service = XMLGeneratorService()
-    return service
 
 @pytest.fixture
 def sample_training_file():
@@ -101,18 +95,6 @@ def sample_chat_request():
         "conversation_id": "test-conv-123"
     }
 
-@pytest.fixture
-def sample_xml_request():
-    """Sample XML generation request"""
-    return {
-        "job_name": "TestJob",
-        "job_type": "batch",
-        "source_path": "/data/input",
-        "schedule": {
-            "type": "daily",
-            "time": "02:00"
-        }
-    }
 
 # Performance testing fixtures
 @pytest.fixture

@@ -10,10 +10,10 @@ Development: http://localhost:8000
 
 ### Authentication
 ```bash
-# API Key Header
+# API Key Header (if implemented)
 X-API-Key: your-api-key-here
 
-# JWT Token (wenn implementiert)
+# JWT Token (if implemented)
 Authorization: Bearer <jwt-token>
 ```
 
@@ -30,14 +30,13 @@ curl -X GET "http://localhost:8000/health"
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-07-08T10:30:00Z",
+  "timestamp": "2025-07-16T12:00:00Z",
   "version": "2.1.0",
-  "architecture": "Mistral 7B + RAG + LoRA",
+  "architecture": "Mistral 7B + RAG",
   "services": {
-    "rag": {"status": "healthy", "documents": 1250},
-    "mistral_llm": {"status": "healthy", "model": "mistral:7b-instruct"},
-    "mistral_rag": {"status": "healthy"},
-    "xml_generation": {"status": "healthy", "lora_enabled": true},
+    "rag": {"status": "available"},
+    "mistral_llm": {"status": "ready"},
+    "mistral_rag": {"status": "available"},
     "database": "operational"
   }
 }
@@ -45,98 +44,167 @@ curl -X GET "http://localhost:8000/health"
 
 ---
 
-## 💬 Chat & Q&A Endpoints
+## 📋 API Endpoints
 
-### 1. Standard Chat (RAG + LLM)
-**Endpoint:** `POST /api/v1/chat/`
+### 1. **Q&A Service** - `/api/v1/qa/`
+
+#### Ask Question
+**POST** `/api/v1/qa/ask`
+
+Intelligente Frage-Antwort basierend auf RAG-System.
 
 **Request:**
 ```json
 {
-  "message": "Wie funktioniert das StreamWorks Client-Update?",
-  "conversation_id": "optional-uuid",
-  "use_rag": true,
-  "temperature": 0.7,
-  "max_tokens": 500
+  "question": "Wie konfiguriere ich den StreamWorks Agent?",
+  "context_limit": 5,
+  "temperature": 0.7
 }
 ```
 
 **Response:**
 ```json
 {
-  "response": "Das StreamWorks Client-Update erfolgt automatisch über...",
-  "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+  "answer": "Um den StreamWorks Agent zu konfigurieren...",
   "sources": [
     {
-      "filename": "client_update_guide.pdf",
-      "page": 3,
-      "relevance_score": 0.95,
-      "content": "Update-Prozess läuft über..."
+      "filename": "SW-Agent-Configuration.pdf",
+      "chunk_id": "chunk_123",
+      "relevance_score": 0.95
     }
   ],
-  "processing_time": 2.3,
-  "model_used": "mistral:7b-instruct",
-  "rag_enabled": true
+  "response_time": 2.3,
+  "model_used": "mistral:7b"
 }
 ```
 
-### 2. Dual-Mode Chat (RAG + Direct LLM)
-**Endpoint:** `POST /api/v1/chat/dual-mode`
-
-**Request:**
-```json
-{
-  "message": "Erkläre mir die Backup-Strategie",
-  "conversation_id": "optional-uuid",
-  "compare_responses": true
-}
+**cURL Example:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/qa/ask" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Wie konfiguriere ich den StreamWorks Agent?",
+    "context_limit": 5
+  }'
 ```
 
-**Response:**
-```json
-{
-  "rag_response": {
-    "response": "Laut Dokumentation verwendet StreamWorks...",
-    "sources": [...],
-    "processing_time": 1.8
-  },
-  "direct_llm_response": {
-    "response": "Eine typische Backup-Strategie umfasst...",
-    "processing_time": 0.9
-  },
-  "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-  "comparison_mode": true
-}
-```
+---
 
-### 3. Citation-Enhanced Chat
-**Endpoint:** `POST /api/v1/chat/with-citations`
+### 2. **Document Management** - `/api/v1/files/`
 
-**Request:**
-```json
-{
-  "message": "Was sind die Systemanforderungen?",
-  "enable_citations": true,
-  "citation_style": "numeric"
-}
+#### Upload Document
+**POST** `/api/v1/files/upload`
+
+Lädt ein Dokument hoch und indexiert es für das RAG-System.
+
+**Request (multipart/form-data):**
+```bash
+curl -X POST "http://localhost:8000/api/v1/files/upload" \
+  -F "file=@document.pdf" \
+  -F "category_slug=qa_docs" \
+  -F "folder_slug=help_documents"
 ```
 
 **Response:**
 ```json
 {
-  "response": "Die Systemanforderungen für StreamWorks sind: Windows 10+ [1], 8GB RAM [2], und .NET Framework 4.8+ [3].",
-  "citations": [
+  "id": "12345-67890",
+  "filename": "document.pdf",
+  "category_slug": "qa_docs",
+  "category_name": "Q&A Documents",
+  "file_size": 1024000,
+  "upload_date": "2025-07-16T12:00:00Z",
+  "status": "ready_for_indexing"
+}
+```
+
+#### List Files
+**GET** `/api/v1/files/`
+
+**Query Parameters:**
+- `category_slug` (optional): Filter by category
+- `folder_slug` (optional): Filter by folder
+
+**Response:**
+```json
+{
+  "files": [
     {
-      "id": 1,
-      "source": "system_requirements.pdf",
-      "page": 1,
-      "text": "Mindestanforderung: Windows 10 oder höher"
-    },
+      "id": "12345-67890",
+      "filename": "document.pdf",
+      "category_slug": "qa_docs",
+      "category_name": "Q&A Documents",
+      "file_size": 1024000,
+      "upload_date": "2025-07-16T12:00:00Z",
+      "status": "indexed",
+      "chunk_count": 45,
+      "indexed_at": "2025-07-16T12:05:00Z"
+    }
+  ],
+  "total_files": 1,
+  "total_size": 1024000
+}
+```
+
+#### Delete File
+**DELETE** `/api/v1/files/{file_id}`
+
+**Response:**
+```json
+{
+  "message": "File deleted successfully"
+}
+```
+
+---
+
+### 3. **Categories Management** - `/api/v1/categories/`
+
+#### List Categories
+**GET** `/api/v1/categories/`
+
+**Response:**
+```json
+{
+  "categories": [
     {
-      "id": 2,
-      "source": "hardware_specs.pdf", 
-      "page": 2,
-      "text": "Empfohlener Arbeitsspeicher: 8GB RAM"
+      "id": "1",
+      "slug": "qa_docs",
+      "name": "Q&A Documents",
+      "description": "Support and help documents",
+      "folder_count": 3,
+      "file_count": 25,
+      "created_at": "2025-07-16T12:00:00Z"
+    }
+  ]
+}
+```
+
+#### Create Category
+**POST** `/api/v1/categories/`
+
+**Request:**
+```json
+{
+  "name": "New Category",
+  "description": "Category description",
+  "slug": "new_category"
+}
+```
+
+#### Get Category Folders
+**GET** `/api/v1/categories/{category_slug}/folders`
+
+**Response:**
+```json
+{
+  "folders": [
+    {
+      "id": "1",
+      "slug": "help_documents",
+      "name": "Help Documents",
+      "description": "User help documentation",
+      "file_count": 10
     }
   ]
 }
@@ -144,417 +212,223 @@ curl -X GET "http://localhost:8000/health"
 
 ---
 
-## 🔧 XML Generation Endpoints
+### 4. **Chunks Analysis** - `/api/v1/chunks/`
 
-### 1. Generate XML from Text
-**Endpoint:** `POST /api/v1/xml/generate`
-
-**Request:**
-```json
-{
-  "text": "Der Kunde möchte eine neue Bestellung für 5 Laptops mit Windows 11",
-  "xml_type": "order",
-  "use_lora": true,
-  "temperature": 0.3
-}
-```
+#### Get Chunk Analysis
+**GET** `/api/v1/chunks/analysis`
 
 **Response:**
 ```json
 {
-  "xml_output": "<?xml version=\"1.0\"?>\n<order>\n  <item>\n    <product>Laptop</product>\n    <quantity>5</quantity>\n    <os>Windows 11</os>\n  </item>\n</order>",
-  "confidence": 0.92,
-  "lora_model_used": true,
-  "processing_time": 1.2,
-  "validation": {
-    "is_valid": true,
-    "errors": []
-  }
+  "total_chunks": 1234,
+  "total_files": 56,
+  "average_chunk_size": 512,
+  "embedding_model": "intfloat/multilingual-e5-large",
+  "vector_db_size": "45.6 MB",
+  "last_indexed": "2025-07-16T12:00:00Z"
 }
 ```
 
-### 2. Batch XML Generation
-**Endpoint:** `POST /api/v1/xml/generate-batch`
-
-**Request:**
-```json
-{
-  "texts": [
-    "Bestellung für 3 Monitore",
-    "Reparaturauftrag für Drucker",
-    "Anfrage für Software-Lizenz"
-  ],
-  "xml_type": "mixed",
-  "parallel_processing": true
-}
-```
-
-**Response:**
-```json
-{
-  "results": [
-    {
-      "input_text": "Bestellung für 3 Monitore",
-      "xml_output": "<order>...</order>",
-      "confidence": 0.89
-    }
-  ],
-  "total_processed": 3,
-  "processing_time": 2.1,
-  "parallel_execution": true
-}
-```
-
----
-
-## 📚 Training & Document Management
-
-### 1. Upload Training Documents
-**Endpoint:** `POST /api/v1/training/upload`
-
-**Request (multipart/form-data):**
-```bash
-curl -X POST "http://localhost:8000/api/v1/training/upload" \
-  -F "file=@document.pdf" \
-  -F "category=manual" \
-  -F "priority=high"
-```
-
-**Response:**
-```json
-{
-  "file_id": "doc_123456",
-  "filename": "document.pdf",
-  "size": 2048576,
-  "pages": 45,
-  "category": "manual",
-  "processing_status": "queued",
-  "estimated_processing_time": "2-3 minutes",
-  "upload_time": "2025-07-08T10:30:00Z"
-}
-```
-
-### 2. Check Processing Status
-**Endpoint:** `GET /api/v1/training/status/{file_id}`
-
-**Response:**
-```json
-{
-  "file_id": "doc_123456",
-  "status": "processing", // queued, processing, completed, failed
-  "progress": 65,
-  "current_step": "text_extraction",
-  "steps_completed": ["upload", "validation", "text_extraction"],
-  "steps_remaining": ["chunking", "embedding", "indexing"],
-  "estimated_completion": "2025-07-08T10:33:00Z",
-  "error_details": null
-}
-```
-
-### 3. List Training Files
-**Endpoint:** `GET /api/v1/training/files`
-
-**Query Parameters:**
-- `page`: Seite (default: 1)
-- `limit`: Anzahl pro Seite (default: 20)
-- `category`: Filter nach Kategorie
-- `status`: Filter nach Status
+#### Get File Analysis
+**GET** `/api/v1/chunks/files`
 
 **Response:**
 ```json
 {
   "files": [
     {
-      "file_id": "doc_123456",
-      "filename": "user_manual.pdf",
-      "category": "manual",
-      "status": "completed",
-      "upload_date": "2025-07-08T10:00:00Z",
-      "size": 2048576,
-      "pages": 45,
-      "chunks_generated": 123
+      "filename": "document.pdf",
+      "chunk_count": 45,
+      "file_size": 1024000,
+      "indexed_at": "2025-07-16T12:05:00Z",
+      "embedding_model": "intfloat/multilingual-e5-large",
+      "categories": ["qa_docs"]
     }
+  ]
+}
+```
+
+---
+
+### 5. **System Status** - `/api/v1/status`
+
+#### System Status
+**GET** `/api/v1/status`
+
+**Response:**
+```json
+{
+  "backend_version": "2.1.0",
+  "architecture": "Mistral 7B + RAG",
+  "features": {
+    "mistral_rag_qa": true,
+    "german_optimization": true,
+    "document_upload": true,
+    "vector_search": true,
+    "performance_monitoring": true
+  },
+  "models": {
+    "mistral_model": "mistral:7b",
+    "embedding_model": "intfloat/multilingual-e5-large",
+    "vector_db_path": "./data/vector_db"
+  },
+  "mistral_parameters": {
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "max_tokens": 2048
+  }
+}
+```
+
+---
+
+### 6. **Performance Metrics** - `/api/v1/metrics`
+
+#### Get Metrics
+**GET** `/api/v1/metrics`
+
+**Response:**
+```json
+{
+  "timestamp": "2025-07-16T12:00:00Z",
+  "status": "monitoring_active",
+  "endpoints_monitored": [
+    "/api/v1/qa/ask",
+    "/api/v1/files/upload",
+    "/health"
   ],
+  "monitoring_features": [
+    "Request timing",
+    "Error tracking",
+    "Slow request detection",
+    "System resource monitoring"
+  ]
+}
+```
+
+---
+
+## 🔧 Error Handling
+
+### Error Response Format
+```json
+{
+  "error": "Invalid request format",
+  "detail": "The 'question' field is required",
+  "status_code": 400,
+  "timestamp": "2025-07-16T12:00:00Z"
+}
+```
+
+### Common Error Codes
+- **400 Bad Request**: Invalid request format or missing parameters
+- **401 Unauthorized**: Invalid or missing authentication
+- **403 Forbidden**: Insufficient permissions
+- **404 Not Found**: Resource not found
+- **413 Payload Too Large**: File too large for upload
+- **429 Too Many Requests**: Rate limit exceeded
+- **500 Internal Server Error**: Server error
+- **503 Service Unavailable**: Service temporarily unavailable
+
+---
+
+## 📊 Rate Limits
+
+### Default Limits
+- **Q&A Requests**: 60 per minute
+- **File Uploads**: 10 per minute
+- **General API**: 100 per minute
+
+### Rate Limit Headers
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 59
+X-RateLimit-Reset: 1642781400
+```
+
+---
+
+## 🔒 Security
+
+### Input Validation
+- All inputs are validated using Pydantic models
+- File uploads are scanned for malicious content
+- SQL injection protection through parameterized queries
+
+### Content Security
+- Maximum file size: 50MB
+- Allowed file types: PDF, DOCX, TXT, MD, CSV, JSON
+- Content filtering to prevent injection attacks
+
+---
+
+## 📈 Performance
+
+### Response Times
+- **Health Check**: < 100ms
+- **Q&A Query**: < 3s (depends on context complexity)
+- **File Upload**: < 1s (indexing happens in background)
+- **File List**: < 500ms
+- **Category Operations**: < 300ms
+
+### Pagination
+Large result sets are paginated:
+```json
+{
+  "data": [...],
   "pagination": {
     "page": 1,
-    "limit": 20,
-    "total": 156,
-    "pages": 8
+    "per_page": 50,
+    "total": 123,
+    "total_pages": 3
   }
 }
 ```
 
 ---
 
-## 🔍 Search & Retrieval
+## 🧪 Testing
 
-### 1. Semantic Search
-**Endpoint:** `POST /api/v1/search/semantic`
+### Test Endpoints
+```bash
+# Health check
+curl -X GET "http://localhost:8000/health"
 
-**Request:**
-```json
-{
-  "query": "Wie installiere ich StreamWorks Client?",
-  "top_k": 5,
-  "threshold": 0.7,
-  "filter": {
-    "category": ["manual", "guide"],
-    "date_range": {
-      "start": "2024-01-01",
-      "end": "2025-07-08"
-    }
-  }
-}
+# Ask question
+curl -X POST "http://localhost:8000/api/v1/qa/ask" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Test question"}'
+
+# Upload file
+curl -X POST "http://localhost:8000/api/v1/files/upload" \
+  -F "file=@test.pdf" \
+  -F "category_slug=qa_docs"
 ```
 
-**Response:**
-```json
-{
-  "results": [
-    {
-      "document_id": "doc_789",
-      "filename": "installation_guide.pdf",
-      "page": 12,
-      "chunk_text": "Die Installation des StreamWorks Clients erfolgt...",
-      "relevance_score": 0.94,
-      "metadata": {
-        "category": "manual",
-        "version": "2.1",
-        "last_updated": "2025-01-15"
-      }
-    }
-  ],
-  "query_time": 0.15,
-  "total_results": 23,
-  "max_score": 0.94
-}
-```
-
-### 2. Hybrid Search (Semantic + Keyword)
-**Endpoint:** `POST /api/v1/search/hybrid`
-
-**Request:**
-```json
-{
-  "query": "StreamWorks Fehlerbehandlung Exception",
-  "semantic_weight": 0.7,
-  "keyword_weight": 0.3,
-  "top_k": 10
-}
-```
+### Interactive API Documentation
+Visit `http://localhost:8000/docs` for interactive Swagger UI documentation.
 
 ---
 
-## 📊 Monitoring & Analytics
+## 🔄 Updates
 
-### 1. System Metrics
-**Endpoint:** `GET /api/v1/monitoring/metrics`
+### Version 2.1.0 (Current)
+- Updated architecture documentation
+- Removed deprecated XML generation endpoints
+- Added proper error handling documentation
+- Enhanced file management endpoints
+- Improved response time specifications
 
-**Response:**
-```json
-{
-  "overview": {
-    "total_requests": 15420,
-    "total_errors": 23,
-    "active_requests": 3,
-    "average_response_time": 1.23,
-    "uptime_hours": 168.5
-  },
-  "endpoints": {
-    "/api/v1/chat/": {
-      "request_count": 8450,
-      "avg_duration": 2.1,
-      "error_rate": 0.012
-    }
-  },
-  "system": {
-    "cpu_percent": 45.2,
-    "memory_percent": 67.8,
-    "disk_usage_percent": 23.1
-  }
-}
-```
-
-### 2. Performance History
-**Endpoint:** `GET /api/v1/monitoring/performance/history?minutes=60`
-
-**Response:**
-```json
-{
-  "history": [
-    {
-      "timestamp": "2025-07-08T10:30:00Z",
-      "cpu_percent": 45.2,
-      "memory_percent": 67.8,
-      "response_time": 1.23
-    }
-  ],
-  "averages": {
-    "avg_cpu": 42.1,
-    "avg_memory": 65.4,
-    "avg_response_time": 1.31
-  }
-}
-```
+### Deprecated Endpoints
+- `/api/v1/xml/generate` - Removed (XML generation not implemented)
+- `/api/v1/lora/finetune` - Removed (LoRA fine-tuning not implemented)
 
 ---
 
-## 🤖 A/B Testing & Evaluation
+## 📞 Support
 
-### 1. Create A/B Test
-**Endpoint:** `POST /api/v1/ab-testing/create`
-
-**Request:**
-```json
-{
-  "test_name": "rag_vs_direct_comparison",
-  "description": "Compare RAG vs Direct LLM responses",
-  "variants": [
-    {
-      "name": "rag_enabled",
-      "config": {"use_rag": true, "temperature": 0.7}
-    },
-    {
-      "name": "direct_llm",
-      "config": {"use_rag": false, "temperature": 0.7}
-    }
-  ],
-  "traffic_split": [50, 50],
-  "success_metrics": ["response_quality", "user_satisfaction"]
-}
-```
-
-### 2. Evaluate Response Quality
-**Endpoint:** `POST /api/v1/evaluation/evaluate`
-
-**Request:**
-```json
-{
-  "response": "StreamWorks Client wird automatisch über...",
-  "reference_answer": "Der Client aktualisiert sich automatisch...",
-  "metrics": ["relevance", "accuracy", "completeness"],
-  "context": {
-    "query": "Wie funktioniert das Client-Update?",
-    "sources_used": ["manual_v2.1.pdf"]
-  }
-}
-```
-
----
-
-## 🔒 Security & Validation
-
-### 1. Input Validation
-Alle Endpoints validieren automatisch:
-- **XSS-Schutz**: HTML/Script-Tags werden gefiltert
-- **SQL-Injection-Schutz**: Query-Parameter werden sanitisiert
-- **File-Upload-Sicherheit**: MIME-Type und Malware-Scanning
-- **Rate Limiting**: 100 Requests/Minute pro Client
-
-### 2. Error Responses
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input parameters",
-    "details": {
-      "field": "message",
-      "issue": "Message cannot be empty"
-    },
-    "timestamp": "2025-07-08T10:30:00Z",
-    "request_id": "req_123456"
-  }
-}
-```
-
-### 3. Rate Limiting
-**Headers:**
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1625750400
-```
-
----
-
-## 📝 Status Codes
-
-| Code | Bedeutung | Beschreibung |
-|------|-----------|--------------|
-| 200 | OK | Request erfolgreich |
-| 201 | Created | Resource erstellt |
-| 400 | Bad Request | Ungültige Parameter |
-| 401 | Unauthorized | Authentifizierung erforderlich |
-| 403 | Forbidden | Zugriff verweigert |
-| 404 | Not Found | Resource nicht gefunden |
-| 429 | Too Many Requests | Rate Limit überschritten |
-| 500 | Internal Server Error | Server-Fehler |
-| 503 | Service Unavailable | Service temporär nicht verfügbar |
-
----
-
-## 🔧 SDK & Client Libraries
-
-### Python SDK
-```python
-from streamworks_ki import StreamWorksClient
-
-client = StreamWorksClient(
-    base_url="http://localhost:8000",
-    api_key="your-api-key"
-)
-
-# Chat
-response = client.chat("Wie installiere ich StreamWorks?")
-print(response.message)
-
-# Upload Document
-result = client.upload_document("manual.pdf", category="guide")
-print(f"Upload ID: {result.file_id}")
-
-# Search
-results = client.semantic_search("Installation Anleitung", top_k=5)
-for result in results:
-    print(f"Score: {result.score}, Text: {result.text}")
-```
-
-### JavaScript SDK
-```javascript
-import { StreamWorksClient } from '@streamworks/ki-sdk';
-
-const client = new StreamWorksClient({
-  baseUrl: 'http://localhost:8000',
-  apiKey: 'your-api-key'
-});
-
-// Chat
-const response = await client.chat({
-  message: 'Wie installiere ich StreamWorks?',
-  useRag: true
-});
-
-console.log(response.message);
-```
-
----
-
-## 🚀 Performance Guidelines
-
-### Request Optimization
-- **Batch Requests**: Nutzen Sie Batch-Endpoints für Multiple-Operationen
-- **Async Processing**: Verwenden Sie Webhooks für lange Operationen
-- **Caching**: Implementieren Sie Client-seitiges Caching für häufige Queries
-- **Compression**: Aktivieren Sie gzip für große Responses
-
-### Response Times (Zielwerte)
-- **Chat (with RAG)**: < 3 Sekunden
-- **Search**: < 500ms
-- **XML Generation**: < 2 Sekunden
-- **Document Upload**: < 5 Sekunden (für < 10MB)
-- **Health Check**: < 100ms
-
----
-
-**API Version**: 2.1.0  
-**Last Updated**: 2025-07-08  
-**Support**: api-support@streamworks-ki.com
+For technical support:
+- **API Issues**: Check `/docs` for interactive documentation
+- **Performance Issues**: Monitor `/api/v1/metrics`
+- **File Upload Issues**: Check file size and format requirements
+- **Authentication Issues**: Verify API key format and permissions
