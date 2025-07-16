@@ -55,11 +55,11 @@ async def lifespan(app: FastAPI):
         await background_indexer.start_worker()
         logger.info("✅ Background indexer started")
         
-        # Warm up document indexer
-        logger.info("🔥 Warming up document indexer...")
-        from app.services.document_indexer import document_indexer
-        await document_indexer.initialize()
-        logger.info("✅ Document indexer warmed up")
+        # Warm up RAG service
+        logger.info("🔥 Warming up RAG service...")
+        from app.services.rag_service import rag_service
+        await rag_service.initialize()
+        logger.info("✅ RAG service warmed up")
         
         # Production monitoring handled by middleware
         logger.info("📈 Monitoring configured via middleware")

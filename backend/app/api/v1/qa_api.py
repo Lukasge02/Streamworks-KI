@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 import logging
 from typing import List
 
-from app.services.production_rag_service import production_rag
+from app.services.rag_service import rag_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -49,7 +49,7 @@ async def ask_perfect_question(request: PerfectQuestion):
         logger.info(f"🎯 Perfect Q&A Request: {request.question}")
         
         # Get perfect answer
-        result = await production_rag.ask(request.question)
+        result = await rag_service.ask(request.question)
         
         # Build enhanced response (map production fields to perfect fields)
         response = PerfectResponse(
@@ -64,7 +64,7 @@ async def ask_perfect_question(request: PerfectQuestion):
             generation_time=result.processing_time * 0.5,  # Estimate
             quality_score=result.confidence,  # Use confidence as quality proxy
             language_detected="de",
-            question_type=result.answer_type,
+            question_type="standard",  # Default value
             response_format="production"
         )
         
@@ -83,15 +83,15 @@ async def ask_perfect_question(request: PerfectQuestion):
 async def perfect_health():
     """Perfect health check"""
     try:
-        if not production_rag.is_ready:
-            await production_rag.initialize()
+        if not rag_service.is_ready:
+            await rag_service.initialize()
         
         return {
             "status": "production_ready",
-            "ready": production_rag.is_ready,
-            "embedding_model": production_rag.config["embedding_model"],
-            "mistral_model": production_rag.config["mistral_model"],
-            "collection": production_rag.config["collection_name"]
+            "ready": rag_service.is_ready,
+            "embedding_model": rag_service.config["embedding_model"],
+            "mistral_model": rag_service.config["mistral_model"],
+            "collection": rag_service.config["collection_name"]
         }
         
     except Exception as e:
@@ -104,9 +104,9 @@ async def get_service_stats():
     try:
         return {
             "status": "success",
-            "service": "Production RAG Service",
-            "ready": production_rag.is_ready,
-            "collection_size": production_rag.collection.count() if production_rag.collection else 0
+            "service": "Unified RAG Service",
+            "ready": rag_service.is_ready,
+            "collection_size": rag_service.collection.count() if rag_service.collection else 0
         }
     except Exception as e:
         logger.error(f"❌ Stats retrieval failed: {e}")

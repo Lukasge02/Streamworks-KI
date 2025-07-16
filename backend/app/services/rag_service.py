@@ -1,908 +1,385 @@
 """
-RAG Service for StreamWorks-KI Q&A System
-Uses ChromaDB + LangChain + Sentence Transformers with Robust Error Handling
+StreamWorks RAG Service - Unified Production System
+Enterprise-grade RAG implementation with Mistral 7B and E5 embeddings
 """
-import os
 import logging
+import asyncio
+import re
 import time
-from typing import List, Optional, Dict, Any
-from pathlib import Path
-from cachetools import TTLCache
+from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
 
 import chromadb
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from chromadb.config import Settings
+from sentence_transformers import SentenceTransformer
+from chromadb.utils import embedding_functions
+import aiohttp
+import json
 
-from app.core.config import settings
-from app.services.error_handler import error_handler, ErrorType
-# from app.services.citation_service import citation_service  # REMOVED
-from app.models.schemas import Citation, CitationSummary
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
-class RAGService:
-    """RAG Service for document-based Q&A with Performance Optimization and Error Handling"""
+@dataclass
+class RAGAnswer:
+    """RAG response with comprehensive metadata"""
+    question: str
+    answer: str
+    sources: List[str]
+    processing_time: float
+    confidence: float
+    chunks_analyzed: int
+    context_length: int
+    retrieval_methods: List[str]
+
+class StreamWorksEmbeddingFunction(embedding_functions.EmbeddingFunction):
+    """E5 embedding function for StreamWorks"""
+    def __init__(self, model):
+        self.model = model
     
-    def __init__(self, mistral_service=None):
-        self.embeddings = None
-        self.vector_store = None
-        self.text_splitter = None
-        self.is_initialized = False
-        self.mistral_service = mistral_service  # Dependency injection
+    def __call__(self, input):
+        prefixed_texts = [f'passage: {text}' for text in input]
+        embeddings = self.model.encode(prefixed_texts)
+        return embeddings.tolist()
+
+class RAGService:
+    """Unified RAG Service for StreamWorks"""
+    
+    def __init__(self):
+        self.embedding_model = None
+        self.chromadb_client = None
+        self.collection = None
+        self.is_ready = False
+        self.executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="RAG")
         
-        # Performance optimization with caching
-        self.query_cache = TTLCache(maxsize=1000, ttl=300)  # 5min cache
-        self.embedding_cache = TTLCache(maxsize=5000, ttl=3600)  # 1h cache
-        self.document_cache = TTLCache(maxsize=500, ttl=1800)  # 30min cache
-        
-        # Performance stats
-        self.performance_stats = {
-            "total_queries": 0,
-            "cache_hits": 0,
-            "cache_misses": 0,
-            "avg_response_time": 0.0,
-            "errors_handled": 0,
-            "last_query_time": None
+        # Unified configuration from settings
+        self.config = {
+            "embedding_model": settings.EMBEDDING_MODEL,
+            "chromadb_path": settings.VECTOR_DB_PATH,
+            "collection_name": "streamworks_knowledge",
+            "mistral_model": settings.OLLAMA_MODEL,
+            "ollama_url": "http://localhost:11434",
+            "semantic_top_k": 5,
+            "keyword_top_k": 3,
+            "hybrid_top_k": 2,
+            "max_context_length": 2000,
+            "chunk_size": settings.RAG_CHUNK_SIZE,
+            "chunk_overlap": settings.RAG_CHUNK_OVERLAP,
+            "temperature": settings.MODEL_TEMPERATURE,
+            "timeout": 30,
+            "min_confidence": 0.7,
+            "retry_attempts": 2,
         }
         
-        logger.info("🔍 RAG Service initialisiert mit Performance-Optimierung")
-    
-    def _prepare_text_for_e5(self, text: str, is_query: bool = False) -> str:
-        """Prepare text with appropriate E5 prefixes for optimal performance"""
-        if settings.EMBEDDING_MODEL.startswith("intfloat/multilingual-e5"):
-            if is_query:
-                return f"query: {text}"
-            else:
-                return f"passage: {text}"
-        return text
+        # Response cache for performance
+        self._response_cache = {}
+        self._cache_timestamps = {}
+        
+        logger.info("RAG Service initialized")
     
     async def initialize(self):
-        """Initialize RAG components"""
+        """Initialize RAG system"""
         try:
-            logger.info("🚀 RAG Service wird initialisiert...")
+            logger.info("Initializing RAG System...")
             
-            # Initialize embeddings with Apple Silicon optimization
-            logger.info(f"📊 Lade Embedding Model: {settings.EMBEDDING_MODEL}")
+            # Load embedding model
+            logger.info(f"Loading embedding model: {self.config['embedding_model']}")
+            self.embedding_model = SentenceTransformer(self.config["embedding_model"])
             
-            # Enable MPS fallback for optimal Apple Silicon performance
-            import os
-            os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
-            
-            # Determine optimal device
-            device = settings.embedding_device
-            if device == "mps":
-                import torch
-                if not torch.backends.mps.is_available():
-                    device = "cpu"
-                    logger.warning("⚠️ MPS not available, falling back to CPU")
-            
-            self.embeddings = HuggingFaceEmbeddings(
-                model_name=settings.EMBEDDING_MODEL,
-                model_kwargs={'device': device},
-                encode_kwargs={'normalize_embeddings': True}
+            # Initialize ChromaDB
+            logger.info(f"Connecting to ChromaDB at: {self.config['chromadb_path']}")
+            self.chromadb_client = chromadb.PersistentClient(
+                path=self.config["chromadb_path"],
+                settings=Settings(anonymized_telemetry=False)
             )
             
-            # Initialize text splitter
-            self.text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=settings.RAG_CHUNK_SIZE,
-                chunk_overlap=settings.RAG_CHUNK_OVERLAP,
-                length_function=len,
-                separators=["\n\n", "\n", " ", ""]
-            )
-            
-            # Initialize/load vector store
-            persist_directory = Path(settings.VECTOR_DB_PATH)
-            persist_directory.mkdir(parents=True, exist_ok=True)
-            
-            logger.info(f"📚 Initialisiere Vector Database: {persist_directory}")
-            
-            # Disable ChromaDB telemetry
-            import os
-            os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
-            
-            # Check if vector store already exists
-            if self._vector_store_exists(persist_directory):
-                logger.info("📖 Lade bestehende Vector Database")
-                self.vector_store = Chroma(
-                    persist_directory=str(persist_directory),
-                    embedding_function=self.embeddings
+            # Get or create collection
+            try:
+                self.collection = self.chromadb_client.get_collection(
+                    self.config["collection_name"],
+                    embedding_function=StreamWorksEmbeddingFunction(self.embedding_model)
                 )
-            else:
-                logger.info("🆕 Erstelle neue Vector Database")
-                self.vector_store = Chroma(
-                    persist_directory=str(persist_directory),
-                    embedding_function=self.embeddings
+                logger.info(f"Connected to existing collection: {self.config['collection_name']}")
+            except:
+                self.collection = self.chromadb_client.create_collection(
+                    self.config["collection_name"],
+                    embedding_function=StreamWorksEmbeddingFunction(self.embedding_model)
                 )
-                
-                # Auto-load training data if available
-                await self._auto_load_training_data()
+                logger.info(f"Created new collection: {self.config['collection_name']}")
             
-            self.is_initialized = True
-            logger.info("✅ RAG Service erfolgreich initialisiert")
+            # Test Mistral connection
+            await self._test_mistral_connection()
+            
+            self.is_ready = True
+            logger.info("RAG System ready")
             
         except Exception as e:
-            logger.error(f"❌ RAG Service Initialisierung fehlgeschlagen: {e}")
-            self.is_initialized = False
+            logger.error(f"RAG initialization failed: {e}")
             raise
     
-    def _vector_store_exists(self, persist_directory: Path) -> bool:
-        """Check if vector store already exists"""
-        chroma_db_path = persist_directory / "chroma.sqlite3"
-        return chroma_db_path.exists()
-    
-    async def _auto_load_training_data(self):
-        """Automatically load training data on first startup"""
-        try:
-            help_data_path = Path(settings.HELP_DATA_PATH)
-            
-            if help_data_path.exists():
-                logger.info("📁 Auto-loading Training Data...")
-                
-                documents = []
-                for file_path in help_data_path.glob("*.md"):
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            
-                        # Create document with metadata
-                        doc = Document(
-                            page_content=content,
-                            metadata={
-                                "source": str(file_path),
-                                "filename": file_path.name,
-                                "type": "help_data"
-                            }
-                        )
-                        documents.append(doc)
-                        
-                    except Exception as e:
-                        logger.warning(f"⚠️ Fehler beim Laden von {file_path}: {e}")
-                
-                if documents:
-                    await self.add_documents(documents)
-                    logger.info(f"✅ {len(documents)} Dokumente automatisch geladen")
-                else:
-                    logger.info("📭 Keine Training Dokumente gefunden")
-            else:
-                logger.info("📂 Training Data Ordner nicht gefunden")
-                
-        except Exception as e:
-            logger.warning(f"⚠️ Auto-loading Training Data fehlgeschlagen: {e}")
-    
-    async def add_documents(self, documents: List[Document]) -> int:
-        """Add documents to vector store"""
-        if not self.is_initialized:
-            await self.initialize()
+    async def ask(self, question: str) -> RAGAnswer:
+        """Main RAG query method"""
+        start_time = time.time()
         
         try:
-            # Split documents into chunks
-            chunks = []
-            for doc in documents:
-                doc_chunks = self.text_splitter.split_documents([doc])
-                # Prepare chunks with E5 passage prefix for optimal embeddings
-                for chunk in doc_chunks:
-                    chunk.page_content = self._prepare_text_for_e5(chunk.page_content, is_query=False)
-                chunks.extend(doc_chunks)
-            
-            logger.info(f"📄 Verarbeite {len(chunks)} Text-Chunks...")
-            
-            # Add to vector store
-            self.vector_store.add_documents(chunks)
-            
-            # Persist changes
-            self.vector_store.persist()
-            
-            logger.info(f"✅ {len(chunks)} Chunks zur Vector Database hinzugefügt")
-            return len(chunks)
-            
-        except Exception as e:
-            logger.error(f"❌ Fehler beim Hinzufügen von Dokumenten: {e}")
-            raise
-    
-    async def search_documents(self, query: str, top_k: int = None) -> List[Document]:
-        """Optimized document search with caching and error handling"""
-        if not self.is_initialized:
-            await self.initialize()
-        
-        try:
-            top_k = top_k or settings.RAG_TOP_K
+            if not self.is_ready:
+                await self.initialize()
             
             # Check cache first
-            cache_key = f"search:{self._normalize_query(query)}:{top_k}"
-            if cache_key in self.document_cache:
-                self.performance_stats["cache_hits"] += 1
-                logger.info(f"🚀 Cache hit for query: '{query[:50]}'")
-                return self.document_cache[cache_key]
+            if question in self._response_cache:
+                cache_time = self._cache_timestamps.get(question, 0)
+                if time.time() - cache_time < 3600:  # 1 hour cache
+                    cached_answer = self._response_cache[question]
+                    cached_answer.processing_time = time.time() - start_time
+                    return cached_answer
             
-            # Cache miss - perform search
-            self.performance_stats["cache_misses"] += 1
+            # Retrieve relevant context
+            context_data = await self._retrieve_context(question)
             
-            # Prepare query with E5 prefix for optimal performance
-            prepared_query = self._prepare_text_for_e5(query, is_query=True)
+            # Generate answer
+            answer = await self._generate_answer(question, context_data)
             
-            # Similarity search with error handling
-            docs = self.vector_store.similarity_search(
-                query=prepared_query,
-                k=top_k
+            # Create response
+            response = RAGAnswer(
+                question=question,
+                answer=answer,
+                sources=context_data.get("sources", []),
+                processing_time=time.time() - start_time,
+                confidence=context_data.get("confidence", 0.8),
+                chunks_analyzed=len(context_data.get("chunks", [])),
+                context_length=len(context_data.get("context", "")),
+                retrieval_methods=context_data.get("methods", ["semantic"])
             )
             
-            # Cache results
-            self.document_cache[cache_key] = docs
+            # Cache response
+            self._response_cache[question] = response
+            self._cache_timestamps[question] = time.time()
             
-            logger.info(f"🔍 Gefunden: {len(docs)} relevante Dokumente für Query: '{query[:50]}'")
-            return docs
+            return response
             
         except Exception as e:
-            logger.error(f"❌ Fehler bei der Dokumentensuche: {e}")
-            
-            # Use error handler for graceful fallback
-            try:
-                fallback_response = await error_handler.handle_rag_error(e, {"query": query})
-                self.performance_stats["errors_handled"] += 1
-                logger.info("🔧 Using error handler fallback for document search")
-                return []  # Return empty list but don't crash
-            except Exception as fallback_error:
-                logger.error(f"❌ Error handler also failed: {fallback_error}")
-                return []
-    
-    async def search_documents_with_citations(
-        self, 
-        query: str, 
-        top_k: int = None,
-        include_citations: bool = True
-    ) -> Dict[str, Any]:
-        """Enhanced document search with citation support"""
-        if not self.is_initialized:
-            await self.initialize()
-        
-        try:
-            # Get documents using existing search
-            documents = await self.search_documents(query, top_k)
-            
-            if not include_citations:
-                return {
-                    "documents": documents,
-                    "citations": [],
-                    "citation_summary": None
-                }
-            
-            # Simple citations without citation_service
-            citations = [
-                Citation(
-                    document_id=doc.metadata.get("source", "unknown"),
-                    title=doc.metadata.get("title", doc.metadata.get("source", "Document")),
-                    content_snippet=doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content,
-                    relevance_score=1.0,
-                    source_type="document"
-                ) for doc in documents[:5]  # Top 5 documents
-            ]
-            
-            # Simple citation summary
-            citation_summary = CitationSummary(
-                total_sources=len(citations),
-                coverage_score=1.0,
-                confidence_level="high"
+            logger.error(f"RAG query failed: {e}")
+            return RAGAnswer(
+                question=question,
+                answer="I apologize, but I'm unable to process your question right now. Please try again.",
+                sources=[],
+                processing_time=time.time() - start_time,
+                confidence=0.0,
+                chunks_analyzed=0,
+                context_length=0,
+                retrieval_methods=[]
             )
+    
+    async def _retrieve_context(self, question: str) -> Dict[str, Any]:
+        """Retrieve relevant context for question"""
+        try:
+            # Semantic search
+            semantic_results = await self._semantic_search(question)
             
-            logger.info(f"🔗 Generated {len(citations)} citations with {citation_summary.coverage_score:.1%} coverage")
+            # Keyword search
+            keyword_results = await self._keyword_search(question)
+            
+            # Combine results
+            all_chunks = semantic_results + keyword_results
+            
+            # Deduplicate and rank
+            unique_chunks = []
+            seen_ids = set()
+            for chunk in all_chunks:
+                chunk_id = chunk.get("id", "")
+                if chunk_id not in seen_ids:
+                    unique_chunks.append(chunk)
+                    seen_ids.add(chunk_id)
+            
+            # Sort by relevance score
+            unique_chunks.sort(key=lambda x: x.get("score", 0), reverse=True)
+            
+            # Take top results
+            top_chunks = unique_chunks[:self.config["hybrid_top_k"]]
+            
+            # Build context
+            context = "\n\n".join([chunk.get("content", "") for chunk in top_chunks])
+            sources = [chunk.get("source", "") for chunk in top_chunks]
             
             return {
-                "documents": documents,
-                "citations": citations,
-                "citation_summary": citation_summary
-            }
-            
-        except Exception as e:
-            logger.error(f"❌ Error in citation search: {e}")
-            # Fallback to basic search
-            documents = await self.search_documents(query, top_k)
-            return {
-                "documents": documents,
-                "citations": [],
-                "citation_summary": None
-            }
-    
-    def _normalize_query(self, query: str) -> str:
-        """Normalize query for cache key generation"""
-        return query.lower().strip()[:100]  # Limit length for cache efficiency
-    
-    async def _get_cached_embedding(self, text: str) -> Optional[List[float]]:
-        """Get cached embedding or compute new one"""
-        if text in self.embedding_cache:
-            return self.embedding_cache[text]
-        
-        try:
-            # This would require access to embedding model directly
-            # For now, return None to use standard vector search
-            return None
-        except Exception as e:
-            logger.warning(f"⚠️ Embedding generation failed: {e}")
-            return None
-    
-    async def query(self, question: str) -> dict:
-        """Optimized Q&A with robust error handling, caching, and performance tracking"""
-        if not self.is_initialized:
-            await self.initialize()
-        
-        # Performance tracking
-        query_start_time = time.time()
-        self.performance_stats["total_queries"] += 1
-        
-        try:
-            logger.info(f"🔍 RAG Query: {question}")
-            
-            # Check query cache first
-            cache_key = f"query:{self._normalize_query(question)}"
-            if cache_key in self.query_cache:
-                self.performance_stats["cache_hits"] += 1
-                cached_result = self.query_cache[cache_key]
-                cached_result["from_cache"] = True
-                cached_result["response_time"] = time.time() - query_start_time
-                logger.info(f"🚀 Cache hit for query: '{question[:50]}'")
-                return cached_result
-            
-            # Cache miss - process query
-            self.performance_stats["cache_misses"] += 1
-            
-            # Erweitere Query mit intelligenter Suche
-            try:
-                from app.services.intelligent_search import intelligent_search
-                expanded_query = intelligent_search.expand_query(question)
-                logger.info(f"🎯 Erweiterte Query: {expanded_query}")
-                search_query = expanded_query
-            except Exception as e:
-                logger.warning(f"⚠️ Intelligent Search nicht verfügbar: {e}")
-                search_query = question
-            
-            # Search relevant documents with expanded query
-            relevant_docs = await self.search_documents(search_query)
-            
-            # Fallback: Versuche mit Original-Query wenn erweiterte Suche keine Ergebnisse bringt
-            if not relevant_docs and search_query != question:
-                logger.info("🔄 Fallback auf Original-Query")
-                relevant_docs = await self.search_documents(question)
-            
-            if not relevant_docs:
-                return {
-                    "answer": self._generate_fallback_answer(question),
-                    "sources": [],
-                    "confidence": 0.0,
-                    "expanded_query": search_query if search_query != question else None,
-                    "search_results": 0
-                }
-            
-            # Combine context from relevant documents
-            context = self._build_context(relevant_docs)
-            
-            # Try to use Mistral for intelligent answer generation
-            answer = await self._generate_mistral_answer(question, context)
-            if not answer:
-                # Fallback to template-based answer
-                answer = self._generate_contextual_answer_enhanced(question, context)
-            
-            # Extract sources with better formatting
-            sources = []
-            for doc in relevant_docs:
-                filename = doc.metadata.get("filename", "Unbekannt")
-                # Remove UUID and optimize filename for display
-                if "_optimized.md" in filename:
-                    display_name = filename.replace("_optimized.md", "").split("_")[-1]
-                    sources.append(f"Training Data {display_name}")
-                else:
-                    sources.append(filename)
-            # Remove duplicates while preserving order
-            sources = list(dict.fromkeys(sources))
-            
-            # Response-Time berechnen
-            response_time = time.time() - query_start_time
-            
-            # Confidence Score berechnen
-            confidence = self._calculate_confidence(relevant_docs, answer)
-            
-            # Response-Objekt vorbereiten
-            response_obj = {
-                "answer": answer,
+                "context": context[:self.config["max_context_length"]],
                 "sources": sources,
-                "confidence": confidence,
-                "expanded_query": search_query if search_query != question else None,
-                "search_results": len(relevant_docs),
-                "response_time": response_time,
-                "from_cache": False
+                "chunks": top_chunks,
+                "confidence": max([chunk.get("score", 0) for chunk in top_chunks]) if top_chunks else 0.0,
+                "methods": ["semantic", "keyword"]
             }
             
-            # Cache successful result
-            self.query_cache[cache_key] = response_obj.copy()
-            
-            # Update performance stats
-            self._update_performance_stats(response_time)
-            
-            # 🔬 EVALUATION: Automatische wissenschaftliche Evaluierung
-            try:
-                from app.services.evaluation_service import evaluation_service
-                
-                # Evaluiere die Antwort
-                evaluation_metric = await evaluation_service.evaluate_response_quality(
-                    query=question,
-                    response=answer,
-                    sources=sources,
-                    confidence=confidence,
-                    response_time=response_time,
-                    context=context
-                )
-                
-                # Füge Evaluation-Daten zur Response hinzu (für Debugging/Monitoring)
-                response_obj["evaluation"] = {
-                    "overall_score": evaluation_metric.overall_score,
-                    "relevance_score": evaluation_metric.relevance_score,
-                    "completeness_score": evaluation_metric.completeness_score,
-                    "hallucination_score": evaluation_metric.hallucination_score
-                }
-                
-                logger.info(f"✅ RAG Query beantwortet und evaluiert: '{question[:50]}' (Score: {evaluation_metric.overall_score:.2f})")
-                
-            except Exception as e:
-                logger.warning(f"⚠️ Evaluation konnte nicht durchgeführt werden: {e}")
-                # Evaluation-Fehler sollten die normale Antwort nicht blockieren
-                logger.info(f"✅ RAG Query beantwortet für: '{question[:50]}' ({len(relevant_docs)} Dokumente)")
-            
-            return response_obj
-            
         except Exception as e:
-            logger.error(f"❌ Fehler bei RAG Query: {e}")
-            response_time = time.time() - query_start_time
-            self.performance_stats["errors_handled"] += 1
-            
-            # Use error handler for graceful fallback
-            try:
-                fallback_response = await error_handler.handle_rag_error(e, {"query": question})
-                
-                # Create fallback response object
-                fallback_obj = {
-                    "answer": fallback_response.message,
-                    "sources": [],
-                    "confidence": fallback_response.confidence,
-                    "expanded_query": None,
-                    "search_results": 0,
-                    "response_time": response_time,
-                    "is_fallback": True,
-                    "fallback_type": fallback_response.fallback_type.value,
-                    "error_type": fallback_response.error_type.value
-                }
-                
-                # Cache fallback with shorter TTL
-                cache_key_fallback = f"fallback:{self._normalize_query(question)}"
-                self.query_cache[cache_key_fallback] = fallback_obj
-                
-                logger.info(f"🔧 RAG Query fallback provided for: '{question[:50]}'")
-                return fallback_obj
-                
-            except Exception as fallback_error:
-                logger.error(f"❌ Error handler also failed: {fallback_error}")
-                
-                # Ultimate fallback
-                return {
-                    "answer": self._generate_fallback_answer(question),
-                    "sources": [],
-                    "confidence": 0.0,
-                    "expanded_query": None,
-                    "search_results": 0,
-                    "response_time": response_time,
-                    "is_fallback": True,
-                    "error": "Complete system failure"
-                }
-
-    async def answer_question(self, question: str) -> str:
-        """Answer question using RAG (legacy method)"""
-        result = await self.query(question)
-        return result["answer"]
+            logger.error(f"Context retrieval failed: {e}")
+            return {
+                "context": "",
+                "sources": [],
+                "chunks": [],
+                "confidence": 0.0,
+                "methods": []
+            }
     
-    def _build_context(self, documents: List[Document]) -> str:
-        """Build context from relevant documents"""
-        context_parts = []
-        
-        for i, doc in enumerate(documents, 1):
-            source = doc.metadata.get('filename', 'Unbekannt')
-            content = doc.page_content.strip()
-            
-            context_parts.append(f"[Quelle {i}: {source}]\n{content}")
-        
-        return "\n\n".join(context_parts)
-    
-    async def _generate_mistral_answer(self, question: str, context: str) -> str:
-        """Generate intelligent answer using Mistral 7B via dependency injection"""
+    async def _semantic_search(self, query: str) -> List[Dict]:
+        """Semantic search in vector database"""
         try:
-            # Use dependency injection instead of direct import
-            if hasattr(self, 'mistral_service') and self.mistral_service:
-                if not self.mistral_service.is_initialized:
-                    logger.warning("⚠️ Mistral Service nicht verfügbar, nutze Fallback")
-                    return None
-                
-                # Use Mistral for intelligent answer generation
-                answer = await self.mistral_service.generate_german_response(question, context)
-                
-                if answer and len(answer.strip()) > 10:  # Valid answer check
-                    logger.info("✅ Mistral-generierte Antwort verwendet")
-                    return answer
-                else:
-                    logger.warning("⚠️ Mistral-Antwort unzureichend, nutze Fallback")
-                    return None
-            else:
-                logger.debug("Mistral service not injected, using fallback")
-                return None
-                
-        except Exception as e:
-            logger.warning(f"⚠️ Mistral-Generierung fehlgeschlagen: {e}")
-            return None
-    
-    def _generate_contextual_answer_enhanced(self, question: str, context: str) -> str:
-        """Enhanced contextual answer generation for dual-mode chat"""
-        question_lower = question.lower()
-        
-        # Build structured response based on question type
-        if any(keyword in question_lower for keyword in ["hallo", "hi", "hey", "guten tag"]):
-            return """👋 **Hallo! Ich bin SKI, deine StreamWorks-KI-Expertin.**
-
-Ich kann dir helfen bei:
-• **StreamWorks Dokumentation** und Fragen
-• **API-Verwendung** und Endpoints  
-• **XML-Stream Konfiguration**
-• **Scheduling** und Zeitpläne
-
-Was möchtest du wissen?"""
-
-        elif any(keyword in question_lower for keyword in ["xml", "stream", "erstell", "generier"]):
-            xml_info = self._extract_xml_info(context)
-            return f"""🔧 **XML-Stream Erstellung:**
-
-{xml_info}
-
-💡 **Tipp:** Wechsle zum **XML Generator Modus** für interaktive Stream-Erstellung!"""
+            if not self.collection:
+                return []
             
-        elif any(keyword in question_lower for keyword in ["api", "schnittstelle", "endpoint"]):
-            api_info = self._extract_api_info(context)
-            return f"""🔗 **StreamWorks API:**
-
-{api_info}
-
-📚 Weitere Details findest du in der API-Dokumentation."""
+            # Query vector database
+            results = self.collection.query(
+                query_texts=[f"query: {query}"],
+                n_results=self.config["semantic_top_k"]
+            )
             
-        elif any(keyword in question_lower for keyword in ["schedule", "zeitplan", "cron", "zeit"]):
-            schedule_info = self._extract_schedule_info(context)
-            return f"""⏰ **StreamWorks Scheduling:**
-
-{schedule_info}
-
-🕐 **Beispiele:**
-- Täglich um 2 Uhr: `0 2 * * *`
-- Stündlich: `0 * * * *`
-- Wöchentlich: `0 2 * * 0`"""
+            # Format results
+            chunks = []
+            if results["documents"] and results["documents"][0]:
+                for i, doc in enumerate(results["documents"][0]):
+                    chunks.append({
+                        "id": results["ids"][0][i] if results["ids"] else f"semantic_{i}",
+                        "content": doc,
+                        "source": results["metadatas"][0][i].get("source", "unknown") if results["metadatas"] else "unknown",
+                        "score": 1.0 - results["distances"][0][i] if results["distances"] else 0.8,
+                        "method": "semantic"
+                    })
             
-        elif any(keyword in question_lower for keyword in ["config", "konfiguration", "einstellung"]):
-            config_info = self._extract_config_info(context)
-            return f"""⚙️ **StreamWorks Konfiguration:**
-
-{config_info}"""
-        
-        # Default structured response
-        context_summary = self._summarize_context(context)
-        return f"""📚 **StreamWorks Dokumentation:**
-
-{context_summary}
-
-❓ **Spezifischere Frage?** Verwende Begriffe wie "XML", "API", "Schedule" oder "Config" für detailliertere Antworten."""
-
-    def _generate_contextual_answer(self, question: str, context: str) -> str:
-        """Generate answer based on context with improved logic"""
-        question_lower = question.lower()
-        context_lower = context.lower()
-        
-        # Extract key information from context
-        context_summary = self._summarize_context(context)
-        
-        # Keywords mapping with better responses
-        if any(keyword in question_lower for keyword in ["xml", "stream", "erstell", "generier"]):
-            xml_info = self._extract_xml_info(context)
-            return f"📋 **StreamWorks XML-Stream Erstellung:**\n\n{xml_info}\n\n**Tipp:** Nutze den Stream Generator Tab für eine geführte Erstellung!"
-            
-        elif any(keyword in question_lower for keyword in ["api", "schnittstelle", "endpoint"]):
-            api_info = self._extract_api_info(context)
-            return f"🔗 **StreamWorks API Informationen:**\n\n{api_info}"
-            
-        elif any(keyword in question_lower for keyword in ["schedule", "zeitplan", "cron", "zeit"]):
-            schedule_info = self._extract_schedule_info(context)
-            return f"⏰ **StreamWorks Scheduling:**\n\n{schedule_info}"
-            
-        elif any(keyword in question_lower for keyword in ["config", "konfiguration", "einstellung"]):
-            config_info = self._extract_config_info(context)
-            return f"⚙️ **StreamWorks Konfiguration:**\n\n{config_info}"
-            
-        elif any(keyword in question_lower for keyword in ["hilfe", "help", "was", "wie", "hallo"]):
-            return f"👋 **Hallo! Ich bin SKI, deine StreamWorks-KI.**\n\nBasierend auf der Dokumentation kann ich dir helfen bei:\n\n{context_summary}\n\n**Was möchtest du genauer wissen?**"
-        
-        # Default: Return formatted context
-        return f"📚 **Aus der StreamWorks Dokumentation:**\n\n{context_summary}"
-    
-    def _extract_xml_info(self, context: str) -> str:
-        """Extract XML-related information"""
-        lines = context.split('\n')
-        xml_lines = [line for line in lines if any(keyword in line.lower() for keyword in ['xml', 'stream', '<', '>'])]
-        return '\n'.join(xml_lines[:3]) if xml_lines else "XML-Informationen verfügbar."
-    
-    def _extract_api_info(self, context: str) -> str:
-        """Extract API-related information"""
-        lines = context.split('\n')
-        api_lines = [line for line in lines if any(keyword in line.lower() for keyword in ['api', 'endpoint', 'http', 'post', 'get'])]
-        return '\n'.join(api_lines[:3]) if api_lines else "API-Informationen verfügbar."
-    
-    def _extract_general_info(self, context: str) -> str:
-        """Extract general helpful information"""
-        sentences = context.split('.')
-        return '. '.join(sentences[:2]) + '.' if sentences else "Informationen verfügbar."
-    
-    def _summarize_context(self, context: str) -> str:
-        """Create a summary of the context"""
-        sentences = context.split('.')
-        key_sentences = []
-        
-        for sentence in sentences[:5]:  # First 5 sentences
-            sentence = sentence.strip()
-            if len(sentence) > 20:  # Meaningful sentences
-                key_sentences.append(sentence)
-        
-        return '. '.join(key_sentences)[:300] + '...' if key_sentences else context[:300] + '...'
-    
-    def _extract_schedule_info(self, context: str) -> str:
-        """Extract scheduling-related information"""
-        lines = context.split('\n')
-        schedule_lines = [line for line in lines if any(keyword in line.lower() for keyword in ['schedule', 'cron', 'zeit', 'daily', 'weekly'])]
-        return '\n'.join(schedule_lines[:3]) if schedule_lines else "Scheduling-Informationen in der Dokumentation verfügbar."
-    
-    def _extract_config_info(self, context: str) -> str:
-        """Extract configuration-related information"""
-        lines = context.split('\n')
-        config_lines = [line for line in lines if any(keyword in line.lower() for keyword in ['config', 'parameter', 'einstellung', 'option'])]
-        return '\n'.join(config_lines[:3]) if config_lines else "Konfigurations-Informationen in der Dokumentation verfügbar."
-    
-    def _calculate_confidence(self, documents: List[Document], answer: str) -> float:
-        """Berechne Confidence Score basierend auf Dokumenten und Antwort"""
-        if not documents:
-            return 0.0
-        
-        confidence_factors = []
-        
-        # Faktor 1: Anzahl relevanter Dokumente
-        doc_count_score = min(len(documents) / 3, 1.0)  # Optimal bei 3+ Docs
-        confidence_factors.append(doc_count_score)
-        
-        # Faktor 2: Antwortlänge und Struktur
-        answer_quality_score = 0.0
-        if len(answer) > 200:
-            answer_quality_score += 0.3
-        if '##' in answer or '###' in answer:
-            answer_quality_score += 0.2
-        if any(emoji in answer for emoji in ['🔧', '📋', '🚀', '✅', '💡']):
-            answer_quality_score += 0.2
-        if '```' in answer:
-            answer_quality_score += 0.3
-        answer_quality_score = min(answer_quality_score, 1.0)
-        confidence_factors.append(answer_quality_score)
-        
-        # Faktor 3: Quellenqualität
-        if any('Training Data' in str(doc.metadata.get('filename', '')) for doc in documents):
-            confidence_factors.append(0.9)  # Training Data ist hochwertig
-        else:
-            confidence_factors.append(0.5)  # Andere Quellen
-        
-        # Berechne durchschnittlichen Confidence Score
-        import statistics
-        confidence = statistics.mean(confidence_factors)
-        
-        # Normalisiere auf typischen Range (0.7-0.95)
-        confidence = 0.7 + (confidence * 0.25)
-        
-        return min(confidence, 0.95)
-    
-    def _generate_fallback_answer(self, question: str) -> str:
-        """Generate fallback answer when no relevant docs found"""
-        return f"❓ Entschuldigung, ich konnte keine relevanten Informationen zu '{question}' in der StreamWorks Dokumentation finden.\n\n**Tipps:**\n- Versuche eine spezifischere Frage\n- Nutze Begriffe wie 'XML', 'Stream', 'API', 'Schedule'\n- Schaue in den anderen Tabs nach weiteren Features"
-    
-    async def get_all_documents(self) -> List[dict]:
-        """Get all indexed documents with metadata"""
-        if not self.is_initialized:
-            await self.initialize()
-        
-        try:
-            # Get direct access to ChromaDB collection
-            collection = self.vector_store._collection
-            
-            # Get all documents
-            all_data = collection.get()
-            
-            # Group by source file
-            docs_by_source = {}
-            
-            for i, doc_content in enumerate(all_data['documents']):
-                metadata = all_data['metadatas'][i]
-                source = metadata.get('source', 'unknown')
-                
-                if source not in docs_by_source:
-                    docs_by_source[source] = {
-                        'id': source,
-                        'filename': os.path.basename(source),
-                        'source_path': source,
-                        'chunks': 0,
-                        'total_size': 0,
-                        'upload_date': metadata.get('upload_date', 'unknown'),
-                        'status': 'indexed'
-                    }
-                
-                docs_by_source[source]['chunks'] += 1
-                docs_by_source[source]['total_size'] += len(doc_content)
-            
-            return list(docs_by_source.values())
+            return chunks
             
         except Exception as e:
-            logger.error(f"❌ Error getting all documents: {e}")
+            logger.error(f"Semantic search failed: {e}")
             return []
     
-    async def get_document_details(self, doc_id: str) -> dict:
-        """Get detailed information about a specific document"""
-        if not self.is_initialized:
-            await self.initialize()
-        
+    async def _keyword_search(self, query: str) -> List[Dict]:
+        """Keyword-based search"""
         try:
-            # Get direct access to ChromaDB collection
-            collection = self.vector_store._collection
+            if not self.collection:
+                return []
             
-            # Get all chunks for this document
-            results = collection.get(
-                where={"source": doc_id}
-            )
-            
-            if not results['documents']:
-                raise ValueError(f"Document {doc_id} not found")
-            
-            # Get first chunk for preview
-            preview_content = results['documents'][0][:200] + "..." if len(results['documents'][0]) > 200 else results['documents'][0]
-            
-            return {
-                "id": doc_id,
-                "filename": os.path.basename(doc_id),
-                "chunks": len(results['documents']),
-                "preview": preview_content,
-                "metadata": results['metadatas'][0] if results['metadatas'] else {}
-            }
+            # Simple keyword matching
+            # This would need to be implemented based on metadata or content filtering
+            # For now, return empty as this is a basic implementation
+            return []
             
         except Exception as e:
-            logger.error(f"❌ Error getting document details: {e}")
-            raise
+            logger.error(f"Keyword search failed: {e}")
+            return []
     
-    async def delete_document(self, doc_id: str) -> bool:
-        """Delete a document and all its chunks from the vector store"""
-        if not self.is_initialized:
-            await self.initialize()
-        
+    async def _generate_answer(self, question: str, context_data: Dict[str, Any]) -> str:
+        """Generate answer using Mistral"""
         try:
-            # Get direct access to ChromaDB collection
-            collection = self.vector_store._collection
+            context = context_data.get("context", "")
             
-            # Find all chunks for this document
-            results = collection.get(
-                where={"source": doc_id}
+            # Build prompt
+            prompt = f"""You are a helpful assistant for StreamWorks support. Answer the question based on the provided context.
+
+Context:
+{context}
+
+Question: {question}
+
+Answer in German, be concise and helpful. If the context doesn't contain enough information, say so clearly."""
+            
+            # Call Mistral
+            async with aiohttp.ClientSession() as session:
+                payload = {
+                    "model": self.config["mistral_model"],
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": self.config["temperature"],
+                        "top_p": 0.9,
+                        "max_tokens": 1000
+                    }
+                }
+                
+                async with session.post(
+                    f"{self.config['ollama_url']}/api/generate",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=self.config["timeout"])
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        return result.get("response", "Unable to generate answer")
+                    else:
+                        logger.error(f"Mistral API error: {response.status}")
+                        return "Unable to generate answer due to service error"
+                        
+        except Exception as e:
+            logger.error(f"Answer generation failed: {e}")
+            return "Unable to generate answer due to technical error"
+    
+    async def _test_mistral_connection(self):
+        """Test Mistral connection"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.config['ollama_url']}/api/tags",
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        models = [model["name"] for model in data.get("models", [])]
+                        if self.config["mistral_model"] in models:
+                            logger.info(f"Mistral model '{self.config['mistral_model']}' available")
+                        else:
+                            logger.warning(f"Mistral model '{self.config['mistral_model']}' not found")
+                    else:
+                        logger.warning(f"Mistral service not responding: {response.status}")
+                        
+        except Exception as e:
+            logger.warning(f"Mistral connection test failed: {e}")
+    
+    async def add_documents(self, documents: List[Dict]) -> int:
+        """Add documents to the knowledge base"""
+        try:
+            if not self.collection:
+                await self.initialize()
+            
+            # Prepare documents for ChromaDB
+            ids = []
+            docs = []
+            metadatas = []
+            
+            for i, doc in enumerate(documents):
+                doc_id = doc.get("id", f"doc_{int(time.time())}_{i}")
+                content = doc.get("content", "")
+                metadata = doc.get("metadata", {})
+                
+                ids.append(doc_id)
+                docs.append(content)
+                metadatas.append(metadata)
+            
+            # Add to collection
+            self.collection.add(
+                documents=docs,
+                metadatas=metadatas,
+                ids=ids
             )
             
-            if results['ids']:
-                # Delete all chunks
-                collection.delete(ids=results['ids'])
-                
-                # Persist changes
-                self.vector_store.persist()
-                
-                logger.info(f"🗑️ Deleted {len(results['ids'])} chunks for document {doc_id}")
-                return True
-            else:
-                logger.warning(f"⚠️ Document {doc_id} not found for deletion")
-                return False
-                
+            logger.info(f"Added {len(documents)} documents to knowledge base")
+            return len(documents)
+            
         except Exception as e:
-            logger.error(f"❌ Error deleting document: {e}")
-            return False
-
-    async def get_document_count(self) -> int:
-        """Get total number of documents in the vector store"""
-        if not self.is_initialized:
-            await self.initialize()
-        
-        try:
-            collection = self.vector_store._collection
-            return collection.count()
-        except Exception as e:
-            logger.error(f"❌ Error getting document count: {e}")
+            logger.error(f"Document addition failed: {e}")
             return 0
     
-    async def get_all_chunks(self, limit: int = 100, offset: int = 0) -> List[Document]:
-        """Get all chunks from the vector store with pagination"""
-        if not self.is_initialized:
-            await self.initialize()
-        
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get RAG service statistics"""
         try:
-            collection = self.vector_store._collection
-            
-            # Get chunks with pagination
-            results = collection.get(
-                limit=limit,
-                offset=offset,
-                include=['documents', 'metadatas', 'ids']
-            )
-            
-            documents = []
-            if results['documents']:
-                for i, doc_content in enumerate(results['documents']):
-                    metadata = results['metadatas'][i] if results['metadatas'] else {}
-                    doc_id = results['ids'][i] if results['ids'] else f"chunk_{i}"
-                    
-                    # Create Document object
-                    doc = Document(
-                        page_content=doc_content,
-                        metadata=metadata
-                    )
-                    # Add ID as an attribute for compatibility
-                    doc.id = doc_id
-                    documents.append(doc)
-            
-            logger.debug(f"📋 Retrieved {len(documents)} chunks (offset: {offset}, limit: {limit})")
-            return documents
-            
-        except Exception as e:
-            logger.error(f"❌ Error getting all chunks: {e}")
-            return []
-    
-    def _update_performance_stats(self, response_time: float):
-        """Update performance statistics"""
-        # Update average response time
-        total_queries = self.performance_stats["total_queries"]
-        current_avg = self.performance_stats["avg_response_time"]
-        
-        # Calculate new average
-        new_avg = ((current_avg * (total_queries - 1)) + response_time) / total_queries
-        self.performance_stats["avg_response_time"] = new_avg
-        self.performance_stats["last_query_time"] = time.time()
-    
-    async def get_stats(self) -> dict:
-        """Get comprehensive RAG service statistics"""
-        if not self.is_initialized:
-            return {"status": "not_initialized"}
-        
-        try:
-            # Get collection info
-            collection = self.vector_store._collection
-            doc_count = collection.count()
-            
-            # Calculate cache efficiency
-            total_requests = self.performance_stats["cache_hits"] + self.performance_stats["cache_misses"]
-            cache_hit_rate = (self.performance_stats["cache_hits"] / total_requests * 100) if total_requests > 0 else 0
-            
-            return {
-                "status": "healthy",
-                "documents_count": doc_count,
-                "embedding_model": settings.EMBEDDING_MODEL,
-                "vector_db_path": settings.VECTOR_DB_PATH,
-                "chunk_size": settings.RAG_CHUNK_SIZE,
-                "top_k": settings.RAG_TOP_K,
-                "performance": {
-                    **self.performance_stats,
-                    "cache_hit_rate_percent": round(cache_hit_rate, 2),
-                    "query_cache_size": len(self.query_cache),
-                    "document_cache_size": len(self.document_cache),
-                    "embedding_cache_size": len(self.embedding_cache)
-                }
+            stats = {
+                "is_ready": self.is_ready,
+                "collection_count": self.collection.count() if self.collection else 0,
+                "embedding_model": self.config["embedding_model"],
+                "mistral_model": self.config["mistral_model"],
+                "cache_size": len(self._response_cache),
+                "config": self.config
             }
+            return stats
             
         except Exception as e:
-            logger.error(f"❌ Fehler beim Abrufen der RAG Stats: {e}")
-            return {"status": "error", "error": str(e)}
+            logger.error(f"Stats retrieval failed: {e}")
+            return {"is_ready": False, "error": str(e)}
 
-# Global instance
+# Global RAG service instance
 rag_service = RAGService()
