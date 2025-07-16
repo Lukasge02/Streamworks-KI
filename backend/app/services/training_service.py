@@ -20,10 +20,8 @@ from app.core.security import SecurityError
 from app.models.database import TrainingFile
 from app.models.schemas import TrainingFileResponse, CategoryStats
 from app.core.config import settings
-from app.services.rag_service import RAGService
-from app.services.txt_to_md_converter import txt_to_md_converter
+from app.services.rag_service import rag_service
 from app.services.multi_format_processor import multi_format_processor
-from app.services.enterprise_markdown_converter import enterprise_markdown_converter
 from app.services.production_document_processor import production_document_processor
 from langchain.schema import Document
 
@@ -65,7 +63,6 @@ class TrainingService(BaseService):
             
             # Initialize RAG service connection
             try:
-                from app.services.rag_service import rag_service
                 self.rag_service = rag_service
             except ImportError:
                 logger.warning("RAG service not available during initialization")

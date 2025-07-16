@@ -84,8 +84,8 @@ class BackgroundIndexer:
             db = await get_db_session()
             
             # Use ultra simple indexer - SCHNELL UND FUNKTIONIERT
-            from ..services.ultra_simple_indexer import ultra_simple_indexer
-            index_result = await ultra_simple_indexer.index_file_ultra_simple(file_id, db)
+            from ..services.document_indexer import document_indexer
+            index_result = await document_indexer.index_file_ultra_simple(file_id, db)
             
             logger.info(f"✅ Background indexing complete: {filename} ({index_result['chunk_count']} chunks)")
             

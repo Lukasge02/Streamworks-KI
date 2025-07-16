@@ -14,7 +14,7 @@ from app.services.mistral_llm_service import mistral_llm_service
 # Legacy services removed - only perfect_qa_service remains
 from app.models.database import init_db
 # Only import existing routers
-from app.api.v1.perfect_qa import router as perfect_qa_router
+from app.api.v1.qa_api import router as qa_router
 from app.api.v1.training import router as training_router
 from app.api.v1.categories import router as categories_router
 from app.api.v1.files_enterprise import router as files_router
@@ -55,11 +55,11 @@ async def lifespan(app: FastAPI):
         await background_indexer.start_worker()
         logger.info("✅ Background indexer started")
         
-        # Warm up ultra simple indexer
-        logger.info("🔥 Warming up ultra simple indexer...")
-        from app.services.ultra_simple_indexer import ultra_simple_indexer
-        await ultra_simple_indexer.initialize()
-        logger.info("✅ Ultra simple indexer warmed up")
+        # Warm up document indexer
+        logger.info("🔥 Warming up document indexer...")
+        from app.services.document_indexer import document_indexer
+        await document_indexer.initialize()
+        logger.info("✅ Document indexer warmed up")
         
         # Production monitoring handled by middleware
         logger.info("📈 Monitoring configured via middleware")
@@ -142,11 +142,11 @@ if settings.ENV == "development":
 
 # Include API routes (only the two that exist)
 
-# 🎯 Perfect Q&A - Production Ready System
+# 🎯 Q&A API - Production Ready System
 app.include_router(
-    perfect_qa_router,
+    qa_router,
     prefix="/api/v1/qa",
-    tags=["perfect-qa"]
+    tags=["qa"]
 )
 
 # Training/Upload endpoint

@@ -1,6 +1,6 @@
 """
-⚡ ULTRA SIMPLE INDEXER - SCHNELL UND FUNKTIONIERT GARANTIERT
-Minimal, schnell, ohne Schnickschnack
+⚡ DOCUMENT INDEXER - PRODUCTION READY
+Efficient, fast, and reliable document indexing service
 """
 import logging
 from typing import Dict, Any
@@ -16,8 +16,8 @@ from ..services.multi_format_processor import multi_format_processor
 
 logger = logging.getLogger(__name__)
 
-class UltraSimpleIndexer:
-    """⚡ ULTRA SIMPLE - SCHNELL UND FUNKTIONIERT"""
+class DocumentIndexer:
+    """⚡ DOCUMENT INDEXER - PRODUCTION READY"""
     
     def __init__(self):
         self.embedding_model = None
@@ -26,12 +26,12 @@ class UltraSimpleIndexer:
         self.is_initialized = False
         
     async def initialize(self):
-        """Minimale Initialisierung"""
+        """Initialize document indexer"""
         if self.is_initialized:
             return
             
         try:
-            logger.info("⚡ Ultra Simple Indexer initializing...")
+            logger.info("⚡ Document Indexer initializing...")
             
             # CPU-only model - WARM UP
             import asyncio
@@ -57,14 +57,14 @@ class UltraSimpleIndexer:
                 self.collection = self.chromadb_client.create_collection("streamworks_training_v2")
             
             self.is_initialized = True
-            logger.info("✅ Ultra Simple Indexer ready")
+            logger.info("✅ Document Indexer ready")
             
         except Exception as e:
-            logger.error(f"❌ Ultra Simple Indexer failed: {e}")
+            logger.error(f"❌ Document Indexer failed: {e}")
             raise
     
     async def index_file_ultra_simple(self, file_id: str, db: AsyncSession) -> Dict[str, Any]:
-        """⚡ ULTRA SIMPLE INDEXING"""
+        """⚡ DOCUMENT INDEXING"""
         if not self.is_initialized:
             await self.initialize()
         
@@ -193,7 +193,7 @@ class UltraSimpleIndexer:
             
             await db.commit()
             
-            logger.info(f"✅ Ultra simple indexing complete: {file_record.original_filename} ({len(chunks)} chunks)")
+            logger.info(f"✅ Document indexing complete: {file_record.original_filename} ({len(chunks)} chunks)")
             
             return {
                 "file_id": file_id,
@@ -203,7 +203,7 @@ class UltraSimpleIndexer:
             }
             
         except Exception as e:
-            logger.error(f"❌ Ultra simple indexing failed: {e}")
+            logger.error(f"❌ Document indexing failed: {e}")
             
             # Update error
             try:
@@ -220,4 +220,4 @@ class UltraSimpleIndexer:
 
 
 # Global instance
-ultra_simple_indexer = UltraSimpleIndexer()
+document_indexer = DocumentIndexer()
