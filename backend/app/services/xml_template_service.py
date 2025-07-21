@@ -79,9 +79,14 @@ class XMLTemplateService:
         with open(file_path, 'r', encoding='utf-8') as f:
             xml_content = f.read()
         
-        # Parse XML to extract metadata
+        # Parse XML to extract metadata - try both namespaces
         root = ET.fromstring(xml_content)
-        metadata = root.find('.//{http://streamworks.arvato.com/v1}metadata')
+        
+        # Try new namespace first
+        metadata = root.find('.//{http://streamworks.com/schema/v1}metadata')
+        if metadata is None:
+            # Fallback to old namespace
+            metadata = root.find('.//{http://streamworks.arvato.com/v1}metadata')
         
         if metadata is None:
             # Fallback to extracting from filename
@@ -90,13 +95,27 @@ class XMLTemplateService:
             description = f"StreamWorks template for {name}"
             category = "General"
         else:
-            name_element = metadata.find('.//{http://streamworks.arvato.com/v1}name')
-            template_id = name_element.text if name_element is not None else file_path.stem
-            name = template_id.replace('-', ' ').title() if template_id else file_path.stem
-            desc_element = metadata.find('.//{http://streamworks.arvato.com/v1}description')
+            # Try both namespaces for sub-elements
+            name_element = (metadata.find('.//{http://streamworks.com/schema/v1}name') or 
+                          metadata.find('.//{http://streamworks.arvato.com/v1}name') or
+                          metadata.find('.//name'))
+            
+            if name_element is not None and name_element.text:
+                name = name_element.text
+                template_id = name.lower().replace(' ', '-').replace('_', '-')
+            else:
+                template_id = file_path.stem
+                name = template_id.replace('-', ' ').title()
+            
+            desc_element = (metadata.find('.//{http://streamworks.com/schema/v1}description') or 
+                          metadata.find('.//{http://streamworks.arvato.com/v1}description') or
+                          metadata.find('.//description'))
             description = desc_element.text if desc_element is not None else f"StreamWorks template for {name}"
-            category_element = metadata.find('.//{http://streamworks.arvato.com/v1}category')
-            category = category_element.text if category_element is not None else "General"
+            
+            category_element = (metadata.find('.//{http://streamworks.com/schema/v1}category') or 
+                              metadata.find('.//{http://streamworks.arvato.com/v1}category') or
+                              metadata.find('.//category'))
+            category = category_element.text if category_element is not None else "Data Processing"
         
         return XMLTemplate(
             template_id=template_id or file_path.stem,

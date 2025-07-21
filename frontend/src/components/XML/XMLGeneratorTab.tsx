@@ -47,6 +47,8 @@ export const XMLGeneratorTab: React.FC = () => {
   const [templates, setTemplates] = useState<XMLTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<XMLTemplate | null>(null);
   const [templateParameters, setTemplateParameters] = useState<{[key: string]: string}>({});
+  const [isEditorReadOnly, setIsEditorReadOnly] = useState(false);
+  const [editorTheme, setEditorTheme] = useState<'vs-dark' | 'light'>('vs-dark');
 
   // Load templates on component mount
   useEffect(() => {
@@ -116,6 +118,8 @@ export const XMLGeneratorTab: React.FC = () => {
     if (!selectedTemplate) return;
     
     setIsGenerating(true);
+    setIsEditorReadOnly(false); // Enable editing after template load
+    
     try {
       const response = await fetch('/api/v1/xml/generate-from-template', {
         method: 'POST',
@@ -462,27 +466,49 @@ Beispiele:
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center">
               <Code className="w-6 h-6 mr-2 text-purple-600" />
-              Generated XML
+              XML Editor
             </h3>
             
-            {generatedXML && (
-              <div className="flex space-x-2">
-                <button
-                  onClick={copyToClipboard}
-                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 flex items-center"
-                >
-                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-                  {copied ? 'Kopiert!' : 'Kopieren'}
-                </button>
-                <button
-                  onClick={downloadXML}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 flex items-center"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </button>
-              </div>
-            )}
+            <div className="flex space-x-2">
+              {generatedXML && (
+                <>
+                  <button
+                    onClick={copyToClipboard}
+                    className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 flex items-center text-sm"
+                  >
+                    {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                    {copied ? 'Kopiert!' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={downloadXML}
+                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 flex items-center text-sm"
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
+                  </button>
+                </>
+              )}
+              
+              <button
+                onClick={() => setIsEditorReadOnly(!isEditorReadOnly)}
+                className={`px-3 py-2 rounded-lg transition-all duration-300 flex items-center text-sm ${
+                  isEditorReadOnly 
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50' 
+                    : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
+                }`}
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                {isEditorReadOnly ? 'Read-Only' : 'Editable'}
+              </button>
+              
+              <button
+                onClick={() => setEditorTheme(editorTheme === 'vs-dark' ? 'light' : 'vs-dark')}
+                className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 flex items-center text-sm"
+              >
+                {editorTheme === 'vs-dark' ? '🌙' : '☀️'}
+                Theme
+              </button>
+            </div>
           </div>
           
           {/* Validation Status */}
@@ -521,30 +547,68 @@ Beispiele:
 
         {/* XML Content */}
         <div className="flex-1 p-6">
-          {generatedXML ? (
-            <div className="h-full border border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
+          {generatedXML || !isEditorReadOnly ? (
+            <div className="h-full border border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden shadow-lg">
               <Editor
                 height="100%"
                 language="xml"
-                theme="vs-dark"
+                theme={editorTheme}
                 value={generatedXML}
+                onChange={(value) => setGeneratedXML(value || '')}
                 options={{
-                  readOnly: true,
-                  minimap: { enabled: false },
+                  readOnly: isEditorReadOnly,
+                  minimap: { enabled: true, scale: 0.5 },
                   scrollBeyondLastLine: false,
                   wordWrap: 'on',
                   formatOnPaste: true,
                   formatOnType: true,
-                  fontSize: 13,
+                  fontSize: 14,
+                  fontFamily: "'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
                   lineNumbers: 'on',
                   folding: true,
                   renderWhitespace: 'selection',
                   tabSize: 2,
                   insertSpaces: true,
+                  automaticLayout: true,
+                  bracketPairColorization: { enabled: true },
+                  suggest: {
+                    showKeywords: true,
+                    showSnippets: true,
+                  },
+                  quickSuggestions: {
+                    other: true,
+                    comments: true,
+                    strings: true
+                  },
+                  parameterHints: { enabled: true },
+                  hover: { enabled: true },
+                  contextmenu: true,
+                  mouseWheelZoom: true,
+                  cursorBlinking: 'smooth',
+                  cursorSmoothCaretAnimation: 'on',
+                  smoothScrolling: true,
                 }}
-                onMount={(editor) => {
+                onMount={(editor, monaco) => {
                   // Auto-format XML on mount
-                  editor.getAction('editor.action.formatDocument')?.run();
+                  setTimeout(() => {
+                    editor.getAction('editor.action.formatDocument')?.run();
+                  }, 100);
+
+                  // Add custom key bindings
+                  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+                    // Save functionality (download)
+                    downloadXML();
+                  });
+
+                  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+                    // Format document
+                    editor.getAction('editor.action.formatDocument')?.run();
+                  });
+
+                  // Set focus to editor if not readonly
+                  if (!isEditorReadOnly) {
+                    editor.focus();
+                  }
                 }}
               />
             </div>
@@ -552,8 +616,18 @@ Beispiele:
             <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
               <div className="text-center">
                 <Code className="w-20 h-20 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                <h4 className="text-lg font-medium mb-2">Bereit für XML-Generation</h4>
-                <p>Verwende Chat, Formular oder Templates, um StreamWorks XML zu generieren</p>
+                <h4 className="text-lg font-medium mb-2">XML Editor bereit</h4>
+                <p className="mb-4">Verwende Chat, Formular oder Templates, um XML zu generieren</p>
+                <p className="text-sm">Oder aktiviere den Editor zum manuellen Schreiben</p>
+                <button
+                  onClick={() => {
+                    setIsEditorReadOnly(false);
+                    setGeneratedXML('<?xml version="1.0" encoding="UTF-8"?>\n<stream xmlns="http://streamworks.com/schema/v1" version="1.0">\n  <metadata>\n    <name>NewStream</name>\n    <description>Neue Stream-Konfiguration</description>\n    <version>1.0.0</version>\n  </metadata>\n  \n  <!-- Hier XML bearbeiten -->\n  \n</stream>');
+                  }}
+                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300"
+                >
+                  Start Manual Editing
+                </button>
               </div>
             </div>
           )}

@@ -10,7 +10,7 @@ import {
   AlertCircle, 
   Clock,
   X,
-  CloudUpload,
+  Upload,
   Database,
   Layers,
   Settings
