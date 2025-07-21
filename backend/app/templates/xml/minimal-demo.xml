@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<stream xmlns="http://streamworks.com/schema/v1" version="1.0">
+  
+  <metadata>
+    <name>MinimalDemo</name>
+    <description>Minimales Demo-Template für schnelle Präsentationen</description>
+    <version>1.0.0</version>
+    <created>2025-01-21T14:30:00Z</created>
+    <owner>${demo_email}</owner>
+    <category>demo</category>
+  </metadata>
+
+  <parameters>
+    <parameter name="demo_name" type="string" default="Demo Stream" required="true">${demo_name}</parameter>
+    <parameter name="demo_email" type="string" default="demo@company.com" required="true">${demo_email}</parameter>
+    <parameter name="run_interval" type="integer" default="5" required="true">${run_interval}</parameter>
+  </parameters>
+
+  <schedule>
+    <type>recurring</type>
+    <cron>0 */${run_interval} * * *</cron>
+    <timezone>Europe/Berlin</timezone>
+    <enabled>true</enabled>
+    <description>${demo_name} läuft alle ${run_interval} Minuten</description>
+  </schedule>
+
+  <jobs>
+    <job id="demo_job">
+      <name>${demo_name}</name>
+      <type>batch</type>
+      <priority>normal</priority>
+      <timeout>10</timeout>
+      
+      <tasks>
+        <task id="demo_task">
+          <name>DemoTask</name>
+          <type>data_transform</type>
+          <config>
+            <demo_setting>${demo_name}</demo_setting>
+            <contact>${demo_email}</contact>
+            <frequency>${run_interval}</frequency>
+          </config>
+        </task>
+      </tasks>
+
+      <error_handling>
+        <on_failure>continue</on_failure>
+        <max_retries>1</max_retries>
+        <notification>
+          <email>${demo_email}</email>
+        </notification>
+      </error_handling>
+    </job>
+  </jobs>
+
+</stream>

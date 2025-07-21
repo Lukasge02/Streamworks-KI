@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<stream xmlns="http://streamworks.com/schema/v1" version="1.0">
+  
+  <metadata>
+    <name>SimpleDataSync</name>
+    <description>Einfache Datensynchronisation zwischen zwei Systemen</description>
+    <version>1.0.0</version>
+    <created>2025-01-21T14:30:00Z</created>
+    <owner>${owner_email}</owner>
+    <category>data_processing</category>
+    <tags>
+      <tag>demo</tag>
+      <tag>sync</tag>
+      <tag>simple</tag>
+    </tags>
+  </metadata>
+
+  <parameters>
+    <parameter name="source_system" type="string" default="SystemA" required="true">${source_system}</parameter>
+    <parameter name="target_system" type="string" default="SystemB" required="true">${target_system}</parameter>
+    <parameter name="sync_interval" type="integer" default="60" required="true">${sync_interval}</parameter>
+    <parameter name="owner_email" type="string" required="true">${owner_email}</parameter>
+  </parameters>
+
+  <schedule>
+    <type>recurring</type>
+    <cron>0 */${sync_interval} * * *</cron>
+    <timezone>Europe/Berlin</timezone>
+    <enabled>true</enabled>
+    <description>Läuft alle ${sync_interval} Minuten</description>
+    <retry_policy>
+      <max_retries>2</max_retries>
+      <retry_delay>300</retry_delay>
+      <exponential_backoff>true</exponential_backoff>
+    </retry_policy>
+  </schedule>
+
+  <jobs>
+    <!-- Haupt-Sync Job -->
+    <job id="simple_sync_job">
+      <name>SimpleSyncJob</name>
+      <type>etl_extract</type>
+      <priority>normal</priority>
+      <timeout>30</timeout>
+      
+      <tasks>
+        <task id="read_from_source">
+          <name>ReadFromSource</name>
+          <type>data_transform</type>
+          <config>
+            <source_system>${source_system}</source_system>
+            <query>SELECT * FROM main_table WHERE updated_at > LAST_SYNC</query>
+            <connection_string>jdbc:${source_system}://localhost:5432/database</connection_string>
+          </config>
+          <validation>
+            <rule type="required">
+              <field>record_count</field>
+              <condition>greater_than</condition>
+              <value>0</value>
+              <message>Keine neuen Daten gefunden</message>
+            </rule>
+          </validation>
+        </task>
+
+        <task id="write_to_target">
+          <name>WriteToTarget</name>
+          <type>database_insert</type>
+          <depends_on>read_from_source</depends_on>
+          <config>
+            <target_system>${target_system}</target_system>
+            <target_table>sync_data</target_table>
+            <connection_string>jdbc:${target_system}://localhost:5432/target_db</connection_string>
+            <load_strategy>upsert</load_strategy>
+            <key_columns>id</key_columns>
+          </config>
+        </task>
+
+        <task id="send_notification">
+          <name>SendNotification</name>
+          <type>email_notification</type>
+          <depends_on>write_to_target</depends_on>
+          <config>
+            <recipients>${owner_email}</recipients>
+            <subject>✅ Sync ${source_system} → ${target_system} erfolgreich</subject>
+            <template>simple_success.html</template>
+            <priority>low</priority>
+          </config>
+        </task>
+      </tasks>
+
+      <error_handling>
+        <on_failure>stop</on_failure>
+        <max_retries>1</max_retries>
+        <notification>
+          <email>${owner_email}</email>
+        </notification>
+      </error_handling>
+    </job>
+  </jobs>
+
+  <monitoring>
+    <alerts>
+      <alert name="sync_failure" type="failure">
+        <condition>job_status = 'failed'</condition>
+        <notification>
+          <email>${owner_email}</email>
+        </notification>
+      </alert>
+      
+      <alert name="slow_sync" type="performance">
+        <condition>execution_time > 25</condition>
+        <threshold>25 minutes</threshold>
+        <notification>
+          <email>${owner_email}</email>
+        </notification>
+      </alert>
+    </alerts>
+
+    <metrics>
+      <metric name="sync_duration" type="execution_time" unit="minutes"/>
+      <metric name="records_synced" type="record_count" unit="records"/>
+      <metric name="sync_success_rate" type="error_rate" unit="percentage"/>
+    </metrics>
+
+    <logging>
+      <level>info</level>
+      <output_path>/logs/streamworks/simple_sync.log</output_path>
+      <max_file_size>10MB</max_file_size>
+      <retention_days>30</retention_days>
+    </logging>
+  </monitoring>
+
+</stream>

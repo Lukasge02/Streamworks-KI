@@ -364,6 +364,22 @@ async def get_xml_templates():
             detail=f"Failed to load templates: {str(e)}"
         )
 
+@router.post("/reload-templates")
+async def reload_templates():
+    """Reload XML templates from filesystem"""
+    try:
+        count = xml_template_service.reload_templates()
+        return {
+            "status": "success",
+            "message": f"Reloaded {count} templates",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reload templates: {str(e)}"
+        )
+
 @router.get("/health")
 async def xml_health_check():
     """Health check for XML generation service"""
@@ -380,6 +396,7 @@ async def xml_health_check():
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
             "mistral_available": bool(test_response),
+            "template_count": len(xml_template_service.templates),
             "version": "1.0.0"
         }
     except Exception as e:
