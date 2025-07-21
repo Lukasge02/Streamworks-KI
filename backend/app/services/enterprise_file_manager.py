@@ -226,7 +226,7 @@ class EnterpriseFileManager:
             query = """
             SELECT 
                 tf.id, tf.original_filename, tf.file_size, tf.created_at,
-                tf.processing_status,
+                tf.processing_status, tf.folder_id,
                 dc.slug as category_slug, dc.name as category_name,
                 df.slug as folder_slug, df.name as folder_name
             FROM training_files_v2 tf
@@ -254,6 +254,7 @@ class EnterpriseFileManager:
                     "filename": row.original_filename,
                     "category_slug": row.category_slug,
                     "category_name": row.category_name,
+                    "folder_id": str(row.folder_id) if row.folder_id else None,
                     "folder_slug": row.folder_slug,
                     "folder_name": row.folder_name,
                     "file_size": row.file_size,

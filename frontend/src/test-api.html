@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button onclick="testFolders()">Test Folders API</button>
+    <button onclick="createFolder()">Create Test Folder</button>
+    <pre id="output"></pre>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        async function testFolders() {
+            try {
+                output.textContent = 'Loading folders...';
+                const response = await fetch('/api/v1/folders/categories/qa_docs/folders');
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                output.textContent = 'ERROR: ' + err.toString();
+            }
+        }
+        
+        async function createFolder() {
+            try {
+                output.textContent = 'Creating folder...';
+                const formData = new FormData();
+                formData.append('name', 'Browser Test ' + Date.now());
+                formData.append('description', 'Created from browser');
+                
+                const response = await fetch('/api/v1/folders/categories/qa_docs/folders', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                output.textContent = 'ERROR: ' + err.toString();
+            }
+        }
+    </script>
+</body>
+</html>

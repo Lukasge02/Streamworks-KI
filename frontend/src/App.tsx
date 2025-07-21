@@ -1,8 +1,7 @@
 import { Header } from './components/Layout/Header';
 import { NavigationSidebar } from './components/Layout/NavigationTabs';
 import { ModernChatInterface } from './components/Chat/ModernChatInterface';
-import PerfectTrainingDataTab from './components/TrainingData/PerfectTrainingDataTab';
-import { EnterpriseChunksAnalysis } from './components/Chunks/EnterpriseChunksAnalysis';
+import { SimpleTrainingData } from './components/TrainingData/SimpleTrainingData';
 import SettingsTab from './components/Settings/SettingsTab';
 import { ErrorBoundary } from './components/ErrorHandling/ErrorBoundary';
 import { DarkModeInitializer } from './components/Layout/DarkModeInitializer';
@@ -12,7 +11,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 // Enterprise Components
 // import EnterpriseTrainingData from './components/Training/EnterpriseTrainingData';
-import SimpleAnalytics from './components/Analytics/SimpleAnalytics';
 
 function App() {
   const { activeTab } = useAppStore();
@@ -29,23 +27,7 @@ function App() {
         return (
           <ErrorBoundary>
             <div className="h-full overflow-y-auto">
-              <PerfectTrainingDataTab />
-            </div>
-          </ErrorBoundary>
-        );
-      case 'chunks':
-        return (
-          <ErrorBoundary>
-            <div className="h-full overflow-y-auto">
-              <EnterpriseChunksAnalysis />
-            </div>
-          </ErrorBoundary>
-        );
-      case 'analytics':
-        return (
-          <ErrorBoundary>
-            <div className="h-full overflow-y-auto">
-              <SimpleAnalytics />
+              <SimpleTrainingData />
             </div>
           </ErrorBoundary>
         );

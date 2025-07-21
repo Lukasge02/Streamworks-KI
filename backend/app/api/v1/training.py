@@ -146,7 +146,8 @@ async def upload_training_files_batch(
 async def upload_training_file(
     file: UploadFile = File(...),
     category_slug: str = Form(..., description="Category slug (e.g. 'qa', 'stream-xml')"),
-    folder_slug: Optional[str] = Form(None, description="Optional folder slug"),
+    folder_id: Optional[str] = Form(None, description="Optional folder ID"),
+    folder_slug: Optional[str] = Form(None, description="Optional folder slug (legacy)"),
     db: AsyncSession = Depends(get_db)
 ):
     """Upload a single training file to the enterprise system with dynamic categories"""
@@ -184,37 +185,54 @@ async def upload_training_file(
         category_id = category_row.id
         category_name = category_row.name
         
-        # Get folder ID if specified
-        folder_id = None
+        # Get folder info - prioritize folder_id over folder_slug
+        resolved_folder_id = None
         folder_name = None
-        if folder_slug:
+        folder_storage_slug = None
+        
+        if folder_id:
+            # Use direct folder ID
             folder_result = await db.execute(
-                text("SELECT id, name FROM document_folders WHERE slug = :slug AND category_id = :category_id AND is_active = true"),
+                text("SELECT id, name, slug FROM document_folders WHERE id = :folder_id AND category_id = :category_id AND is_active = true"),
+                {"folder_id": folder_id, "category_id": category_id}
+            )
+            folder_row = folder_result.first()
+            if folder_row:
+                resolved_folder_id = folder_row.id
+                folder_name = folder_row.name
+                folder_storage_slug = folder_row.slug
+            else:
+                raise HTTPException(status_code=400, detail=f"Invalid folder ID: {folder_id} for category {category_slug}")
+        elif folder_slug:
+            # Fallback to folder slug (legacy)
+            folder_result = await db.execute(
+                text("SELECT id, name, slug FROM document_folders WHERE slug = :slug AND category_id = :category_id AND is_active = true"),
                 {"slug": folder_slug, "category_id": category_id}
             )
             folder_row = folder_result.first()
             if folder_row:
-                folder_id = folder_row.id
+                resolved_folder_id = folder_row.id
                 folder_name = folder_row.name
+                folder_storage_slug = folder_row.slug
             else:
                 raise HTTPException(status_code=400, detail=f"Invalid folder slug: {folder_slug} for category {category_slug}")
         
         # Create storage path - check if file exists and handle duplicates
         storage_path = f"data/documents/{category_slug}"
-        if folder_slug:
-            storage_path += f"/{folder_slug}"
+        if folder_storage_slug:
+            storage_path += f"/{folder_storage_slug}"
         
         # Check if file already exists
         existing_file = await db.execute(
             text("SELECT id FROM training_files_v2 WHERE original_filename = :filename AND category_id = :category_id AND folder_id = :folder_id"),
-            {"filename": file.filename, "category_id": category_id, "folder_id": folder_id}
+            {"filename": file.filename, "category_id": category_id, "folder_id": resolved_folder_id}
         )
         
         if existing_file.scalar():
             # Update existing file instead of creating new one
             await db.execute(
                 text("UPDATE training_files_v2 SET file_hash = :file_hash, file_size = :file_size, processing_status = 'pending' WHERE original_filename = :filename AND category_id = :category_id AND folder_id = :folder_id"),
-                {"file_hash": hashlib.sha256(file_content).hexdigest(), "file_size": len(file_content), "filename": file.filename, "category_id": category_id, "folder_id": folder_id}
+                {"file_hash": hashlib.sha256(file_content).hexdigest(), "file_size": len(file_content), "filename": file.filename, "category_id": category_id, "folder_id": resolved_folder_id}
             )
             await db.commit()
             return {
@@ -252,7 +270,7 @@ async def upload_training_file(
             {
                 "id": file_id,
                 "category_id": category_id,
-                "folder_id": folder_id,
+                "folder_id": resolved_folder_id,
                 "filename": file.filename,
                 "storage_path": str(file_path),
                 "file_hash": hashlib.sha256(file_content).hexdigest(),

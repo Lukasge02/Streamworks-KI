@@ -1,0 +1,328 @@
+/* 
+ * Arvato Systems Enterprise Theme
+ * Professional, moderne UI für Enterprise-Niveau
+ */
+
+:root {
+  /* Arvato Systems Farbpalette */
+  --arvato-primary: #0066CC;
+  --arvato-primary-dark: #004499;
+  --arvato-primary-light: #3385DD;
+  --arvato-secondary: #F8F9FA;
+  --arvato-accent: #FF6B35;
+  --arvato-success: #28A745;
+  --arvato-warning: #FFC107;
+  --arvato-error: #DC3545;
+  --arvato-info: #17A2B8;
+  
+  /* Grayscale Professional */
+  --arvato-gray-50: #F8F9FA;
+  --arvato-gray-100: #E9ECEF;
+  --arvato-gray-200: #DEE2E6;
+  --arvato-gray-300: #CED4DA;
+  --arvato-gray-400: #6C757D;
+  --arvato-gray-500: #495057;
+  --arvato-gray-600: #343A40;
+  --arvato-gray-700: #212529;
+  --arvato-gray-800: #1A1D20;
+  --arvato-gray-900: #0D1117;
+  
+  /* Moderne Schatten */
+  --arvato-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --arvato-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --arvato-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --arvato-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --arvato-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* Glassmorphism */
+  --arvato-glass-bg: rgba(255, 255, 255, 0.1);
+  --arvato-glass-border: rgba(255, 255, 255, 0.2);
+  --arvato-glass-backdrop: blur(10px);
+  
+  /* Moderne Radiuses */
+  --arvato-radius-sm: 4px;
+  --arvato-radius-md: 8px;
+  --arvato-radius-lg: 12px;
+  --arvato-radius-xl: 16px;
+  --arvato-radius-2xl: 20px;
+  
+  /* Professional Spacing */
+  --arvato-space-xs: 4px;
+  --arvato-space-sm: 8px;
+  --arvato-space-md: 16px;
+  --arvato-space-lg: 24px;
+  --arvato-space-xl: 32px;
+  --arvato-space-2xl: 48px;
+  --arvato-space-3xl: 64px;
+  
+  /* Typography */
+  --arvato-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --arvato-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  
+  /* Transitions */
+  --arvato-transition-fast: 0.15s ease;
+  --arvato-transition-normal: 0.3s ease;
+  --arvato-transition-slow: 0.5s ease;
+  
+  /* Gradients */
+  --arvato-gradient-primary: linear-gradient(135deg, #0066CC 0%, #004499 100%);
+  --arvato-gradient-secondary: linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 100%);
+  --arvato-gradient-accent: linear-gradient(135deg, #FF6B35 0%, #FF4500 100%);
+  --arvato-gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+}
+
+/* Global Styles */
+* {
+  font-family: var(--arvato-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--arvato-gray-50);
+  color: var(--arvato-gray-700);
+  line-height: 1.6;
+}
+
+/* Typography Classes */
+.arvato-heading-1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--arvato-gray-900);
+}
+
+.arvato-heading-2 {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--arvato-gray-800);
+}
+
+.arvato-heading-3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--arvato-gray-800);
+}
+
+.arvato-body-large {
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--arvato-gray-600);
+}
+
+.arvato-body {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--arvato-gray-600);
+}
+
+.arvato-body-small {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--arvato-gray-500);
+}
+
+.arvato-caption {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--arvato-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Button Styles */
+.arvato-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--arvato-space-md) var(--arvato-space-lg);
+  border-radius: var(--arvato-radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: all var(--arvato-transition-fast);
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.arvato-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left var(--arvato-transition-normal);
+}
+
+.arvato-btn:hover::before {
+  left: 100%;
+}
+
+.arvato-btn-primary {
+  background: var(--arvato-gradient-primary);
+  color: white;
+  box-shadow: var(--arvato-shadow-md);
+}
+
+.arvato-btn-primary:hover {
+  box-shadow: var(--arvato-shadow-lg);
+  transform: translateY(-1px);
+}
+
+.arvato-btn-secondary {
+  background: white;
+  color: var(--arvato-primary);
+  border: 2px solid var(--arvato-primary);
+  box-shadow: var(--arvato-shadow-sm);
+}
+
+.arvato-btn-secondary:hover {
+  background: var(--arvato-primary);
+  color: white;
+  box-shadow: var(--arvato-shadow-md);
+}
+
+.arvato-btn-ghost {
+  background: transparent;
+  color: var(--arvato-gray-600);
+  border: 1px solid var(--arvato-gray-300);
+}
+
+.arvato-btn-ghost:hover {
+  background: var(--arvato-gray-100);
+  border-color: var(--arvato-gray-400);
+}
+
+/* Card Styles */
+.arvato-card {
+  background: white;
+  border-radius: var(--arvato-radius-lg);
+  box-shadow: var(--arvato-shadow-md);
+  border: 1px solid var(--arvato-gray-200);
+  transition: all var(--arvato-transition-normal);
+}
+
+.arvato-card:hover {
+  box-shadow: var(--arvato-shadow-lg);
+  transform: translateY(-2px);
+}
+
+.arvato-card-glass {
+  background: var(--arvato-glass-bg);
+  backdrop-filter: var(--arvato-glass-backdrop);
+  border: 1px solid var(--arvato-glass-border);
+  border-radius: var(--arvato-radius-lg);
+}
+
+/* Input Styles */
+.arvato-input {
+  width: 100%;
+  padding: var(--arvato-space-md);
+  border: 2px solid var(--arvato-gray-300);
+  border-radius: var(--arvato-radius-md);
+  font-size: 0.875rem;
+  transition: all var(--arvato-transition-fast);
+  background: white;
+}
+
+.arvato-input:focus {
+  outline: none;
+  border-color: var(--arvato-primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.arvato-input::placeholder {
+  color: var(--arvato-gray-400);
+}
+
+/* Status Badges */
+.arvato-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--arvato-space-xs) var(--arvato-space-sm);
+  border-radius: var(--arvato-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.arvato-badge-success {
+  background: rgba(40, 167, 69, 0.1);
+  color: var(--arvato-success);
+  border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.arvato-badge-warning {
+  background: rgba(255, 193, 7, 0.1);
+  color: var(--arvato-warning);
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.arvato-badge-error {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--arvato-error);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.arvato-badge-info {
+  background: rgba(23, 162, 184, 0.1);
+  color: var(--arvato-info);
+  border: 1px solid rgba(23, 162, 184, 0.2);
+}
+
+/* Utility Classes */
+.arvato-glass {
+  background: var(--arvato-glass-bg);
+  backdrop-filter: var(--arvato-glass-backdrop);
+  border: 1px solid var(--arvato-glass-border);
+}
+
+.arvato-gradient-text {
+  background: var(--arvato-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.arvato-animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.arvato-animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .arvato-heading-1 { font-size: 2rem; }
+  .arvato-heading-2 { font-size: 1.5rem; }
+  .arvato-heading-3 { font-size: 1.25rem; }
+  
+  .arvato-btn {
+    padding: var(--arvato-space-sm) var(--arvato-space-md);
+  }
+}

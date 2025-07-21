@@ -18,7 +18,7 @@ from app.api.v1.qa_api import router as qa_router
 from app.api.v1.training import router as training_router
 from app.api.v1.categories import router as categories_router
 from app.api.v1.files_enterprise import router as files_router
-from app.api.v1.chunks_analysis import router as chunks_router
+from app.api.v1.simple_folders import router as folders_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -170,12 +170,13 @@ app.include_router(
     tags=["files"]
 )
 
-# 📊 Chunks Analysis & Visualization
+# Folders Management
 app.include_router(
-    chunks_router,
-    prefix="/api/v1/chunks",
-    tags=["chunks-analysis"]
+    folders_router,
+    prefix="/api/v1/folders",
+    tags=["folders"]
 )
+
 
 @app.get("/")
 async def root():

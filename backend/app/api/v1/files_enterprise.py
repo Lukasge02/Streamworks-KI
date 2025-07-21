@@ -23,6 +23,7 @@ class FileResponse(BaseModel):
     filename: str
     category_slug: str
     category_name: str
+    folder_id: Optional[str] = None
     folder_slug: Optional[str] = None
     folder_name: Optional[str] = None
     file_size: int
