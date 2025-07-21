@@ -10,7 +10,7 @@ import {
   Settings,
   Code,
   Zap,
-  FileTemplate
+  File
 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 
@@ -203,7 +203,7 @@ export const XMLGeneratorTab: React.FC = () => {
                   : 'bg-white/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 hover:bg-white/80 hover:shadow-md border border-gray-200/50 dark:border-gray-700/50'
               }`}
             >
-              <FileTemplate className="w-4 h-4 mr-2" />
+              <File className="w-4 h-4 mr-2" />
               Templates
             </button>
           </div>
@@ -211,7 +211,7 @@ export const XMLGeneratorTab: React.FC = () => {
 
         {/* Input Area */}
         <div className="flex-1 flex flex-col p-6 bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm">
-          {activeMode === 'chat' ? (
+          {activeMode === 'chat' && (
             <>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
                 <Zap className="w-5 h-5 mr-2 text-purple-600" />
@@ -249,7 +249,9 @@ Beispiele:
                 </button>
               </div>
             </>
-          ) : (
+          )}
+
+          {activeMode === 'form' && (
             <>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
                 <Settings className="w-5 h-5 mr-2 text-purple-600" />
@@ -363,10 +365,12 @@ Beispiele:
                 </button>
               </div>
             </>
-          ) : (
+          )}
+
+          {activeMode === 'template' && (
             <>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
-                <FileTemplate className="w-5 h-5 mr-2 text-purple-600" />
+                <File className="w-5 h-5 mr-2 text-purple-600" />
                 XML Templates
               </h3>
               <div className="flex-1 space-y-4">
