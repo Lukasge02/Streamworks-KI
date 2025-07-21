@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<streamworks-config xmlns="http://streamworks.arvato.com/v1">
+  <metadata>
+    <name>E-Commerce-Order-Processing</name>
+    <description>Real-time order processing from webshop to ERP system</description>
+    <version>1.0</version>
+    <created>2025-01-15T10:30:00Z</created>
+    <category>E-Commerce</category>
+  </metadata>
+  
+  <stream id="webshop_to_erp_orders" type="stream">
+    <source system="Webshop" format="JSON">
+      <connection-string>https://shop.company.com/api/v1/</connection-string>
+      <authentication type="api-key">
+        <api-key>${WEBSHOP_API_KEY}</api-key>
+      </authentication>
+      <endpoint>/orders/stream</endpoint>
+      <streaming-config>
+        <protocol>websocket</protocol>
+        <heartbeat-interval>PT30S</heartbeat-interval>
+        <reconnect-strategy>exponential-backoff</reconnect-strategy>
+      </streaming-config>
+    </source>
+    
+    <target system="ERP_System" format="XML">
+      <connection-string>https://erp.company.com/api/orders</connection-string>
+      <authentication type="oauth2">
+        <client-id>${ERP_CLIENT_ID}</client-id>
+        <client-secret>${ERP_CLIENT_SECRET}</client-secret>
+        <token-endpoint>https://erp.company.com/oauth/token</token-endpoint>
+      </authentication>
+      <headers>
+        <header name="Content-Type">application/xml</header>
+        <header name="X-API-Version">v2.1</header>
+      </headers>
+    </target>
+    
+    <mapping>
+      <!-- Order Header -->
+      <field source="order.id" target="OrderID" type="string" required="true"/>
+      <field source="order.order_number" target="OrderNumber" type="string" required="true"/>
+      <field source="order.created_at" target="OrderDate" type="datetime" required="true">
+        <transform type="date-format">
+          <input-format>yyyy-MM-dd'T'HH:mm:ss'Z'</input-format>
+          <output-format>yyyy-MM-dd HH:mm:ss</output-format>
+        </transform>
+      </field>
+      <field source="order.total_amount" target="TotalAmount" type="decimal" required="true"/>
+      <field source="order.currency" target="Currency" type="string" required="true"/>
+      
+      <!-- Customer Information -->
+      <field source="customer.id" target="CustomerID" type="string" required="true"/>
+      <field source="customer.email" target="CustomerEmail" type="string" required="true"/>
+      <field source="customer.first_name" target="FirstName" type="string" required="false"/>
+      <field source="customer.last_name" target="LastName" type="string" required="false"/>
+      
+      <!-- Billing Address -->
+      <field source="billing_address.street" target="BillingStreet" type="string" required="true"/>
+      <field source="billing_address.city" target="BillingCity" type="string" required="true"/>
+      <field source="billing_address.postal_code" target="BillingPostalCode" type="string" required="true"/>
+      <field source="billing_address.country" target="BillingCountry" type="string" required="true"/>
+      
+      <!-- Shipping Address -->
+      <field source="shipping_address.street" target="ShippingStreet" type="string" required="true"/>
+      <field source="shipping_address.city" target="ShippingCity" type="string" required="true"/>
+      <field source="shipping_address.postal_code" target="ShippingPostalCode" type="string" required="true"/>
+      <field source="shipping_address.country" target="ShippingCountry" type="string" required="true"/>
+      
+      <!-- Order Items (Array Mapping) -->
+      <array source="order.items" target="OrderItems">
+        <field source="sku" target="ProductSKU" type="string" required="true"/>
+        <field source="name" target="ProductName" type="string" required="true"/>
+        <field source="quantity" target="Quantity" type="integer" required="true"/>
+        <field source="unit_price" target="UnitPrice" type="decimal" required="true"/>
+        <field source="total_price" target="LineTotal" type="decimal" required="true"/>
+      </array>
+    </mapping>
+    
+    <schedule type="realtime">
+      <streaming>true</streaming>
+      <buffer-size>100</buffer-size>
+      <flush-interval>PT30S</flush-interval>
+    </schedule>
+    
+    <data-validation>
+      <rule field="order.total_amount" operator="gt" value="0"/>
+      <rule field="order.currency" operator="in" value="EUR,USD,GBP"/>
+      <rule field="customer.email" operator="regex" value="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"/>
+    </data-validation>
+    
+    <error-handling>
+      <retry-policy max-attempts="3" backoff="exponential">
+        <initial-delay>PT5S</initial-delay>
+        <max-delay>PT2M</max-delay>
+      </retry-policy>
+      <dead-letter-queue enabled="true">
+        <destination>orders-dlq</destination>
+        <retention-days>14</retention-days>
+      </dead-letter-queue>
+      <circuit-breaker>
+        <failure-threshold>5</failure-threshold>
+        <recovery-timeout>PT30S</recovery-timeout>
+      </circuit-breaker>
+      <notifications>
+        <email>ecommerce-ops@company.com</email>
+        <slack-webhook>${SLACK_WEBHOOK_URL}</slack-webhook>
+      </notifications>
+    </error-handling>
+    
+    <monitoring>
+      <metrics enabled="true">
+        <metric name="orders_processed_total" type="counter"/>
+        <metric name="order_processing_duration" type="histogram"/>
+        <metric name="order_value_total" type="gauge"/>
+      </metrics>
+      <health-check>
+        <endpoint>/health/orders</endpoint>
+        <interval>PT1M</interval>
+      </health-check>
+    </monitoring>
+  </stream>
+</streamworks-config>

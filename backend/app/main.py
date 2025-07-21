@@ -19,6 +19,7 @@ from app.api.v1.training import router as training_router
 from app.api.v1.categories import router as categories_router
 from app.api.v1.files_enterprise import router as files_router
 from app.api.v1.simple_folders import router as folders_router
+from app.api.v1.xml import router as xml_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -175,6 +176,13 @@ app.include_router(
     folders_router,
     prefix="/api/v1/folders",
     tags=["folders"]
+)
+
+# 🎯 XML Generator - StreamWorks Specialization
+app.include_router(
+    xml_router,
+    prefix="/api/v1/xml",
+    tags=["xml-generator"]
 )
 
 
