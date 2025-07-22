@@ -1,5 +1,5 @@
 /**
- * Centralized file format configuration for StreamWorks-KI
+ * Centralized file format configuration for Streamworks-KI
  * Matches the backend multi-format processor capabilities
  */
 

@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<stream xmlns="http://streamworks.com/schema/v1" version="1.0">
+  
+  <metadata>
+    <name>CustomerDataProcessingStream</name>
+    <description>Tägliche Verarbeitung von Kundendaten aus verschiedenen Quellen</description>
+    <version>2.1.3</version>
+    <created>2025-07-22T08:00:00Z</created>
+    <owner>data.team@company.com</owner>
+    <category>data_processing</category>
+    <tags>
+      <tag>customer-data</tag>
+      <tag>etl</tag>
+      <tag>daily</tag>
+      <tag>production</tag>
+    </tags>
+  </metadata>
+
+  <parameters>
+    <parameter name="input_path" type="path" default="/data/input/customer/" required="true">/data/input/customer/</parameter>
+    <parameter name="output_path" type="path" default="/data/output/processed/" required="true">/data/output/processed/</parameter>
+    <parameter name="batch_size" type="integer" default="1000">5000</parameter>
+    <parameter name="debug_mode" type="boolean" default="false">false</parameter>
+    <parameter name="max_file_age_hours" type="integer" default="24">12</parameter>
+    <parameter name="notification_email" type="string" required="true">data-ops@company.com</parameter>
+  </parameters>
+
+  <schedule>
+    <type>recurring</type>
+    <cron>0 2 * * 1-5</cron>
+    <timezone>Europe/Berlin</timezone>
+    <enabled>true</enabled>
+    <description>Werktagsmorgens um 02:00 Uhr</description>
+    <retry_policy>
+      <max_retries>3</max_retries>
+      <retry_delay>600</retry_delay>
+      <exponential_backoff>true</exponential_backoff>
+    </retry_policy>
+  </schedule>
+
+  <jobs>
+    <!-- Job 1: Datenextraktion -->
+    <job id="extract_customer_data">
+      <name>CustomerDataExtraction</name>
+      <type>etl_extract</type>
+      <priority>high</priority>
+      <timeout>60</timeout>
+      
+      <tasks>
+        <task id="check_input_files">
+          <name>CheckInputFiles</name>
+          <type>file_check</type>
+          <config>
+            <path>${input_path}</path>
+            <pattern>customer_data_*.csv</pattern>
+            <min_files>1</min_files>
+            <max_age_hours>${max_file_age_hours}</max_age_hours>
+            <file_size_min>1KB</file_size_min>
+          </config>
+          <validation>
+            <rule type="required">
+              <field>file_count</field>
+              <condition>greater_than</condition>
+              <value>0</value>
+              <message>Keine Eingabedateien gefunden</message>
+            </rule>
+          </validation>
+        </task>
+
+        <task id="validate_file_structure">
+          <name>ValidateFileStructure</name>
+          <type>csv_reader</type>
+          <depends_on>check_input_files</depends_on>
+          <config>
+            <input_path>${input_path}customer_data_*.csv</input_path>
+            <delimiter>,</delimiter>
+            <header>true</header>
+            <encoding>utf-8</encoding>
+            <expected_columns>customer_id,first_name,last_name,email,registration_date,status</expected_columns>
+          </config>
+          <validation>
+            <rule type="required">
+              <field>customer_id</field>
+              <condition>not_null</condition>
+              <value></value>
+              <message>Customer ID ist erforderlich</message>
+            </rule>
+            <rule type="format">
+              <field>email</field>
+              <condition>email_format</condition>
+              <value>^[^\s@]+@[^\s@]+\.[^\s@]+$</value>
+              <message>Ungültiges E-Mail-Format</message>
+            </rule>
+          </validation>
+        </task>
+
+        <task id="extract_to_staging">
+          <name>ExtractToStaging</name>
+          <type>data_transform</type>
+          <depends_on>validate_file_structure</depends_on>
+          <config>
+            <source>${input_path}customer_data_*.csv</source>
+            <target>staging.customer_raw</target>
+            <batch_size>${batch_size}</batch_size>
+            <transformation_rules>
+              <rule>
+                <field>email</field>
+                <operation>lowercase</operation>
+              </rule>
+              <rule>
+                <field>registration_date</field>
+                <operation>parse_date</operation>
+                <format>dd.MM.yyyy</format>
+              </rule>
+            </transformation_rules>
+          </config>
+        </task>
+      </tasks>
+
+      <error_handling>
+        <on_failure>stop</on_failure>
+        <max_retries>2</max_retries>
+        <notification>
+          <email>${notification_email}</email>
+          <slack_channel>#data-alerts</slack_channel>
+        </notification>
+      </error_handling>
+    </job>
+
+    <!-- Job 2: Datentransformation -->
+    <job id="transform_customer_data">
+      <name>CustomerDataTransformation</name>
+      <type>etl_transform</type>
+      <priority>normal</priority>
+      <depends_on>extract_customer_data</depends_on>
+      <timeout>45</timeout>
+
+      <tasks>
+        <task id="deduplicate_customers">
+          <name>DeduplicateCustomers</name>
+          <type>data_transform</type>
+          <config>
+            <source>staging.customer_raw</source>
+            <target>staging.customer_deduplicated</target>
+            <deduplication_key>email</deduplication_key>
+            <keep_strategy>latest_registration</keep_strategy>
+          </config>
+        </task>
+
+        <task id="enrich_customer_data">
+          <name>EnrichCustomerData</name>
+          <type>data_transform</type>
+          <depends_on>deduplicate_customers</depends_on>
+          <config>
+            <source>staging.customer_deduplicated</source>
+            <target>staging.customer_enriched</target>
+            <enrichment_rules>
+              <rule>
+                <field>customer_segment</field>
+                <logic>
+                  CASE 
+                    WHEN registration_date &lt; '2023-01-01' THEN 'legacy'
+                    WHEN registration_date >= '2025-01-01' THEN 'new'
+                    ELSE 'standard'
+                  END
+                </logic>
+              </rule>
+              <rule>
+                <field>full_name</field>
+                <logic>CONCAT(first_name, ' ', last_name)</logic>
+              </rule>
+            </enrichment_rules>
+          </config>
+        </task>
+
+        <task id="data_quality_check">
+          <name>DataQualityCheck</name>
+          <type>data_validation</type>
+          <depends_on>enrich_customer_data</depends_on>
+          <config>
+            <source>staging.customer_enriched</source>
+            <quality_rules>
+              <rule name="email_uniqueness">
+                <sql>SELECT COUNT(*) as duplicate_count FROM (SELECT email, COUNT(*) as cnt FROM staging.customer_enriched GROUP BY email HAVING cnt > 1)</sql>
+                <threshold>0</threshold>
+                <severity>error</severity>
+              </rule>
+              <rule name="completeness_check">
+                <sql>SELECT COUNT(*) as incomplete_records FROM staging.customer_enriched WHERE customer_id IS NULL OR email IS NULL</sql>
+                <threshold>0</threshold>
+                <severity>error</severity>
+              </rule>
+            </quality_rules>
+          </config>
+        </task>
+      </tasks>
+
+      <error_handling>
+        <on_failure>continue</on_failure>
+        <max_retries>1</max_retries>
+        <notification>
+          <email>${notification_email}</email>
+        </notification>
+      </error_handling>
+    </job>
+
+    <!-- Job 3: Daten laden -->
+    <job id="load_customer_data">
+      <name>CustomerDataLoad</name>
+      <type>etl_load</type>
+      <priority>high</priority>
+      <depends_on>transform_customer_data</depends_on>
+      <timeout>30</timeout>
+
+      <tasks>
+        <task id="backup_existing_data">
+          <name>BackupExistingData</name>
+          <type>database_insert</type>
+          <config>
+            <source_sql>SELECT * FROM production.customers WHERE last_updated >= CURRENT_DATE - INTERVAL '1 day'</source_sql>
+            <target>backup.customers_$(date)</target>
+            <backup_strategy>incremental</backup_strategy>
+          </config>
+        </task>
+
+        <task id="load_to_production">
+          <name>LoadToProduction</name>
+          <type>database_insert</type>
+          <depends_on>backup_existing_data</depends_on>
+          <config>
+            <source>staging.customer_enriched</source>
+            <target>production.customers</target>
+            <load_strategy>upsert</load_strategy>
+            <key_columns>customer_id</key_columns>
+            <batch_size>${batch_size}</batch_size>
+          </config>
+        </task>
+
+        <task id="update_statistics">
+          <name>UpdateStatistics</name>
+          <type>database_insert</type>
+          <depends_on>load_to_production</depends_on>
+          <config>
+            <target>metadata.processing_stats</target>
+            <data>
+              <processed_date>$(current_date)</processed_date>
+              <records_processed>$(row_count)</records_processed>
+              <processing_time>$(execution_time)</processing_time>
+              <stream_name>CustomerDataProcessingStream</stream_name>
+            </data>
+          </config>
+        </task>
+      </tasks>
+
+      <error_handling>
+        <on_failure>stop</on_failure>
+        <max_retries>3</max_retries>
+        <notification>
+          <email>${notification_email}</email>
+          <webhook>https://monitoring.company.com/webhook/data-pipeline</webhook>
+          <slack_channel>#data-alerts</slack_channel>
+        </notification>
+      </error_handling>
+    </job>
+
+    <!-- Job 4: Benachrichtigungen -->
+    <job id="send_completion_notification">
+      <name>SendCompletionNotification</name>
+      <type>notification</type>
+      <priority>low</priority>
+      <depends_on>load_customer_data</depends_on>
+      <timeout>5</timeout>
+
+      <tasks>
+        <task id="generate_report">
+          <name>GenerateProcessingReport</name>
+          <type>data_transform</type>
+          <config>
+            <template>processing_report_template.html</template>
+            <data_source>metadata.processing_stats</data_source>
+            <output_path>${output_path}reports/daily_report_$(date).html</output_path>
+            <include_charts>true</include_charts>
+          </config>
+        </task>
+
+        <task id="send_success_notification">
+          <name>SendSuccessNotification</name>
+          <type>email_notification</type>
+          <depends_on>generate_report</depends_on>
+          <config>
+            <recipients>${notification_email}</recipients>
+            <subject>✅ CustomerDataProcessingStream erfolgreich abgeschlossen</subject>
+            <template>success_notification.html</template>
+            <attachments>${output_path}reports/daily_report_$(date).html</attachments>
+            <priority>normal</priority>
+          </config>
+        </task>
+      </tasks>
+
+      <error_handling>
+        <on_failure>continue</on_failure>
+        <max_retries>1</max_retries>
+      </error_handling>
+    </job>
+  </jobs>
+
+  <monitoring>
+    <alerts>
+      <alert name="execution_failure" type="failure">
+        <condition>job_status = 'failed'</condition>
+        <notification>
+          <email>data-ops@company.com</email>
+          <slack_channel>#data-alerts</slack_channel>
+        </notification>
+      </alert>
+      
+      <alert name="long_execution_time" type="performance">
+        <condition>execution_time > 120</condition>
+        <threshold>120 minutes</threshold>
+        <notification>
+          <email>data-ops@company.com</email>
+        </notification>
+      </alert>
+
+      <alert name="low_record_count" type="warning">
+        <condition>processed_records &lt; 1000</condition>
+        <threshold>1000 records</threshold>
+        <notification>
+          <slack_channel>#data-monitoring</slack_channel>
+        </notification>
+      </alert>
+    </alerts>
+
+    <metrics>
+      <metric name="total_execution_time" type="execution_time" unit="minutes"/>
+      <metric name="processed_file_size" type="file_size" unit="MB"/>
+      <metric name="processed_record_count" type="record_count" unit="records"/>
+      <metric name="error_rate" type="error_rate" unit="percentage"/>
+      <metric name="throughput" type="throughput" unit="records_per_minute"/>
+    </metrics>
+
+    <logging>
+      <level>info</level>
+      <output_path>/logs/streamworks/customer_processing.log</output_path>
+      <max_file_size>50MB</max_file_size>
+      <retention_days>90</retention_days>
+    </logging>
+  </monitoring>
+
+</stream>

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from datetime import datetime, timezone
-from app.core.config import settings
+from app.core.postgres_config import settings
 import logging
 import asyncio
 import time

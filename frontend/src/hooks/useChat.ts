@@ -7,7 +7,7 @@ export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hallo! Ich bin SKI - die StreamWorks-KI. Wie kann ich Ihnen bei der Workload-Automatisierung helfen?',
+      text: 'Hallo! Ich bin SKI - die Streamworks-KI. Wie kann ich Ihnen bei der Workload-Automatisierung helfen?',
       sender: 'ai',
       timestamp: new Date(),
       type: 'text'

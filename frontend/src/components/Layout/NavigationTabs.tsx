@@ -19,9 +19,9 @@ const StatusIndicator: React.FC<{ status: 'active' | 'processing' | 'maintenance
 import { useAppStore } from '../../store/appStore';
 
 const tabs = [
-  { id: 'chat' as TabType, label: 'Q&A', icon: MessageSquare, description: 'Intelligente Unterhaltung', color: 'from-blue-500 to-purple-600' },
-  { id: 'training' as TabType, label: 'Training Data', icon: Database, description: 'Enterprise Dokumentenverwaltung', color: 'from-green-500 to-teal-600' },
-  { id: 'xml' as TabType, label: 'XML Generator', icon: Code, description: 'Stream-Generierung', color: 'from-purple-500 to-pink-600' }
+  { id: 'chat' as TabType, label: 'Q&A', icon: MessageSquare, description: 'Intelligente Hilfe', color: 'from-blue-500 to-purple-600' },
+  { id: 'training' as TabType, label: 'Trainingsdaten', icon: Database, description: 'Dokumentenverwaltung', color: 'from-green-500 to-teal-600' },
+  { id: 'xml' as TabType, label: 'Stream Generator', icon: Code, description: 'XML-Konfiguration', color: 'from-purple-500 to-pink-600' }
 ];
 
 export const NavigationSidebar: React.FC = () => {

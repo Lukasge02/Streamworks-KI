@@ -17,7 +17,7 @@ from chromadb.utils import embedding_functions
 import aiohttp
 import json
 
-from ..core.config import settings
+from ..core.postgres_config import settings
 
 logger = logging.getLogger(__name__)
 

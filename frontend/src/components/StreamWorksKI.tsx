@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Send, Upload, FileText, Settings, HelpCircle, Menu, X } from 'lucide-react';
 
-const StreamWorksKI: React.FC = () => {
+const StreamworksKI: React.FC = () => {
   const [messages, setMessages] = useState<Array<{id: number; text: string; isUser: boolean}>>([]);
   const [inputValue, setInputValue] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -21,7 +21,7 @@ const StreamWorksKI: React.FC = () => {
       setTimeout(() => {
         const aiResponse = {
           id: Date.now() + 1,
-          text: "Ich bin StreamWorks-KI. Wie kann ich Ihnen bei der Workload-Automatisierung helfen?",
+          text: "Ich bin Streamworks-KI. Wie kann ich Ihnen bei der Workload-Automatisierung helfen?",
           isUser: false
         };
         setMessages(prev => [...prev, aiResponse]);
@@ -34,7 +34,7 @@ const StreamWorksKI: React.FC = () => {
       {/* Sidebar */}
       <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-white shadow-lg overflow-hidden`}>
         <div className="p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-800">StreamWorks-KI</h2>
+          <h2 className="text-xl font-bold text-gray-800">Streamworks-KI</h2>
         </div>
         <nav className="p-4">
           <button
@@ -112,7 +112,7 @@ const StreamWorksKI: React.FC = () => {
               <div className="flex-1 bg-white rounded-lg shadow-md p-4 mb-4 overflow-y-auto chat-scrollbar">
                 {messages.length === 0 ? (
                   <div className="text-center text-gray-500 mt-8">
-                    <p className="mb-2">Willkommen bei StreamWorks-KI!</p>
+                    <p className="mb-2">Willkommen bei Streamworks-KI!</p>
                     <p>Stellen Sie mir Fragen zur Workload-Automatisierung.</p>
                   </div>
                 ) : (
@@ -259,7 +259,7 @@ const StreamWorksKI: React.FC = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Erste Schritte</h3>
                     <p className="text-gray-600">
-                      StreamWorks-KI ist eine intelligente Assistenz für die Workload-Automatisierung...
+                      Streamworks-KI ist eine intelligente Assistenz für die Workload-Automatisierung...
                     </p>
                   </div>
                   <div>
@@ -280,4 +280,4 @@ const StreamWorksKI: React.FC = () => {
   );
 };
 
-export default StreamWorksKI;
+export default StreamworksKI;

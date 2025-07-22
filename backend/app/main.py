@@ -6,13 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
-from app.core.config import settings
+from app.core.postgres_config import settings
 from app.core.async_manager import initialize_async_manager, shutdown_async_manager
 # from app.services.rag_service import rag_service  # PROBLEMATIC
 # from app.services.mistral_rag_service import mistral_rag_service  # PROBLEMATIC  
 from app.services.mistral_llm_service import mistral_llm_service
 # Legacy services removed - only perfect_qa_service remains
-from app.models.database import init_db
+from app.core.database_postgres import init_database, close_database
 # Only import existing routers
 from app.api.v1.qa_api import router as qa_router
 from app.api.v1.training import router as training_router
@@ -65,10 +65,10 @@ async def lifespan(app: FastAPI):
         # Production monitoring handled by middleware
         logger.info("📈 Monitoring configured via middleware")
         
-        # Initialize Database
-        logger.info("🗄️ Initializing Database...")
-        await init_db()
-        logger.info("✅ Database initialized")
+        # Initialize PostgreSQL Database
+        logger.info("🗄️ Initializing PostgreSQL Database...")
+        await init_database()
+        logger.info("✅ PostgreSQL Database initialized")
         
         # 1. Mistral LLM Service - LAZY LOADING für schnellen Start
         if settings.LLM_ENABLED:
@@ -111,11 +111,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ AsyncTaskManager shutdown error: {e}")
     
+    # Close PostgreSQL connections
+    await close_database()
+    
     logger.info("✅ Shutdown complete")
 
 # Create FastAPI app
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=settings.APP_NAME,
     description="StreamWorks-KI: RAG-based Q&A + LoRA-tuned XML Generation",
     version="2.0.0",
     lifespan=lifespan

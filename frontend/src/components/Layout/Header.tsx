@@ -14,7 +14,7 @@ export const Header: React.FC = () => {
               </div>
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold text-white mb-1">StreamWorks-KI</h1>
+              <h1 className="text-2xl font-bold text-white mb-1">Streamworks-KI</h1>
               <p className="text-blue-100 text-xs font-medium">Intelligente Workload-Automatisierung</p>
             </div>
           </div>
@@ -23,7 +23,7 @@ export const Header: React.FC = () => {
             <div className="relative">
               <img 
                 src="/logo.png" 
-                alt="StreamWorks-KI Logo" 
+                alt="Streamworks-KI Logo" 
                 className="w-40 h-40 object-contain drop-shadow-lg"
               />
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>

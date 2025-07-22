@@ -250,7 +250,7 @@ export const ModernChatInterface: React.FC = () => {
               <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">StreamWorks AI Assistant</h2>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Streamworks AI Assistant</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">Intelligente Workload-Automatisierung</p>
             </div>
           </div>
@@ -367,7 +367,7 @@ export const ModernChatInterface: React.FC = () => {
                   Willkommen bei SKI - ihrer Streamworks KI
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Ihre intelligente Assistenz für alle Fragen rund um StreamWorks. 
+                  Ihre intelligente Assistenz für alle Fragen rund um Streamworks. 
                   Stellen Sie mir eine Frage und ich helfe Ihnen gerne weiter!
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
@@ -537,7 +537,7 @@ export const ModernChatInterface: React.FC = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Stellen Sie Ihre Frage zu StreamWorks..."
+              placeholder="Stellen Sie Ihre Frage zu Streamworks..."
               disabled={isLoading}
               className="flex-1 px-6 py-4 pr-20 bg-gray-50/50 dark:bg-gray-700/50 border border-gray-300/50 dark:border-gray-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent disabled:opacity-50 transition-all text-gray-800 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             />
@@ -551,7 +551,7 @@ export const ModernChatInterface: React.FC = () => {
             </button>
           </div>
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
-            StreamWorks Intelligente Workload-Automatisierung
+            Streamworks Intelligente Workload-Automatisierung
           </div>
         </div>
       </form>

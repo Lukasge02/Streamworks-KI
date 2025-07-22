@@ -5,7 +5,7 @@ import {
   ChunksStatisticsResponse
 } from '../types';
 
-export type SourceCategory = 'Testdaten' | 'StreamWorks Hilfe' | 'SharePoint';
+export type SourceCategory = 'Testdaten' | 'Streamworks Hilfe' | 'SharePoint';
 
 export interface SourceCategoryInfo {
   value: SourceCategory;

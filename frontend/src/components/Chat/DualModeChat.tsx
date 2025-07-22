@@ -84,9 +84,9 @@ export const DualModeChat: React.FC<DualModeChatProps> = ({ className = '' }) =>
       id: 'qa' as ChatMode,
       name: 'Q&A Expert',
       icon: MessageCircle,
-      description: 'Beantwortet Fragen zur StreamWorks-Dokumentation',
+      description: 'Beantwortet Fragen zur Streamworks-Dokumentation',
       color: 'bg-blue-500',
-      placeholder: 'Frage zur StreamWorks-Dokumentation...'
+      placeholder: 'Frage zur Streamworks-Dokumentation...'
     },
     {
       id: 'xml_generator' as ChatMode,
@@ -270,7 +270,7 @@ const EnhancedMessageList: React.FC<EnhancedMessageListProps> = ({
           <div className="text-gray-500 mb-4">
             <MessageCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Willkommen bei StreamWorks-KI!
+              Willkommen bei Streamworks-KI!
             </h3>
             <p className="text-sm text-gray-600 max-w-md mx-auto">
               Wähle einen Modus und stelle deine Frage oder beschreibe deinen gewünschten Stream.

@@ -35,9 +35,6 @@ export const XMLGeneratorTab: React.FC = () => {
   const [formData, setFormData] = useState({
     streamName: '',
     description: '',
-    sourceSystem: '',
-    targetSystem: '',
-    dataFormat: 'JSON',
     schedule: 'daily'
   });
   const [generatedXML, setGeneratedXML] = useState('');
@@ -49,6 +46,8 @@ export const XMLGeneratorTab: React.FC = () => {
   const [templateParameters, setTemplateParameters] = useState<{[key: string]: string}>({});
   const [isEditorReadOnly, setIsEditorReadOnly] = useState(false);
   const [editorTheme, setEditorTheme] = useState<'vs-dark' | 'light'>('vs-dark');
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
+  const [isDragging, setIsDragging] = useState(false);
 
   // Load templates on component mount
   useEffect(() => {
@@ -143,6 +142,53 @@ export const XMLGeneratorTab: React.FC = () => {
     }
   }, [selectedTemplate, templateParameters]);
 
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    // Use requestAnimationFrame for smooth performance
+    requestAnimationFrame(() => {
+      const container = document.querySelector('[data-resizable-container]') as HTMLElement;
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+      
+      // Constrain width between 20% and 80%
+      const constrainedWidth = Math.min(Math.max(newWidth, 20), 80);
+      setLeftPanelWidth(constrainedWidth);
+    });
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
   const copyToClipboard = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(generatedXML);
@@ -166,14 +212,21 @@ export const XMLGeneratorTab: React.FC = () => {
   }, [generatedXML]);
 
   return (
-    <div className="h-full flex bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
-      {/* Left Panel - Input Interface */}
-      <div className="w-1/2 flex flex-col border-r border-gray-200/50 dark:border-gray-700/50">
+    <div className="min-h-screen overflow-auto flex bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div 
+        className="w-full min-h-screen flex" 
+        data-resizable-container
+      >
+        {/* Left Panel - Input Interface */}
+        <div 
+          className="flex flex-col border-r border-gray-200/50 dark:border-gray-700/50 min-h-screen"
+          style={{ width: `${leftPanelWidth}%` }}
+        >
         {/* Mode Selector */}
         <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
             <Code className="w-8 h-8 mr-3 text-purple-600" />
-            StreamWorks XML Generator
+            Streamworks Stream Generator
           </h2>
           
           <div className="flex space-x-2">
@@ -186,7 +239,7 @@ export const XMLGeneratorTab: React.FC = () => {
               }`}
             >
               <MessageSquare className="w-4 h-4 mr-2" />
-              KI-Chat
+              KI
             </button>
             <button
               onClick={() => setActiveMode('form')}
@@ -219,18 +272,16 @@ export const XMLGeneratorTab: React.FC = () => {
             <>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
                 <Zap className="w-5 h-5 mr-2 text-purple-600" />
-                KI-Powered XML Generation
+                KI-generierte Streams
               </h3>
               <div className="flex-1 flex flex-col space-y-4">
                 <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Beschreibe deine StreamWorks-Konfiguration...
+                  placeholder="Beschreibe deine Streamworks-Konfiguration...
 
 Beispiele:
-• Erstelle einen Stream von SAP zu Salesforce für Kundendaten
-• Ich brauche eine tägliche Synchronisation zwischen HR-System und Active Directory  
-• Konfiguriere einen Event-basierten Stream für Bestellungen"
+• ..."
                   className="flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500"
                   rows={12}
                 />
@@ -259,7 +310,7 @@ Beispiele:
             <>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
                 <Settings className="w-5 h-5 mr-2 text-purple-600" />
-                StreamWorks Konfiguration
+                Streams mit Hilfe von Formular erstellen
               </h3>
               <div className="flex-1 space-y-4">
                 <div>
@@ -288,71 +339,25 @@ Beispiele:
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Quell-System
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.sourceSystem}
-                      onChange={(e) => setFormData(prev => ({ ...prev, sourceSystem: e.target.value }))}
-                      placeholder="z.B. SAP ERP"
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-800/80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Ziel-System
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.targetSystem}
-                      onChange={(e) => setFormData(prev => ({ ...prev, targetSystem: e.target.value }))}
-                      placeholder="z.B. Salesforce"
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-800/80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Datenformat
-                    </label>
-                    <select
-                      value={formData.dataFormat}
-                      onChange={(e) => setFormData(prev => ({ ...prev, dataFormat: e.target.value }))}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-800/80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    >
-                      <option value="JSON">JSON</option>
-                      <option value="XML">XML</option>
-                      <option value="CSV">CSV</option>
-                      <option value="XLSX">Excel</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Zeitplan
-                    </label>
-                    <select
-                      value={formData.schedule}
-                      onChange={(e) => setFormData(prev => ({ ...prev, schedule: e.target.value }))}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-800/80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    >
-                      <option value="realtime">Echtzeit</option>
-                      <option value="hourly">Stündlich</option>
-                      <option value="daily">Täglich</option>
-                      <option value="weekly">Wöchentlich</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Zeitplan
+                  </label>
+                  <select
+                    value={formData.schedule}
+                    onChange={(e) => setFormData(prev => ({ ...prev, schedule: e.target.value }))}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-800/80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="realtime">Echtzeit</option>
+                    <option value="hourly">Stündlich</option>
+                    <option value="daily">Täglich</option>
+                    <option value="weekly">Wöchentlich</option>
+                  </select>
                 </div>
 
                 <button
                   onClick={handleFormGeneration}
-                  disabled={!formData.streamName || !formData.sourceSystem || !formData.targetSystem || isGenerating}
+                  disabled={!formData.streamName || isGenerating}
                   className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium shadow-lg shadow-purple-500/25 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center"
                 >
                   {isGenerating ? (
@@ -459,8 +464,24 @@ Beispiele:
         </div>
       </div>
 
-      {/* Right Panel - XML Preview */}
-      <div className="w-1/2 flex flex-col bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm">
+        {/* Drag Handle */}
+        <div 
+          className={`w-1 bg-gray-300 dark:bg-gray-600 hover:bg-purple-500 dark:hover:bg-purple-400 cursor-col-resize flex-shrink-0 relative group ${
+            isDragging ? 'bg-purple-500 dark:bg-purple-400' : ''
+          }`}
+          onMouseDown={handleMouseDown}
+        >
+          {/* Drag indicator */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-8 bg-gray-400 dark:bg-gray-500 group-hover:bg-purple-500 dark:group-hover:bg-purple-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+            <div className="w-0.5 h-4 bg-white rounded-full"></div>
+          </div>
+        </div>
+
+        {/* Right Panel - XML Preview */}
+        <div 
+          className="flex flex-col bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm min-h-screen"
+          style={{ width: `${100 - leftPanelWidth}%` }}
+        >
         {/* Header */}
         <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
           <div className="flex items-center justify-between">
@@ -506,7 +527,7 @@ Beispiele:
                 className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 flex items-center text-sm"
               >
                 {editorTheme === 'vs-dark' ? '🌙' : '☀️'}
-                Theme
+                Editor Theme
               </button>
             </div>
           </div>
@@ -548,9 +569,9 @@ Beispiele:
         {/* XML Content */}
         <div className="flex-1 p-6">
           {generatedXML || !isEditorReadOnly ? (
-            <div className="h-full border border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden shadow-lg">
+            <div className="min-h-[600px] h-full border border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden shadow-lg">
               <Editor
-                height="100%"
+                height="600px"
                 language="xml"
                 theme={editorTheme}
                 value={generatedXML}
@@ -631,6 +652,7 @@ Beispiele:
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

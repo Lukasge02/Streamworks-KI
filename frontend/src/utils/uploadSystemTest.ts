@@ -168,7 +168,7 @@ export const validateFormatConsistency = async (): Promise<{
  */
 export const generateTestReport = (testResult: UploadSystemTestResult): string => {
   const report = [
-    '=== StreamWorks-KI Upload System Test Report ===',
+    '=== Streamworks-KI Upload System Test Report ===',
     '',
     `📊 Overall Status: ${testResult.success ? '✅ PASSED' : '❌ FAILED'}`,
     `📁 Total Formats: ${testResult.totalFormats}`,
