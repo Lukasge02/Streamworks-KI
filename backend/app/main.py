@@ -20,6 +20,7 @@ from app.api.v1.categories import router as categories_router
 from app.api.v1.files_enterprise import router as files_router
 from app.api.v1.simple_folders import router as folders_router
 from app.api.v1.xml import router as xml_router
+from app.api.v1.analytics import router as analytics_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -186,6 +187,13 @@ app.include_router(
     xml_router,
     prefix="/api/v1/xml",
     tags=["xml-generator"]
+)
+
+# 📊 Analytics API - Bachelor Thesis Metrics
+app.include_router(
+    analytics_router,
+    prefix="/api/v1",
+    tags=["analytics"]
 )
 
 
