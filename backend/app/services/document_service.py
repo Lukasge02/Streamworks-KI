@@ -13,6 +13,7 @@ import pypdf
 from io import BytesIO
 
 from app.core.postgres_config import settings
+from app.core.unified_storage import storage
 from app.core.database_postgres import get_db_session
 from app.models.postgres_models import Document, SystemMetric
 
@@ -44,6 +45,7 @@ class DocumentService:
     """PostgreSQL-optimized document conversion service"""
     
     def __init__(self):
+        self.storage = storage
         self.stats = ConversionStats()
         
     async def convert_pdf_to_markdown(self, file_path: str, file_content: bytes) -> ConversionResult:
@@ -202,12 +204,7 @@ class DocumentService:
     async def save_markdown(self, markdown_content: str, filename: str) -> str:
         """Save markdown using unified storage system"""
         try:
-            # Create converted documents directory
-            converted_dir = Path(settings.TRAINING_DATA_PATH) / "converted"
-            converted_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Generate output path
-            output_path = converted_dir / f"{Path(filename).stem}.md"
+            output_path = self.storage.get_converted_path(filename)
             
             async with aiofiles.open(output_path, 'w', encoding='utf-8') as f:
                 await f.write(markdown_content)

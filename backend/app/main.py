@@ -21,6 +21,7 @@ from app.api.v1.files_enterprise import router as files_router
 from app.api.v1.simple_folders import router as folders_router
 from app.api.v1.xml import router as xml_router
 from app.api.v1.analytics import router as analytics_router
+from app.api.v1.documents import router as documents_router
 from app.middleware.monitoring import (
     PerformanceMonitoringMiddleware,
     RequestLoggingMiddleware,
@@ -194,6 +195,13 @@ app.include_router(
     analytics_router,
     prefix="/api/v1",
     tags=["analytics"]
+)
+
+# 📄 Documents API - PostgreSQL Document Service
+app.include_router(
+    documents_router,
+    prefix="/api/v1",
+    tags=["documents"]
 )
 
 

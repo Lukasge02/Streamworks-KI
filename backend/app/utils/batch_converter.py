@@ -9,7 +9,7 @@ import aiofiles
 from datetime import datetime
 
 from app.services.document_service import document_service
-from app.core.postgres_config import settings
+from app.core.unified_storage import storage
 from app.core.database_postgres import get_db_session
 from app.models.postgres_models import SystemMetric
 from sqlalchemy import text
@@ -20,7 +20,7 @@ class PostgreSQLBatchConverter:
     """Batch conversion mit PostgreSQL Analytics"""
     
     def __init__(self, source_dir: str = None):
-        self.source_dir = Path(source_dir or settings.TRAINING_DATA_PATH)
+        self.source_dir = Path(source_dir or storage.paths["documents"])
         self.results: List[Dict[str, Any]] = []
         self.stats = {
             "total_found": 0,

@@ -1,181 +1,133 @@
 """
-Document Management API - Enterprise Implementation
-Handles document operations for the chat system
+Document API - PostgreSQL-optimiert
 """
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
+import logging
 
-from ...models.database import get_db
-from ...services.documents.document_service import document_service
+from app.services.document_service import document_service
+from app.utils.batch_converter import batch_converter
+from app.core.database_postgres import get_db
 
-router = APIRouter()
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/documents", tags=["documents"])
 
-# Pydantic Models
-class DocumentResponse(BaseModel):
-    """Response model for documents"""
-    id: str
-    filename: str
-    source_path: str
-    chunks: int
-    total_size: int
-    upload_date: str
-    status: str
-
-class DocumentsListResponse(BaseModel):
-    """Response model for document lists"""
-    documents: List[DocumentResponse]
-    total_count: int
-    total_chunks: int
-
-class DocumentDetailsResponse(BaseModel):
-    """Response model for document details"""
-    id: str
-    filename: str
-    chunks: int
-    preview: str
-    metadata: Dict[str, Any]
-
-class SearchResult(BaseModel):
-    """Search result model"""
-    content: str
-    metadata: Dict[str, Any]
-    score: float
-    source: str
-
-class SearchResponse(BaseModel):
-    """Response model for search results"""
-    query: str
-    results_count: int
-    results: List[SearchResult]
-
-# API Endpoints
-@router.get("/", response_model=DocumentsListResponse)
-async def get_documents(
-    limit: int = 50,
-    offset: int = 0,
+@router.post("/upload")
+async def upload_and_convert(
+    file: UploadFile = File(...),
+    category: str = "general",
     db: AsyncSession = Depends(get_db)
-):
-    """Get all documents with pagination"""
+) -> JSONResponse:
+    """Upload and convert document to markdown"""
+    
     try:
-        result = await document_service.get_documents(
-            limit=limit,
-            offset=offset,
-            db=db
-        )
-        return result
+        # Validation
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}")
-
-@router.get("/{document_id}", response_model=DocumentDetailsResponse)
-async def get_document_details(
-    document_id: str,
-    db: AsyncSession = Depends(get_db)
-):
-    """Get details for a specific document"""
-    try:
-        result = await document_service.get_document_details(
-            document_id=document_id,
-            db=db
-        )
-        if not result:
-            raise HTTPException(status_code=404, detail="Document not found")
+        allowed_extensions = {'.pdf', '.txt', '.md'}
+        file_ext = '.' + file.filename.split('.')[-1].lower()
         
-        return result
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file type. Allowed: {allowed_extensions}"
+            )
+        
+        # Read file content
+        file_content = await file.read()
+        
+        if len(file_content) == 0:
+            raise HTTPException(status_code=400, detail="File is empty")
+        
+        if len(file_content) > 50 * 1024 * 1024:  # 50MB limit
+            raise HTTPException(status_code=400, detail="File too large (max 50MB)")
+        
+        # Convert and save
+        result = await document_service.convert_and_save(file.filename, file_content)
+        
+        if not result.success:
+            raise HTTPException(
+                status_code=422, 
+                detail=f"Conversion failed: {result.error_message}"
+            )
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Document converted successfully",
+            "document_id": result.document_id,
+            "original_filename": file.filename,
+            "output_path": result.output_path,
+            "processing_time": result.processing_time,
+            "pages_processed": result.pages_processed,
+            "file_size": result.file_size
+        })
         
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get document details: {str(e)}")
+        logger.error(f"Upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.delete("/{document_id}")
-async def delete_document(
-    document_id: str,
+@router.post("/batch-convert")
+async def batch_convert_existing(
+    background_tasks: BackgroundTasks,
+    overwrite: bool = False,
     db: AsyncSession = Depends(get_db)
-):
-    """Delete a document and its chunks"""
+) -> JSONResponse:
+    """Batch convert all existing PDF and TXT files"""
+    
     try:
-        result = await document_service.delete_document(
-            document_id=document_id,
-            db=db
+        # Start conversion in background
+        background_tasks.add_task(
+            batch_converter.convert_all_documents, 
+            overwrite=overwrite
         )
-        if not result:
-            raise HTTPException(status_code=404, detail="Document not found")
         
-        return {"success": True, "message": "Document deleted successfully"}
+        return JSONResponse({
+            "success": True,
+            "message": f"Batch conversion started (overwrite={overwrite})",
+            "note": "Check logs for progress updates"
+        })
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
+        logger.error(f"Batch conversion failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/search", response_model=SearchResponse)
-async def search_documents(
-    query: str,
-    top_k: int = 5,
-    db: AsyncSession = Depends(get_db)
-):
-    """Search through documents using vector similarity"""
+@router.get("/conversion-stats")
+async def get_conversion_stats(db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    """Get document conversion statistics"""
+    
     try:
-        if not query:
-            raise HTTPException(status_code=400, detail="Query parameter is required")
+        stats = document_service.get_stats()
         
-        results = await document_service.search_documents(
-            query=query,
-            top_k=top_k,
-            db=db
-        )
+        return JSONResponse({
+            "service_stats": {
+                "total_files": stats.total_files,
+                "successful_conversions": stats.successful_conversions,
+                "failed_conversions": stats.failed_conversions,
+                "success_rate": f"{(stats.successful_conversions/max(stats.total_files,1)*100):.1f}%",
+                "total_processing_time": f"{stats.total_processing_time:.2f}s",
+                "average_processing_time": f"{stats.average_processing_time:.2f}s",
+                "total_size_mb": f"{stats.total_size_mb:.2f} MB"
+            }
+        })
         
-        return SearchResponse(
-            query=query,
-            results_count=len(results),
-            results=results
-        )
-        
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        logger.error(f"Stats retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/upload-docs")
-async def upload_documents(
-    files: List[UploadFile] = File(...),
-    db: AsyncSession = Depends(get_db)
-):
-    """Upload multiple documents for chat context"""
-    try:
-        if not files:
-            raise HTTPException(status_code=400, detail="No files provided")
-        
-        # Validate file types
-        allowed_extensions = {".txt", ".md", ".pdf", ".docx", ".json"}
-        for file in files:
-            if not any(file.filename.endswith(ext) for ext in allowed_extensions):
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"File type not allowed: {file.filename}"
-                )
-        
-        result = await document_service.upload_documents(
-            files=files,
-            db=db
-        )
-        
-        return result
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-
-@router.get("/stats")
-async def get_document_stats(db: AsyncSession = Depends(get_db)):
-    """Get statistics about documents"""
-    try:
-        stats = await document_service.get_stats(db=db)
-        return stats
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+@router.get("/health")
+async def document_service_health() -> JSONResponse:
+    """Health check for document service"""
+    
+    return JSONResponse({
+        "service": "document_service",
+        "status": "healthy",
+        "database": "postgresql",
+        "storage": "unified_storage",
+        "supported_formats": [".pdf", ".txt", ".md"],
+        "features": ["conversion", "batch_processing", "analytics_logging"]
+    })
