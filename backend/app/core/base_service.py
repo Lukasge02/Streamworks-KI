@@ -2,10 +2,10 @@
 Base Service Interface for StreamWorks-KI
 Provides consistent service lifecycle and interface patterns
 """
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
 import logging
+from abc import ABC, abstractmethod
 from enum import Enum
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

@@ -3,13 +3,14 @@ Optimized Mistral LLM Service - Performance-First Design
 Target: 15s → <3s Response Time durch Connection Pooling + Caching
 Backward compatible with existing MistralLLMService interface
 """
+import asyncio
 import logging
 import re
-import asyncio
 import time
 from typing import Dict, Any, Optional
-from app.core.settings import settings
+
 from app.core.prompts.manager import prompt_manager
+from app.core.settings import settings
 from app.services.ollama_connection_pool import ollama_pool
 from app.services.response_cache import response_cache
 

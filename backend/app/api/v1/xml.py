@@ -2,18 +2,19 @@
 StreamWorks XML Generator API
 Enterprise-level XML generation with LLM integration
 """
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
 import json
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+from xml.dom import minidom
 
-from app.core.settings import settings
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database_postgres import get_db
+from app.core.settings import settings
 from app.services.mistral_llm_service import mistral_llm_service
 from app.services.xml_template_service import xml_template_service
 

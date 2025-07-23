@@ -2,19 +2,20 @@
 Clean Document Service - PostgreSQL-optimiert
 Schnelle PDF/TXT zu Markdown Konvertierung mit Analytics-Integration
 """
-import logging
 import asyncio
-from pathlib import Path
-from typing import Optional, List
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from io import BytesIO
+from pathlib import Path
+from typing import Optional, List
+
 import aiofiles
 import pypdf
-from io import BytesIO
 
+from app.core.database_postgres import get_db_session
 from app.core.settings import settings
 from app.core.unified_storage import storage
-from app.core.database_postgres import get_db_session
 from app.models.postgres_models import Document, SystemMetric
 
 logger = logging.getLogger(__name__)

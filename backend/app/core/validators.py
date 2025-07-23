@@ -1,15 +1,16 @@
 """
 Comprehensive input validation and sanitization
 """
-import re
-import html
 import hashlib
+import html
 import mimetypes
-from typing import List, Optional, Any, Dict
+import re
 from pathlib import Path
-from pydantic import BaseModel, validator, Field
-from fastapi import HTTPException, status, UploadFile
+from typing import Any, Dict, List, Optional
+
 import magic
+from fastapi import HTTPException, UploadFile, status
+from pydantic import BaseModel, Field, validator
 
 
 class SecurityValidator:

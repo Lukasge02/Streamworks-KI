@@ -1,21 +1,22 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
-from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from typing import List, Optional
-import os
-import aiofiles
-import uuid
 import hashlib
+import logging
+import os
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-import logging
+from typing import List, Optional
 
-from app.core.settings import settings
-from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse, ManualSourceCategory
-from app.services.training_service import TrainingService
-from app.services.multi_format_processor import multi_format_processor
+import aiofiles
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database_postgres import get_db
+from app.core.settings import settings
+from app.models.schemas import ManualSourceCategory, TrainingFileCreate, TrainingFileResponse, TrainingStatusResponse
+from app.services.multi_format_processor import multi_format_processor
+from app.services.training_service import TrainingService
 
 logger = logging.getLogger(__name__)
 

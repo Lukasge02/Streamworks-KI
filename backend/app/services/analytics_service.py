@@ -2,11 +2,12 @@
 Analytics Service für Bachelor-Arbeit Performance Evaluation
 """
 import asyncio
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Any
-from sqlalchemy import text
 import json
 import logging
+from datetime import datetime, timezone, timedelta
+from typing import Dict, List, Optional, Any
+
+from sqlalchemy import text
 
 from app.core.database_postgres import get_db_session
 from app.models.postgres_models import ChatSession, Document, DocumentChunk, SystemMetric

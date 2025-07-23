@@ -3,21 +3,21 @@
 Consolidierte, fehlerfreie Dateiverwaltung für training_files_v2
 ZERO TOLERANCE für Code-Chaos - Nur das Wichtigste!
 """
+import hashlib
 import logging
 import os
-import uuid
-import hashlib
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
 from fastapi import UploadFile, HTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..services.multi_format_processor import multi_format_processor
-from ..services.enterprise_chromadb_indexer import enterprise_indexer
+from app.services.enterprise_chromadb_indexer import enterprise_indexer
+from app.services.multi_format_processor import multi_format_processor
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ class EnterpriseFileManager:
             md_path = None
             if file_extension.lower() == '.pdf':
                 try:
-                    from ..services.production_document_processor import production_document_processor
+                    from app.services.production_document_processor import production_document_processor
                     
                     # PRODUCTION-GRADE PDF zu Markdown Konvertierung
                     conversion_result = await production_document_processor.process_document(
@@ -140,7 +140,7 @@ class EnterpriseFileManager:
                     logger.warning(f"⚠️ Enterprise PDF-Konvertierung fehlgeschlagen, Fallback: {e}")
                     try:
                         # Fallback zu einfacher Konvertierung
-                        from ..services.multi_format_processor import multi_format_processor
+                        from app.services.multi_format_processor import multi_format_processor
                         simple_result = await multi_format_processor.process_file(str(storage_file_path), file_content)
                         
                         if simple_result.success and simple_result.documents:
@@ -186,7 +186,7 @@ class EnterpriseFileManager:
             final_status = "ready_for_indexing"
             
             # Queue for background indexing - NON-BLOCKING
-            from ..services.background_indexer import background_indexer
+            from app.services.background_indexer import background_indexer
             try:
                 # Use asyncio.create_task to make it truly non-blocking
                 import asyncio

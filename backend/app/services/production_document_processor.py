@@ -13,19 +13,20 @@ import io
 import logging
 import mimetypes
 import tempfile
+import uuid
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, Any
-import uuid
 
-# Document processing imports
 from langchain.schema import Document
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
     MarkdownHeaderTextSplitter,
     PythonCodeTextSplitter
 )
+
+from app.services.multi_format_processor import SupportedFormat, DocumentCategory
 
 # Enhanced document loaders
 try:
@@ -53,8 +54,6 @@ try:
 except ImportError as e:
     logger.warning(f"Advanced processing libraries not available: {e}")
     ADVANCED_PROCESSING = False
-
-from app.services.multi_format_processor import SupportedFormat, DocumentCategory
 
 logger = logging.getLogger(__name__)
 

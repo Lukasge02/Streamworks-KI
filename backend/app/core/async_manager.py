@@ -3,18 +3,18 @@ Enterprise Async Processing Manager for StreamWorks-KI
 Provides robust async task management with proper resource cleanup and error handling
 """
 import asyncio
-import logging
-from typing import Optional, Dict, Any, List, Callable, Awaitable
-from datetime import datetime, timedelta, timezone
-from dataclasses import dataclass, field
-from enum import Enum
-import weakref
 import gc
-import traceback
-from concurrent.futures import ThreadPoolExecutor
-import threading
+import logging
 import signal
 import sys
+import threading
+import traceback
+import weakref
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

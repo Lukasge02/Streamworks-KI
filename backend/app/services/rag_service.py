@@ -2,22 +2,22 @@
 StreamWorks RAG Service - Unified Production System
 Enterprise-grade RAG implementation with Mistral 7B and E5 embeddings
 """
-import logging
 import asyncio
+import json
+import logging
 import re
 import time
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional, Tuple
 
+import aiohttp
 import chromadb
 from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
 from chromadb.utils import embedding_functions
-import aiohttp
-import json
+from sentence_transformers import SentenceTransformer
 
-from ..core.postgres_config import settings
+from app.core.postgres_config import settings
 
 logger = logging.getLogger(__name__)
 

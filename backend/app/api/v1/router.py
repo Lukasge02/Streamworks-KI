@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import training, qa_api
+from app.api.v1 import qa_api, training
 
 api_router = APIRouter()
 

@@ -2,12 +2,13 @@
 🎯 SKI Prompt Manager
 Zentrale Verwaltung aller SKI-Prompts und Templates
 """
-import os
-import yaml
 import logging
-from pathlib import Path
-from typing import Dict, Any, Optional, List
+import os
 from functools import lru_cache
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 

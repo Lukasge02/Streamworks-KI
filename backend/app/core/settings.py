@@ -2,12 +2,13 @@
 Unified Configuration Management for StreamWorks-KI
 Consolidates all configuration into a single, environment-aware settings system
 """
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, validator
-from typing import List, Optional
-from pathlib import Path
 import os
 from enum import Enum
+from pathlib import Path
+from typing import List, Optional
+
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Environment(str, Enum):

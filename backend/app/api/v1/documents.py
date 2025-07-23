@@ -1,15 +1,16 @@
 """
 Document API - PostgreSQL-optimiert
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
+import logging
+from typing import List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
-import logging
 
+from app.core.database_postgres import get_db
 from app.services.document_service import document_service
 from app.utils.batch_converter import batch_converter
-from app.core.database_postgres import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])

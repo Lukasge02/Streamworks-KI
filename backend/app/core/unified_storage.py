@@ -4,6 +4,7 @@ Zentrale Verwaltung aller Dateipfade und Speicherstrukturen
 """
 from pathlib import Path
 from typing import Optional
+
 from app.core.settings import settings
 
 class UnifiedStorage:

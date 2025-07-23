@@ -3,16 +3,17 @@
 Clean, consolidated API replacing the chaotic files.py
 ZERO TOLERANCE für Code-Chaos!
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from typing import List, Optional
-from pydantic import BaseModel
 import logging
+from typing import List, Optional
 
-from ...models.database import get_db
-from ...services.enterprise_file_manager import enterprise_file_manager
-from ...services.enterprise_chromadb_indexer import enterprise_indexer
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.database import get_db
+from app.services.enterprise_chromadb_indexer import enterprise_indexer
+from app.services.enterprise_file_manager import enterprise_file_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -7,19 +7,21 @@ Author: Senior AI Engineer
 Version: 1.0.0 (Enterprise Production)
 """
 
+import hashlib
 import logging
 import re
-import hashlib
-from typing import List, Dict, Any, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
-# import spacy  # Optional for advanced NLP
+from typing import List, Dict, Any, Tuple, Optional
+
+from langchain.schema import Document
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
     MarkdownHeaderTextSplitter
     # SpacyTextSplitter  # Optional
 )
-from langchain.schema import Document
+
+# import spacy  # Optional for advanced NLP
 
 logger = logging.getLogger(__name__)
 

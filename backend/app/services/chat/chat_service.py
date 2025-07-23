@@ -4,16 +4,16 @@ Handles all chat-related business logic with proper separation of concerns
 """
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from ...infrastructure.llm.mistral_client import MistralClient
-from ...infrastructure.vectordb.chromadb_client import ChromaDBClient
-from ..qa.rag_service import RAGService
+from app.infrastructure.llm.mistral_client import MistralClient
+from app.infrastructure.vectordb.chromadb_client import ChromaDBClient
+from app.services.qa.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
 

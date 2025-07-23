@@ -2,10 +2,10 @@
 StreamWorks XML Template Management Service
 Enterprise-level template loading and management
 """
+import logging
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import xml.etree.ElementTree as ET
-import logging
 
 logger = logging.getLogger(__name__)
 

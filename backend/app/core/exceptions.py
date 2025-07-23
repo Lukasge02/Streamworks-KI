@@ -2,10 +2,11 @@
 Standardized Exception Handling for StreamWorks-KI
 Provides consistent error handling across all services
 """
-from typing import Any, Dict, Optional, Union
-from fastapi import HTTPException, status
-from enum import Enum
 import logging
+from enum import Enum
+from typing import Any, Dict, Optional, Union
+
+from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
 

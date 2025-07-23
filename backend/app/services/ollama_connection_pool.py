@@ -3,12 +3,14 @@ Ollama Connection Pool für dramatische Performance-Verbesserung
 Reduziert Connection Overhead von ~5-10s auf <0.1s pro Request
 """
 import asyncio
-import aiohttp
 import logging
 import time
-from typing import Dict, Any, Optional, List
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import Dict, Any, Optional, List
+
+import aiohttp
+
 from app.core.settings import settings
 
 logger = logging.getLogger(__name__)

@@ -1,15 +1,17 @@
 """
 Production logging configuration with structured logging
 """
-import sys
 import json
 import logging
 import logging.handlers
+import sys
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, Optional
+
 import structlog
 from pythonjsonlogger import jsonlogger
+
 from app.core.settings import settings
 
 

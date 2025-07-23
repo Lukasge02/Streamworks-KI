@@ -2,12 +2,12 @@
 Dependency Injection Container for StreamWorks-KI
 Manages service lifecycle and dependencies
 """
-from typing import Dict, Type, TypeVar, Optional, Any, Callable
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
-from app.core.base_service import BaseService, ServiceStatus, ServiceInitializationError
+from app.core.base_service import BaseService, ServiceInitializationError, ServiceStatus
 
 logger = logging.getLogger(__name__)
 

@@ -2,28 +2,27 @@
 Multi-Format Document Processor for StreamWorks-KI RAG System
 Supports 20+ file formats with specialized chunking strategies
 """
-import re
-import logging
-from typing import List, Dict, Any, Optional, Tuple, Union
-from enum import Enum
-from dataclasses import dataclass, field
-from pathlib import Path
-import json
-import yaml
 import csv
-from io import StringIO
+import json
+import logging
+import re
 import xml.etree.ElementTree as ET
+import yaml
+from dataclasses import dataclass, field
+from enum import Enum
+from io import StringIO
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Tuple, Union
 
-# Langchain Document Loaders
-from langchain_community.document_loaders import (
-    TextLoader, CSVLoader, JSONLoader, 
-    PyPDFLoader, UnstructuredHTMLLoader, UnstructuredXMLLoader
-)
 from langchain.schema import Document
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter, 
     PythonCodeTextSplitter,
     MarkdownHeaderTextSplitter
+)
+from langchain_community.document_loaders import (
+    TextLoader, CSVLoader, JSONLoader, 
+    PyPDFLoader, UnstructuredHTMLLoader, UnstructuredXMLLoader
 )
 
 logger = logging.getLogger(__name__)

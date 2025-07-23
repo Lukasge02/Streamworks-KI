@@ -2,13 +2,14 @@
 SIMPLE FOLDERS API - WORKS 100%
 No complex services, direct database queries
 """
-from fastapi import APIRouter, HTTPException, Depends, Form
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
 import uuid
 from datetime import datetime, timezone
 
-from ...models.database import get_db
+from fastapi import APIRouter, Depends, Form, HTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.database import get_db
 
 router = APIRouter()
 

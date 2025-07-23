@@ -1,10 +1,11 @@
 """
 XML utility functions for StreamWorks-KI
 """
+import logging
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from typing import Dict, Any, Optional
-import logging
+
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

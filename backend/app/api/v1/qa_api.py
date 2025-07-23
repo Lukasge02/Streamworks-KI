@@ -2,10 +2,11 @@
 🎯 PERFECT Q&A API - PRODUCTION EXCELLENCE
 Architected for 10/10 Performance and Reliability
 """
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 import logging
 from typing import List
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from app.services.rag_service import rag_service
 

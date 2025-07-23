@@ -8,9 +8,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
+from fastapi import UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from fastapi import UploadFile, HTTPException
 
 logger = logging.getLogger(__name__)
 

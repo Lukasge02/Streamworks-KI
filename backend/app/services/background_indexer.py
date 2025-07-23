@@ -2,13 +2,14 @@
 🚀 BACKGROUND INDEXER - ENTERPRISE PERFORMANCE
 Asynchrone Indexierung für blitzschnelle Uploads
 """
-import logging
 import asyncio
+import logging
 from typing import Dict, Any
 
-from ..models.database import get_db_session
-from ..services.enterprise_chromadb_indexer import enterprise_indexer
 from sqlalchemy import text
+
+from app.models.database import get_db_session
+from app.services.enterprise_chromadb_indexer import enterprise_indexer
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class BackgroundIndexer:
             db = await get_db_session()
             
             # Use ultra simple indexer - SCHNELL UND FUNKTIONIERT
-            from ..services.document_indexer import document_indexer
+            from app.services.document_indexer import document_indexer
             index_result = await document_indexer.index_file_ultra_simple(file_id, db)
             
             logger.info(f"✅ Background indexing complete: {filename} ({index_result['chunk_count']} chunks)")

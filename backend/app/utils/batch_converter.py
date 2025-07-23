@@ -3,16 +3,17 @@ PostgreSQL-optimierter Batch Converter für bestehende Dateien
 """
 import asyncio
 import logging
-from pathlib import Path
-from typing import List, Dict, Any
-import aiofiles
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
 
-from app.services.document_service import document_service
-from app.core.unified_storage import storage
-from app.core.database_postgres import get_db_session
-from app.models.postgres_models import SystemMetric
+import aiofiles
 from sqlalchemy import text
+
+from app.core.database_postgres import get_db_session
+from app.core.unified_storage import storage
+from app.models.postgres_models import SystemMetric
+from app.services.document_service import document_service
 
 logger = logging.getLogger(__name__)
 

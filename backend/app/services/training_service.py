@@ -3,27 +3,28 @@ Training Service - Consolidated Version
 Manages training data files with clean architecture and all legacy compatibility
 Unified from training_service.py (v1) and training_service_v2.py (v2)
 """
+import asyncio
+import logging
 import os
 import uuid
-import aiofiles
-import asyncio
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, desc
-import logging
 from pathlib import Path
+from typing import List, Optional, Dict, Any
 
-from app.core.base_service import BaseService, ServiceOperationError, ServiceConfigurationError
+import aiofiles
+from langchain.schema import Document
+from sqlalchemy import select, update, desc
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.async_manager import task_manager, managed_task
+from app.core.base_service import BaseService, ServiceOperationError, ServiceConfigurationError
 from app.core.security import SecurityError
+from app.core.settings import settings
 from app.models.database import TrainingFile
 from app.models.schemas import TrainingFileResponse, CategoryStats
-from app.core.settings import settings
-from app.services.rag_service import rag_service
 from app.services.multi_format_processor import multi_format_processor
 from app.services.production_document_processor import production_document_processor
-from langchain.schema import Document
+from app.services.rag_service import rag_service
 
 logger = logging.getLogger(__name__)
 

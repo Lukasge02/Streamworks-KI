@@ -3,16 +3,16 @@
 Efficient, fast, and reliable document indexing service
 """
 import logging
-from typing import Dict, Any
 from pathlib import Path
+from typing import Dict, Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
 import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
-from ..services.multi_format_processor import multi_format_processor
+from app.services.multi_format_processor import multi_format_processor
 
 logger = logging.getLogger(__name__)
 

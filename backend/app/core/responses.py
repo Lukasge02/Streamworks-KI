@@ -2,11 +2,12 @@
 Standardized API Response System for StreamWorks-KI
 Provides consistent response formats across all endpoints
 """
-from typing import Any, Dict, Optional, List, Union, Generic, TypeVar
-from pydantic import BaseModel, Field
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
-import uuid
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
+
+from pydantic import BaseModel, Field
 
 T = TypeVar('T')
 

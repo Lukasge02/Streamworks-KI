@@ -2,16 +2,17 @@
 Analytics API - Bachelor-Arbeit Performance Analytics
 PostgreSQL-optimiert mit wissenschaftlichen Auswertungen
 """
-from fastapi import APIRouter, HTTPException, Depends, Query, Response
-from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text, func
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta, timezone
-import json
 import csv
 import io
+import json
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy import func, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database_postgres import get_db
 from app.models.postgres_models import SystemMetric, Document

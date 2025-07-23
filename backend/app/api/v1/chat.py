@@ -2,14 +2,15 @@
 Chat API Endpoints - Enterprise Implementation
 Clean separation between API layer and business logic
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from ...services.chat.chat_service import chat_service
-from ...models.database import get_db
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.database import get_db
+from app.services.chat.chat_service import chat_service
 
 router = APIRouter()
 
