@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Add the app directory to the Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.models.database import DatabaseManager, TrainingFile
 from app.models.schemas import SourceType, DocumentType
