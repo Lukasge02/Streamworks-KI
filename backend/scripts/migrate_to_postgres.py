@@ -15,7 +15,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from app.core.database_postgres import init_database, get_db_session
 from app.models.postgres_models import Document, DocumentChunk, ChatSession
-from app.core.postgres_config import settings
+from app.core.settings import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
