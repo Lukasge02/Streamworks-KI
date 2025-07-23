@@ -2,7 +2,6 @@
 from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from datetime import datetime, timezone
 from app.core.postgres_config import settings
@@ -10,7 +9,6 @@ import logging
 import asyncio
 import time
 from contextlib import asynccontextmanager
-from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 

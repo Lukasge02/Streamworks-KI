@@ -36,4 +36,4 @@ sleep 2
 
 # Start the Enterprise backend
 echo "✅ Starting Enterprise uvicorn server with intelligent chunking..."
-python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python3 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000

@@ -15,7 +15,7 @@ from app.core.postgres_config import settings
 from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse, ManualSourceCategory
 from app.services.training_service import TrainingService
 from app.services.multi_format_processor import multi_format_processor
-from app.models.database import get_db
+from app.core.database_postgres import get_db
 
 logger = logging.getLogger(__name__)
 

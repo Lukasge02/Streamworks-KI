@@ -12,10 +12,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '127.0.0.1',  // Nur auf localhost hören
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',  // Explizit 127.0.0.1 verwenden
         changeOrigin: true,
         secure: false,
       },
