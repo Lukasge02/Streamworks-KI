@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
-from app.core.postgres_config import settings
+from app.core.settings import settings
 from app.core.async_manager import initialize_async_manager, shutdown_async_manager
 # from app.services.rag_service import rag_service  # PROBLEMATIC
 # from app.services.mistral_rag_service import mistral_rag_service  # PROBLEMATIC  

@@ -12,7 +12,7 @@ import json
 import re
 from datetime import datetime
 
-from app.core.postgres_config import settings
+from app.core.settings import settings
 from app.core.database_postgres import get_db
 from app.services.mistral_llm_service import mistral_llm_service
 from app.services.xml_template_service import xml_template_service

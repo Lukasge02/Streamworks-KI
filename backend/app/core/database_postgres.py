@@ -8,7 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from app.core.postgres_config import settings
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 

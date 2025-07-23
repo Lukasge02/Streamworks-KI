@@ -19,7 +19,7 @@ from app.core.async_manager import task_manager, managed_task
 from app.core.security import SecurityError
 from app.models.database import TrainingFile
 from app.models.schemas import TrainingFileResponse, CategoryStats
-from app.core.postgres_config import settings
+from app.core.settings import settings
 from app.services.rag_service import rag_service
 from app.services.multi_format_processor import multi_format_processor
 from app.services.production_document_processor import production_document_processor

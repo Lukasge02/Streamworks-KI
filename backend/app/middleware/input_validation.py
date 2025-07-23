@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.base import RequestResponseEndpoint
 from app.core.validators import SecurityValidator, ContentSecurityValidator
 from app.core.logging_config import security_logger, get_logger
-from app.core.production_config import production_settings
+from app.core.settings import settings
 
 logger = get_logger(__name__)
 

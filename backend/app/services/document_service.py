@@ -12,7 +12,7 @@ import aiofiles
 import pypdf
 from io import BytesIO
 
-from app.core.postgres_config import settings
+from app.core.settings import settings
 from app.core.unified_storage import storage
 from app.core.database_postgres import get_db_session
 from app.models.postgres_models import Document, SystemMetric

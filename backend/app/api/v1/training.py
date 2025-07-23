@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import logging
 
-from app.core.postgres_config import settings
+from app.core.settings import settings
 from app.models.schemas import TrainingFileResponse, TrainingFileCreate, TrainingStatusResponse, ManualSourceCategory
 from app.services.training_service import TrainingService
 from app.services.multi_format_processor import multi_format_processor

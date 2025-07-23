@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from datetime import datetime, timezone
-from app.core.postgres_config import settings
+from app.core.settings import settings
 import logging
 import asyncio
 import time

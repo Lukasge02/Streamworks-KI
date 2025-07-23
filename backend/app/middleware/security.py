@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import JSONResponse
 import redis
-from app.core.production_config import production_settings, SecurityConfig
+from app.core.settings import settings, SecurityConfig
 
 logger = logging.getLogger(__name__)
 

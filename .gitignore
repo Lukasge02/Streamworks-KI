@@ -82,6 +82,7 @@ celerybeat-schedule
 
 # Environments
 .env
+.env.*
 .venv
 env/
 venv/
@@ -208,14 +209,14 @@ temp/
 logs
 *.log
 
-# IDE
+# IDE specific folders
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# OS specific files
 .DS_Store
 .DS_Store?
 ._*
@@ -233,11 +234,13 @@ models/
 data/training/
 data/temp/
 
-# HuggingFace Cache
+# Model cache folders
 .cache/
 transformers_cache/
+sentence_transformers_cache/
+huggingface_cache/
 
-# Database
+# Database files
 *.db
 *.sqlite
 *.sqlite3

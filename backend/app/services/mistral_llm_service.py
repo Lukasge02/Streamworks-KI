@@ -8,7 +8,7 @@ import re
 import asyncio
 import time
 from typing import Dict, Any, Optional
-from app.core.postgres_config import settings
+from app.core.settings import settings
 from app.core.prompts.manager import prompt_manager
 from app.services.ollama_connection_pool import ollama_pool
 from app.services.response_cache import response_cache

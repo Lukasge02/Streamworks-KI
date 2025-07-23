@@ -15,7 +15,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 
-from app.core.config import settings
+from app.core.settings import settings
 from app.services.error_handler import error_handler, ErrorType
 # from app.services.citation_service import citation_service  # REMOVED
 from app.models.schemas import Citation, CitationSummary

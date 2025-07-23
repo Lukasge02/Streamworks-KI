@@ -4,7 +4,7 @@ Zentrale Verwaltung aller Dateipfade und Speicherstrukturen
 """
 from pathlib import Path
 from typing import Optional
-from app.core.postgres_config import settings
+from app.core.settings import settings
 
 class UnifiedStorage:
     """Zentrale Storage-Verwaltung für alle Dateitypen"""

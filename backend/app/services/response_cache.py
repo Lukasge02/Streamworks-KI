@@ -10,7 +10,7 @@ import time
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
-from app.core.postgres_config import settings
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 

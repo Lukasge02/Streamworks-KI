@@ -9,7 +9,7 @@ import time
 from typing import Dict, Any, Optional, List
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from app.core.postgres_config import settings
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 

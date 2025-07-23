@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 import structlog
 from pythonjsonlogger import jsonlogger
-from app.core.production_config import production_settings
+from app.core.settings import settings
 
 
 class StructuredFormatter(jsonlogger.JsonFormatter):
