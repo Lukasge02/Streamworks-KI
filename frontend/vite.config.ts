@@ -1,25 +1,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import { resolve } from 'path'
 
-// https://vitejs.dev/config/
+// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': resolve(import.meta.dirname, './src'),
+      '@/app': resolve(import.meta.dirname, './src/app'),
+      '@/shared': resolve(import.meta.dirname, './src/shared'),
+      '@/features': resolve(import.meta.dirname, './src/features'),
+      '@/assets': resolve(import.meta.dirname, './src/assets'),
     },
   },
   server: {
     port: 3000,
-    host: '127.0.0.1',  // Nur auf localhost hören
-    open: true,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8000',  // Explizit 127.0.0.1 verwenden
-        changeOrigin: true,
-        secure: false,
-      },
-    },
+    host: true,
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    target: 'es2022',
   },
 })

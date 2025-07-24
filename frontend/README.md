@@ -1,50 +1,69 @@
-# StreamWorks-KI Frontend
+# React + TypeScript + Vite
 
-Intelligente Web-Anwendung für StreamWorks Workload-Automatisierung.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 🚀 Quick Start
+Currently, two official plugins are available:
 
-```bash
-# Dependencies installieren
-npm install
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-# Development Server starten
-npm run dev
+## Expanding the ESLint configuration
 
-# Build für Production
-npm run build
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default tseslint.config([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      ...tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      ...tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      ...tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-## 🎯 Features
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-- **Intelligenter Chat**: Q&A mit StreamWorks-KI
-- **Stream Generator**: Automatische XML-Stream-Erstellung
-- **Dokumentation**: Integrierte Hilfe und API-Referenz
-- **File Upload**: Drag & Drop für Batch-Dateien
-- **Responsive Design**: Mobile-first mit Tailwind CSS
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-## 🛠️ Tech Stack
-
-- React 18 + TypeScript
-- Vite (Build Tool)
-- Tailwind CSS (Styling)
-- Lucide React (Icons)
-- Zustand (State Management)
-- React Hook Form (Formulare)
-
-## 📁 Projektstruktur
-
+export default tseslint.config([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-src/
-├── components/     # React Components
-├── pages/         # Seiten-Komponenten
-├── hooks/         # Custom Hooks
-├── utils/         # Utility Functions
-├── types/         # TypeScript Types
-├── services/      # API Services
-└── assets/        # Statische Assets
-```
-
-## 🔗 Integration
-
-Backend API läuft auf `http://localhost:8000`
