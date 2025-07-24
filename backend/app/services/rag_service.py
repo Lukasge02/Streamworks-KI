@@ -17,7 +17,7 @@ from chromadb.config import Settings
 from chromadb.utils import embedding_functions
 from sentence_transformers import SentenceTransformer
 
-from app.core.postgres_config import settings
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 

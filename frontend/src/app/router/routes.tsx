@@ -8,6 +8,7 @@ import { Analytics } from '@/features/analytics/Analytics';
 import { Monitoring } from '@/features/monitoring/Monitoring';
 import { Training } from '@/features/training/Training';
 import { Settings } from '@/features/settings/Settings';
+import { EnterpriseComponentsDemo } from '@/components/Demo/EnterpriseComponentsDemo';
 
 export const router = createBrowserRouter([
   {
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <Settings />,
+      },
+      {
+        path: 'demo',
+        element: <EnterpriseComponentsDemo />,
       },
     ],
   },

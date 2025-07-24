@@ -428,4 +428,45 @@ export function deepClone<T>(obj: T): T {
   return obj;
 }
 
-// All utility functions are already exported above with their declarations
+/**
+ * Copies text to clipboard
+ * @param text - Text to copy
+ * @returns Promise<boolean> - Success status
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  }
+}
+
+/**
+ * Downloads a blob as a file
+ * @param blob - Blob to download
+ * @param filename - Name of the file
+ */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+// Re-export validation utilities
+export * from '../../utils/validation';

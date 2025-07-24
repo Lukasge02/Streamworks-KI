@@ -222,134 +222,289 @@ Requirements:
 ## 🎨 **PHASE 3: DESIGN SYSTEM**
 
 ### **Prompt 3.1: Base UI Components**
-```
-Create a comprehensive design system with reusable UI components for StreamWorks-KI:
+Add essential enterprise-grade components to enhance the existing StreamWorks-KI frontend:
 
-1. Create `src/shared/components/ui/Button.tsx`:
-   - Variants: primary, secondary, outline, ghost, danger
-   - Sizes: sm, md, lg, xl
-   - States: loading, disabled
-   - Icon support (left/right positioning)
-   - Framer Motion animations
-   - Full accessibility (ARIA labels, keyboard navigation)
+CONTEXT:
+- Current UI is working and should be preserved
+- Need to add professional components for advanced features
+- Focus on components that enable new functionality
+- Use existing Tailwind/Framer Motion setup
 
-2. Create `src/shared/components/ui/Input.tsx`:
-   - Types: text, password, email, number, search
-   - Validation states: error, success, warning
-   - Icon support (prefix/suffix)
-   - Helper text and error messages
-   - Controlled and uncontrolled variants
+TASKS:
 
-3. Create `src/shared/components/ui/Card.tsx`:
-   - Glassmorphism design with backdrop blur
-   - Header, body, footer sections
-   - Hover effects and animations
-   - Loading skeleton variants
-   - Interactive and static variants
+1. **CREATE CODE EDITOR COMPONENT**
 
-4. Create `src/shared/components/ui/Modal.tsx`:
-   - Full accessibility with focus management
-   - Backdrop blur and overlay
-   - Size variants (sm, md, lg, xl, full)
-   - Animation enter/exit with Framer Motion
-   - Portal rendering
-   - Escape key and click outside handling
+Create `src/shared/components/ui/CodeEditor.tsx`:
+- Monaco Editor integration for XML/JSON editing
+- Syntax highlighting with StreamWorks-specific keywords
+- Error underlining and validation tooltips
+- Auto-completion and code snippets
+- Theme switching (dark/light mode support)
+- Full-screen editing mode with toggle
+- Find and replace functionality
+- Minimap for large files
+- Proper TypeScript interfaces for props
 
-5. Create `src/shared/components/ui/Toast.tsx`:
-   - Types: success, error, warning, info
-   - Auto-dismiss functionality
-   - Action buttons support
-   - Queue management
-   - Position variants
-   - Animation stack effects
+Props interface:
+- language: 'xml' | 'json' | 'javascript' | 'typescript'
+- value: string
+- onChange: (value: string) => void
+- height?: string
+- theme?: 'vs-dark' | 'vs-light'
+- readOnly?: boolean
+- showMinimap?: boolean
 
-6. Create additional components:
-   - Badge (status indicators, counts)
-   - Avatar (user images, initials, online status)
-   - Spinner (loading indicators, sizes)
-   - Progress (linear and circular)
-   - Dropdown (with search, multi-select)
-   - Tabs (horizontal/vertical, controlled)
+2. **CREATE ADVANCED DATA TABLE**
 
-Requirements:
-- Full TypeScript props interfaces
-- Tailwind CSS for styling
-- Framer Motion for animations
-- Accessibility best practices (WCAG 2.1)
+Create `src/shared/components/ui/DataTable.tsx`:
+- Sortable columns with visual indicators
+- Filterable columns with search functionality
+- Pagination with configurable page sizes
+- Row selection (single and multiple)
+- Virtual scrolling for large datasets (1000+ rows)
+- Expandable rows for detailed information
+- Custom cell renderers for different data types
+- Export functionality (CSV, Excel, JSON)
+- Loading states and empty state handling
+- Mobile-responsive with horizontal scroll
+
+Props interface:
+- data: any[]
+- columns: Column[]
+- sortable?: boolean
+- filterable?: boolean
+- selectable?: boolean | 'single' | 'multiple'
+- exportable?: boolean
+- pagination?: boolean
+- pageSize?: number
+- onRowSelect?: (selectedRows: any[]) => void
+
+3. **CREATE CHART COMPONENTS**
+
+Create `src/shared/components/ui/Chart.tsx`:
+- Recharts integration wrapper
+- Multiple chart types: LineChart, BarChart, PieChart, AreaChart
+- Interactive tooltips and legends
+- Zoom and pan capabilities for time-series data
+- Real-time data update support
+- Export chart as PNG/SVG/PDF
+- Responsive design with breakpoint handling
+- Custom color schemes matching app theme
+- Animation support for data transitions
+
+Create specific chart components:
+- `LineChart.tsx` - for analytics trends
+- `BarChart.tsx` - for categorical data
+- `PieChart.tsx` - for distribution data
+- `AreaChart.tsx` - for cumulative metrics
+
+Props interfaces:
+- data: ChartData[]
+- xKey: string
+- yKey: string | string[]
+- title?: string
+- colors?: string[]
+- animated?: boolean
+- exportable?: boolean
+
+4. **CREATE ADVANCED MODAL SYSTEM**
+
+Create `src/shared/components/ui/Modal.tsx`:
+- Full accessibility with focus management
+- Backdrop blur with glassmorphism effect
+- Size variants: sm, md, lg, xl, fullscreen
+- Smooth enter/exit animations with Framer Motion
+- Portal rendering for proper z-index handling
+- Escape key and click-outside-to-close
+- Nested modal support
+- Custom header, body, footer sections
+- Mobile-responsive with proper touch handling
+
+Props interface:
+- isOpen: boolean
+- onClose: () => void
+- title?: string
+- size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+- showCloseButton?: boolean
+- closeOnBackdrop?: boolean
+- closeOnEscape?: boolean
+
+5. **CREATE PROFESSIONAL TOAST SYSTEM**
+
+Create `src/shared/components/ui/Toast.tsx` and `ToastProvider.tsx`:
+- Toast types: success, error, warning, info, loading
+- Auto-dismiss with configurable timing
+- Action buttons support (Undo, Retry, etc.)
+- Queue management for multiple toasts
+- Position variants (top-right, bottom-left, etc.)
+- Stack animation effects
+- Custom icons and styling
+- Accessibility announcements
+
+Hook interface:
+- useToast() returning: toast.success(), toast.error(), toast.info(), toast.warning()
+
+REQUIREMENTS:
+- All components fully typed with TypeScript
+- Consistent with existing Tailwind theme
+- Framer Motion animations matching current style
+- Proper error boundaries and loading states
+- Mobile-responsive and touch-friendly
+- WCAG 2.1 accessibility compliance
 - Storybook-ready component structure
-- Consistent design tokens
-```
+- Easy integration with existing components
+
+INTEGRATION POINTS:
+- CodeEditor: Will be used in XML Generator module
+- DataTable: Will enhance Document Management
+- Charts: Will power Analytics Dashboard
+- Modal: Will improve all dialogs and forms
+- Toast: Will provide better user feedback
+
+Test each component with sample data and ensure they work seamlessly with the existing UI.
 
 ### **Prompt 3.2: Advanced UI Components**
-```
-Create advanced UI components for complex interactions in StreamWorks-KI:
+Create advanced enhancement components that upgrade existing functionality in StreamWorks-KI:
 
-1. Create `src/shared/components/ui/DataTable.tsx`:
-   - Sortable columns with indicators
-   - Filterable columns with search
-   - Pagination with page size selection
-   - Row selection (single/multiple)
-   - Virtual scrolling for large datasets
-   - Expandable rows for details
-   - Custom cell renderers
-   - Export functionality (CSV, Excel)
-   - Loading and empty states
+CONTEXT:
+- Essential components from Prompt 3.1 are implemented
+- Need to add sophisticated interaction components
+- Focus on upgrading existing functionality without breaking it
+- Maintain consistency with established UI patterns
 
-2. Create `src/shared/components/ui/FileUploader.tsx`:
-   - Drag and drop zone with visual feedback
-   - Multiple file selection
-   - File type validation with previews
-   - Progress tracking for uploads
-   - Error handling and retry
-   - Batch operations
-   - Image preview thumbnails
-   - File size and type restrictions
+TASKS:
 
-3. Create `src/shared/components/ui/SearchBox.tsx`:
-   - Instant search with debouncing
-   - Recent searches history
-   - Search suggestions/autocomplete
-   - Advanced filters toggle
-   - Keyboard navigation (arrow keys, enter)
-   - Clear and cancel actions
-   - Loading states
-   - Global search shortcut (⌘K)
+1. **CREATE ADVANCED FILE UPLOADER**
 
-4. Create `src/shared/components/ui/CodeEditor.tsx`:
-   - Monaco Editor integration
-   - Syntax highlighting for XML/JSON
-   - Error underlining and tooltips
-   - Auto-completion and snippets
-   - Theme switching (dark/light)
-   - Full-screen mode
-   - Find and replace
-   - Minimap for large files
+Create `src/shared/components/ui/AdvancedFileUploader.tsx`:
+- Enhanced drag-and-drop with visual feedback states
+- Multiple file selection with preview thumbnails
+- File type validation with custom error messages
+- Progress tracking with individual file progress bars
+- Error handling and retry functionality for failed uploads
+- Batch operations (select all, remove all, retry failed)
+- Image preview with zoom functionality
+- File size and type restrictions with clear indicators
+- Queue management with pause/resume capabilities
 
-5. Create `src/shared/components/ui/Chart.tsx`:
-   - Recharts integration wrapper
-   - Multiple chart types (line, bar, pie, area)
-   - Interactive tooltips and legends
-   - Zoom and pan capabilities
-   - Real-time data updates
-   - Export as image/PDF
-   - Responsive design
-   - Custom color schemes
+Props interface:
+- accept?: string[]
+- maxSize?: number
+- maxFiles?: number
+- onUpload: (files: File[]) => Promise<void>
+- onProgress?: (progress: UploadProgress[]) => void
+- multiple?: boolean
+- preview?: boolean
 
-6. Create layout components:
-   - Grid system with responsive breakpoints
-   - Sidebar with collapsible sections
-   - Header with breadcrumbs and actions
-   - Footer with status information
-   - Panel for resizable sections
+Enhancement over existing uploader:
+- Better visual feedback
+- More robust error handling
+- Preview capabilities
+- Batch management
 
-Requirements:
-- Performance optimized (React.memo, virtualization)
-- Full keyboard accessibility
-- Touch-friendly on mobile devices
-- Error boundaries for robustness
-- Loading states and skeletons
-- Consistent animation timing
-```
+2. **CREATE ADVANCED SEARCH COMPONENT**
+
+Create `src/shared/components/ui/SearchBox.tsx`:
+- Instant search with intelligent debouncing
+- Recent searches history with persistence
+- Search suggestions and autocomplete
+- Advanced filters with expandable panel
+- Keyboard navigation (arrow keys, enter, tab)
+- Clear and cancel actions with animations
+- Loading states and search indicators
+- Global search shortcut (⌘K) support
+- Search highlighting in results
+
+Props interface:
+- placeholder?: string
+- suggestions?: string[]
+- filters?: FilterConfig[]
+- onSearch: (query: string, filters?: any) => void
+- showHistory?: boolean
+- showFilters?: boolean
+- globalShortcut?: boolean
+
+3. **CREATE PROFESSIONAL FORM COMPONENTS**
+
+Create enhanced form components in `src/shared/components/ui/forms/`:
+- `FormField.tsx` - Wrapper with label, error, help text
+- `Input.tsx` - Enhanced input with validation states
+- `Select.tsx` - Custom select with search and multi-select
+- `Checkbox.tsx` - Custom checkbox with indeterminate state
+- `RadioGroup.tsx` - Radio button group with better styling
+- `TextArea.tsx` - Auto-resizing textarea with character count
+
+Features:
+- Real-time validation with Zod integration
+- Consistent error and success states
+- Better accessibility with proper ARIA labels
+- Custom styling that matches glassmorphism theme
+- Form state management integration
+
+4. **CREATE NAVIGATION COMPONENTS**
+
+Create `src/shared/components/ui/navigation/`:
+- `Breadcrumbs.tsx` - Dynamic breadcrumb navigation
+- `Tabs.tsx` - Enhanced tab system with animations
+- `Sidebar.tsx` - Collapsible sidebar with search
+- `CommandPalette.tsx` - Global command search (⌘K)
+
+Features:
+- Smooth animations and transitions
+- Keyboard navigation support
+- Mobile-responsive behavior
+- Integration with React Router
+- State persistence
+
+5. **CREATE UTILITY COMPONENTS**
+
+Create utility components in `src/shared/components/ui/`:
+- `Badge.tsx` - Status indicators with variants
+- `Avatar.tsx` - User avatars with online status
+- `Spinner.tsx` - Loading indicators with sizes
+- `Progress.tsx` - Linear and circular progress bars
+- `Skeleton.tsx` - Loading skeletons for content
+- `Tooltip.tsx` - Accessible tooltips with positioning
+
+Features:
+- Consistent design tokens
+- Animation support
+- Accessibility features
+- Multiple variants and sizes
+
+6. **CREATE LAYOUT COMPONENTS**
+
+Create layout helpers in `src/shared/components/ui/layout/`:
+- `Container.tsx` - Responsive container with max-widths
+- `Grid.tsx` - CSS Grid wrapper with responsive breakpoints
+- `Stack.tsx` - Flexbox stack with spacing
+- `Divider.tsx` - Visual separators with variants
+
+REQUIREMENTS:
+- Performance optimized with React.memo where appropriate
+- Full keyboard accessibility and screen reader support
+- Touch-friendly design for mobile devices
+- Error boundaries for component robustness
+- Loading states and skeleton screens
+- Consistent animation timing (200ms for quick, 300ms for standard)
+- TypeScript strict mode compliance
+
+INTEGRATION STRATEGY:
+- These components should complement, not replace existing UI
+- Provide upgrade paths for current components
+- Maintain visual consistency with current theme
+- Easy to adopt incrementally
+
+TESTING:
+- Each component should include usage examples
+- Test with real data from your backend APIs
+- Verify accessibility with screen readers
+- Test on mobile devices and touch interfaces
+- Ensure smooth animations on lower-end devices
+
+After implementation, you'll have a professional component library that can be used to build any enterprise feature while maintaining the existing functionality.
+
+## PROMPT 3.2: ADVANCED ENHANCEMENT COMPONENTS
 
 ---
 

@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useThemeStore } from '../store/themeStore';
+import { useUiStore } from '../../stores/uiStore';
 
 interface ThemeProviderProps {
   children: ReactNode;
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const { isDark } = useThemeStore();
+  const { isDark } = useUiStore();
 
   useEffect(() => {
     if (isDark) {

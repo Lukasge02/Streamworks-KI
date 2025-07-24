@@ -4,3 +4,6 @@
 
 // API hooks
 export { useApiQuery, useApiMutation, useHealthCheck, useSystemStatus } from './useApi';
+
+// Enhanced React Query hooks
+export * from '../../hooks/useQuery';
