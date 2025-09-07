@@ -1,0 +1,1000 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>Database_DBMPSWS2_Backup</StreamName>
+    <StreamDocumentation><![CDATA[]]></StreamDocumentation>
+    <AgentDetail>TestAgent2</AgentDetail>
+    <AccountNoId />
+    <CalendarId>GER-NRW</CalendarId>
+    <StreamType>Real</StreamType>
+    <MaxStreamRuns>6</MaxStreamRuns>
+    <ShortDescription><![CDATA[Sicherung DB xy]]></ShortDescription>
+    <SchedulingRequiredFlag>True</SchedulingRequiredFlag>
+    <OverviewInfoMessage IsNull="True" />
+    <RuntimeDataStorageDays IsNull="True" />
+    <RuntimeDataStorageDaySource IsNull="True" />
+    <StreamRunDeletionSource IsNull="True" />
+    <StreamRunDeletionType>None</StreamRunDeletionType>
+    <StreamRunDeletionTime IsNull="True" />
+    <StreamRunDeletionDays IsNull="True" />
+    <StreamRunDeletionDayType IsNull="True" />
+    <DeletionTimeTimeZoneId />
+    <DeletionTimeValidFlag IsNull="True" />
+    <DeletionTimeValidSource IsNull="True" />
+    <StreamRunTimeStatisticsDays IsNull="True" />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityGroup />
+    <MaxStreamRunDuration IsNull="True" />
+    <MinStreamRunDuration IsNull="True" />
+    <CentralJobLogAreaFlag IsNull="True" />
+    <CentralJobLogSource>UseMasterStreamValue</CentralJobLogSource>
+    <CentralJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDaySource>UseMasterStreamValue</AgentJobLogStorageDaySource>
+    <StreamRunInterval IsNull="True" />
+    <MaxJobLogSize IsNull="True" />
+    <ReorgType IsNull="True" />
+    <ExternalJobScriptRequired IsNull="True" />
+    <KeepPreparedRuns IsNull="True" />
+    <InteractivePslFlag>False</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled>False</ConcurrentPlanDatesEnabled>
+    <UncatExclusion IsNull="True" />
+    <Jobs>
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType>RelativeToPredecessorStartTime</StartTimeType>
+            <RelativeStartTime>60</RelativeStartTime>
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime>18:00:00</StartTime>
+            <StartTimeDayType>CalendarDay</StartTimeDayType>
+            <StartTimeOffsetDays>0</StartTimeOffsetDays>
+            <StartTimeTimeZone>(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna</StartTimeTimeZone>
+            <StartTimeType>AbsoluteStartTime</StartTimeType>
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>2</RunNumber>
+            <StartTime>19:00:00</StartTime>
+            <StartTimeDayType>CalendarDay</StartTimeDayType>
+            <StartTimeOffsetDays>0</StartTimeOffsetDays>
+            <StartTimeTimeZone>(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna</StartTimeTimeZone>
+            <StartTimeType>AbsoluteStartTime</StartTimeType>
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>010_DB_DBMPSWS2_Backup</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Windows</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies>
+              <ExternalDependency>
+                <PredecessorJobName>EndPoint</PredecessorJobName>
+                <PredecessorStreamName>Str_FA_001</PredecessorStreamName>
+                <RunNumber>0</RunNumber>
+                <PredecessorRunNumber>1</PredecessorRunNumber>
+                <DependencyType>None</DependencyType>
+                <OptionalDependencyFlag>True</OptionalDependencyFlag>
+                <SubmitOnDelete>False</SubmitOnDelete>
+                <PlanDateDayType>None</PlanDateDayType>
+                <PlanDateOffsetDays>0</PlanDateOffsetDays>
+              </ExternalDependency>
+            </ExternalDependencies>
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Endpoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>RecoveryJobNetStartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetStartPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>RecoveryJobNetEndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetEndPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>020_DB_DBMPSWS2_Backup</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Windows</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>040_DB_DBMPSWS2_Backup</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Windows</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>030_DB_DBMPSWS2_Backup</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Windows</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>050_DB_DBMPSWS2_Backup</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Windows</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+    </Jobs>
+    <StreamContactPersons />
+    <ScheduleRule>
+      <ScheduleRuleXml><![CDATA[&lt;SchedulingRules ShiftRule=&quot;3&quot;&gt;
+  &lt;WorkdayRules All=&quot;No&quot; Used=&quot;Yes&quot;&gt;
+    &lt;Workday Day=&quot;4&quot; Used=&quot;Yes&quot; /&gt;
+  &lt;/WorkdayRules&gt;
+  &lt;WeekdayRules&gt;
+    &lt;Weekday Day=&quot;3&quot; All=&quot;No&quot; Used=&quot;Yes&quot;&gt;
+      &lt;WeekNo No=&quot;1&quot; Used=&quot;Yes&quot; /&gt;
+    &lt;/Weekday&gt;
+  &lt;/WeekdayRules&gt;
+  &lt;ScheduleMonths All=&quot;Yes&quot; /&gt;
+  &lt;FixedDates&gt;
+    &lt;Include Date=&quot;2013-04-21&quot; /&gt;
+    &lt;Exclude Date=&quot;2013-04-20&quot; /&gt;
+    &lt;Exclude Date=&quot;2013-04-19&quot; /&gt;
+    &lt;Exclude Date=&quot;2013-09-05&quot; /&gt;
+    &lt;Exclude Date=&quot;2013-09-04&quot; /&gt;
+    &lt;Exclude Date=&quot;2013-10-07&quot; /&gt;
+    &lt;Exclude Date=&quot;2013-12-05&quot; /&gt;
+    &lt;Exclude Date=&quot;2013-12-04&quot; /&gt;
+    &lt;Exclude Date=&quot;2014-11-06&quot; /&gt;
+    &lt;Exclude Date=&quot;2016-02-03&quot; /&gt;
+    &lt;Exclude Date=&quot;2016-03-04&quot; /&gt;
+    &lt;Exclude Date=&quot;2016-06-01&quot; /&gt;
+  &lt;/FixedDates&gt;
+&lt;/SchedulingRules&gt;]]></ScheduleRuleXml>
+    </ScheduleRule>
+    <StreamPreparationScript />
+    <MasterStreamId>Database_########_Backup</MasterStreamId>
+    <StreamPath><![CDATA[Demo/MasterReal]]></StreamPath>
+    <StatusFlag>True</StatusFlag>
+    <StreamVersionDetail>
+      <StreamVersionType>Current</StreamVersionType>
+      <StreamVersion>2.0</StreamVersion>
+      <DeploymentDateTime>19.04.2013 12:15:00</DeploymentDateTime>
+      <DeployAsActive>True</DeployAsActive>
+      <PlannedDeploymentDateTime />
+      <StorageDateTime />
+      <AutoDeploymentStatus>Finished</AutoDeploymentStatus>
+      <ScheduleRulesMergeType>FromNew</ScheduleRulesMergeType>
+    </StreamVersionDetail>
+    <AutomaticPreparedRuns>0</AutomaticPreparedRuns>
+    <BusinessServiceFlag />
+    <StreamBusinessServiceProperty />
+    <AutoPreparationType>Complete</AutoPreparationType>
+    <RunVariables />
+  </Stream>
+</ExportableStream>

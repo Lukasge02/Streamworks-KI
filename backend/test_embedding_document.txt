@@ -1,0 +1,24 @@
+Local Gamma Embedding Test Document
+
+Purpose
+This document is specifically designed to test the complete local embedding pipeline including the LocalGammaEmbedder class and ChromaDB vector storage integration.
+
+Technical Components
+The system utilizes nomic-ai/nomic-embed-text-v1.5 model for generating embeddings locally without requiring OpenAI API keys. This ensures complete data privacy and eliminates external dependencies.
+
+Device Compatibility  
+The embedding service automatically detects the optimal device:
+- MPS for Apple Silicon Macs
+- CUDA for NVIDIA GPUs
+- CPU as fallback for maximum compatibility
+
+Processing Pipeline
+1. Document upload and validation
+2. Docling analysis and content extraction
+3. Intelligent text chunking with LangChain
+4. Local Gamma embedding generation
+5. ChromaDB vector database storage
+6. Real-time progress tracking via WebSocket
+
+Expected Results
+Upon successful processing, this document should generate multiple text embeddings using the local Gamma model, store them in ChromaDB with proper metadata, and demonstrate that the system operates independently of external embedding services while maintaining high-quality semantic search capabilities.

@@ -1,0 +1,2100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>CR_VAR_002_##</StreamName>
+    <StreamDocumentation><![CDATA[tests]]></StreamDocumentation>
+    <AgentDetail>degtluv0003</AgentDetail>
+    <AccountNoId />
+    <CalendarId />
+    <StreamType>Master</StreamType>
+    <MaxStreamRuns>9999</MaxStreamRuns>
+    <ShortDescription><![CDATA[Master Stream für Test Variablenersetzung]]></ShortDescription>
+    <SchedulingRequiredFlag>False</SchedulingRequiredFlag>
+    <ScheduleRuleObject />
+    <RuntimeDataStorageDays IsNull="True" />
+    <RuntimeDataStorageDaySource IsNull="True" />
+    <StreamRunDeletionSource IsNull="True" />
+    <StreamRunDeletionType>None</StreamRunDeletionType>
+    <StreamRunDeletionTime IsNull="True" />
+    <StreamRunDeletionDays IsNull="True" />
+    <StreamRunDeletionDayType IsNull="True" />
+    <DeletionTimeTimeZoneId />
+    <DeletionTimeValidFlag IsNull="True" />
+    <DeletionTimeValidSource IsNull="True" />
+    <StreamRunTimeStatisticsDays IsNull="True" />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityGroup>CR_TEST</SeverityGroup>
+    <MaxStreamRunDuration IsNull="True" />
+    <MinStreamRunDuration IsNull="True" />
+    <CentralJobLogAreaFlag IsNull="True" />
+    <CentralJobLogSource IsNull="True" />
+    <CentralJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDaySource IsNull="True" />
+    <StreamRunInterval IsNull="True" />
+    <MaxJobLogSize IsNull="True" />
+    <ReorgType IsNull="True" />
+    <ExternalJobScriptRequired IsNull="True" />
+    <KeepPreparedRuns IsNull="True" />
+    <InteractivePslFlag>False</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled />
+    <UncatExclusion IsNull="True" />
+    <Jobs>
+      <Job>
+        <JobName>RecoveryJobNetStartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Recovery Jobnet Start Point]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetStartPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>1</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>113</CoordinateX>
+        <CoordinateY>0</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>R0050_CR_VAR_002_##</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>RecoveryJobNetEndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Recovery Jobnet End Point]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetEndPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>3</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>113</CoordinateX>
+        <CoordinateY>382</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Start Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>1</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>465</CoordinateX>
+        <CoordinateY>0</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>0010_CR_VAR_002_##</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>7</EdgeStartPosition>
+          </JobInternalSuccessor>
+          <JobInternalSuccessor>
+            <JobName>0020_CR_VAR_002_##</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+          <JobInternalSuccessor>
+            <JobName>0050_CR_VAR_002_##</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>5</EdgeStartPosition>
+          </JobInternalSuccessor>
+          <JobInternalSuccessor>
+            <JobName>0030_CR_VAR_002_##</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>0010_CR_VAR_002_##</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules>
+          <NotificationRule>
+            <CompletionCodeExpression IsNull="True" />
+            <TriggerTime>Hold</TriggerTime>
+            <TemplateName>Mail_TestVariables_01</TemplateName>
+          </NotificationRule>
+          <NotificationRule>
+            <CompletionCodeExpression IsNull="True" />
+            <TriggerTime>BeforeJobStart</TriggerTime>
+            <TemplateName>Mail_TestVariables_03</TemplateName>
+          </NotificationRule>
+          <NotificationRule>
+            <CompletionCodeExpression IsNull="True" />
+            <TriggerTime>BeforeJobStart</TriggerTime>
+            <TemplateName>Mail_TestVariables_04</TemplateName>
+          </NotificationRule>
+        </JobNotificationRules>
+        <LoginObject />
+        <ShortDescription><![CDATA[Test Ersetzung von Variablen mit Hold + Mail]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Unix</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[echo Anzeige der Systemvariablen
+echo ------------------------------------                      
+echo $ST_STREAM         = ?{$ST_STREAM}
+echo $ST_SDES           = ?{$ST_SDES}
+echo $ST_MASTER_STREAM  = ?{$ST_MASTER_STREAM}
+echo $ST_VARI           = ?{$ST_VARI}
+echo $ST_JOB            = ?{$ST_JOB}        
+echo $ST_JDES           = ?{$ST_JDES}
+echo $ST_RUN            = ?{$ST_RUN}
+echo $ST_RUNMAX         = ?{$ST_RUNMAX}
+echo $PD_DDMMYYYY       = ?{$PD_DDMMYYYY}
+echo $PD_DDMMYY         = ?{$PD_DDMMYY}
+echo $PD_YYYYMMDD       = ?{$PD_YYYYMMDD}
+echo $PD_YYMMDD         = ?{$PD_YYMMDD}
+echo $PD_MMYYYY         = ?{$PD_MMYYYY} 
+echo $PD_MMYY           = ?{$PD_MMYY}    
+echo $PD_YYYYMM         = ?{$PD_YYYYMM}
+echo $PD_YYMM           = ?{$PD_YYMM}    
+echo $PD_DD             = ?{$PD_DD}      
+echo $PD_MM             = ?{$PD_MM}      
+echo $PD_YY             = ?{$PD_YY}      
+echo $PD_YYYY           = ?{$PD_YYYY}
+echo $PD_DDDYYYY        = ?{$PD_DDDYYYY}
+echo $PD_DDDYY          = ?{$PD_DDDYY}
+echo $PD_YYYYDDD        = ?{$PD_YYYYDDD}
+echo $PD_YYDDD          = ?{$PD_YYDDD}
+echo $PD_DDD            = ?{$PD_DDD}     
+echo $PD_WW             = ?{$PD_WW}      
+echo $PR_USER           = ?{$PR_USER}    
+echo $PR_DDMMYYYY       = ?{$PR_DDMMYYYY}
+echo $PR_DDMMYY         = ?{$PR_DDMMYY}  
+echo $PR_MMDDYYYY       = ?{$PR_MMDDYYYY}
+echo $PR_MMDDYY         = ?{$PR_MMDDYY}  
+echo $PR_YYYYMMDD       = ?{$PR_YYYYMMDD}
+echo $PR_YYMMDD         = ?{$PR_YYMMDD}  
+echo $PR_MMYYYY         = ?{$PR_MMYYYY}  
+echo $PR_MMYY           = ?{$PR_MMYY}    
+echo $PR_YYYYMM         = ?{$PR_YYYYMM}  
+echo $PR_YYMM           = ?{$PR_YYMM}    
+echo $PR_DD             = ?{$PR_DD}      
+echo $PR_MM             = ?{$PR_MM}      
+echo $PR_YY             = ?{$PR_YY}      
+echo $PR_YYYY           = ?{$PR_YYYY}    
+echo $PR_DDDYYYY        = ?{$PR_DDDYYYY}
+echo $PR_DDDYY          = ?{$PR_DDDYY}   
+echo $PR_YYYYDDD        = ?{$PR_YYYYDDD} 
+echo $PR_YYDDD          = ?{$PR_YYDDD}   
+echo $PR_DDD            = ?{$PR_DDD}     
+echo $PR_WW             = ?{$PR_WW}      
+echo $PR_HHMMSSFFF      = ?{$PR_HHMMSSFFF}  
+echo $PR_HHMMSS         = ?{$PR_HHMMSS}  
+echo $PR_HHMM           = ?{$PR_HHMM}    
+echo $PR_HH             = ?{$PR_HH}      
+echo $PR_MI             = ?{$PR_MI}      
+echo $PR_SS             = ?{$PR_SS}      
+echo $PR_FFF            = ?{$PR_FFF}      
+echo $JO_SNAM           = ?{$JO_SNAM}   
+echo $ZOS_JOB  nur zos  = ?{$ZOS_JOB}  
+   
+
+
+echo Anzeige der System Laufzeitvariablen
+echo ------------------------------------                      
+echo SR_DDMMYYYY        = ?{&amp;SR_DDMMYYYY}
+echo SR_DDMMYY          = ?{&amp;SR_DDMMYY}
+echo SR_MMDDYYYY        = ?{&amp;SR_MMDDYYYY}
+echo SR_MMDDYY          = ?{&amp;SR_MMDDYY}
+echo SR_YYYYMMDD        = ?{&amp;SR_YYYYMMDD}
+echo SR_YYMMDD          = ?{&amp;SR_YYMMDD}
+echo SR_MMYYYY          = ?{&amp;SR_MMYYYY}
+echo SR_MMYY            = ?{&amp;SR_MMYY}
+echo SR_YYYYMM          = ?{&amp;SR_YYYYMM}
+echo SR_YYMM            = ?{&amp;SR_YYMM}
+echo SR_DD              = ?{&amp;SR_DD}
+echo SR_MM              = ?{&amp;SR_MM}
+echo SR_YY              = ?{&amp;SR_YY}
+echo SR_YYYY            = ?{&amp;SR_YYYY}
+echo SR_DDDYYYY         = ?{&amp;SR_DDDYYYY}
+echo SR_DDDYY           = ?{&amp;SR_DDDYY}
+echo SR_YYYYDDD         = ?{&amp;SR_YYYYDDD}
+echo SR_YYDDD           = ?{&amp;SR_YYDDD}
+echo SR_DDD             = ?{&amp;SR_DDD}
+echo SR_HHMMSSFFF       = ?{&amp;SR_HHMMSSFFF}
+echo SR_HHMMSS          = ?{&amp;SR_HHMMSS}
+echo SR_HHMM            = ?{&amp;SR_HHMM}
+echo SR_HH              = ?{&amp;SR_HH}
+echo SR_MI              = ?{&amp;SR_MI}
+echo SR_SS              = ?{&amp;SR_SS}
+echo SR_FFF             = ?{&amp;SR_FFF}
+echo SJ_DDMMYYYY        = ?{&amp;SJ_DDMMYYYY}
+echo SJ_DDMMYY          = ?{&amp;SJ_DDMMYY}
+echo SJ_MMDDYYYY        = ?{&amp;SJ_MMDDYYYY}
+echo SJ_MMDDYY          = ?{&amp;SJ_MMDDYY}
+echo SJ_YYYYMMDD        = ?{&amp;SJ_YYYYMMDD}
+echo SJ_YYMMDD          = ?{&amp;SJ_YYMMDD}
+echo SJ_MMYYYY          = ?{&amp;SJ_MMYYYY}
+echo SJ_MMYY            = ?{&amp;SJ_MMYY}
+echo SJ_YYYYMM          = ?{&amp;SJ_YYYYMM}
+echo SJ_YYMM            = ?{&amp;SJ_YYMM}
+echo SJ_DD              = ?{&amp;SJ_DD}
+echo SJ_MM              = ?{&amp;SJ_MM}
+echo SJ_YY              = ?{&amp;SJ_YY}
+echo SJ_YYYY            = ?{&amp;SJ_YYYY}
+echo SJ_DDDYYYY         = ?{&amp;SJ_DDDYYYY}
+echo SJ_DDDYY           = ?{&amp;SJ_DDDYY}
+echo SJ_YYYYDDD         = ?{&amp;SJ_YYYYDDD}
+echo SJ_YYDDD           = ?{&amp;SJ_YYDDD}
+echo SJ_DDD             = ?{&amp;SJ_DDD}
+echo SJ_HHMMSSFFF       = ?{&amp;SJ_HHMMSSFFF}
+echo SJ_HHMMSS          = ?{&amp;SJ_HHMMSS}
+echo SJ_HHMM            = ?{&amp;SJ_HHMM}
+echo SJ_HH              = ?{&amp;SJ_HH}
+echo SJ_MI              = ?{&amp;SJ_MI}
+echo SJ_SS              = ?{&amp;SJ_SS}
+echo SJ_FFF             = ?{&amp;SJ_FFF}
+echo SJ_ACC             = ?{&amp;SJ_ACC}
+
+
+echo ST_EMAIL           = ?{&amp;ST_EMAIL}
+echo SJ_EMAIL           = ?{&amp;SJ_EMAIL}
+echo CTX_EMAIL          = ?{&amp;CTX_EMAIL}
+echo SJ_JOBRELEASEURL   = ?{&amp;SJ_JOBRELEASEURL}
+
+
+]]></MainScript>
+        <DisplayOrder>7</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>True</IsNotificationRequired>
+        <CoordinateX>0</CoordinateX>
+        <CoordinateY>208</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks><![CDATA[125,474;]]></EdgeBreaks>
+            <EdgeEndPosition>1</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag>True</JobHoldFlag>
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency>
+              <Rule><![CDATA[&lt;FileDependencyRule xmlns=&quot;&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot; xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&gt;
+  &lt;SimpleRule Type=&quot;FilesNotExist&quot; DirectoryName=&quot;?{dep_path}&quot; FileName=&quot;file_?{$PD_YYYYMMDD}?{dep_ext}&quot; /&gt;
+&lt;/FileDependencyRule&gt;]]></Rule>
+              <RunNumber>0</RunNumber>
+              <AgentId>degtluv0003</AgentId>
+              <RelativeTimeoutMinutes>1</RelativeTimeoutMinutes>
+              <AbsoluteTimeoutTime />
+              <TimeZoneDetail />
+              <AbsoluteTimeoutPlanDateOffsetType />
+              <AbsoluteTimeoutPlanDateOffsetDays />
+              <TimeoutReachedAction>Notification</TimeoutReachedAction>
+              <PreconditionRule><![CDATA[&lt;FileDependencyRule xmlns=&quot;&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot; xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&gt;
+  &lt;SimpleRule Type=&quot;FilesNotExist&quot; DirectoryName=&quot;?{dep_path}&quot; FileName=&quot;file_?{$PD_YYYYMMDD}?{dep_ext}&quot; /&gt;
+&lt;/FileDependencyRule&gt;]]></PreconditionRule>
+              <UnfulfilledPreconditionAction>Notification</UnfulfilledPreconditionAction>
+            </FileDependency>
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons>
+          <JobContactPerson>
+            <FirstName>Maria</FirstName>
+            <LastName>Stamm</LastName>
+            <MiddleName />
+            <CompanyName>arvato Systems GmbH</CompanyName>
+            <Department />
+            <Comment IsNull="True" />
+            <ContactType>None</ContactType>
+            <HierarchyLevelCd>1</HierarchyLevelCd>
+          </JobContactPerson>
+        </JobContactPersons>
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>4</PreparationScriptJobOrder>
+          <Script><![CDATA[vari = System.GetSystemVariable(&#39;$ST_VARI&#39;)
+lauf = System.GetSystemVariable(&#39;$ST_RUN&#39;)
+
+SysJobScript.InsertLine(&#39;echo Stream Run Variables&#39;)
+SysJobScript.InsertLine(&#39;echo MASTER             =  ?{$&amp;MASTER}&#39;)
+if lauf == &#39;0001&#39; then
+   SysJobScript.InsertLine(&#39;echo MASTER_LAUF1       =  ?{$&amp;MASTER_LAUF1}&#39;)
+end
+SysJobScript.InsertLine(&#39; &#39;)
+if vari == &#39;01&#39; then
+   SysJobScript.InsertLine(&#39;echo Real Stream Lauf Variablen eingef&#252;gt&#39;)
+   SysJobScript.InsertLine(&#39;echo REAL               =  ?{$&amp;REAL}&#39;)
+   if lauf == &#39;0001&#39; then
+      SysJobScript.InsertLine(&#39;echo REAL_LAUF1         =  ?{$&amp;REAL_LAUF1}&#39;)
+   end
+end
+SysJobScript.InsertLine(&#39; &#39;)
+]]></Script>
+          <ScriptLanguage>Lua</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[End Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Endpoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>8</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>465</CoordinateX>
+        <CoordinateY>624</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>0020_CR_VAR_002_##</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules>
+          <NotificationRule>
+            <CompletionCodeExpression IsNull="True" />
+            <TriggerTime>BeforeJobStart</TriggerTime>
+            <TemplateName>Mail_TestVariables_03</TemplateName>
+          </NotificationRule>
+        </JobNotificationRules>
+        <LoginObject />
+        <ShortDescription><![CDATA[Test Variableners. in z/OS Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Zos</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[echo Anzeige der Systemvariablen
+echo Dieser Job ist nicht lauff&#228;hig, hiermit soll 
+echo die Ersetzung der folgenden Parameter gepr&#252;ft werden
+echo --------------------------------------------------------
+echo $JO_SNAM (nur zOS) = ?{$JO_SNAM}      
+echo $ZOS_JOB           = ?{$ZOS_JOB} - obsolet, wird aber noch gef&#252;llt
+echo --------------------------------------------------------
+echo $ST_STREAM         = ?{$ST_STREAM}
+echo $ST_SDES           = ?{$ST_SDES}
+echo $ST_MASTER_STREAM  = ?{$ST_MASTER_STREAM}
+echo $ST_VARI           = ?{$ST_VARI}
+echo $ST_JOB            = ?{$ST_JOB}        
+echo $ST_JDES           = ?{$ST_JDES}
+echo $ST_RUN            = ?{$ST_RUN}
+echo $ST_RUNMAX         = ?{$ST_RUNMAX}
+echo $PD_DDMMYYYY       = ?{$PD_DDMMYYYY}
+echo $PD_DDMMYY         = ?{$PD_DDMMYY}
+echo $PD_YYYYMMDD       = ?{$PD_YYYYMMDD}
+echo $PD_YYMMDD         = ?{$PD_YYMMDD}
+echo $PD_MMYYYY         = ?{$PD_MMYYYY} 
+echo $PD_MMYY           = ?{$PD_MMYY}    
+echo $PD_YYYYMM         = ?{$PD_YYYYMM}
+echo $PD_YYMM           = ?{$PD_YYMM}    
+echo $PD_DD             = ?{$PD_DD}      
+echo $PD_MM             = ?{$PD_MM}      
+echo $PD_YY             = ?{$PD_YY}      
+echo $PD_YYYY           = ?{$PD_YYYY}
+echo $PD_DDDYYYY        = ?{$PD_DDDYYYY}
+&#39;echo $PD_DDDYY          = ?{$PD_DDDYY}
+echo $PD_YYYYDDD        = ?{$PD_YYYYDDD}
+echo $PD_YYDDD          = ?{$PD_YYDDD}
+echo $PD_DDD            = ?{$PD_DDD}     
+echo $PD_WW             = ?{$PD_WW}      
+echo $PR_USER           = ?{$PR_USER}    
+echo $PR_DDMMYYYY       = ?{$PR_DDMMYYYY}
+echo $PR_DDMMYY         = ?{$PR_DDMMYY}  
+echo $PR_MMDDYYYY       = ?{$PR_MMDDYYYY}
+echo $PR_MMDDYY         = ?{$PR_MMDDYY}  
+echo $PR_YYYYMMDD       = ?{$PR_YYYYMMDD}
+echo $PR_YYMMDD         = ?{$PR_YYMMDD}  
+echo $PR_MMYYYY         = ?{$PR_MMYYYY}  
+echo $PR_MMYY           = ?{$PR_MMYY}    
+echo $PR_YYYYMM         = ?{$PR_YYYYMM}  
+echo $PR_YYMM           = ?{$PR_YYMM}    
+echo $PR_DD             = ?{$PR_DD}      
+echo $PR_MM             = ?{$PR_MM}      
+echo $PR_YY             = ?{$PR_YY}      
+echo $PR_YYYY           = ?{$PR_YYYY}    
+echo $PR_DDDYYYY        = ?{$PR_DDDYYYY}
+echo $PR_DDDYY          = ?{$PR_DDDYY}   
+echo $PR_YYYYDDD        = ?{$PR_YYYYDDD} 
+echo $PR_YYDDD          = ?{$PR_YYDDD}   
+echo $PR_DDD            = ?{$PR_DDD}     
+echo $PR_WW             = ?{$PR_WW}      
+echo $PR_HHMMSSFFF      = ?{$PR_HHMMSSFFF}  
+echo $PR_HHMMSS         = ?{$PR_HHMMSS}  
+echo $PR_HHMM           = ?{$PR_HHMM}    
+echo $PR_HH             = ?{$PR_HH}      
+echo $PR_MI             = ?{$PR_MI}      
+echo $PR_SS             = ?{$PR_SS}      
+echo $PR_FFF            = ?{$PR_FFF}      
+   
+
+
+echo Anzeige der System Laufzeitvariablen
+echo ------------------------------------                      
+echo SR_DDMMYYYY        = ?{&amp;SR_DDMMYYYY}
+echo SR_DDMMYY          = ?{&amp;SR_DDMMYY}
+echo SR_MMDDYYYY        = ?{&amp;SR_MMDDYYYY}
+echo SR_MMDDYY          = ?{&amp;SR_MMDDYY}
+echo SR_YYYYMMDD        = ?{&amp;SR_YYYYMMDD}
+echo SR_YYMMDD          = ?{&amp;SR_YYMMDD}
+echo SR_MMYYYY          = ?{&amp;SR_MMYYYY}
+echo SR_MMYY            = ?{&amp;SR_MMYY}
+echo SR_YYYYMM          = ?{&amp;SR_YYYYMM}
+echo SR_YYMM            = ?{&amp;SR_YYMM}
+echo SR_DD              = ?{&amp;SR_DD}
+echo SR_MM              = ?{&amp;SR_MM}
+echo SR_YY              = ?{&amp;SR_YY}
+echo SR_YYYY            = ?{&amp;SR_YYYY}
+echo SR_DDDYYYY         = ?{&amp;SR_DDDYYYY}
+echo SR_DDDYY           = ?{&amp;SR_DDDYY}
+echo SR_YYYYDDD         = ?{&amp;SR_YYYYDDD}
+echo SR_YYDDD           = ?{&amp;SR_YYDDD}
+echo SR_DDD             = ?{&amp;SR_DDD}
+echo SR_HHMMSSFFF       = ?{&amp;SR_HHMMSSFFF}
+echo SR_HHMMSS          = ?{&amp;SR_HHMMSS}
+echo SR_HHMM            = ?{&amp;SR_HHMM}
+echo SR_HH              = ?{&amp;SR_HH}
+echo SR_MI              = ?{&amp;SR_MI}
+echo SR_SS              = ?{&amp;SR_SS}
+echo SR_FFF             = ?{&amp;SR_FFF}
+echo SJ_DDMMYYYY        = ?{&amp;SJ_DDMMYYYY}
+echo SJ_DDMMYY          = ?{&amp;SJ_DDMMYY}
+echo SJ_MMDDYYYY        = ?{&amp;SJ_MMDDYYYY}
+echo SJ_MMDDYY          = ?{&amp;SJ_MMDDYY}
+echo SJ_YYYYMMDD        = ?{&amp;SJ_YYYYMMDD}
+echo SJ_YYMMDD          = ?{&amp;SJ_YYMMDD}
+echo SJ_MMYYYY          = ?{&amp;SJ_MMYYYY}
+echo SJ_MMYY            = ?{&amp;SJ_MMYY}
+echo SJ_YYYYMM          = ?{&amp;SJ_YYYYMM}
+echo SJ_YYMM            = ?{&amp;SJ_YYMM}
+echo SJ_DD              = ?{&amp;SJ_DD}
+echo SJ_MM              = ?{&amp;SJ_MM}
+echo SJ_YY              = ?{&amp;SJ_YY}
+echo SJ_YYYY            = ?{&amp;SJ_YYYY}
+echo SJ_DDDYYYY         = ?{&amp;SJ_DDDYYYY}
+echo SJ_DDDYY           = ?{&amp;SJ_DDDYY}
+echo SJ_YYYYDDD         = ?{&amp;SJ_YYYYDDD}
+echo SJ_YYDDD           = ?{&amp;SJ_YYDDD}
+echo SJ_DDD             = ?{&amp;SJ_DDD}
+echo SJ_HHMMSSFFF       = ?{&amp;SJ_HHMMSSFFF}
+echo SJ_HHMMSS          = ?{&amp;SJ_HHMMSS}
+echo SJ_HHMM            = ?{&amp;SJ_HHMM}
+echo SJ_HH              = ?{&amp;SJ_HH}
+echo SJ_MI              = ?{&amp;SJ_MI}
+echo SJ_SS              = ?{&amp;SJ_SS}
+echo SJ_FFF             = ?{&amp;SJ_FFF}
+echo SJ_ACC             = ?{&amp;SJ_ACC}
+echo SJ_RPJ bei RecJobs = ?{&amp;SJ_RPJ}
+
+
+echo ST_EMAIL           = ?{&amp;ST_EMAIL}
+echo SJ_EMAIL           = ?{&amp;SJ_EMAIL}
+echo CTX_EMAIL          = ?{&amp;CTX_EMAIL}
+echo SJ_JOBRELEASEURL   = ?{&amp;SJ_JOBRELEASEURL}
+
+
+]]></MainScript>
+        <DisplayOrder>5</DisplayOrder>
+        <JobShortName><![CDATA[CRVR##]]></JobShortName>
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>True</IsNotificationRequired>
+        <CoordinateX>330</CoordinateX>
+        <CoordinateY>208</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>0040_CR_VAR_002_##</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail>DEZIRHAD</AgentDetail>
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>0</PreparationScriptJobOrder>
+          <Script><![CDATA[-- Da im Testsystem keine zOS Anbindung vorhanden ist soll dieser Job immer ausfallen
+System.SetBypass(true)
+]]></Script>
+          <ScriptLanguage>Lua</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>R0050_CR_VAR_002_##</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Recovery Job für Job 0050]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>Unix</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[echo Anzeige der Systemvariablen
+echo ------------------------------------                      
+echo $ST_STREAM         = ?{$ST_STREAM}
+echo $ST_SDES           = ?{$ST_SDES}
+echo $ST_MASTER_STREAM  = ?{$ST_MASTER_STREAM}
+echo $ST_VARI           = ?{$ST_VARI}
+echo $ST_JOB            = ?{$ST_JOB}        
+echo $ST_JDES           = ?{$ST_JDES}
+echo $ST_RUN            = ?{$ST_RUN}
+echo $ST_RUNMAX         = ?{$ST_RUNMAX}
+echo $PD_DDMMYYYY       = ?{$PD_DDMMYYYY}
+echo $PD_DDMMYY         = ?{$PD_DDMMYY}
+echo $PD_YYYYMMDD       = ?{$PD_YYYYMMDD}
+echo $PD_YYMMDD         = ?{$PD_YYMMDD}
+echo $PD_MMYYYY         = ?{$PD_MMYYYY} 
+echo $PD_MMYY           = ?{$PD_MMYY}    
+echo $PD_YYYYMM         = ?{$PD_YYYYMM}
+echo $PD_YYMM           = ?{$PD_YYMM}    
+echo $PD_DD             = ?{$PD_DD}      
+echo $PD_MM             = ?{$PD_MM}      
+echo $PD_YY             = ?{$PD_YY}      
+echo $PD_YYYY           = ?{$PD_YYYY}
+echo $PD_DDDYYYY        = ?{$PD_DDDYYYY}
+echo $PD_DDDYY          = ?{$PD_DDDYY}
+echo $PD_YYYYDDD        = ?{$PD_YYYYDDD}
+echo $PD_YYDDD          = ?{$PD_YYDDD}
+echo $PD_DDD            = ?{$PD_DDD}     
+echo $PD_WW             = ?{$PD_WW}      
+echo $PR_USER           = ?{$PR_USER}    
+echo $PR_DDMMYYYY       = ?{$PR_DDMMYYYY}
+echo $PR_DDMMYY         = ?{$PR_DDMMYY}  
+echo $PR_MMDDYYYY       = ?{$PR_MMDDYYYY}
+echo $PR_MMDDYY         = ?{$PR_MMDDYY}  
+echo $PR_YYYYMMDD       = ?{$PR_YYYYMMDD}
+echo $PR_YYMMDD         = ?{$PR_YYMMDD}  
+echo $PR_MMYYYY         = ?{$PR_MMYYYY}  
+echo $PR_MMYY           = ?{$PR_MMYY}    
+echo $PR_YYYYMM         = ?{$PR_YYYYMM}  
+echo $PR_YYMM           = ?{$PR_YYMM}    
+echo $PR_DD             = ?{$PR_DD}      
+echo $PR_MM             = ?{$PR_MM}      
+echo $PR_YY             = ?{$PR_YY}      
+echo $PR_YYYY           = ?{$PR_YYYY}    
+echo $PR_DDDYYYY        = ?{$PR_DDDYYYY}
+echo $PR_DDDYY          = ?{$PR_DDDYY}   
+echo $PR_YYYYDDD        = ?{$PR_YYYYDDD} 
+echo $PR_YYDDD          = ?{$PR_YYDDD}   
+echo $PR_DDD            = ?{$PR_DDD}     
+echo $PR_WW             = ?{$PR_WW}      
+echo $PR_HHMMSSFFF      = ?{$PR_HHMMSSFFF}  
+echo $PR_HHMMSS         = ?{$PR_HHMMSS}  
+echo $PR_HHMM           = ?{$PR_HHMM}    
+echo $PR_HH             = ?{$PR_HH}      
+echo $PR_MI             = ?{$PR_MI}      
+echo $PR_SS             = ?{$PR_SS}      
+echo $PR_FFF            = ?{$PR_FFF}      
+echo $JO_SNAM           = ?{$JO_SNAM}   
+echo $ZOS_JOB  nur zos  = ?{$ZOS_JOB}  
+   
+
+
+echo Anzeige der System Laufzeitvariablen
+echo ------------------------------------                      
+echo SR_DDMMYYYY        = ?{&amp;SR_DDMMYYYY}
+echo SR_DDMMYY          = ?{&amp;SR_DDMMYY}
+echo SR_MMDDYYYY        = ?{&amp;SR_MMDDYYYY}
+echo SR_MMDDYY          = ?{&amp;SR_MMDDYY}
+echo SR_YYYYMMDD        = ?{&amp;SR_YYYYMMDD}
+echo SR_YYMMDD          = ?{&amp;SR_YYMMDD}
+echo SR_MMYYYY          = ?{&amp;SR_MMYYYY}
+echo SR_MMYY            = ?{&amp;SR_MMYY}
+echo SR_YYYYMM          = ?{&amp;SR_YYYYMM}
+echo SR_YYMM            = ?{&amp;SR_YYMM}
+echo SR_DD              = ?{&amp;SR_DD}
+echo SR_MM              = ?{&amp;SR_MM}
+echo SR_YY              = ?{&amp;SR_YY}
+echo SR_YYYY            = ?{&amp;SR_YYYY}
+echo SR_DDDYYYY         = ?{&amp;SR_DDDYYYY}
+echo SR_DDDYY           = ?{&amp;SR_DDDYY}
+echo SR_YYYYDDD         = ?{&amp;SR_YYYYDDD}
+echo SR_YYDDD           = ?{&amp;SR_YYDDD}
+echo SR_DDD             = ?{&amp;SR_DDD}
+echo SR_HHMMSSFFF       = ?{&amp;SR_HHMMSSFFF}
+echo SR_HHMMSS          = ?{&amp;SR_HHMMSS}
+echo SR_HHMM            = ?{&amp;SR_HHMM}
+echo SR_HH              = ?{&amp;SR_HH}
+echo SR_MI              = ?{&amp;SR_MI}
+echo SR_SS              = ?{&amp;SR_SS}
+echo SR_FFF             = ?{&amp;SR_FFF}
+echo SJ_DDMMYYYY        = ?{&amp;SJ_DDMMYYYY}
+echo SJ_DDMMYY          = ?{&amp;SJ_DDMMYY}
+echo SJ_MMDDYYYY        = ?{&amp;SJ_MMDDYYYY}
+echo SJ_MMDDYY          = ?{&amp;SJ_MMDDYY}
+echo SJ_YYYYMMDD        = ?{&amp;SJ_YYYYMMDD}
+echo SJ_YYMMDD          = ?{&amp;SJ_YYMMDD}
+echo SJ_MMYYYY          = ?{&amp;SJ_MMYYYY}
+echo SJ_MMYY            = ?{&amp;SJ_MMYY}
+echo SJ_YYYYMM          = ?{&amp;SJ_YYYYMM}
+echo SJ_YYMM            = ?{&amp;SJ_YYMM}
+echo SJ_DD              = ?{&amp;SJ_DD}
+echo SJ_MM              = ?{&amp;SJ_MM}
+echo SJ_YY              = ?{&amp;SJ_YY}
+echo SJ_YYYY            = ?{&amp;SJ_YYYY}
+echo SJ_DDDYYYY         = ?{&amp;SJ_DDDYYYY}
+echo SJ_DDDYY           = ?{&amp;SJ_DDDYY}
+echo SJ_YYYYDDD         = ?{&amp;SJ_YYYYDDD}
+echo SJ_YYDDD           = ?{&amp;SJ_YYDDD}
+echo SJ_DDD             = ?{&amp;SJ_DDD}
+echo SJ_HHMMSSFFF       = ?{&amp;SJ_HHMMSSFFF}
+echo SJ_HHMMSS          = ?{&amp;SJ_HHMMSS}
+echo SJ_HHMM            = ?{&amp;SJ_HHMM}
+echo SJ_HH              = ?{&amp;SJ_HH}
+echo SJ_MI              = ?{&amp;SJ_MI}
+echo SJ_SS              = ?{&amp;SJ_SS}
+echo SJ_FFF             = ?{&amp;SJ_FFF}
+echo SJ_ACC             = ?{&amp;SJ_ACC}
+echo SJ_RPJ bei RecJobs = ?{&amp;SJ_RPJ}
+
+
+echo ST_EMAIL           = ?{&amp;ST_EMAIL}
+echo SJ_EMAIL           = ?{&amp;SJ_EMAIL}
+echo CTX_EMAIL          = ?{&amp;CTX_EMAIL}
+echo SJ_JOBRELEASEURL   = ?{&amp;SJ_JOBRELEASEURL}
+
+
+]]></MainScript>
+        <DisplayOrder>2</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>0</CoordinateX>
+        <CoordinateY>174</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>RecoveryJobNetEndPoint</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>0050_CR_VAR_002_##</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules>
+          <NotificationRule>
+            <CompletionCodeExpression><![CDATA[RC=4]]></CompletionCodeExpression>
+            <TriggerTime>AfterJobEnd</TriggerTime>
+            <TemplateName>Mail_TestVariables_02</TemplateName>
+          </NotificationRule>
+        </JobNotificationRules>
+        <LoginObject />
+        <ShortDescription><![CDATA[Test Abbruch]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Unix</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[exit 4]]></MainScript>
+        <DisplayOrder>4</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>True</IsNotificationRequired>
+        <CoordinateX>930</CoordinateX>
+        <CoordinateY>208</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks><![CDATA[1055,474;]]></EdgeBreaks>
+            <EdgeEndPosition>3</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons>
+          <JobContactPerson>
+            <FirstName>Maria</FirstName>
+            <LastName>Stamm</LastName>
+            <MiddleName />
+            <CompanyName>arvato Systems GmbH</CompanyName>
+            <Department />
+            <Comment IsNull="True" />
+            <ContactType>None</ContactType>
+            <HierarchyLevelCd>1</HierarchyLevelCd>
+          </JobContactPerson>
+        </JobContactPersons>
+        <JobPreparationScript />
+        <RecoveryRules>
+          <RecoveryRule>
+            <JobReturnCodeExpr />
+            <JobName>0050_CR_VAR_002_##</JobName>
+            <RecoveryType>Manual</RecoveryType>
+            <RestartDelay>0</RestartDelay>
+            <PerformRecoveryJobsFlag>False</PerformRecoveryJobsFlag>
+            <BypassCurrentJobFlag>False</BypassCurrentJobFlag>
+            <AutoRestartFlag>True</AutoRestartFlag>
+            <Uncat>False</Uncat>
+            <UncatExclusion><![CDATA[]]></UncatExclusion>
+            <Documentation><![CDATA[]]></Documentation>
+            <RestartJobPosition>RestartJobIsPredecessor</RestartJobPosition>
+            <ExecutionNoFrom>0</ExecutionNoFrom>
+            <ExecutionNoTo IsNull="True" />
+            <RecoveryRuleBypassJobs />
+            <RecoveryRuleRecoveryJobs />
+            <RuleId>0</RuleId>
+          </RecoveryRule>
+          <RecoveryRule>
+            <JobReturnCodeExpr>RC=4</JobReturnCodeExpr>
+            <JobName>0050_CR_VAR_002_##</JobName>
+            <RecoveryType>Automatic</RecoveryType>
+            <RestartDelay>0</RestartDelay>
+            <PerformRecoveryJobsFlag>True</PerformRecoveryJobsFlag>
+            <BypassCurrentJobFlag>False</BypassCurrentJobFlag>
+            <AutoRestartFlag>True</AutoRestartFlag>
+            <Uncat>True</Uncat>
+            <UncatExclusion><![CDATA[]]></UncatExclusion>
+            <Documentation><![CDATA[]]></Documentation>
+            <RestartJobPosition>RestartJobIsPredecessor</RestartJobPosition>
+            <ExecutionNoFrom>1</ExecutionNoFrom>
+            <ExecutionNoTo IsNull="True" />
+            <RecoveryRuleBypassJobs />
+            <RecoveryRuleRecoveryJobs>
+              <RuleRecoveryJob>
+                <RestartDelay>0</RestartDelay>
+                <Job>R0050_CR_VAR_002_##</Job>
+              </RuleRecoveryJob>
+            </RecoveryRuleRecoveryJobs>
+            <RuleId>2</RuleId>
+          </RecoveryRule>
+          <RecoveryRule>
+            <JobReturnCodeExpr>RC=4</JobReturnCodeExpr>
+            <JobName>0050_CR_VAR_002_##</JobName>
+            <RecoveryType>Automatic</RecoveryType>
+            <RestartDelay>0</RestartDelay>
+            <PerformRecoveryJobsFlag>False</PerformRecoveryJobsFlag>
+            <BypassCurrentJobFlag>True</BypassCurrentJobFlag>
+            <AutoRestartFlag>False</AutoRestartFlag>
+            <Uncat>True</Uncat>
+            <UncatExclusion><![CDATA[]]></UncatExclusion>
+            <Documentation><![CDATA[]]></Documentation>
+            <RestartJobPosition>RestartJobIsPredecessor</RestartJobPosition>
+            <ExecutionNoFrom>2</ExecutionNoFrom>
+            <ExecutionNoTo IsNull="True" />
+            <RecoveryRuleBypassJobs />
+            <RecoveryRuleRecoveryJobs />
+            <RuleId>3</RuleId>
+          </RecoveryRule>
+        </RecoveryRules>
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>0040_CR_VAR_002_##</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules>
+          <NotificationRule>
+            <CompletionCodeExpression IsNull="True" />
+            <TriggerTime>BeforeJobStart</TriggerTime>
+            <TemplateName>Mail_TestVariables_03</TemplateName>
+          </NotificationRule>
+        </JobNotificationRules>
+        <LoginObject />
+        <ShortDescription><![CDATA[Test Variableners. in BS2000 Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>BS2000</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[echo Anzeige der Systemvariablen
+echo Dieser Job ist nicht lauff&#228;hig, hiermit soll 
+echo die Ersetzung der folgenden Parameter gepr&#252;ft werden
+echo --------------------------------------------------------
+echo $JO_SNAM (nur zOS) = ?{$JO_SNAM}      
+echo $ZOS_JOB           = ?{$ZOS_JOB} - obsolet, wird aber noch gef&#252;llt
+echo --------------------------------------------------------
+echo $ST_STREAM         = ?{$ST_STREAM}
+echo $ST_SDES           = ?{$ST_SDES}
+echo $ST_MASTER_STREAM  = ?{$ST_MASTER_STREAM}
+echo $ST_VARI           = ?{$ST_VARI}
+echo $ST_JOB            = ?{$ST_JOB}        
+echo $ST_JDES           = ?{$ST_JDES}
+echo $ST_RUN            = ?{$ST_RUN}
+echo $ST_RUNMAX         = ?{$ST_RUNMAX}
+echo $PD_DDMMYYYY       = ?{$PD_DDMMYYYY}
+echo $PD_DDMMYY         = ?{$PD_DDMMYY}
+echo $PD_YYYYMMDD       = ?{$PD_YYYYMMDD}
+echo $PD_YYMMDD         = ?{$PD_YYMMDD}
+echo $PD_MMYYYY         = ?{$PD_MMYYYY} 
+echo $PD_MMYY           = ?{$PD_MMYY}    
+echo $PD_YYYYMM         = ?{$PD_YYYYMM}
+echo $PD_YYMM           = ?{$PD_YYMM}    
+echo $PD_DD             = ?{$PD_DD}      
+echo $PD_MM             = ?{$PD_MM}      
+echo $PD_YY             = ?{$PD_YY}      
+echo $PD_YYYY           = ?{$PD_YYYY}
+echo $PD_DDDYYYY        = ?{$PD_DDDYYYY}
+&#39;echo $PD_DDDYY          = ?{$PD_DDDYY}
+echo $PD_YYYYDDD        = ?{$PD_YYYYDDD}
+echo $PD_YYDDD          = ?{$PD_YYDDD}
+echo $PD_DDD            = ?{$PD_DDD}     
+echo $PD_WW             = ?{$PD_WW}      
+echo $PR_USER           = ?{$PR_USER}    
+echo $PR_DDMMYYYY       = ?{$PR_DDMMYYYY}
+echo $PR_DDMMYY         = ?{$PR_DDMMYY}  
+echo $PR_MMDDYYYY       = ?{$PR_MMDDYYYY}
+echo $PR_MMDDYY         = ?{$PR_MMDDYY}  
+echo $PR_YYYYMMDD       = ?{$PR_YYYYMMDD}
+echo $PR_YYMMDD         = ?{$PR_YYMMDD}  
+echo $PR_MMYYYY         = ?{$PR_MMYYYY}  
+echo $PR_MMYY           = ?{$PR_MMYY}    
+echo $PR_YYYYMM         = ?{$PR_YYYYMM}  
+echo $PR_YYMM           = ?{$PR_YYMM}    
+echo $PR_DD             = ?{$PR_DD}      
+echo $PR_MM             = ?{$PR_MM}      
+echo $PR_YY             = ?{$PR_YY}      
+echo $PR_YYYY           = ?{$PR_YYYY}    
+echo $PR_DDDYYYY        = ?{$PR_DDDYYYY}
+echo $PR_DDDYY          = ?{$PR_DDDYY}   
+echo $PR_YYYYDDD        = ?{$PR_YYYYDDD} 
+echo $PR_YYDDD          = ?{$PR_YYDDD}   
+echo $PR_DDD            = ?{$PR_DDD}     
+echo $PR_WW             = ?{$PR_WW}      
+echo $PR_HHMMSSFFF      = ?{$PR_HHMMSSFFF}  
+echo $PR_HHMMSS         = ?{$PR_HHMMSS}  
+echo $PR_HHMM           = ?{$PR_HHMM}    
+echo $PR_HH             = ?{$PR_HH}      
+echo $PR_MI             = ?{$PR_MI}      
+echo $PR_SS             = ?{$PR_SS}      
+echo $PR_FFF            = ?{$PR_FFF}      
+   
+
+
+echo Anzeige der System Laufzeitvariablen
+echo ------------------------------------                      
+echo SR_DDMMYYYY        = ?{&amp;SR_DDMMYYYY}
+echo SR_DDMMYY          = ?{&amp;SR_DDMMYY}
+echo SR_MMDDYYYY        = ?{&amp;SR_MMDDYYYY}
+echo SR_MMDDYY          = ?{&amp;SR_MMDDYY}
+echo SR_YYYYMMDD        = ?{&amp;SR_YYYYMMDD}
+echo SR_YYMMDD          = ?{&amp;SR_YYMMDD}
+echo SR_MMYYYY          = ?{&amp;SR_MMYYYY}
+echo SR_MMYY            = ?{&amp;SR_MMYY}
+echo SR_YYYYMM          = ?{&amp;SR_YYYYMM}
+echo SR_YYMM            = ?{&amp;SR_YYMM}
+echo SR_DD              = ?{&amp;SR_DD}
+echo SR_MM              = ?{&amp;SR_MM}
+echo SR_YY              = ?{&amp;SR_YY}
+echo SR_YYYY            = ?{&amp;SR_YYYY}
+echo SR_DDDYYYY         = ?{&amp;SR_DDDYYYY}
+echo SR_DDDYY           = ?{&amp;SR_DDDYY}
+echo SR_YYYYDDD         = ?{&amp;SR_YYYYDDD}
+echo SR_YYDDD           = ?{&amp;SR_YYDDD}
+echo SR_DDD             = ?{&amp;SR_DDD}
+echo SR_HHMMSSFFF       = ?{&amp;SR_HHMMSSFFF}
+echo SR_HHMMSS          = ?{&amp;SR_HHMMSS}
+echo SR_HHMM            = ?{&amp;SR_HHMM}
+echo SR_HH              = ?{&amp;SR_HH}
+echo SR_MI              = ?{&amp;SR_MI}
+echo SR_SS              = ?{&amp;SR_SS}
+echo SR_FFF             = ?{&amp;SR_FFF}
+echo SJ_DDMMYYYY        = ?{&amp;SJ_DDMMYYYY}
+echo SJ_DDMMYY          = ?{&amp;SJ_DDMMYY}
+echo SJ_MMDDYYYY        = ?{&amp;SJ_MMDDYYYY}
+echo SJ_MMDDYY          = ?{&amp;SJ_MMDDYY}
+echo SJ_YYYYMMDD        = ?{&amp;SJ_YYYYMMDD}
+echo SJ_YYMMDD          = ?{&amp;SJ_YYMMDD}
+echo SJ_MMYYYY          = ?{&amp;SJ_MMYYYY}
+echo SJ_MMYY            = ?{&amp;SJ_MMYY}
+echo SJ_YYYYMM          = ?{&amp;SJ_YYYYMM}
+echo SJ_YYMM            = ?{&amp;SJ_YYMM}
+echo SJ_DD              = ?{&amp;SJ_DD}
+echo SJ_MM              = ?{&amp;SJ_MM}
+echo SJ_YY              = ?{&amp;SJ_YY}
+echo SJ_YYYY            = ?{&amp;SJ_YYYY}
+echo SJ_DDDYYYY         = ?{&amp;SJ_DDDYYYY}
+echo SJ_DDDYY           = ?{&amp;SJ_DDDYY}
+echo SJ_YYYYDDD         = ?{&amp;SJ_YYYYDDD}
+echo SJ_YYDDD           = ?{&amp;SJ_YYDDD}
+echo SJ_DDD             = ?{&amp;SJ_DDD}
+echo SJ_HHMMSSFFF       = ?{&amp;SJ_HHMMSSFFF}
+echo SJ_HHMMSS          = ?{&amp;SJ_HHMMSS}
+echo SJ_HHMM            = ?{&amp;SJ_HHMM}
+echo SJ_HH              = ?{&amp;SJ_HH}
+echo SJ_MI              = ?{&amp;SJ_MI}
+echo SJ_SS              = ?{&amp;SJ_SS}
+echo SJ_FFF             = ?{&amp;SJ_FFF}
+echo SJ_ACC             = ?{&amp;SJ_ACC}
+echo SJ_RPJ bei RecJobs = ?{&amp;SJ_RPJ}
+
+
+echo ST_EMAIL           = ?{&amp;ST_EMAIL}
+echo SJ_EMAIL           = ?{&amp;SJ_EMAIL}
+echo CTX_EMAIL          = ?{&amp;CTX_EMAIL}
+echo SJ_JOBRELEASEURL   = ?{&amp;SJ_JOBRELEASEURL}
+
+
+]]></MainScript>
+        <DisplayOrder>6</DisplayOrder>
+        <JobShortName><![CDATA[BSMR##]]></JobShortName>
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>True</IsNotificationRequired>
+        <CoordinateX>330</CoordinateX>
+        <CoordinateY>416</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail>BS2000_2</AgentDetail>
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>1</PreparationScriptJobOrder>
+          <Script><![CDATA[-- Da im Testsystem keine BS2000 Anbindung vorhanden ist soll dieser Job immer ausfallen
+System.SetBypass(true)
+]]></Script>
+          <ScriptLanguage>Lua</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>0030_CR_VAR_002_##</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules>
+          <NotificationRule>
+            <CompletionCodeExpression><![CDATA[RC=-3605]]></CompletionCodeExpression>
+            <TriggerTime>AfterJobEnd</TriggerTime>
+            <TemplateName>Mail_TestVariables_02</TemplateName>
+          </NotificationRule>
+        </JobNotificationRules>
+        <LoginObject />
+        <ShortDescription><![CDATA[Variablen im Job Script]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>2</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>FileTransfer</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>True</IsNotificationRequired>
+        <CoordinateX>600</CoordinateX>
+        <CoordinateY>208</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>0060_CR_VAR_002_##</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag>False</JobHoldFlag>
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules>
+              <JobCompletionCodeRule>
+                <CodeCompletionRulesType>ValidationDefinition</CodeCompletionRulesType>
+                <RunNumber>0</RunNumber>
+                <CodeRuleExpression>RC=-3605</CodeRuleExpression>
+              </JobCompletionCodeRule>
+            </JobCompletionCodeRules>
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons>
+          <JobContactPerson>
+            <FirstName>Max</FirstName>
+            <LastName>Mustermann</LastName>
+            <MiddleName />
+            <CompanyName>Musterfirma</CompanyName>
+            <Department />
+            <Comment IsNull="True" />
+            <ContactType>None</ContactType>
+            <HierarchyLevelCd>1</HierarchyLevelCd>
+          </JobContactPerson>
+        </JobContactPersons>
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>2</PreparationScriptJobOrder>
+          <Script><![CDATA[System.SetVariable(&#39;src_file&#39;,&#39;/TEST/filexyz.txt&#39;)
+System.SetVariable(&#39;trg_path&#39;,&#39;/TESTNEU&#39;)
+System.SetVariable(&#39;trg_file&#39;,&#39;fileabc&#39;)
+System.SetVariable(&#39;trg_ext&#39;,&#39;.txt&#39;)]]></Script>
+          <ScriptLanguage>Lua</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules />
+        <JobFileTransferProperty>
+          <SourceAgent>degtluv0003</SourceAgent>
+          <TargetAgent>degtluv3009</TargetAgent>
+          <SourceLoginObject>ggpdcadm_UNIX_UP_40</SourceLoginObject>
+          <TargetLoginObject>ggpdcadm_UNIX_UP_40</TargetLoginObject>
+          <FileTransferDefinitions>
+            <FileTransferDefinition>
+              <PositionNo>1</PositionNo>
+              <SourceFilePattern><![CDATA[?{src_file}_?{&SJ_HHMMSS}_?{$&NUMMER}_?{&&CR_VAR_TEST_02}]]></SourceFilePattern>
+              <ControlFilePathFlag>False</ControlFilePathFlag>
+              <TargetFilePath><![CDATA[?{trg_path}]]></TargetFilePath>
+              <TargetFileName><![CDATA[?{trg_file}_?{$PD_YYYYMMDD}?{trg_ext}]]></TargetFileName>
+              <SourceUnfulfilledHandling>Abort</SourceUnfulfilledHandling>
+              <SourceFileDeleteFlag>False</SourceFileDeleteFlag>
+              <TargetFileExistsHandling>Abort</TargetFileExistsHandling>
+              <SourceEncodingDetail />
+              <TargetEncodingDetail />
+              <DeleteTrailingBlanksFlag>False</DeleteTrailingBlanksFlag>
+              <LinebreakTranslationType>None</LinebreakTranslationType>
+              <UseSourceAttributesFlag>True</UseSourceAttributesFlag>
+            </FileTransferDefinition>
+          </FileTransferDefinitions>
+        </JobFileTransferProperty>
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+      <Job>
+        <JobName>0060_CR_VAR_002_##</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Test Insertion Point]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Unix</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[echo Anzeige der Systemvariablen
+echo ------------------------------------                      
+echo $ST_STREAM         = ?{$ST_STREAM}
+echo $ST_SDES           = ?{$ST_SDES}
+echo $ST_MASTER_STREAM  = ?{$ST_MASTER_STREAM}
+echo $ST_VARI           = ?{$ST_VARI}
+echo $ST_JOB            = ?{$ST_JOB}        
+echo $ST_JDES           = ?{$ST_JDES}
+echo $ST_RUN            = ?{$ST_RUN}
+echo $ST_RUNMAX         = ?{$ST_RUNMAX}
+echo $PD_DDMMYYYY       = ?{$PD_DDMMYYYY}
+echo $PD_DDMMYY         = ?{$PD_DDMMYY}
+echo $PD_YYYYMMDD       = ?{$PD_YYYYMMDD}
+echo $PD_YYMMDD         = ?{$PD_YYMMDD}
+echo $PD_MMYYYY         = ?{$PD_MMYYYY} 
+echo $PD_MMYY           = ?{$PD_MMYY}    
+echo $PD_YYYYMM         = ?{$PD_YYYYMM}
+echo $PD_YYMM           = ?{$PD_YYMM}    
+echo $PD_DD             = ?{$PD_DD}      
+echo $PD_MM             = ?{$PD_MM}      
+echo $PD_YY             = ?{$PD_YY}      
+echo $PD_YYYY           = ?{$PD_YYYY}
+echo $PD_DDDYYYY        = ?{$PD_DDDYYYY}
+echo $PD_DDDYY          = ?{$PD_DDDYY}
+echo $PD_YYYYDDD        = ?{$PD_YYYYDDD}
+echo $PD_YYDDD          = ?{$PD_YYDDD}
+echo $PD_DDD            = ?{$PD_DDD}     
+echo $PD_WW             = ?{$PD_WW}      
+echo $PR_USER           = ?{$PR_USER}    
+echo $PR_DDMMYYYY       = ?{$PR_DDMMYYYY}
+echo $PR_DDMMYY         = ?{$PR_DDMMYY}  
+echo $PR_MMDDYYYY       = ?{$PR_MMDDYYYY}
+echo $PR_MMDDYY         = ?{$PR_MMDDYY}  
+echo $PR_YYYYMMDD       = ?{$PR_YYYYMMDD}
+echo $PR_YYMMDD         = ?{$PR_YYMMDD}  
+echo $PR_MMYYYY         = ?{$PR_MMYYYY}  
+echo $PR_MMYY           = ?{$PR_MMYY}    
+echo $PR_YYYYMM         = ?{$PR_YYYYMM}  
+echo $PR_YYMM           = ?{$PR_YYMM}    
+echo $PR_DD             = ?{$PR_DD}      
+echo $PR_MM             = ?{$PR_MM}      
+echo $PR_YY             = ?{$PR_YY}      
+echo $PR_YYYY           = ?{$PR_YYYY}    
+echo $PR_DDDYYYY        = ?{$PR_DDDYYYY}
+echo $PR_DDDYY          = ?{$PR_DDDYY}   
+echo $PR_YYYYDDD        = ?{$PR_YYYYDDD} 
+echo $PR_YYDDD          = ?{$PR_YYDDD}   
+echo $PR_DDD            = ?{$PR_DDD}     
+echo $PR_WW             = ?{$PR_WW}      
+echo $PR_HHMMSSFFF      = ?{$PR_HHMMSSFFF}  
+echo $PR_HHMMSS         = ?{$PR_HHMMSS}  
+echo $PR_HHMM           = ?{$PR_HHMM}    
+echo $PR_HH             = ?{$PR_HH}      
+echo $PR_MI             = ?{$PR_MI}      
+echo $PR_SS             = ?{$PR_SS}      
+echo $PR_FFF            = ?{$PR_FFF}      
+echo $JO_SNAM           = ?{$JO_SNAM}   
+echo $ZOS_JOB  nur zos  = ?{$ZOS_JOB}  
+   
+
+
+echo Anzeige der System Laufzeitvariablen
+echo ------------------------------------                      
+echo SR_DDMMYYYY        = ?{&amp;SR_DDMMYYYY}
+echo SR_DDMMYY          = ?{&amp;SR_DDMMYY}
+echo SR_MMDDYYYY        = ?{&amp;SR_MMDDYYYY}
+echo SR_MMDDYY          = ?{&amp;SR_MMDDYY}
+echo SR_YYYYMMDD        = ?{&amp;SR_YYYYMMDD}
+echo SR_YYMMDD          = ?{&amp;SR_YYMMDD}
+echo SR_MMYYYY          = ?{&amp;SR_MMYYYY}
+echo SR_MMYY            = ?{&amp;SR_MMYY}
+echo SR_YYYYMM          = ?{&amp;SR_YYYYMM}
+echo SR_YYMM            = ?{&amp;SR_YYMM}
+echo SR_DD              = ?{&amp;SR_DD}
+echo SR_MM              = ?{&amp;SR_MM}
+echo SR_YY              = ?{&amp;SR_YY}
+echo SR_YYYY            = ?{&amp;SR_YYYY}
+echo SR_DDDYYYY         = ?{&amp;SR_DDDYYYY}
+echo SR_DDDYY           = ?{&amp;SR_DDDYY}
+echo SR_YYYYDDD         = ?{&amp;SR_YYYYDDD}
+echo SR_YYDDD           = ?{&amp;SR_YYDDD}
+echo SR_DDD             = ?{&amp;SR_DDD}
+echo SR_HHMMSSFFF       = ?{&amp;SR_HHMMSSFFF}
+echo SR_HHMMSS          = ?{&amp;SR_HHMMSS}
+echo SR_HHMM            = ?{&amp;SR_HHMM}
+echo SR_HH              = ?{&amp;SR_HH}
+echo SR_MI              = ?{&amp;SR_MI}
+echo SR_SS              = ?{&amp;SR_SS}
+echo SR_FFF             = ?{&amp;SR_FFF}
+echo SJ_DDMMYYYY        = ?{&amp;SJ_DDMMYYYY}
+echo SJ_DDMMYY          = ?{&amp;SJ_DDMMYY}
+echo SJ_MMDDYYYY        = ?{&amp;SJ_MMDDYYYY}
+echo SJ_MMDDYY          = ?{&amp;SJ_MMDDYY}
+echo SJ_YYYYMMDD        = ?{&amp;SJ_YYYYMMDD}
+echo SJ_YYMMDD          = ?{&amp;SJ_YYMMDD}
+echo SJ_MMYYYY          = ?{&amp;SJ_MMYYYY}
+echo SJ_MMYY            = ?{&amp;SJ_MMYY}
+echo SJ_YYYYMM          = ?{&amp;SJ_YYYYMM}
+echo SJ_YYMM            = ?{&amp;SJ_YYMM}
+echo SJ_DD              = ?{&amp;SJ_DD}
+echo SJ_MM              = ?{&amp;SJ_MM}
+echo SJ_YY              = ?{&amp;SJ_YY}
+echo SJ_YYYY            = ?{&amp;SJ_YYYY}
+echo SJ_DDDYYYY         = ?{&amp;SJ_DDDYYYY}
+echo SJ_DDDYY           = ?{&amp;SJ_DDDYY}
+echo SJ_YYYYDDD         = ?{&amp;SJ_YYYYDDD}
+echo SJ_YYDDD           = ?{&amp;SJ_YYDDD}
+echo SJ_DDD             = ?{&amp;SJ_DDD}
+echo SJ_HHMMSSFFF       = ?{&amp;SJ_HHMMSSFFF}
+echo SJ_HHMMSS          = ?{&amp;SJ_HHMMSS}
+echo SJ_HHMM            = ?{&amp;SJ_HHMM}
+echo SJ_HH              = ?{&amp;SJ_HH}
+echo SJ_MI              = ?{&amp;SJ_MI}
+echo SJ_SS              = ?{&amp;SJ_SS}
+echo SJ_FFF             = ?{&amp;SJ_FFF}
+echo SJ_ACC             = ?{&amp;SJ_ACC}
+
+
+echo ST_EMAIL           = ?{&amp;ST_EMAIL}
+echo SJ_EMAIL           = ?{&amp;SJ_EMAIL}
+echo CTX_EMAIL          = ?{&amp;CTX_EMAIL}
+echo SJ_JOBRELEASEURL   = ?{&amp;SJ_JOBRELEASEURL}
+
+
+]]></MainScript>
+        <DisplayOrder>3</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>InsertionPointJob</TemplateType>
+        <ControlFilePath><![CDATA[?{&&CR_TEST_INS_POINT_DIR}?{InsPointFileName}]]></ControlFilePath>
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>600</CoordinateX>
+        <CoordinateY>416</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>3</PreparationScriptJobOrder>
+          <Script><![CDATA[System.SetVariable(&#39;InsPointFileName&#39;,&#39;CR_TEST_001.xml&#39;)]]></Script>
+          <ScriptLanguage>Lua</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+      </Job>
+    </Jobs>
+    <StreamContactPersons>
+      <StreamContactPerson>
+        <FirstName>Max</FirstName>
+        <LastName>Mustermann</LastName>
+        <MiddleName />
+        <CompanyName>Musterfirma</CompanyName>
+        <Department />
+        <Comment IsNull="True" />
+        <ContactType>None</ContactType>
+        <HierarchyLevelCd>1</HierarchyLevelCd>
+      </StreamContactPerson>
+    </StreamContactPersons>
+    <ScheduleRule />
+    <StreamPreparationScript>
+      <Script><![CDATA[System.SetVariable(&#39;TEST_01&#39;,&#39;Wert aus Lauf&#39;)
+System.SetVariable(&#39;TEST_02&#39;,&#39;Wert aus Lauf&#39;)
+System.SetVariable(&#39;VAR_INVAR_01&#39;,&#39;?{$PD_DDMMYY}&#39;)
+System.SetVariable(&#39;VAR_INVAR_02&#39;,&#39;?{&amp;SR_DDMMYYYY}&#39;)
+System.SetVariable(&#39;VAR_INVAR_03&#39;,&#39;?{TEST_02}&#39;)
+System.SetVariable(&#39;VAR_INVAR_04&#39;,&#39;?{$&amp;RUNVAR}&#39;)
+]]></Script>
+      <ScriptLanguage>Lua</ScriptLanguage>
+    </StreamPreparationScript>
+    <MasterStreamId />
+    <StreamPath><![CDATA[]]></StreamPath>
+    <StatusFlag>True</StatusFlag>
+    <StreamVersionDetail>
+      <StreamVersionType>Current</StreamVersionType>
+      <StreamVersion>1.0</StreamVersion>
+      <DeploymentDateTime>06.06.2017 11:42:45</DeploymentDateTime>
+      <DeployAsActive>True</DeployAsActive>
+      <PlannedDeploymentDateTime />
+      <StorageDateTime />
+      <AutoDeploymentStatus>None</AutoDeploymentStatus>
+      <ScheduleRulesMergeType>FromNew</ScheduleRulesMergeType>
+    </StreamVersionDetail>
+    <AutomaticPreparedRuns IsNull="True" />
+    <BusinessServiceFlag />
+    <StreamBusinessServiceProperty />
+    <AutoPreparationType>None</AutoPreparationType>
+    <RunVariables>
+      <RunVariable>
+        <RunNumber>0</RunNumber>
+        <VariableName>MASTER</VariableName>
+        <VariableContent><![CDATA[Master Stream Wert - Lauf Alle]]></VariableContent>
+        <Description><![CDATA[Test der Lauf-Variablen]]></Description>
+      </RunVariable>
+      <RunVariable>
+        <RunNumber>1</RunNumber>
+        <VariableName>MASTER_LAUF1</VariableName>
+        <VariableContent><![CDATA[Master Stream Wert - Lauf 1]]></VariableContent>
+        <Description><![CDATA[Test Lauf Variable Lauf 1]]></Description>
+      </RunVariable>
+      <RunVariable>
+        <RunNumber>0</RunNumber>
+        <VariableName>RUNVAR</VariableName>
+        <VariableContent><![CDATA[Master Stream Lauf Variablen Inhalt]]></VariableContent>
+        <Description><![CDATA[Test der Lauf-Variablen]]></Description>
+      </RunVariable>
+      <RunVariable>
+        <RunNumber>0</RunNumber>
+        <VariableName>NUMMER</VariableName>
+        <VariableContent><![CDATA[99]]></VariableContent>
+        <Description><![CDATA[Testnummer]]></Description>
+      </RunVariable>
+    </RunVariables>
+    <ConcurrentStreamRunsEnabled />
+  </Stream>
+</ExportableStream>

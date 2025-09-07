@@ -1,0 +1,457 @@
+/* 
+ * StreamWorks Enterprise Design System
+ * Professional UI components for enterprise applications
+ * Based on Arvato Systems brand guidelines
+ */
+
+/* ==========================================================================
+ * ENTERPRISE BUTTONS
+ * ========================================================================== */
+  
+  .btn-enterprise {
+    @apply inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md;
+  }
+  
+  .btn-enterprise-primary {
+    @apply btn-enterprise bg-gradient-to-r from-primary-600 to-primary-700 border-primary-600 text-white hover:from-primary-700 hover:to-primary-800 focus:ring-primary-500 transform hover:scale-105 active:scale-95;
+  }
+  
+  .btn-enterprise-secondary {
+    @apply btn-enterprise bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:ring-gray-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700;
+  }
+  
+  .btn-enterprise-ghost {
+    @apply btn-enterprise bg-transparent border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-500 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200;
+  }
+  
+  .btn-enterprise-danger {
+    @apply btn-enterprise bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 focus:ring-red-500 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE CARDS
+   * ========================================================================== */
+  
+  .card-enterprise {
+    @apply bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-200 dark:bg-gray-800 dark:border-gray-700;
+  }
+  
+  .card-enterprise-elevated {
+    @apply card-enterprise shadow-lg hover:shadow-xl border-gray-100 dark:border-gray-600;
+  }
+  
+  .card-enterprise-interactive {
+    @apply card-enterprise cursor-pointer hover:scale-[1.02] hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800 transform transition-all duration-200;
+  }
+  
+  .card-enterprise-header {
+    @apply px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700;
+  }
+  
+  .card-enterprise-content {
+    @apply px-6 py-4;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE INPUTS
+   * ========================================================================== */
+  
+  .input-enterprise {
+    @apply w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400;
+  }
+  
+  .input-enterprise-large {
+    @apply input-enterprise py-4 text-base;
+  }
+  
+  .textarea-enterprise {
+    @apply input-enterprise resize-none min-h-[120px];
+  }
+  
+  .input-group-enterprise {
+    @apply relative;
+  }
+  
+  .input-label-enterprise {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2;
+  }
+  
+  .input-error-enterprise {
+    @apply border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-600;
+  }
+  
+  .input-success-enterprise {
+    @apply border-green-300 focus:border-green-500 focus:ring-green-500 dark:border-green-600;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE BADGES & STATUS
+   * ========================================================================== */
+  
+  .badge-enterprise {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ring-1 ring-inset;
+  }
+  
+  .badge-enterprise-success {
+    @apply badge-enterprise bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-900/20 dark:text-green-300 dark:ring-green-500/30;
+  }
+  
+  .badge-enterprise-warning {
+    @apply badge-enterprise bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-500/30;
+  }
+  
+  .badge-enterprise-error {
+    @apply badge-enterprise bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-900/20 dark:text-red-300 dark:ring-red-500/30;
+  }
+  
+  .badge-enterprise-info {
+    @apply badge-enterprise bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-500/30;
+  }
+  
+  .badge-enterprise-neutral {
+    @apply badge-enterprise bg-gray-50 text-gray-700 ring-gray-600/20 dark:bg-gray-800/50 dark:text-gray-300 dark:ring-gray-500/30;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE CONFIDENCE INDICATORS
+   * ========================================================================== */
+  
+  .confidence-high {
+    @apply flex items-center space-x-2 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800;
+  }
+  
+  .confidence-medium {
+    @apply flex items-center space-x-2 px-3 py-2 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800;
+  }
+  
+  .confidence-low {
+    @apply flex items-center space-x-2 px-3 py-2 bg-red-50 text-red-700 rounded-lg border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE MODALS & OVERLAYS
+   * ========================================================================== */
+  
+  .modal-enterprise-backdrop {
+    @apply fixed inset-0 z-50 bg-gray-900/50 backdrop-blur-sm;
+  }
+  
+  .modal-enterprise-panel {
+    @apply bg-white rounded-2xl shadow-2xl border border-gray-200 dark:bg-gray-800 dark:border-gray-700 max-h-[90vh] overflow-hidden;
+  }
+  
+  .modal-enterprise-header {
+    @apply flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700;
+  }
+  
+  .modal-enterprise-content {
+    @apply p-6 overflow-y-auto;
+  }
+  
+  .modal-enterprise-footer {
+    @apply flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE SOURCE CARDS
+   * ========================================================================== */
+  
+  .source-card-enterprise {
+    @apply card-enterprise-interactive p-4 space-y-3 hover:border-primary-200 dark:hover:border-primary-800;
+  }
+  
+  .source-card-header {
+    @apply flex items-start justify-between;
+  }
+  
+  .source-card-title {
+    @apply font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate;
+  }
+  
+  .source-card-score {
+    @apply badge-enterprise-success flex-shrink-0 ml-2;
+  }
+  
+  .source-card-meta {
+    @apply flex items-center space-x-3 text-sm text-gray-500 dark:text-gray-400;
+  }
+  
+  .source-card-preview {
+    @apply text-sm text-gray-600 dark:text-gray-300 line-clamp-2 italic;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE CHAT BUBBLES
+   * ========================================================================== */
+  
+  .chat-bubble-user {
+    @apply inline-block p-4 rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-sm max-w-2xl;
+  }
+  
+  .chat-bubble-assistant {
+    @apply inline-block p-5 rounded-2xl bg-white border border-gray-200 shadow-sm max-w-3xl dark:bg-gray-800 dark:border-gray-700;
+  }
+  
+  .chat-avatar {
+    @apply w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm;
+  }
+  
+  .chat-avatar-user {
+    @apply chat-avatar bg-primary-600 text-white;
+  }
+  
+  .chat-avatar-assistant {
+    @apply chat-avatar bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE SUGGESTION PILLS
+   * ========================================================================== */
+  
+  .suggestion-pill {
+    @apply px-4 py-2 text-sm bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-full border border-blue-200 hover:from-blue-100 hover:to-indigo-100 hover:shadow-md hover:scale-105 transform transition-all duration-200 cursor-pointer dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-300 dark:border-blue-700 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/50;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE PROGRESS INDICATORS
+   * ========================================================================== */
+  
+  .progress-enterprise {
+    @apply w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700;
+  }
+  
+  .progress-enterprise-bar {
+    @apply h-full bg-gradient-to-r from-primary-600 to-primary-700 rounded-full transition-all duration-300;
+  }
+  
+  .loading-enterprise {
+    @apply animate-spin rounded-full border-2 border-gray-200 border-t-primary-600;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE TOOLTIPS
+   * ========================================================================== */
+  
+  .tooltip-enterprise {
+    @apply absolute z-50 px-3 py-2 text-sm bg-gray-900 text-white rounded-lg shadow-lg dark:bg-gray-700 dark:text-gray-100;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE ANIMATIONS
+   * ========================================================================== */
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.3s ease-out;
+  }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+  
+  .animate-bounce-gentle {
+    animation: bounceGentle 0.6s ease-out;
+  }
+
+  /* ==========================================================================
+   * ENTERPRISE SCROLLBARS
+   * ========================================================================== */
+  
+  .scrollbar-enterprise {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(209 213 219) transparent;
+  }
+  
+  .scrollbar-enterprise::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-enterprise::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-enterprise::-webkit-scrollbar-thumb {
+    background: rgb(209 213 219);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-enterprise::-webkit-scrollbar-thumb:hover {
+    background: rgb(156 163 175);
+  }
+  
+  .dark .scrollbar-enterprise {
+    scrollbar-color: rgb(75 85 99) transparent;
+  }
+  
+  .dark .scrollbar-enterprise::-webkit-scrollbar-thumb {
+    background: rgb(75 85 99);
+  }
+  
+  .dark .scrollbar-enterprise::-webkit-scrollbar-thumb:hover {
+    background: rgb(107 114 128);
+  }
+
+/* ==========================================================================
+ * ENTERPRISE ANIMATIONS KEYFRAMES
+ * ========================================================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceGentle {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+/* ==========================================================================
+ * ENTERPRISE UTILITIES
+ * ========================================================================== */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, theme('colors.primary.600'), theme('colors.primary.700'));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .bg-gradient-enterprise {
+    background: linear-gradient(135deg, theme('colors.primary.50'), theme('colors.blue.50'));
+  }
+  
+  .dark .bg-gradient-enterprise {
+    background: linear-gradient(135deg, theme('colors.gray.800'), theme('colors.gray.900'));
+  }
+  
+  .shadow-enterprise {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+  
+  .shadow-enterprise-lg {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+/* ==========================================================================
+ * ENTERPRISE RESPONSIVE DESIGN
+ * ========================================================================== */
+
+/* Mobile First - Base styles are mobile */
+@media (max-width: 640px) {
+  .modal-enterprise-panel {
+    @apply mx-4 my-8;
+  }
+  
+  .card-enterprise {
+    @apply mx-2;
+  }
+  
+  .btn-enterprise {
+    @apply w-full justify-center;
+  }
+}
+
+/* Tablet */
+@media (min-width: 768px) {
+  .modal-enterprise-panel {
+    @apply max-w-2xl;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .modal-enterprise-panel {
+    @apply max-w-4xl;
+  }
+}
+
+/* ==========================================================================
+ * ENTERPRISE PRINT STYLES
+ * ========================================================================== */
+
+@media print {
+  .btn-enterprise,
+  .modal-enterprise-backdrop,
+  .tooltip-enterprise {
+    @apply hidden;
+  }
+  
+  .card-enterprise {
+    @apply border border-gray-300 shadow-none;
+  }
+  
+  .chat-bubble-user,
+  .chat-bubble-assistant {
+    @apply border border-gray-300 shadow-none;
+  }
+}
+
+/* ==========================================================================
+ * ENTERPRISE ACCESSIBILITY
+ * ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-enterprise,
+  .card-enterprise-interactive,
+  .suggestion-pill {
+    @apply transform-none;
+  }
+  
+  .animate-fade-in-up,
+  .animate-slide-in-right,
+  .animate-bounce-gentle {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card-enterprise {
+    @apply border-2;
+  }
+  
+  .btn-enterprise {
+    @apply border-2;
+  }
+  
+  .badge-enterprise {
+    @apply ring-2;
+  }
+}

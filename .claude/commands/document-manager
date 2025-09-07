@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# Document Manager Agent - Document Management System Specialist  
+echo "📄 Document Manager Agent Activated"
+echo "   Specialized in: Document management, file operations, folder hierarchy, storage optimization"
+echo ""
+
+# Get the task parameter
+TASK="${1:-analyze}"
+
+case "$TASK" in
+    "analyze"|"analysis")
+        echo "📊 Document Management System Analysis..."
+        echo ""
+        
+        cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI
+        
+        echo "🔍 Document Management Components:"
+        
+        # Check backend components
+        if [ -f "backend/routers/documents.py" ]; then
+            echo "   ✅ Document Router: routers/documents.py"
+            ENDPOINTS=$(grep -c "@router" backend/routers/documents.py 2>/dev/null || echo "0")
+            echo "      API Endpoints: $ENDPOINTS"
+        fi
+        
+        if [ -f "backend/routers/folders.py" ]; then
+            echo "   ✅ Folder Router: routers/folders.py"
+            ENDPOINTS=$(grep -c "@router" backend/routers/folders.py 2>/dev/null || echo "0")
+            echo "      API Endpoints: $ENDPOINTS"
+        fi
+        
+        if [ -f "backend/models/core.py" ]; then
+            echo "   ✅ Database Models: models/core.py"
+            MODELS=$(grep -c "class.*Base" backend/models/core.py 2>/dev/null || echo "0")
+            echo "      Models: $MODELS"
+        fi
+        
+        if [ -f "backend/services/folder_service.py" ]; then
+            echo "   ✅ Folder Service: services/folder_service.py"
+        fi
+        
+        if [ -f "backend/services/document_service.py" ]; then
+            echo "   ✅ Document Service: services/document_service.py"
+        fi
+        
+        echo ""
+        echo "🎨 Frontend Components:"
+        
+        # Check frontend components
+        FRONTEND_COMPONENTS=$(find frontend/src/components -name "*.tsx" 2>/dev/null | wc -l)
+        echo "   📱 React Components: $FRONTEND_COMPONENTS files"
+        
+        DOC_COMPONENTS=$(find frontend/src/components -path "*/documents/*" -name "*.tsx" 2>/dev/null | wc -l)
+        echo "   📄 Document Components: $DOC_COMPONENTS files"
+        
+        FOLDER_COMPONENTS=$(find frontend/src/components -path "*/folders/*" -name "*.tsx" 2>/dev/null | wc -l)
+        echo "   📁 Folder Components: $FOLDER_COMPONENTS files"
+        
+        echo ""
+        echo "📊 Storage Analysis:"
+        
+        # Check storage setup
+        if [ -d "storage" ]; then
+            echo "   ✅ Storage Directory: ./storage/"
+        elif [ -d "backend/storage" ]; then
+            echo "   ✅ Storage Directory: ./backend/storage/"  
+        else
+            echo "   ⚠️ Storage Directory: Not found"
+        fi
+        
+        echo ""
+        echo "🔧 System Health:"
+        
+        # Check if backend is running
+        if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+            HEALTH=$(curl -s http://localhost:8000/health | grep -o '"status":"[^"]*"' || echo '"status":"unknown"')
+            echo "   🟢 Backend API: Running ($HEALTH)"
+        else
+            echo "   🔴 Backend API: Not responding"
+        fi
+        
+        # Check if frontend is accessible  
+        if curl -s http://localhost:3000 >/dev/null 2>&1; then
+            echo "   🟢 Frontend: Accessible"
+        else
+            echo "   🔴 Frontend: Not accessible"
+        fi
+        
+        echo ""
+        echo "✅ Document Manager analysis complete!"
+        ;;
+        
+    "test"|"testing")
+        echo "🧪 Running Document Management Tests..."
+        echo ""
+        
+        cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI
+        
+        # Test API endpoints
+        echo "🔍 API Endpoint Tests:"
+        
+        if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+            echo "   ✅ Health Check: PASS"
+            
+            # Test folders endpoint
+            if curl -s http://localhost:8000/folders/ >/dev/null 2>&1; then
+                echo "   ✅ Folders API: PASS"
+            else
+                echo "   ❌ Folders API: FAIL"
+            fi
+            
+            # Test documents endpoint  
+            if curl -s http://localhost:8000/documents/ >/dev/null 2>&1; then
+                echo "   ✅ Documents API: PASS"
+            else
+                echo "   ❌ Documents API: FAIL"
+            fi
+            
+        else
+            echo "   ❌ Backend not running - start with 'python backend/main.py'"
+        fi
+        
+        echo ""
+        echo "✅ Document Manager testing complete!"
+        ;;
+        
+    "optimize")
+        echo "⚡ Document Management Optimization..."
+        echo ""
+        
+        echo "🔍 Optimization Recommendations:"
+        echo "   1. Add database indexing for folder_id and parent_id"
+        echo "   2. Implement file chunking for large uploads" 
+        echo "   3. Add Redis caching for folder hierarchy"
+        echo "   4. Set up CDN for file downloads"
+        echo "   5. Add compression for API responses"
+        
+        echo ""
+        echo "✅ Document Manager optimization analysis complete!"
+        ;;
+        
+    *)
+        echo "❓ Usage: document-manager [analyze|test|optimize]"
+        echo ""
+        echo "Commands:"
+        echo "   analyze  - Analyze document management system"
+        echo "   test     - Test API endpoints and functionality"
+        echo "   optimize - Get optimization recommendations"
+        ;;
+esac

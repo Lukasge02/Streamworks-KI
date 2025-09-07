@@ -1,0 +1,799 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>funk26_1051_Import-Export-Stream</StreamName>
+    <StreamDocumentation><![CDATA[Stream für Import-Export Utility
+test
+test
+test]]></StreamDocumentation>
+    <AgentDetail>degtluv3009</AgentDetail>
+    <AccountNoId>4444445</AccountNoId>
+    <CalendarId>UATDefaultCalendar</CalendarId>
+    <StreamType>Normal</StreamType>
+    <MaxStreamRuns>20</MaxStreamRuns>
+    <ShortDescription>Stream für Import-Export</ShortDescription>
+    <SchedulingRequiredFlag>True</SchedulingRequiredFlag>
+    <OverviewInfoMessage />
+    <RuntimeDataStorageDays />
+    <RuntimeDataStorageDaySource />
+    <StreamRunDeletionSource />
+    <StreamRunDeletionType>None</StreamRunDeletionType>
+    <StreamRunDeletionTime />
+    <StreamRunDeletionDays />
+    <StreamRunDeletionDayType />
+    <DeletionTimeTimeZoneId />
+    <DeletionTimeValidFlag />
+    <DeletionTimeValidSource />
+    <StreamRunTimeStatisticsDays />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityId>Super Low</SeverityId>
+    <MaxStreamRunDuration />
+    <MinStreamRunDuration />
+    <CentralJobLogAreaFlag />
+    <CentralJobLogSource />
+    <CentralJobLogStorageDays />
+    <AgentJobLogStorageDays />
+    <AgentJobLogStorageDaySource />
+    <StreamRunInterval />
+    <MaxJobLogSize />
+    <ReorgType />
+    <ExternalJobScriptRequired />
+    <KeepPreparedRuns />
+    <InteractivePslFlag>False</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled>False</ConcurrentPlanDatesEnabled>
+    <UncatExclusion />
+    <Jobs>
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription>Start Point for the Stream. funk26_1051_Import-Export-Stream.</ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration />
+        <CentralJobLogStorageDays />
+        <ReportToIncidentManagementFlag />
+        <ExternalJobScriptRequired />
+        <MainScript><![CDATA[]]></MainScript>
+        <DisplayOrder>1</DisplayOrder>
+        <JobShortName />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>113</CoordinateX>
+        <CoordinateY>0</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>00100_funk26_1051_Import-Export-Stream</JobName>
+            <EdgeBreaks />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime>08:00:00</StartTime>
+            <StartTimeDayType>CalendarDay</StartTimeDayType>
+            <StartTimeOffsetDays>0</StartTimeOffsetDays>
+            <StartTimeTimeZone>(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna</StartTimeTimeZone>
+            <StartTimeType>AbsoluteStartTime</StartTimeType>
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag>False</JobHoldFlag>
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency>
+              <Rule><![CDATA[<FileDependencyRule xmlns="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Timeout="1">
+  <SimpleRule Type="FilesNotExist" DirectoryName="c:/test" FileName="test.txt" />
+</FileDependencyRule>]]></Rule>
+              <RunNumber>0</RunNumber>
+              <AgentId>degtluv3009</AgentId>
+            </FileDependency>
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies>
+              <LogicalResource>
+                <ResourceName>funk26_res001</ResourceName>
+                <AllocationType>Shared</AllocationType>
+                <AutoReleaseFlag />
+                <Priority>50</Priority>
+                <RequiredAllocationCounter>1</RequiredAllocationCounter>
+                <StartPointAllocationFlag>False</StartPointAllocationFlag>
+              </LogicalResource>
+            </LogicalResourceDependencies>
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+      </Job>
+      <Job>
+        <JobName>00100_funk26_1051_Import-Export-Stream</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules>
+          <NotificationRule>
+            <CompletionCodeExpression>RC=5</CompletionCodeExpression>
+            <TriggerTime>AfterJobEnd</TriggerTime>
+            <TemplateName>Mail_funk26</TemplateName>
+          </NotificationRule>
+        </JobNotificationRules>
+        <LoginObject />
+        <ShortDescription>test</ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Unix</JobType>
+        <MinJobDuration />
+        <CentralJobLogStorageDays />
+        <ReportToIncidentManagementFlag />
+        <ExternalJobScriptRequired />
+        <MainScript><![CDATA[ls]]></MainScript>
+        <DisplayOrder>2</DisplayOrder>
+        <JobShortName />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath />
+        <IsNotificationRequired>True</IsNotificationRequired>
+        <CoordinateX>0</CoordinateX>
+        <CoordinateY>174</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>00200_funk26_1051_Import-Export-Stream</JobName>
+            <EdgeBreaks />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules>
+              <CodeCompletionRulesType>ValidationDefinition</CodeCompletionRulesType>
+              <RunNumber>0</RunNumber>
+              <CodeRuleExpression>RC=6</CodeRuleExpression>
+            </JobCompletionCodeRules>
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules>
+          <RecoveryRule>
+            <JobReturnCodeExpr />
+            <JobName>00100_funk26_1051_Import-Export-Stream</JobName>
+            <RecoveryType>Manual</RecoveryType>
+            <RestartDelay>0</RestartDelay>
+            <PerformRecoveryJobsFlag>False</PerformRecoveryJobsFlag>
+            <BypassCurrentJobFlag>False</BypassCurrentJobFlag>
+            <AutoRestartFlag>True</AutoRestartFlag>
+            <Uncat>False</Uncat>
+            <UncatExclusion />
+            <Documentation><![CDATA[]]></Documentation>
+            <RestartJobPosition>RestartJobIsPredecessor</RestartJobPosition>
+            <ExecutionNoFrom>0</ExecutionNoFrom>
+            <ExecutionNoTo />
+            <RecoveryRuleBypassJobs />
+            <RecoveryRuleRecoveryJobs />
+          </RecoveryRule>
+          <RecoveryRule>
+            <JobReturnCodeExpr>RC=6</JobReturnCodeExpr>
+            <JobName>00100_funk26_1051_Import-Export-Stream</JobName>
+            <RecoveryType>Automatic</RecoveryType>
+            <RestartDelay>0</RestartDelay>
+            <PerformRecoveryJobsFlag>False</PerformRecoveryJobsFlag>
+            <BypassCurrentJobFlag>False</BypassCurrentJobFlag>
+            <AutoRestartFlag>True</AutoRestartFlag>
+            <Uncat>True</Uncat>
+            <UncatExclusion />
+            <Documentation><![CDATA[]]></Documentation>
+            <RestartJobPosition>RestartJobIsPredecessor</RestartJobPosition>
+            <ExecutionNoFrom>1</ExecutionNoFrom>
+            <ExecutionNoTo />
+            <RecoveryRuleBypassJobs />
+            <RecoveryRuleRecoveryJobs />
+          </RecoveryRule>
+        </RecoveryRules>
+      </Job>
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription>End Point for the Stream. funk26_1051_Import-Export-Stream.</ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Endpoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration />
+        <CentralJobLogStorageDays />
+        <ReportToIncidentManagementFlag />
+        <ExternalJobScriptRequired />
+        <MainScript><![CDATA[]]></MainScript>
+        <DisplayOrder>5</DisplayOrder>
+        <JobShortName />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>113</CoordinateX>
+        <CoordinateY>798</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+      </Job>
+      <Job>
+        <JobName>RecoveryJobNetStartPoint</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription>RecoveryJobNetStartPoint</ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetStartPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration />
+        <CentralJobLogStorageDays />
+        <ReportToIncidentManagementFlag />
+        <ExternalJobScriptRequired />
+        <MainScript><![CDATA[]]></MainScript>
+        <DisplayOrder>0</DisplayOrder>
+        <JobShortName />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>200</CoordinateX>
+        <CoordinateY>100</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+      </Job>
+      <Job>
+        <JobName>RecoveryJobNetEndPoint</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription>RecoveryJobNetEndPoint</ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetEndPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration />
+        <CentralJobLogStorageDays />
+        <ReportToIncidentManagementFlag />
+        <ExternalJobScriptRequired />
+        <MainScript><![CDATA[]]></MainScript>
+        <DisplayOrder>0</DisplayOrder>
+        <JobShortName />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>200</CoordinateX>
+        <CoordinateY>350</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+      </Job>
+      <Job>
+        <JobName>00200_funk26_1051_Import-Export-Stream</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription>test</ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Unix</JobType>
+        <MinJobDuration />
+        <CentralJobLogStorageDays />
+        <ReportToIncidentManagementFlag />
+        <ExternalJobScriptRequired />
+        <MainScript><![CDATA[ls]]></MainScript>
+        <DisplayOrder>3</DisplayOrder>
+        <JobShortName />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>0</CoordinateX>
+        <CoordinateY>382</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>00300_funk26_1051_Import-Export-Stream</JobName>
+            <EdgeBreaks />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+      </Job>
+      <Job>
+        <JobName>00300_funk26_1051_Import-Export-Stream</JobName>
+        <JobDocumentation><![CDATA[]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription>test</ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Unix</JobType>
+        <MinJobDuration />
+        <CentralJobLogStorageDays />
+        <ReportToIncidentManagementFlag />
+        <ExternalJobScriptRequired />
+        <MainScript><![CDATA[ls -l]]></MainScript>
+        <DisplayOrder>4</DisplayOrder>
+        <JobShortName />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>0</CoordinateX>
+        <CoordinateY>590</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime />
+            <StartTimeDayType />
+            <StartTimeOffsetDays />
+            <StartTimeTimeZone />
+            <StartTimeType />
+            <RelativeStartTime />
+            <MaxJobLogSize />
+            <MaxJobDuration />
+            <LatestStartTime />
+            <LatestStartTimeType />
+            <LatestStartTimeRelative />
+            <LatestStartTimeOffsetDays />
+            <LatestStartTimeDayType />
+            <LatestStartTimeConsiderAfterRestart />
+            <LatestStartTimeAction />
+            <JobHoldFlag />
+            <CentralJobLogFlag />
+            <BypassStatus />
+            <AgentDetail />
+            <AgentSource />
+            <AccountDetail />
+            <AccountSource />
+            <Severity />
+            <AgentJobLogStorageDays />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+      </Job>
+    </Jobs>
+    <StreamContactPersons />
+    <ScheduleRule>
+      <ScheduleRuleXml><![CDATA[<SchedulingRules CalendarId="UATDefaultCalendar" ShiftRule="3">
+  <WeekdayRules>
+    <Weekday Day="6" All="Yes" Used="Yes" />
+  </WeekdayRules>
+  <ScheduleMonths All="Yes" />
+</SchedulingRules>]]></ScheduleRuleXml>
+    </ScheduleRule>
+    <StreamPreparationScript>
+      <Script><![CDATA[--test PreperationScript]]></Script>
+      <ScriptLanguage>Lua</ScriptLanguage>
+    </StreamPreparationScript>
+    <MasterStreamId />
+    <StreamPath><![CDATA[]]></StreamPath>
+    <StatusFlag>True</StatusFlag>
+    <StreamVersionDetail>
+      <StreamVersionType>Current</StreamVersionType>
+      <StreamVersion>1.0</StreamVersion>
+      <DeploymentDateTime>06.08.2012 08:55:24</DeploymentDateTime>
+      <DeployAsActive>True</DeployAsActive>
+      <PlannedDeploymentDateTime />
+      <StorageDateTime />
+      <AutoDeploymentStatus>Finished</AutoDeploymentStatus>
+      <ScheduleRulesMergeType>FromNew</ScheduleRulesMergeType>
+    </StreamVersionDetail>
+  </Stream>
+</ExportableStream>

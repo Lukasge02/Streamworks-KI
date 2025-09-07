@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Test Backend - Run Python tests and checks
+cd backend
+
+echo "🧪 Running Python tests and quality checks..."
+echo ""
+
+echo "📋 Step 1: Type checking with mypy"
+python -m mypy . --ignore-missing-imports || echo "⚠️ Type checking found issues"
+
+echo ""
+echo "🧹 Step 2: Code linting with ruff"
+python3 -m ruff check . || echo "⚠️ Linting found issues"
+python3 -m ruff format --check . || echo "⚠️ Formatting issues found"
+
+echo ""
+echo "🧪 Step 3: Running pytest"
+python -m pytest -v || echo "❌ Tests failed"
+
+echo ""
+echo "✅ Backend testing complete!"

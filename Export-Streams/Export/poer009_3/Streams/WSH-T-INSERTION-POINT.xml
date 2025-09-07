@@ -1,0 +1,1225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>WSH-T-INSERTION-POINT</StreamName>
+    <StreamDocumentation><![CDATA[Test Insertion]]></StreamDocumentation>
+    <AgentDetail>gtasswvu15777</AgentDetail>
+    <AccountNoId />
+    <CalendarId />
+    <StreamType>Normal</StreamType>
+    <MaxStreamRuns>1</MaxStreamRuns>
+    <ShortDescription><![CDATA[Insertion point - dynamic stream]]></ShortDescription>
+    <SchedulingRequiredFlag>False</SchedulingRequiredFlag>
+    <ScheduleRuleObject />
+    <RuntimeDataStorageDays IsNull="True" />
+    <RuntimeDataStorageDaySource IsNull="True" />
+    <StreamRunDeletionSource IsNull="True" />
+    <StreamRunDeletionType>None</StreamRunDeletionType>
+    <StreamRunDeletionTime IsNull="True" />
+    <StreamRunDeletionDays IsNull="True" />
+    <StreamRunDeletionDayType IsNull="True" />
+    <DeletionTimeTimeZoneId />
+    <DeletionTimeValidFlag IsNull="True" />
+    <DeletionTimeValidSource IsNull="True" />
+    <StreamRunTimeStatisticsDays IsNull="True" />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityGroup />
+    <MaxStreamRunDuration IsNull="True" />
+    <MinStreamRunDuration IsNull="True" />
+    <CentralJobLogAreaFlag IsNull="True" />
+    <CentralJobLogSource IsNull="True" />
+    <CentralJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDaySource IsNull="True" />
+    <StreamRunInterval IsNull="True" />
+    <MaxJobLogSize IsNull="True" />
+    <ReorgType IsNull="True" />
+    <ExternalJobScriptRequired IsNull="True" />
+    <KeepPreparedRuns IsNull="True" />
+    <InteractivePslFlag>False</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled />
+    <UncatExclusion IsNull="True" />
+    <Jobs>
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Start Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>1</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>145</CoordinateX>
+        <CoordinateY>0</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>00100-WSH-T-INSERTION-POINT</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+          <JobInternalSuccessor>
+            <JobName>00200-WSH-T-INSERTION-POINT</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+      <Job>
+        <JobName>00100-WSH-T-INSERTION-POINT</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Insertion point job - all properties]]></ShortDescription>
+        <StatusFlag>False</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Windows</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;xs:schema xmlns=&quot;http://www.w3.org/2001/XMLSchema&quot;
+	xmlns:sw=&quot;http://www.streamworks.de/schemas/InsertionPointJobNet/1/0&quot;
+	xmlns:xs=&quot;http://www.w3.org/2001/XMLSchema&quot; targetNamespace=&quot;http://www.streamworks.de/schemas/InsertionPointJobNet/1/0&quot; elementFormDefault=&quot;unqualified&quot; attributeFormDefault=&quot;unqualified&quot; version=&quot;1.6&quot;&gt;
+	&lt;xs:element name=&quot;InsertionPointJobNet&quot; type=&quot;sw:InsertionPointJobNet&quot;/&gt;
+	&lt;xs:complexType name=&quot;InsertionPointJobNet&quot;&gt;
+		&lt;xs:sequence&gt;
+			&lt;xs:element name=&quot;DynamicStartPointJob&quot; type=&quot;sw:DynamicStartPointJob&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+				&lt;xs:annotation&gt;
+					&lt;xs:appinfo&gt;Represents the Start Point Job which optional.&lt;/xs:appinfo&gt;
+				&lt;/xs:annotation&gt;
+			&lt;/xs:element&gt;
+			&lt;xs:element name=&quot;DynamicJob&quot; type=&quot;sw:DynamicJob&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;unbounded&quot;&gt;
+				&lt;xs:annotation&gt;
+					&lt;xs:appinfo&gt;Respresents a Job which is Part of the JobNet.&lt;/xs:appinfo&gt;
+				&lt;/xs:annotation&gt;
+			&lt;/xs:element&gt;
+			&lt;xs:element name=&quot;DynamicEndPointJob&quot; type=&quot;sw:DynamicEndPointJob&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+				&lt;xs:annotation&gt;
+					&lt;xs:appinfo&gt;Represents the End Point Job which optional.&lt;/xs:appinfo&gt;
+				&lt;/xs:annotation&gt;
+			&lt;/xs:element&gt;
+		&lt;/xs:sequence&gt;
+		&lt;xs:attribute name=&quot;Version&quot; use=&quot;required&quot;&gt;
+			&lt;xs:annotation&gt;
+				&lt;xs:appinfo&gt;This attribute must be filled. It will be used for later versions of this schema definition.&lt;/xs:appinfo&gt;
+			&lt;/xs:annotation&gt;
+		&lt;/xs:attribute&gt;
+    &lt;xs:attribute name=&quot;EnableStreamRunCancelation&quot; use=&quot;optional&quot; type=&quot;boolean&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;Optional attribute. Default: It will be used for later versions of this schema definition.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+    &lt;/xs:attribute&gt;
+	&lt;/xs:complexType&gt;
+	&lt;xs:complexType name=&quot;DynamicStartPointJob&quot;&gt;
+		&lt;xs:annotation&gt;
+			&lt;xs:appinfo&gt;Definition of the Start Point Job.&lt;/xs:appinfo&gt;
+		&lt;/xs:annotation&gt;
+		&lt;xs:all&gt;
+			&lt;xs:element name=&quot;LogicalResources&quot; type=&quot;sw:LogicalResources&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+				&lt;xs:annotation&gt;
+					&lt;xs:appinfo&gt;Groups a list of logical resource names.&lt;/xs:appinfo&gt;
+				&lt;/xs:annotation&gt;
+			&lt;/xs:element&gt;
+			&lt;xs:element name=&quot;SuccessorJobs&quot; type=&quot;sw:SuccessorJobs&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+				&lt;xs:annotation&gt;
+					&lt;xs:appinfo&gt;Groups a list of successor job names.&lt;/xs:appinfo&gt;
+				&lt;/xs:annotation&gt;
+			&lt;/xs:element&gt;
+		&lt;/xs:all&gt;
+		&lt;xs:attribute name=&quot;AgentName&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+			&lt;xs:annotation&gt;
+				&lt;xs:appinfo&gt;Name of the agent. Will be inherited to a job which doesn&#39;t have any agent definition.&lt;/xs:appinfo&gt;
+			&lt;/xs:annotation&gt;
+		&lt;/xs:attribute&gt;
+		&lt;xs:attribute name=&quot;AccountName&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+			&lt;xs:annotation&gt;
+				&lt;xs:appinfo&gt;Name of the account. Will be inherited to a job which doesn&#39;t have any account definition.&lt;/xs:appinfo&gt;
+			&lt;/xs:annotation&gt;
+		&lt;/xs:attribute&gt;
+		&lt;xs:attribute name=&quot;SeverityName&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+			&lt;xs:annotation&gt;
+				&lt;xs:appinfo&gt;Name of the severity. Will be inherited to a job which doesn&#39;t have any severity definition.&lt;/xs:appinfo&gt;
+			&lt;/xs:annotation&gt;
+		&lt;/xs:attribute&gt;
+	&lt;/xs:complexType&gt;
+	&lt;xs:complexType name=&quot;DynamicJob&quot;&gt;
+		&lt;xs:annotation&gt;
+			&lt;xs:appinfo&gt;Definition of a dynamically inserted job.&lt;/xs:appinfo&gt;
+		&lt;/xs:annotation&gt;
+		&lt;xs:all minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+      &lt;xs:element name=&quot;JobScript&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Job script data, e.g. a JCL script.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:simpleContent&gt;
+            &lt;xs:extension base=&quot;xs:string&quot;&gt;
+              &lt;xs:attribute name=&quot;Environment&quot; use=&quot;optional&quot;&gt;
+                &lt;xs:annotation&gt;
+                  &lt;xs:appinfo&gt;Name of the Job Script Environment.&lt;/xs:appinfo&gt;
+                &lt;/xs:annotation&gt;
+              &lt;/xs:attribute&gt;
+            &lt;/xs:extension&gt;
+          &lt;/xs:simpleContent&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;ShortDescription&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Short description of the current job.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;CompletionCodeRules&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Root element for completion code rules.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:sequence&gt;
+            &lt;xs:element name=&quot;ValidationDefinition&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Represents a job return code validation expression.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+            &lt;/xs:element&gt;
+          &lt;/xs:sequence&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;AdditionalAgentInfos&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Deprecated. Use LoginObjectName instead. - Summarizes additional information concerning job execution on the specified agent.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:sequence&gt;
+            &lt;xs:element name=&quot;UserName&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;user name required for execution on agent.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+              &lt;xs:simpleType&gt;
+                &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+                  &lt;xs:maxLength value=&quot;50&quot;/&gt;
+                &lt;/xs:restriction&gt;
+              &lt;/xs:simpleType&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name=&quot;Password&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;password required for execution on agent.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+              &lt;xs:simpleType&gt;
+                &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+                  &lt;xs:maxLength value=&quot;50&quot;/&gt;
+                &lt;/xs:restriction&gt;
+              &lt;/xs:simpleType&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name=&quot;UseUserProfile&quot; type=&quot;xs:boolean&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;flag which specified whether user should be used for execution on agent.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name=&quot;ShellPath&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;shell path definition required for execution on agent.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+              &lt;xs:simpleType&gt;
+                &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+                  &lt;xs:maxLength value=&quot;100&quot;/&gt;
+                &lt;/xs:restriction&gt;
+              &lt;/xs:simpleType&gt;
+            &lt;/xs:element&gt;
+          &lt;/xs:sequence&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;LogicalResources&quot; type=&quot;sw:LogicalResources&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Groups a list of logical resource names.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;NotificationRules&quot; type=&quot;sw:NotificationRules&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Groups a list of notification rule definitions.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;ParseRules&quot; type=&quot;sw:ParseRules&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Groups a list of parse rules.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;RecoveryDefinition&quot; type=&quot;sw:RecoveryDefinition&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Recovery definition for a job.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;LoopDefinition&quot; type=&quot;sw:LoopDefinition&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Loop definition for a job.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;SuccessorJobs&quot; type=&quot;sw:SuccessorJobs&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Groups a list of successor job names.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+    &lt;/xs:all&gt;
+    &lt;xs:attribute name=&quot;JobName&quot; use=&quot;required&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;Name of this job which must be unique.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+      &lt;xs:simpleType&gt;
+        &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+          &lt;xs:maxLength value=&quot;128&quot;/&gt;
+        &lt;/xs:restriction&gt;
+      &lt;/xs:simpleType&gt;
+    &lt;/xs:attribute&gt;
+    &lt;xs:attribute name=&quot;AgentName&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;Name of the target agent.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+    &lt;/xs:attribute&gt;
+    &lt;xs:attribute name=&quot;AccountName&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;Name of the account.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+    &lt;/xs:attribute&gt;
+    &lt;xs:attribute name=&quot;SeverityName&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;Name of severity.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+    &lt;/xs:attribute&gt;
+    &lt;xs:attribute name=&quot;JobShortName&quot; use=&quot;optional&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;The job short name is required for jobs which will be executed on zos agents.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+      &lt;xs:simpleType&gt;
+        &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+          &lt;xs:maxLength value=&quot;10&quot;/&gt;
+        &lt;/xs:restriction&gt;
+      &lt;/xs:simpleType&gt;
+    &lt;/xs:attribute&gt;
+    &lt;xs:attribute name=&quot;LoginObjectName&quot; use=&quot;optional&quot; type=&quot;xs:string&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;Name of login object.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+    &lt;/xs:attribute&gt;
+  &lt;/xs:complexType&gt;
+  &lt;xs:complexType name=&quot;DynamicEndPointJob&quot;&gt;
+    &lt;xs:annotation&gt;
+      &lt;xs:appinfo&gt;Definition of end point job.&lt;/xs:appinfo&gt;
+    &lt;/xs:annotation&gt;
+    &lt;xs:attribute name=&quot;SeverityName&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+      &lt;xs:annotation&gt;
+        &lt;xs:appinfo&gt;severity name of end point job.&lt;/xs:appinfo&gt;
+      &lt;/xs:annotation&gt;
+    &lt;/xs:attribute&gt;
+  &lt;/xs:complexType&gt;
+  &lt;xs:complexType name=&quot;LogicalResources&quot;&gt;
+    &lt;xs:annotation&gt;
+      &lt;xs:appinfo&gt;Groups a list of logical resource names.&lt;/xs:appinfo&gt;
+    &lt;/xs:annotation&gt;
+    &lt;xs:sequence minOccurs=&quot;1&quot; maxOccurs=&quot;unbounded&quot;&gt;
+      &lt;xs:element name=&quot;LogicalResourceName&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Name of logical resource. Allocation type is shared and allocation count is 1.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+    &lt;/xs:sequence&gt;
+  &lt;/xs:complexType&gt;
+  &lt;xs:complexType name=&quot;NotificationRules&quot;&gt;
+    &lt;xs:annotation&gt;
+      &lt;xs:appinfo&gt;Groups a list of notification rule definitions.&lt;/xs:appinfo&gt;
+    &lt;/xs:annotation&gt;
+    &lt;xs:sequence minOccurs=&quot;1&quot; maxOccurs=&quot;unbounded&quot;&gt;
+      &lt;xs:element name=&quot;NotificationRule&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;A single notification rule definition.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:sequence&gt;
+            &lt;xs:element name=&quot;TriggerReturnCodeRule&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Return code rule for notification.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+            &lt;/xs:element&gt;
+          &lt;/xs:sequence&gt;
+          &lt;xs:attribute name=&quot;TemplateName&quot; type=&quot;xs:string&quot; use=&quot;required&quot;&gt;
+            &lt;xs:annotation&gt;
+              &lt;xs:appinfo&gt;Name of Mail or SMS template.&lt;/xs:appinfo&gt;
+            &lt;/xs:annotation&gt;
+          &lt;/xs:attribute&gt;
+          &lt;xs:attribute name=&quot;TriggerTime&quot; use=&quot;required&quot;&gt;
+            &lt;xs:annotation&gt;
+              &lt;xs:appinfo&gt;Trigger time, e.g. before, after or both job execution.&lt;/xs:appinfo&gt;
+            &lt;/xs:annotation&gt;
+            &lt;xs:simpleType&gt;
+              &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+                &lt;xs:enumeration value=&quot;Before&quot;/&gt;
+                &lt;xs:enumeration value=&quot;After&quot;/&gt;
+                &lt;xs:enumeration value=&quot;BeforeAndAfter&quot;/&gt;
+              &lt;/xs:restriction&gt;
+            &lt;/xs:simpleType&gt;
+          &lt;/xs:attribute&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+    &lt;/xs:sequence&gt;
+  &lt;/xs:complexType&gt;
+  &lt;xs:complexType name=&quot;ParseRules&quot;&gt;
+    &lt;xs:annotation&gt;
+      &lt;xs:appinfo&gt;Groups a list of parse rules.&lt;/xs:appinfo&gt;
+    &lt;/xs:annotation&gt;
+    &lt;xs:sequence minOccurs=&quot;1&quot; maxOccurs=&quot;unbounded&quot;&gt;
+      &lt;xs:element name=&quot;ParseRule&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;A single parse rule.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:all&gt;
+            &lt;xs:element name=&quot;Type&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Type of the parse rule.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+              &lt;xs:simpleType&gt;
+                &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+                  &lt;xs:enumeration value=&quot;SetReturnCode&quot; /&gt;
+                &lt;/xs:restriction&gt;
+              &lt;/xs:simpleType&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name=&quot;Description&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Description of the parse rule.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name=&quot;RegularExpression&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Regular expression of the parse rule.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name=&quot;JobOutputs&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Groups a list of job outputs.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+              &lt;xs:complexType&gt;
+                &lt;xs:sequence&gt;
+                  &lt;xs:element name=&quot;JobOutput&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;unbounded&quot;&gt;
+                    &lt;xs:annotation&gt;
+                      &lt;xs:appinfo&gt;Joblog of the parse rule.&lt;/xs:appinfo&gt;
+                    &lt;/xs:annotation&gt;
+                    &lt;xs:simpleType&gt;
+                      &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+                        &lt;xs:enumeration value=&quot;JobLog&quot; /&gt;
+                        &lt;xs:enumeration value=&quot;ErrorLog&quot; /&gt;
+                        &lt;xs:enumeration value=&quot;SourceJobLog&quot; /&gt;
+                        &lt;xs:enumeration value=&quot;SourceErrorLog&quot; /&gt;
+                        &lt;xs:enumeration value=&quot;TargetJobLog&quot; /&gt;
+                        &lt;xs:enumeration value=&quot;TargetErrorLog&quot; /&gt;
+                        &lt;xs:enumeration value=&quot;WebServiceResponse&quot; /&gt;
+                        &lt;xs:enumeration value=&quot;WebServiceResponseHeader&quot; /&gt;
+                      &lt;/xs:restriction&gt;
+                    &lt;/xs:simpleType&gt;
+                  &lt;/xs:element&gt;
+                &lt;/xs:sequence&gt;
+              &lt;/xs:complexType&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name=&quot;Result&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Result of the parse rule.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+            &lt;/xs:element&gt;
+          &lt;/xs:all&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+    &lt;/xs:sequence&gt;
+  &lt;/xs:complexType&gt;
+  &lt;xs:complexType name=&quot;RecoveryDefinition&quot;&gt;
+    &lt;xs:annotation&gt;
+      &lt;xs:appinfo&gt;Recovery definition.&lt;/xs:appinfo&gt;
+    &lt;/xs:annotation&gt;
+    &lt;xs:all minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+      &lt;xs:element name=&quot;ManualRecoveryRule&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Manual recovery rule.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:all&gt;
+            &lt;xs:element name=&quot;Documentation&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Documentation of the manual recovery rule.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+            &lt;/xs:element&gt;
+          &lt;/xs:all&gt;
+          &lt;xs:attribute name=&quot;Type&quot; type=&quot;sw:RecoveryRuleType&quot; use=&quot;required&quot;&gt;
+            &lt;xs:annotation&gt;
+              &lt;xs:appinfo&gt;Type of the manual recovery rule.&lt;/xs:appinfo&gt;
+            &lt;/xs:annotation&gt;
+          &lt;/xs:attribute&gt;
+          &lt;xs:attribute name=&quot;DelayMinutes&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+            &lt;xs:annotation&gt;
+              &lt;xs:appinfo&gt;Delay minutes of the manual recovery rule.&lt;/xs:appinfo&gt;
+            &lt;/xs:annotation&gt;
+          &lt;/xs:attribute&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;AutomaticRecoveryRules&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;List of automatic recovery rules.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:sequence minOccurs=&quot;1&quot; maxOccurs=&quot;unbounded&quot;&gt;
+            &lt;xs:element name=&quot;AutomaticRecoveryRule&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;A single automatic recovery rule.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+              &lt;xs:complexType&gt;
+                &lt;xs:all&gt;
+                  &lt;xs:element name=&quot;ReturnCodeExpression&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+                    &lt;xs:annotation&gt;
+                      &lt;xs:appinfo&gt;Return code expression of the recovery rule.&lt;/xs:appinfo&gt;
+                    &lt;/xs:annotation&gt;
+                  &lt;/xs:element&gt;
+                  &lt;xs:element name=&quot;Documentation&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+                    &lt;xs:annotation&gt;
+                      &lt;xs:appinfo&gt;Documentation of the recovery rule.&lt;/xs:appinfo&gt;
+                    &lt;/xs:annotation&gt;
+                  &lt;/xs:element&gt;
+                &lt;/xs:all&gt;
+                &lt;xs:attribute name=&quot;ExecutionNumber&quot; type=&quot;xs:string&quot; use=&quot;required&quot;&gt;
+                  &lt;xs:annotation&gt;
+                    &lt;xs:appinfo&gt;Execution number of the recovery rule.&lt;/xs:appinfo&gt;
+                  &lt;/xs:annotation&gt;
+                &lt;/xs:attribute&gt;
+                &lt;xs:attribute name=&quot;Type&quot; type=&quot;sw:RecoveryRuleType&quot; use=&quot;required&quot;&gt;
+                  &lt;xs:annotation&gt;
+                    &lt;xs:appinfo&gt;Type of the recovery rule.&lt;/xs:appinfo&gt;
+                  &lt;/xs:annotation&gt;
+                &lt;/xs:attribute&gt;
+                &lt;xs:attribute name=&quot;DelayMinutes&quot; type=&quot;xs:string&quot; use=&quot;optional&quot;&gt;
+                  &lt;xs:annotation&gt;
+                    &lt;xs:appinfo&gt;Delay minutes of the recovery rule.&lt;/xs:appinfo&gt;
+                  &lt;/xs:annotation&gt;
+                &lt;/xs:attribute&gt;
+                &lt;xs:attribute name=&quot;DeleteIncidentAfterBypass &quot; type=&quot;xs:boolean&quot; use=&quot;optional&quot;&gt;
+                  &lt;xs:annotation&gt;
+                    &lt;xs:appinfo&gt;In case of bypass by recovery, the created incident is marked as deleted.&lt;/xs:appinfo&gt;
+                  &lt;/xs:annotation&gt;
+                &lt;/xs:attribute&gt;
+              &lt;/xs:complexType&gt;
+            &lt;/xs:element&gt;
+          &lt;/xs:sequence&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+    &lt;/xs:all&gt;
+  &lt;/xs:complexType&gt;
+  &lt;xs:simpleType name=&quot;RecoveryRuleType&quot;&gt;
+    &lt;xs:restriction base=&quot;xs:string&quot;&gt;
+      &lt;xs:enumeration value=&quot;Restart&quot; /&gt;
+      &lt;xs:enumeration value=&quot;Bypass&quot; /&gt;
+    &lt;/xs:restriction&gt;
+  &lt;/xs:simpleType&gt;
+  &lt;xs:complexType name=&quot;LoopDefinition&quot;&gt;
+    &lt;xs:annotation&gt;
+      &lt;xs:appinfo&gt;Loop definition.&lt;/xs:appinfo&gt;
+    &lt;/xs:annotation&gt;
+    &lt;xs:all minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+      &lt;xs:element name=&quot;MaxDurationSec&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Max exeuction duration of the current job.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;MaxDurationAbort&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Abort job on max duration exceeded.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;ValidReturnCodes&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Valid loop execution return codes of the current job.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+      &lt;xs:element name=&quot;LoopPeriods&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;List of loop periods.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+        &lt;xs:complexType&gt;
+          &lt;xs:sequence minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+            &lt;xs:element name=&quot;LoopPeriod&quot;&gt;
+              &lt;xs:annotation&gt;
+                &lt;xs:appinfo&gt;Definition of a single loop period.&lt;/xs:appinfo&gt;
+              &lt;/xs:annotation&gt;
+              &lt;xs:complexType&gt;
+                &lt;xs:all&gt;
+                  &lt;xs:element name=&quot;TimeBetweenExecutionsSec&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+                    &lt;xs:annotation&gt;
+                      &lt;xs:appinfo&gt;Time between loop exeuctions in seconds.&lt;/xs:appinfo&gt;
+                    &lt;/xs:annotation&gt;
+                  &lt;/xs:element&gt;
+                  &lt;xs:element name=&quot;EndTime&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+                    &lt;xs:annotation&gt;
+                      &lt;xs:appinfo&gt;End condition: absolute time.&lt;/xs:appinfo&gt;
+                    &lt;/xs:annotation&gt;
+                    &lt;xs:complexType&gt;
+                      &lt;xs:all&gt;
+                        &lt;xs:element name=&quot;Time&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+                          &lt;xs:annotation&gt;
+                            &lt;xs:appinfo&gt;Time of day.&lt;/xs:appinfo&gt;
+                          &lt;/xs:annotation&gt;
+                        &lt;/xs:element&gt;
+                        &lt;xs:element name=&quot;TimeZone&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+                          &lt;xs:annotation&gt;
+                            &lt;xs:appinfo&gt;Time zone.&lt;/xs:appinfo&gt;
+                          &lt;/xs:annotation&gt;
+                        &lt;/xs:element&gt;
+                        &lt;xs:element name=&quot;RelativeDays&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+                          &lt;xs:annotation&gt;
+                            &lt;xs:appinfo&gt;Relative days to plan date.&lt;/xs:appinfo&gt;
+                          &lt;/xs:annotation&gt;
+                        &lt;/xs:element&gt;
+                      &lt;/xs:all&gt;
+                    &lt;/xs:complexType&gt;
+                  &lt;/xs:element&gt;
+                  &lt;xs:element name=&quot;EndDurationSec&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+                    &lt;xs:annotation&gt;
+                      &lt;xs:appinfo&gt;End condition: duration in seconds.&lt;/xs:appinfo&gt;
+                    &lt;/xs:annotation&gt;
+                  &lt;/xs:element&gt;
+                  &lt;xs:element name=&quot;EndNumberOfExecutions&quot; type=&quot;xs:string&quot; minOccurs=&quot;0&quot; maxOccurs=&quot;1&quot;&gt;
+                    &lt;xs:annotation&gt;
+                      &lt;xs:appinfo&gt;End condition: number of exeuctions.&lt;/xs:appinfo&gt;
+                    &lt;/xs:annotation&gt;
+                  &lt;/xs:element&gt;
+                &lt;/xs:all&gt;
+              &lt;/xs:complexType&gt;
+            &lt;/xs:element&gt;
+          &lt;/xs:sequence&gt;
+        &lt;/xs:complexType&gt;
+      &lt;/xs:element&gt;
+    &lt;/xs:all&gt;
+  &lt;/xs:complexType&gt;
+  &lt;xs:complexType name=&quot;SuccessorJobs&quot;&gt;
+    &lt;xs:annotation&gt;
+      &lt;xs:appinfo&gt;Groups a list of successor job names.&lt;/xs:appinfo&gt;
+    &lt;/xs:annotation&gt;
+    &lt;xs:sequence minOccurs=&quot;1&quot; maxOccurs=&quot;unbounded&quot;&gt;
+      &lt;xs:element name=&quot;JobName&quot; type=&quot;xs:string&quot; minOccurs=&quot;1&quot; maxOccurs=&quot;1&quot;&gt;
+        &lt;xs:annotation&gt;
+          &lt;xs:appinfo&gt;Name of the Successor Job. This job name has to be definied in this JobNet definition.&lt;/xs:appinfo&gt;
+        &lt;/xs:annotation&gt;
+      &lt;/xs:element&gt;
+    &lt;/xs:sequence&gt;
+  &lt;/xs:complexType&gt;
+&lt;/xs:schema&gt;]]></MainScript>
+        <DisplayOrder>3</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>InsertionPointJob</TemplateType>
+        <ControlFilePath><![CDATA[C:\WORK\TEMP\ZSR\WSH_JOB_DYN.xml]]></ControlFilePath>
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>0</CoordinateX>
+        <CoordinateY>208</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+      <Job>
+        <JobName>00200-WSH-T-INSERTION-POINT</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Insertion "Hello World"]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>Windows</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[]]></MainScript>
+        <DisplayOrder>2</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>InsertionPointJob</TemplateType>
+        <ControlFilePath><![CDATA[C:\WORK\InsertionPoint\WORKSHOP_INSERTION.xml]]></ControlFilePath>
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>280</CoordinateX>
+        <CoordinateY>208</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[End Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Endpoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>4</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>135</CoordinateX>
+        <CoordinateY>416</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+      <Job>
+        <JobName>RecoveryJobNetStartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Recovery Jobnet Start Point]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetStartPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>0</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>200</CoordinateX>
+        <CoordinateY>100</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+      <Job>
+        <JobName>RecoveryJobNetEndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Recovery Jobnet End Point]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetEndPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>0</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>200</CoordinateX>
+        <CoordinateY>350</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <SeverityGroup />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+            <Documentation IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+    </Jobs>
+    <StreamContactPersons />
+    <ScheduleRule>
+      <ScheduleRuleXml><![CDATA[&lt;SchedulingRules ShiftRule=&quot;3&quot; ScheduleRuleDialogNotYetVisited=&quot;1&quot;&gt;
+  &lt;FixedDates /&gt;
+&lt;/SchedulingRules&gt;]]></ScheduleRuleXml>
+    </ScheduleRule>
+    <StreamPreparationScript>
+      <Script><![CDATA[--gtasswvv10630
+--gtasswvw10631
+]]></Script>
+      <ScriptLanguage>Lua</ScriptLanguage>
+    </StreamPreparationScript>
+    <MasterStreamId />
+    <StreamPath><![CDATA[extern/Brose/Demo Streams]]></StreamPath>
+    <StatusFlag>False</StatusFlag>
+    <StreamVersionDetail>
+      <StreamVersionType>Current</StreamVersionType>
+      <StreamVersion>2.0</StreamVersion>
+      <DeploymentDateTime>05.05.2023 09:15:33</DeploymentDateTime>
+      <DeployAsActive>True</DeployAsActive>
+      <PlannedDeploymentDateTime />
+      <StorageDateTime />
+      <AutoDeploymentStatus>Finished</AutoDeploymentStatus>
+      <ScheduleRulesMergeType>FromNew</ScheduleRulesMergeType>
+    </StreamVersionDetail>
+    <AutomaticPreparedRuns>0</AutomaticPreparedRuns>
+    <BusinessServiceFlag />
+    <StreamBusinessServiceProperty />
+    <AutoPreparationType>Complete</AutoPreparationType>
+    <RunVariables />
+    <ConcurrentStreamRunsEnabled />
+    <EnableStreamRunCancelation>False</EnableStreamRunCancelation>
+    <Tags />
+    <GitEnabled IsNull="True" />
+  </Stream>
+</ExportableStream>

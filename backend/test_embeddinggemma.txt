@@ -1,0 +1,24 @@
+EmbeddingGemma Test Document
+============================
+
+This is a test document to verify that Google's EmbeddingGemma model is working correctly.
+
+Key Features of EmbeddingGemma:
+- 308M parameters for efficient on-device deployment
+- 768-dimensional embeddings with Matryoshka Representation Learning
+- State-of-the-art performance on MTEB benchmark
+- Support for over 100 languages
+- Optimized for RAG and semantic search applications
+
+Technical Specifications:
+- Model: google/embeddinggemma-300m
+- Context Length: 2048 tokens
+- Embedding Dimensions: 768 (with MRL support for 512/256/128)
+- Architecture: Based on Gemma3 transformers with bi-directional attention
+
+This test verifies the complete pipeline:
+1. Document upload and processing
+2. Chunking with Docling
+3. Embedding generation using EmbeddingGemma
+4. Vector storage in ChromaDB
+5. End-to-end RAG pipeline functionality

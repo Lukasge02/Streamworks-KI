@@ -1,0 +1,117 @@
+# Multi-stage Docker build for Enterprise StreamWorks Backend
+# Stage 1: Base Python image with dependencies
+FROM python:3.11-slim as base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    g++ \
+    libpq-dev \
+    libxml2-dev \
+    libxslt-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN groupadd -r streamworks && useradd -r -g streamworks streamworks
+
+# Set working directory
+WORKDIR /app
+
+# Stage 2: Development dependencies
+FROM base as development
+
+# Copy requirements
+COPY requirements.txt requirements-dev.txt ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+
+# Copy source code
+COPY . .
+
+# Change ownership
+RUN chown -R streamworks:streamworks /app
+
+USER streamworks
+
+# Development command
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Stage 3: Production build
+FROM base as builder
+
+# Copy requirements
+COPY requirements.txt ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY . .
+
+# Remove development files
+RUN find . -name "*.pyc" -delete && \
+    find . -name "__pycache__" -type d -exec rm -rf {} + && \
+    rm -rf .pytest_cache tests/ requirements-dev.txt
+
+# Stage 4: Production runtime
+FROM python:3.11-slim as production
+
+# Security and performance settings
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app \
+    LOG_LEVEL=INFO \
+    MAX_WORKERS=4
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpq5 \
+    libxml2 \
+    libxslt1.1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create app user and directories
+RUN groupadd -r streamworks && useradd -r -g streamworks streamworks \
+    && mkdir -p /app /app/logs /app/storage \
+    && chown -R streamworks:streamworks /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=streamworks:streamworks /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder --chown=streamworks:streamworks /usr/local/bin /usr/local/bin
+COPY --from=builder --chown=streamworks:streamworks /app /app
+
+WORKDIR /app
+
+# Switch to non-root user
+USER streamworks
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/api/system/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Production command with Gunicorn
+CMD ["python", "-m", "gunicorn", "main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "120", \
+     "--keep-alive", "2", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--access-logfile", "/app/logs/access.log", \
+     "--error-logfile", "/app/logs/error.log", \
+     "--log-level", "info"]

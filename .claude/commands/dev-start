@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Start Development Environment - Both Frontend and Backend
+echo "🚀 Starting StreamWorks development environment..."
+
+# Check if ports are already in use
+if lsof -i :8000 > /dev/null 2>&1; then
+    echo "⚠️ Port 8000 is already in use (Backend)"
+    echo "   Kill existing backend process? (y/n)"
+    read -r response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        pkill -f "uvicorn main:app"
+        sleep 2
+    fi
+fi
+
+if lsof -i :3000 > /dev/null 2>&1; then
+    echo "⚠️ Port 3000 is already in use (Frontend)"
+    echo "   Kill existing frontend process? (y/n)"
+    read -r response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        pkill -f "next dev"
+        sleep 2
+    fi
+fi
+
+echo ""
+echo "🐍 Starting Backend (FastAPI) on port 8000..."
+cd backend
+python3 -m uvicorn main:app --reload --port 8000 &
+BACKEND_PID=$!
+
+sleep 3
+
+echo ""
+echo "⚛️ Starting Frontend (Next.js) on port 3000..."
+cd ../frontend
+npm run dev &
+FRONTEND_PID=$!
+
+sleep 3
+
+echo ""
+echo "✅ Development environment started!"
+echo "   📊 Backend API: http://localhost:8000/docs"
+echo "   🌐 Frontend: http://localhost:3000"
+echo "   📋 Health Check: http://localhost:8000/health"
+echo ""
+echo "Press Ctrl+C to stop both servers..."
+
+# Wait for Ctrl+C
+trap 'echo ""; echo "🛑 Shutting down..."; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit' INT
+wait

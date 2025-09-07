@@ -1,0 +1,238 @@
+#!/bin/bash
+
+# Frontend Specialist Agent - Next.js & React Performance Expert
+echo "⚛️ Frontend Specialist Agent Activated"
+echo "   Specialized in: Next.js 14, TypeScript, React performance, UI/UX optimization"
+echo ""
+
+# Get the task parameter
+TASK="${1:-analyze}"
+
+case "$TASK" in
+    "analyze"|"analysis")
+        echo "📊 Frontend Architecture Analysis..."
+        echo ""
+        
+        cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI/frontend
+        
+        echo "🔍 Next.js Project Structure:"
+        
+        if [ -f "package.json" ]; then
+            echo "   ✅ Package Configuration: package.json"
+            DEPS=$(jq -r '.dependencies | keys | length' package.json 2>/dev/null || echo "unknown")
+            DEV_DEPS=$(jq -r '.devDependencies | keys | length' package.json 2>/dev/null || echo "unknown")
+            echo "      Dependencies: $DEPS production, $DEV_DEPS development"
+        fi
+        
+        if [ -f "next.config.js" -o -f "next.config.mjs" ]; then
+            echo "   ✅ Next.js Configuration: Available"
+        fi
+        
+        if [ -f "tailwind.config.js" -o -f "tailwind.config.ts" ]; then
+            echo "   ✅ Tailwind CSS: Configured"
+        fi
+        
+        if [ -f "tsconfig.json" ]; then
+            echo "   ✅ TypeScript: tsconfig.json"
+        fi
+        
+        echo ""
+        echo "📁 Component Architecture:"
+        if [ -d "src/components" ]; then
+            COMPONENT_COUNT=$(find src/components -name "*.tsx" -o -name "*.ts" | wc -l)
+            echo "   Components: $COMPONENT_COUNT files"
+            
+            # Analyze component categories
+            for category in "chat" "documents" "ui" "layout" "dashboard"; do
+                if [ -d "src/components/$category" ]; then
+                    COUNT=$(find "src/components/$category" -name "*.tsx" | wc -l)
+                    echo "     • $category: $COUNT components"
+                fi
+            done
+        fi
+        
+        echo ""
+        echo "🧩 App Structure (App Router):"
+        if [ -d "src/app" ]; then
+            PAGES=$(find src/app -name "page.tsx" | wc -l)
+            LAYOUTS=$(find src/app -name "layout.tsx" | wc -l)
+            echo "   Pages: $PAGES"
+            echo "   Layouts: $LAYOUTS"
+        fi
+        ;;
+        
+    "performance")
+        echo "⚡ Frontend Performance Analysis..."
+        echo ""
+        
+        cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI/frontend
+        
+        # Check if frontend is running
+        if curl -s -m 3 http://localhost:3000 > /dev/null; then
+            echo "✅ Frontend Status: RUNNING"
+            
+            # Test response time and size
+            RESPONSE_TIME=$(curl -s -w "%{time_total}" -o /dev/null http://localhost:3000 2>/dev/null)
+            RESPONSE_SIZE=$(curl -s -w "%{size_download}" -o /dev/null http://localhost:3000 2>/dev/null)
+            
+            echo "   Response Time: ${RESPONSE_TIME}s"
+            echo "   Bundle Size: $(echo "scale=2; $RESPONSE_SIZE / 1024" | bc 2>/dev/null || echo "$RESPONSE_SIZE")KB"
+            
+            # Performance assessment
+            if (( $(echo "$RESPONSE_TIME < 0.1" | bc -l 2>/dev/null || echo "0") )); then
+                echo "   Status: ✅ EXCELLENT (<100ms)"
+            elif (( $(echo "$RESPONSE_TIME < 3.0" | bc -l 2>/dev/null || echo "1") )); then
+                echo "   Status: ✅ GOOD (<3s target)"
+            else
+                echo "   Status: ⚠️ NEEDS OPTIMIZATION (>3s)"
+            fi
+            
+        else
+            echo "❌ Frontend Status: OFFLINE"
+            echo "   • Check if Next.js dev server is running on port 3000"
+            echo "   • Use '/dev-start' to start the frontend"
+        fi
+        
+        echo ""
+        echo "📦 Bundle Analysis:"
+        if [ -d ".next" ]; then
+            NEXT_SIZE=$(du -sh .next 2>/dev/null | cut -f1)
+            echo "   .next directory: ${NEXT_SIZE:-unknown}"
+            
+            if [ -d ".next/static" ]; then
+                STATIC_SIZE=$(du -sh .next/static 2>/dev/null | cut -f1) 
+                echo "   Static assets: ${STATIC_SIZE:-unknown}"
+            fi
+            
+            # Check for large chunks
+            if [ -d ".next/static/chunks" ]; then
+                LARGE_CHUNKS=$(find .next/static/chunks -name "*.js" -size +100k | wc -l)
+                echo "   Large chunks (>100KB): $LARGE_CHUNKS"
+            fi
+        else
+            echo "   .next directory not found - run 'npm run build'"
+        fi
+        ;;
+        
+    "dependencies")
+        echo "📦 Dependency Analysis..."
+        echo ""
+        
+        cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI/frontend
+        
+        if [ -f "package.json" ]; then
+            echo "🔍 Key Dependencies:"
+            
+            # Core framework deps
+            echo "   Framework:"
+            jq -r '.dependencies | to_entries | map(select(.key | test("^(next|react)")) | "     • " + .key + ": " + .value) | .[]' package.json 2>/dev/null || echo "     • Unable to parse package.json"
+            
+            echo "   TypeScript:"
+            jq -r '.devDependencies | to_entries | map(select(.key | test("typescript")) | "     • " + .key + ": " + .value) | .[]' package.json 2>/dev/null
+            
+            echo "   UI/Styling:"
+            jq -r '.dependencies | to_entries | map(select(.key | test("tailwind|framer|lucide|headless")) | "     • " + .key + ": " + .value) | .[]' package.json 2>/dev/null
+            
+            echo ""
+            echo "📊 Dependency Stats:"
+            PROD_COUNT=$(jq -r '.dependencies | keys | length' package.json 2>/dev/null)
+            DEV_COUNT=$(jq -r '.devDependencies | keys | length' package.json 2>/dev/null)
+            echo "   Production dependencies: $PROD_COUNT"
+            echo "   Development dependencies: $DEV_COUNT"
+            
+            # Check for outdated dependencies
+            if command -v npm &> /dev/null; then
+                echo ""
+                echo "🔄 Dependency Status:"
+                npm outdated 2>/dev/null | head -5 | tail -n +2 | while read line; do
+                    echo "     $line"
+                done || echo "     All dependencies up to date"
+            fi
+        fi
+        ;;
+        
+    "build")
+        echo "🏗️ Build Analysis..."
+        echo ""
+        
+        cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI/frontend
+        
+        echo "🔧 Running build analysis..."
+        if npm run build > /tmp/frontend-build.log 2>&1; then
+            echo "   ✅ Build Status: SUCCESS"
+            
+            # Extract build metrics
+            if [ -f "/tmp/frontend-build.log" ]; then
+                echo ""
+                echo "📊 Build Metrics:"
+                grep -E "(Route|First Load JS|kb|MB)" /tmp/frontend-build.log | head -10
+            fi
+            
+        else
+            echo "   ❌ Build Status: FAILED"
+            echo ""
+            echo "🔍 Build Errors:"
+            tail -20 /tmp/frontend-build.log 2>/dev/null | grep -E "(Error|error|ERROR)" | head -5
+        fi
+        ;;
+        
+    "lint")
+        echo "🧹 Code Quality Analysis..."
+        echo ""
+        
+        cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI/frontend
+        
+        echo "🔍 Running TypeScript checks..."
+        if npm run type-check > /tmp/frontend-typecheck.log 2>&1; then
+            echo "   ✅ TypeScript: No type errors"
+        else
+            echo "   ⚠️ TypeScript: Type errors found"
+            head -10 /tmp/frontend-typecheck.log | grep -E "(error|Error)" | head -5
+        fi
+        
+        echo ""
+        echo "🧹 Running ESLint..."
+        if npm run lint > /tmp/frontend-lint.log 2>&1; then
+            echo "   ✅ ESLint: No linting errors"
+        else
+            echo "   ⚠️ ESLint: Issues found"
+            head -10 /tmp/frontend-lint.log | head -5
+        fi
+        
+        echo ""
+        echo "📊 Component Analysis:"
+        if [ -d "src/components" ]; then
+            # Count component types
+            TSX_FILES=$(find src/components -name "*.tsx" | wc -l)
+            TS_FILES=$(find src/components -name "*.ts" | wc -l)
+            echo "   TSX Components: $TSX_FILES"
+            echo "   TS Utilities: $TS_FILES"
+            
+            # Check for potential issues
+            LARGE_COMPONENTS=$(find src/components -name "*.tsx" -exec wc -l {} \; | awk '$1 > 200 {print $2}' | wc -l)
+            echo "   Large components (>200 lines): $LARGE_COMPONENTS"
+        fi
+        ;;
+        
+    *)
+        echo "📚 Frontend Specialist Agent Usage:"
+        echo ""
+        echo "Available commands:"
+        echo "   /frontend-specialist analyze       - Complete frontend analysis"
+        echo "   /frontend-specialist performance   - Performance and loading analysis"  
+        echo "   /frontend-specialist dependencies  - Dependency audit and analysis"
+        echo "   /frontend-specialist build         - Build process and optimization"
+        echo "   /frontend-specialist lint          - Code quality and type checking"
+        echo ""
+        echo "🎯 Specializations:"
+        echo "   • Next.js 14 App Router optimization"
+        echo "   • TypeScript type safety and performance"
+        echo "   • React component architecture and patterns"
+        echo "   • Bundle size optimization and code splitting"
+        echo "   • Core Web Vitals and performance metrics"
+        echo "   • Accessibility and responsive design"
+        ;;
+esac
+
+echo ""
+echo "✅ Frontend Specialist analysis complete!"

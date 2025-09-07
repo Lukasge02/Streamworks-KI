@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# Optimize Context - Smart context management and cleanup
+echo "🧠 Optimizing Claude Code context for better performance and cost efficiency..."
+
+echo ""
+echo "🔍 Step 1: Analyzing current context usage"
+if [ -f "../.claude/tool-use.log" ]; then
+    LOG_ENTRIES=$(wc -l < ../.claude/tool-use.log)
+    echo "   Tool operations logged: $LOG_ENTRIES"
+    
+    # Check for large operations
+    LARGE_OPS=$(grep -c '"size":[0-9][0-9][0-9][0-9][0-9]' ../.claude/tool-use.log 2>/dev/null || echo "0")
+    echo "   Large operations (>10KB): $LARGE_OPS"
+    
+    # Recent activity
+    echo "   Recent activity (last hour):"
+    HOUR_AGO=$(date -d '1 hour ago' -Iseconds 2>/dev/null || date -v-1H -Iseconds 2>/dev/null || echo "$(date -Iseconds)")
+    grep "$HOUR_AGO" ../.claude/tool-use.log 2>/dev/null | wc -l | xargs echo "     Operations in last hour:"
+else
+    echo "   ⚠️ No tool usage log found"
+fi
+
+echo ""
+echo "🧹 Step 2: Context cleanup recommendations"
+echo "   Current session analysis:"
+
+# Check git status for uncommitted changes
+if git status --porcelain 2>/dev/null | head -10 | wc -l | grep -q "^0$"; then
+    echo "   ✅ Clean working directory - good time for /clear"
+else
+    CHANGES=$(git status --porcelain 2>/dev/null | wc -l)
+    echo "   ⚠️ $CHANGES uncommitted changes - consider committing before /clear"
+fi
+
+# Check for running development servers
+if lsof -i :8000 > /dev/null 2>&1 || lsof -i :3000 > /dev/null 2>&1; then
+    echo "   ⚠️ Development servers running - active development session"
+else
+    echo "   ✅ No active development servers - good for major context reset"
+fi
+
+echo ""
+echo "🎯 Step 3: Context optimization strategies"
+echo "   Recommended actions:"
+echo "   1. Strategic /clear usage:"
+echo "      • After completing features or major bug fixes"
+echo "      • When switching between frontend/backend work"
+echo "      • After large refactoring sessions"
+echo ""
+echo "   2. Agent-specific work:"
+echo "      • Use specialized agents for focused tasks"
+echo "      • Delegate complex workflows to appropriate agents"
+echo "      • Break large tasks into agent-specific subtasks"
+echo ""
+echo "   3. Efficient prompt patterns:"
+echo "      • Use custom commands instead of long explanations"
+echo "      • Reference specific files rather than broad searches"
+echo "      • Batch related operations together"
+
+echo ""
+echo "📊 Step 4: Cost optimization insights"
+echo "   Token-efficient practices:"
+echo "   • Custom commands reduce prompt tokens by ~60%"
+echo "   • Agent delegation reduces context overhead by ~40%"
+echo "   • Strategic /clear usage reduces cumulative context costs"
+echo "   • File-specific operations are more efficient than broad searches"
+
+echo ""
+echo "🤖 Step 5: Agent utilization recommendations"
+echo "   Available specialized agents for cost-efficient work:"
+echo "   • rag-expert: RAG pipeline optimization and debugging"
+echo "   • backend-architect: FastAPI and database work"
+echo "   • frontend-specialist: React/TypeScript development"
+echo "   • streamworks-automation: XML and workflow automation"
+echo "   • test-engineer: Testing and quality assurance"
+echo "   • performance-optimizer: Performance tuning and optimization"
+echo "   • security-auditor: Security analysis and implementation"
+echo "   • cleanup-specialist: Code cleanup and technical debt"
+
+echo ""
+echo "💡 Step 6: Session management recommendations"
+if [ "$LOG_ENTRIES" -gt 50 ]; then
+    echo "   🟡 High activity session ($LOG_ENTRIES operations)"
+    echo "      Consider: /clear after current task completion"
+elif [ "$LOG_ENTRIES" -gt 20 ]; then
+    echo "   🟢 Moderate activity session ($LOG_ENTRIES operations)"
+    echo "      Continue current work, /clear at natural break points"
+else
+    echo "   🟢 Fresh session ($LOG_ENTRIES operations)"
+    echo "      Good for starting new major tasks"
+fi
+
+echo ""
+echo "✅ Context optimization analysis complete!"
+echo "   💡 Use '/clear' strategically to maintain optimal performance and cost efficiency"

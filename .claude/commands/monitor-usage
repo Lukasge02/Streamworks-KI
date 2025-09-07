@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Monitor Claude Code Usage - Track token usage and costs
+echo "📊 Monitoring Claude Code usage and costs..."
+
+echo ""
+echo "💰 Step 1: Claude Code Usage Analysis"
+if command -v ccusage &> /dev/null; then
+    echo "   Running detailed usage analysis..."
+    npx ccusage --detailed --format=table
+else
+    echo "   ⚠️ ccusage not found. Installing..."
+    npm install -g @claude/ccusage 2>/dev/null || echo "   ❌ Failed to install ccusage"
+fi
+
+echo ""
+echo "🔍 Step 2: Token Usage Patterns"
+if [ -f "../.claude/tool-use.log" ]; then
+    echo "   Analyzing tool usage patterns..."
+    echo "   Total tool operations: $(wc -l < ../.claude/tool-use.log)"
+    echo "   Recent operations (last 10):"
+    tail -10 ../.claude/tool-use.log | jq -r '.timestamp + " - " + .tool + " (" + (.size|tostring) + " chars)"' 2>/dev/null || tail -10 ../.claude/tool-use.log
+else
+    echo "   ⚠️ Tool usage log not found"
+fi
+
+echo ""
+echo "📈 Step 3: Performance Metrics"
+echo "   Backend response times (if available):"
+if curl -s -m 2 http://localhost:8000/health &>/dev/null; then
+    echo "   ✅ Backend is running - response time analysis available"
+    curl -s -w "   Response time: %{time_total}s\n" -o /dev/null http://localhost:8000/health
+else
+    echo "   ⚠️ Backend not running - no response time data"
+fi
+
+echo ""
+echo "💡 Step 4: Optimization Recommendations"
+echo "   Based on usage patterns:"
+echo "   • Use '/clear' after completing major features to reduce context costs"
+echo "   • Batch similar operations to reduce API calls"
+echo "   • Use specific commands instead of general prompts"
+echo "   • Monitor large file operations (>10KB) for cost impact"
+
+echo ""
+echo "✅ Usage monitoring complete!"
+echo "   💡 Run this command regularly to track costs and optimize usage"

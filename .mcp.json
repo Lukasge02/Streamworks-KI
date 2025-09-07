@@ -1,0 +1,53 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=snzxgfmewxbeevoywula"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      },
+      "description": "Supabase MCP for direct database operations and management"
+    },
+    "playwright": {
+      "type": "stdio", 
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {},
+      "description": "Playwright MCP for browser automation and E2E testing"
+    },
+    "knowledge-graph": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory@latest"],
+      "env": {},
+      "description": "Knowledge Graph Memory for persistent project context and RAG optimization"
+    },
+    "exa-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@exa/mcp-server@latest"],
+      "env": {
+        "EXA_API_KEY": "${EXA_API_KEY}"
+      },
+      "description": "Exa Search MCP for real-time web search and up-to-date information retrieval"
+    },
+    "gitmcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@gitmcp/server@latest", "https://github.com/Lukasge02/Streamworks-KI"],
+      "env": {},
+      "description": "GitMCP for instant repository context and AI-assisted code understanding"
+    }
+  },
+  "projectContext": {
+    "name": "StreamWorks Document Management",
+    "type": "Enterprise Document Management System",
+    "technologies": ["FastAPI", "Next.js", "PostgreSQL", "Supabase", "Python", "TypeScript"],
+    "description": "Enterprise-grade document management system with hierarchical folders, file upload/download, and modern web interface"
+  }
+}

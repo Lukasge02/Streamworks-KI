@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Cleanup Development Environment - Reset and clear context
+echo "🧹 Cleaning up development environment..."
+
+echo ""
+echo "🛑 Step 1: Stopping development servers..."
+pkill -f "uvicorn main:app" 2>/dev/null && echo "   ✅ Backend stopped"
+pkill -f "next dev" 2>/dev/null && echo "   ✅ Frontend stopped"
+pkill -f "npm run dev" 2>/dev/null
+
+echo ""
+echo "🗂️ Step 2: Cleaning build artifacts..."
+rm -rf frontend/.next/cache 2>/dev/null && echo "   ✅ Next.js cache cleared"
+rm -rf frontend/node_modules/.cache 2>/dev/null && echo "   ✅ Node modules cache cleared"
+find backend -name "*.pyc" -delete 2>/dev/null && echo "   ✅ Python cache files removed"
+find backend -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null && echo "   ✅ Python cache directories removed"
+
+echo ""
+echo "📋 Step 3: Showing current port usage..."
+echo "   Port 3000 (Frontend): $(lsof -i :3000 | wc -l | xargs) processes"
+echo "   Port 8000 (Backend):  $(lsof -i :8000 | wc -l | xargs) processes"
+
+echo ""
+echo "🔄 Step 4: Claude Code context management..."
+echo "   💡 Use '/clear' to reset Claude Code context after cleanup"
+echo "   💡 Use '/dev-start' to restart development environment"
+
+echo ""
+echo "✅ Cleanup complete!"

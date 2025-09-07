@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Verify Setup - Check that all development dependencies are properly installed
+echo "🔍 Verifying StreamWorks development setup..."
+
+echo ""
+echo "🐍 Backend Dependencies:"
+cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI/backend
+if command -v python3 &> /dev/null; then
+    echo "   ✅ Python 3: $(python3 --version)"
+else
+    echo "   ❌ Python 3 not found"
+fi
+
+if python3 -c "import fastapi" 2>/dev/null; then
+    echo "   ✅ FastAPI available"
+else
+    echo "   ❌ FastAPI not installed"
+fi
+
+if python3 -c "import pytest" 2>/dev/null; then
+    echo "   ✅ Pytest available"
+else
+    echo "   ❌ Pytest not installed"
+fi
+
+if python3 -m ruff --version &> /dev/null; then
+    echo "   ✅ Ruff linter available: $(python3 -m ruff --version)"
+else
+    echo "   ❌ Ruff not installed"
+fi
+
+echo ""
+echo "⚛️ Frontend Dependencies:"
+cd /Applications/Programmieren/Visual\ Studio/Bachelorarbeit/Streamworks-KI/frontend
+if command -v node &> /dev/null; then
+    echo "   ✅ Node.js: $(node --version)"
+else
+    echo "   ❌ Node.js not found"
+fi
+
+if command -v npm &> /dev/null; then
+    echo "   ✅ npm: $(npm --version)"
+else
+    echo "   ❌ npm not found"
+fi
+
+if [ -d "node_modules" ]; then
+    echo "   ✅ Node modules installed"
+else
+    echo "   ❌ Node modules not installed (run 'npm install')"
+fi
+
+echo ""
+echo "🔧 Development Tools:"
+if [ -f "../.claude/settings.json" ]; then
+    echo "   ✅ Claude Code settings configured"
+else
+    echo "   ❌ Claude Code settings missing"
+fi
+
+if [ -f "../.claude/hooks/pre-tool-use.js" ]; then
+    echo "   ✅ Pre-tool verification hook installed"
+else
+    echo "   ❌ Pre-tool verification hook missing"
+fi
+
+echo ""
+echo "📊 Port Availability:"
+if lsof -i :8000 > /dev/null 2>&1; then
+    echo "   ⚠️ Port 8000 (Backend) is in use"
+else
+    echo "   ✅ Port 8000 (Backend) available"
+fi
+
+if lsof -i :3000 > /dev/null 2>&1; then
+    echo "   ⚠️ Port 3000 (Frontend) is in use"
+else
+    echo "   ✅ Port 3000 (Frontend) available"
+fi
+
+echo ""
+echo "✅ Verification complete!"
