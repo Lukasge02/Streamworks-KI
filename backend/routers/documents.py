@@ -24,24 +24,23 @@ from services.feature_flags import feature_flags
 from routers.websockets import connection_manager
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
-doc_service = DocumentService()
-chunk_service = DocumentChunkService()
 
-# Advanced services (initialized lazily)
-_adaptive_chunker: Optional[AdaptiveChunker] = None
-_contextual_embedder: Optional[ContextualEmbedder] = None
+# Dependency Injection for Services
+def get_document_service() -> DocumentService:
+    """Dependency to get DocumentService instance"""
+    return DocumentService()
+
+def get_chunk_service() -> DocumentChunkService:
+    """Dependency to get DocumentChunkService instance"""
+    return DocumentChunkService()
 
 def get_adaptive_chunker() -> AdaptiveChunker:
-    global _adaptive_chunker
-    if _adaptive_chunker is None:
-        _adaptive_chunker = AdaptiveChunker()
-    return _adaptive_chunker
+    """Dependency to get AdaptiveChunker instance"""
+    return AdaptiveChunker()
 
 def get_contextual_embedder() -> ContextualEmbedder:
-    global _contextual_embedder
-    if _contextual_embedder is None:
-        _contextual_embedder = ContextualEmbedder()
-    return _contextual_embedder
+    """Dependency to get ContextualEmbedder instance"""
+    return ContextualEmbedder()
 
 async def get_user_id(x_user_id: Optional[str] = Header(None)) -> str:
     """Extract user ID from header - for advanced features"""
@@ -62,7 +61,8 @@ async def upload_document(
     job_id: Optional[str] = Query(None, description="Job ID for progress tracking"),
     tags: Optional[str] = Query(None, description="Comma-separated tags"),
     description: Optional[str] = Query(None, description="Document description"),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Upload a document to a folder with optional progress tracking
@@ -158,7 +158,8 @@ async def get_documents(
     sort: DocumentSort = Query(DocumentSort.CREATED_DESC, description="Sort order"),
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(50, ge=1, le=200, description="Items per page"),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Get list of documents with filtering and sorting
@@ -204,7 +205,8 @@ async def get_documents_by_folder(
     sort: DocumentSort = Query(DocumentSort.CREATED_DESC, description="Sort order"),
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(50, ge=1, le=200, description="Items per page"),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Get all documents in a specific folder
@@ -232,7 +234,8 @@ async def get_documents_by_folder(
 @router.get("/{document_id}", response_model=DocumentWithFolder)
 async def get_document(
     document_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Get document by ID
@@ -282,7 +285,8 @@ async def get_document(
 async def update_document(
     document_id: UUID,
     update_data: DocumentUpdate,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Update document metadata
@@ -326,7 +330,8 @@ async def update_document(
 @router.delete("/{document_id}", status_code=204)
 async def delete_document(
     document_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Delete document
@@ -360,7 +365,8 @@ async def pdf_options(document_id: UUID):
 @router.head("/{document_id}/pdf")
 async def pdf_head(
     document_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """Handle HEAD requests for PDF availability checks"""
     try:
@@ -397,7 +403,8 @@ async def pdf_head(
 @router.get("/{document_id}/pdf")
 async def serve_pdf(
     document_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Dedicated PDF serving endpoint with proper PDF headers
@@ -454,7 +461,8 @@ async def serve_pdf(
 async def download_document(
     document_id: UUID,
     inline: bool = Query(False, description="Display inline instead of download"),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Download or view document file
@@ -495,7 +503,8 @@ async def download_document(
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)
 async def bulk_delete_documents(
     request: BulkDeleteRequest,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Delete multiple documents in batch
@@ -513,7 +522,8 @@ async def bulk_delete_documents(
 @router.post("/bulk-move", response_model=BulkMoveResponse)
 async def bulk_move_documents(
     request: BulkMoveRequest,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Move multiple documents to a target folder
@@ -535,7 +545,8 @@ async def bulk_move_documents(
 
 @router.post("/reprocess-empty-chunks")
 async def reprocess_documents_with_empty_chunks(
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Automatically reprocess all ready documents that have 0 chunks
@@ -592,7 +603,8 @@ async def reprocess_documents_with_empty_chunks(
 @router.post("/bulk-reprocess")
 async def bulk_reprocess_documents(
     request: BulkReprocessRequest,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Reprocess multiple documents with Docling/OCR
@@ -671,7 +683,9 @@ async def get_document_chunks(
     chunk_type: Optional[str] = Query(None, description="Filter by chunk type (text, table, image, code)"),
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(50, ge=1, le=200, description="Items per page"),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service),
+    chunk_service: DocumentChunkService = Depends(get_chunk_service)
 ):
     """
     Get chunks for a specific document
@@ -745,7 +759,8 @@ async def get_document_chunks(
 @router.get("/{document_id}/processing-status")
 async def get_document_processing_status(
     document_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Get document processing status and metadata
@@ -778,7 +793,8 @@ async def get_document_processing_status(
 @router.post("/{document_id}/reprocess")
 async def reprocess_document(
     document_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Reprocess document with Docling (useful for fixing failed processing)
@@ -811,7 +827,9 @@ async def reprocess_document(
 async def get_document_chunk(
     document_id: UUID,
     chunk_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service),
+    chunk_service: DocumentChunkService = Depends(get_chunk_service)
 ):
     """
     Get specific chunk by ID
@@ -854,7 +872,9 @@ async def get_document_chunk(
 @router.get("/{document_id}/chunks/analytics")
 async def get_document_chunk_analytics(
     document_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service),
+    chunk_service: DocumentChunkService = Depends(get_chunk_service)
 ):
     """
     Get chunk analytics for a document
@@ -887,7 +907,8 @@ async def search_chunks(
     document_id: Optional[UUID] = Query(None, description="Filter by document"),
     chunk_type: Optional[str] = Query(None, description="Filter by chunk type"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    chunk_service: DocumentChunkService = Depends(get_chunk_service)
 ):
     """
     Search chunks by content
@@ -961,7 +982,9 @@ async def advanced_chunk_document(
     overlap_size: int = Query(100, description="Overlap size between chunks"),
     force_rechunk: bool = Query(False, description="Force rechunking even if already processed"),
     user_id: str = Depends(get_user_id),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service),
+    adaptive_chunker: AdaptiveChunker = Depends(get_adaptive_chunker)
 ):
     """
     Apply advanced chunking to a document using AdaptiveChunker
@@ -1007,7 +1030,6 @@ async def advanced_chunk_document(
             raise HTTPException(status_code=400, detail="Document has no content to chunk")
         
         # Apply advanced chunking
-        adaptive_chunker = get_adaptive_chunker()
         
         result = await adaptive_chunker.chunk_document(
             content=content,
@@ -1040,7 +1062,10 @@ async def generate_enhanced_embeddings(
     strategy: str = Query("contextual", description="Embedding strategy: basic, contextual, hierarchical, domain_adaptive, multi_granular"),
     document_type: str = Query("general", description="Document type: technical, academic, legal, medical, financial, general"),
     batch_size: int = Query(32, description="Batch size for embedding generation"),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    doc_service: DocumentService = Depends(get_document_service),
+    chunk_service: DocumentChunkService = Depends(get_chunk_service),
+    contextual_embedder: ContextualEmbedder = Depends(get_contextual_embedder)
 ):
     """
     Generate enhanced embeddings for document chunks using ContextualEmbedder
@@ -1095,7 +1120,6 @@ async def generate_enhanced_embeddings(
             )
         
         # Prepare chunks with context
-        contextual_embedder = get_contextual_embedder()
         
         chunk_contexts = []
         for i, chunk in enumerate(chunks):

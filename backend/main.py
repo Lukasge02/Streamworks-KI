@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import database and routers
 from database import init_database, close_database, check_database_health
-from routers import folders, documents, websockets, upload_progress_websocket, chat, xml_generator, feature_flags
+from routers import folders, documents, websockets, upload_progress_websocket, chat, xml_generator, feature_flags, health
 
 # Setup logging
 logging.basicConfig(
@@ -31,6 +31,11 @@ async def lifespan(app: FastAPI):
         await init_database()
         logger.info("✅ Database initialized successfully")
         
+        # Initialize services
+        from services.service_initializer import initialize_services
+        await initialize_services()
+        logger.info("✅ Services initialized successfully")
+        
         # Add startup seed data if needed
         await create_default_folder_if_needed()
         
@@ -42,6 +47,8 @@ async def lifespan(app: FastAPI):
     finally:
         # Shutdown
         logger.info("🛑 Shutting down StreamWorks")
+        from services.service_initializer import shutdown_services
+        await shutdown_services()
         await close_database()
 
 
@@ -96,6 +103,7 @@ app.include_router(chat.router)
 app.include_router(upload_progress_websocket.router)
 app.include_router(xml_generator.router)
 app.include_router(feature_flags.router)
+app.include_router(health.router)
 
 
 # Health check endpoints

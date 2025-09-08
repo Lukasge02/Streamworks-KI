@@ -13,7 +13,8 @@ import logging
 from pydantic import BaseModel
 
 from services.chat_service_sqlalchemy import ChatServiceSQLAlchemy as ChatService
-from services.rag_orchestrator import RAGOrchestrator, RAGRequest, RAGMode
+# Note: RAG Orchestrator is disabled for MVP - using simpler OpenAI RAG Service
+# from services.rag_orchestrator import RAGOrchestrator, RAGRequest, RAGMode
 from services.feature_flags import feature_flags
 from config import settings
 
@@ -32,20 +33,9 @@ class CreateSessionRequest(BaseModel):
 class SendMessageRequest(BaseModel):
     query: str
     processing_mode: Optional[str] = "accurate"  # fast, accurate, comprehensive
-    enable_rerank: Optional[bool] = True
-    rag_mode: Optional[str] = "adaptive"  # speed, balanced, quality, adaptive
-    max_results: Optional[int] = 10
-    enable_advanced_rag: Optional[bool] = False  # Use new RAGOrchestrator
+    include_sources: Optional[bool] = True
 
-class AdvancedRAGRequest(BaseModel):
-    query: str
-    mode: Optional[str] = "adaptive"  # speed, balanced, quality, adaptive  
-    max_results: Optional[int] = 10
-    min_relevance_score: Optional[float] = 0.3
-    document_filters: Optional[Dict[str, Any]] = None
-    context_window: Optional[int] = 3
-    enable_reranking: Optional[bool] = True
-    custom_instructions: Optional[str] = None
+# Advanced RAG models removed for MVP - using simplified OpenAI RAG service
 
 class UpdateSessionRequest(BaseModel):
     title: Optional[str] = None
@@ -88,15 +78,11 @@ async def get_chat_service() -> ChatService:
     """Dependency to get ChatService instance"""
     return ChatService()
 
-# Global RAGOrchestrator instance (initialized once)
-_rag_orchestrator: Optional[RAGOrchestrator] = None
-
-async def get_rag_orchestrator() -> RAGOrchestrator:
-    """Dependency to get RAGOrchestrator instance"""
-    global _rag_orchestrator
-    if _rag_orchestrator is None:
-        _rag_orchestrator = RAGOrchestrator()
-    return _rag_orchestrator
+# RAG Service Dependency Injection
+async def get_rag_service():
+    """Dependency to get Unified RAG Service instance"""
+    from services.di_container import get_service
+    return await get_service("unified_rag_service")
 
 async def get_user_id(x_user_id: Optional[str] = Header(None)) -> str:
     """Extract user ID from header - for now using header, later from JWT"""
@@ -275,7 +261,7 @@ async def send_message(
             user_id=user_id,
             query=request.query,
             processing_mode=request.processing_mode,
-            enable_rerank=request.enable_rerank
+            include_sources=request.include_sources
         )
         
         processing_time_ms = int((time.time() - start_time) * 1000)
@@ -298,246 +284,47 @@ async def send_message(
         )
 
 # ================================
-# ADVANCED RAG ENDPOINTS
+# SIMPLIFIED RAG QUERY
 # ================================
 
-@router.post("/advanced", response_model=Dict[str, Any])
-async def advanced_rag_query(
-    request: AdvancedRAGRequest,
-    user_id: str = Depends(get_user_id),
-    rag_orchestrator: RAGOrchestrator = Depends(get_rag_orchestrator)
-):
-    """Advanced RAG query using state-of-the-art RAG orchestrator"""
-    try:
-        # Check if advanced RAG is enabled for this user
-        if not feature_flags.is_enabled("advanced_rag_orchestrator", user_id):
-            raise HTTPException(
-                status_code=403,
-                detail="Advanced RAG features are not enabled for your account"
-            )
-        
-        start_time = time.time()
-        # Map string mode to RAGMode enum
-        mode_mapping = {
-            "speed": RAGMode.SPEED,
-            "balanced": RAGMode.BALANCED, 
-            "quality": RAGMode.QUALITY,
-            "adaptive": RAGMode.ADAPTIVE
-        }
-        
-        rag_mode = mode_mapping.get(request.mode, RAGMode.ADAPTIVE)
-        
-        # Create RAGRequest
-        rag_request = RAGRequest(
-            query=request.query,
-            mode=rag_mode,
-            max_results=request.max_results,
-            min_relevance_score=request.min_relevance_score,
-            document_filters=request.document_filters,
-            context_window=request.context_window,
-            enable_reranking=request.enable_reranking,
-            custom_instructions=request.custom_instructions
-        )
-        
-        # Process with advanced RAG
-        result = await rag_orchestrator.process_query(rag_request)
-        
-        # Track feature usage
-        processing_time = time.time() - start_time
-        feature_flags.track_usage("advanced_rag_orchestrator", True, processing_time, user_id)
-        
-        return {
-            "query": result.query,
-            "results": result.results,
-            "total_found": result.total_results_found,
-            "processing_time": f"{result.processing_time:.3f}s",
-            "strategy_used": result.strategy_used,
-            "complexity": result.complexity_detected.value,
-            "confidence_score": result.confidence_score,
-            "metadata": result.metadata
-        }
-        
-    except HTTPException as e:
-        # Track feature usage failure for HTTP exceptions (user errors)
-        if e.status_code != 403:  # Don't track permission errors
-            processing_time = time.time() - start_time if 'start_time' in locals() else 0.0
-            feature_flags.track_usage("advanced_rag_orchestrator", False, processing_time, user_id)
-        raise
-    except Exception as e:
-        # Track feature usage failure for system errors
-        processing_time = time.time() - start_time if 'start_time' in locals() else 0.0
-        feature_flags.track_usage("advanced_rag_orchestrator", False, processing_time, user_id)
-        logger.error(f"Advanced RAG query failed: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Advanced RAG query failed: {str(e)}"
-        )
-
-@router.get("/advanced/performance", response_model=Dict[str, Any])
-async def get_rag_performance(
-    user_id: str = Depends(get_user_id),
-    rag_orchestrator: RAGOrchestrator = Depends(get_rag_orchestrator)
-):
-    """Get performance metrics from RAG orchestrator"""
-    try:
-        performance_report = await rag_orchestrator.get_performance_report()
-        return performance_report
-        
-    except Exception as e:
-        logger.error(f"Failed to get RAG performance: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get performance metrics: {str(e)}"
-        )
-
-@router.post("/advanced/optimize")
-async def optimize_rag_system(
-    user_id: str = Depends(get_user_id),
-    rag_orchestrator: RAGOrchestrator = Depends(get_rag_orchestrator)
-):
-    """Trigger RAG system optimization"""
-    try:
-        optimization_results = await rag_orchestrator.optimize_system()
-        return {
-            "optimization_applied": True,
-            "results": optimization_results,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"RAG optimization failed: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Optimization failed: {str(e)}"
-        )
-
-@router.get("/advanced/health")
-async def advanced_rag_health(
-    user_id: str = Depends(get_user_id),
-    rag_orchestrator: RAGOrchestrator = Depends(get_rag_orchestrator)
-):
-    """Health check for advanced RAG system"""
-    try:
-        health_status = await rag_orchestrator.health_check()
-        return health_status
-        
-    except Exception as e:
-        logger.error(f"Advanced RAG health check failed: {str(e)}")
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
-        }
-
-# ================================
-# DIRECT RAG QUERY (simplified for OpenAI)
-# ================================
-
-@router.post("", response_model=Dict[str, Any])  # This handles /api/chat directly
+@router.post("", response_model=Dict[str, Any])
 async def direct_rag_query(
     request: SendMessageRequest,
-    user_id: str = Depends(get_user_id)
+    user_id: str = Depends(get_user_id),
+    rag_service = Depends(get_rag_service)
 ):
-    """Direct RAG query with automatic advanced RAG integration based on feature flags"""
+    """Direct RAG query using simplified OpenAI RAG service"""
     start_time = time.time()
     
     try:
-        # Check if advanced RAG is enabled for this user
-        use_advanced_rag = (request.enable_advanced_rag and 
-                           feature_flags.is_enabled("advanced_rag_orchestrator", user_id))
+        # Process query with OpenAI RAG service
+        response = await rag_service.query(
+            query=request.query,
+            mode=request.processing_mode or "accurate",
+            include_sources=request.include_sources
+        )
         
-        if use_advanced_rag:
-            logger.info(f"Using advanced RAG for user {user_id}")
-            
-            # Use advanced RAG orchestrator
-            rag_orchestrator = await get_rag_orchestrator()
-            
-            # Map processing_mode to RAGMode
-            mode_mapping = {
-                "fast": RAGMode.SPEED,
-                "accurate": RAGMode.BALANCED,
-                "comprehensive": RAGMode.QUALITY
-            }
-            
-            rag_mode = mode_mapping.get(request.processing_mode, RAGMode.ADAPTIVE)
-            
-            # Create RAGRequest
-            rag_request = RAGRequest(
-                query=request.query,
-                mode=rag_mode,
-                max_results=request.max_results or 10,
-                enable_reranking=request.enable_rerank
-            )
-            
-            # Process with advanced RAG
-            result = await rag_orchestrator.process_query(rag_request)
-            
-            # Track feature usage
-            processing_time = time.time() - start_time
-            feature_flags.track_usage("advanced_rag_orchestrator", True, processing_time, user_id)
-            
-            return {
-                "answer": result.results[0]["content"] if result.results else "No results found",
-                "confidence_score": result.confidence_score,
-                "processing_time": f"{result.processing_time:.2f}s",
-                "sources": result.results,
-                "metadata": {
-                    "strategy_used": result.strategy_used,
-                    "complexity": result.complexity_detected.value,
-                    "total_found": result.total_results_found,
-                    "service": "advanced_rag",
-                    **result.metadata
-                },
-                "model_used": "RAGOrchestrator"
-            }
-            
-        else:
-            # Fallback to standard OpenAI RAG service
-            logger.info(f"Using standard RAG for user {user_id}")
-            
-            # Initialize OpenAI RAG service
-            from services.vectorstore import VectorStoreService
-            from services.embeddings import EmbeddingService
-            from services.openai_rag_service import OpenAIRAGService
-            
-            vectorstore = VectorStoreService()
-            await vectorstore.initialize()
-            
-            embeddings = EmbeddingService()
-            await embeddings.initialize()
-            
-            rag_service = OpenAIRAGService(vectorstore, embeddings)
-            
-            # Process query
-            response = await rag_service.query(
-                query=request.query,
-                mode=request.processing_mode or "accurate",
-                include_sources=True
-            )
-            
-            # Track standard service usage
-            processing_time = time.time() - start_time
-            feature_flags.track_usage("standard_rag_service", True, processing_time, user_id)
-            
-            return {
-                "answer": response["answer"],
-                "confidence_score": response.get("confidence"),
-                "processing_time": f"{response.get('response_time', 0):.2f}s",
-                "sources": response.get("sources", []),
-                "metadata": {
-                    "service": "openai_rag",
-                    **response.get("metadata", {})
-                },
-                "model_used": response.get("metadata", {}).get("model_used")
-            }
+        # Track successful usage
+        processing_time = time.time() - start_time
+        feature_flags.track_usage("openai_rag_service", True, processing_time, user_id)
+        
+        return {
+            "answer": response["answer"],
+            "confidence_score": response.get("confidence"),
+            "processing_time": f"{response.get('response_time', 0):.2f}s",
+            "sources": response.get("sources", []),
+            "metadata": {
+                "service": "openai_rag",
+                "processing_mode": request.processing_mode or "accurate",
+                **response.get("metadata", {})
+            },
+            "model_used": response.get("metadata", {}).get("model_used")
+        }
         
     except Exception as e:
-        # Track feature usage failure
+        # Track failed usage
         processing_time = time.time() - start_time if 'start_time' in locals() else 0.0
-        service_name = "advanced_rag_orchestrator" if (hasattr(request, 'enable_advanced_rag') and 
-                                                      request.enable_advanced_rag and 
-                                                      feature_flags.is_enabled("advanced_rag_orchestrator", user_id)) else "standard_rag_service"
-        feature_flags.track_usage(service_name, False, processing_time, user_id)
+        feature_flags.track_usage("openai_rag_service", False, processing_time, user_id)
         
         logger.error(f"Direct RAG query failed: {str(e)}")
         raise HTTPException(
@@ -653,22 +440,15 @@ async def save_message_direct(
 
 @router.get("/health")
 async def chat_health():
-    """Health check for chat system with OpenAI RAG"""
+    """Health check for chat system with Unified RAG"""
     try:
         # Test chat service
         chat_service = ChatService()
         chat_health_result = await chat_service.health_check()
         
-        # Test OpenAI RAG service
-        from services.vectorstore import VectorStoreService
-        from services.embeddings import EmbeddingService
-        from services.openai_rag_service import OpenAIRAGService
-        
-        vectorstore = VectorStoreService()
-        await vectorstore.initialize()
-        embeddings = EmbeddingService()
-        await embeddings.initialize()
-        rag_service = OpenAIRAGService(vectorstore, embeddings)
+        # Test unified RAG service
+        from services.di_container import get_service
+        rag_service = await get_service("unified_rag_service")
         rag_health_result = await rag_service.health_check()
         
         # Combine health results
