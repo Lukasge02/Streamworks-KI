@@ -83,12 +83,12 @@ class DoclingIngestService:
             raise self._initialization_error
             
         try:
-            # Configure Docling with PDF pipeline options - Text extraction focused
+            # Configure Docling with PDF pipeline options - Optimized for better text extraction
             self.pipeline_options = PdfPipelineOptions(
                 do_ocr=True,  # Enable OCR for scanned PDFs
-                do_table_structure=False,  # Disable table structure to prioritize text
+                do_table_structure=True,  # Enable table structure - may contain useful content
                 generate_page_images=False,  # Disable images for better performance
-                generate_table_images=False  # Disable table images
+                generate_table_images=False  # Disable table images but keep table structure
             )
             
             # Initialize document converter - Docling handles images automatically
@@ -241,39 +241,113 @@ class DoclingIngestService:
             
             # Validate document has text content
             if not hasattr(document, 'texts') or not document.texts:
+                logger.warning(f"Document has no extractable text content: {file_path}")
+                logger.info(f"Document structure: {dir(document)}")
                 raise ValueError(f"Document has no extractable text content: {file_path}")
             
-            # Extract text with layout structure
+            logger.info(f"Processing {len(document.texts)} text items from {file_path}")
+            
+            # FIXED: Extract text with improved fragmentation handling
+            logger.info(f"Extracting text from {len(document.texts)} document items")
+            
+            # Strategy: Combine small consecutive text items to handle fragmented PDFs
+            combined_text_items = []
+            current_combined = ""
+            current_page = None
+            current_heading = None
+            current_section = None
+            
             for item_ix, item in enumerate(document.texts):
                 try:
                     # Validate item has text content
                     if not hasattr(item, 'text') or not item.text:
                         continue
-                        
-                    # Get hierarchical structure information
-                    heading = self._extract_heading(document, item_ix)
-                    section = self._extract_section(document, item_ix)
+                    
+                    text = item.text.strip()
+                    if not text:
+                        continue
+                    
+                    # Get page number
                     page_num = None
                     if hasattr(item, 'prov') and item.prov:
                         try:
-                            # ProvenanceItem has direct attribute access, not dict methods
                             page_num = getattr(item.prov[0], 'page', None)
                         except (IndexError, AttributeError):
-                            page_num = None
+                            pass
                     
-                    # Use appropriate text splitter for intelligent chunking based on file type
+                    # If this is a very small text item (likely fragmented), combine it
+                    if len(text) < 50 and len(text.split()) < 5:
+                        # Add space if not punctuation
+                        if current_combined and not text.startswith((':', ';', ',', '.', '!', '?')):
+                            current_combined += " "
+                        current_combined += text
+                        
+                        # Update page/section info if this is the first item
+                        if current_page is None:
+                            current_page = page_num
+                            current_heading = self._extract_heading(document, item_ix)
+                            current_section = self._extract_section(document, item_ix)
+                    else:
+                        # This is a substantial text item - flush any combined text first
+                        if current_combined:
+                            combined_text_items.append({
+                                'text': current_combined,
+                                'page': current_page,
+                                'heading': current_heading,
+                                'section': current_section,
+                                'item_index': item_ix - 1
+                            })
+                            current_combined = ""
+                        
+                        # Add this substantial item
+                        combined_text_items.append({
+                            'text': text,
+                            'page': page_num,
+                            'heading': self._extract_heading(document, item_ix),
+                            'section': self._extract_section(document, item_ix),
+                            'item_index': item_ix
+                        })
+                        
+                        current_page = None
+                        current_heading = None
+                        current_section = None
+                        
+                except Exception as e:
+                    logger.debug(f"Error processing item {item_ix}: {str(e)}")
+                    continue
+            
+            # Don't forget the last combined text if any
+            if current_combined:
+                combined_text_items.append({
+                    'text': current_combined,
+                    'page': current_page,
+                    'heading': current_heading,
+                    'section': current_section,
+                    'item_index': len(document.texts) - 1
+                })
+            
+            logger.info(f"Combined {len(document.texts)} items into {len(combined_text_items)} text blocks")
+            
+            # Now process the combined text items
+            for text_item in combined_text_items:
+                try:
+                    text = text_item['text']
+                    
+                    # Use appropriate text splitter for intelligent chunking
                     splitter = self._get_appropriate_splitter(file_path, 'pdf')
                     if not splitter:
                         raise ValueError("Text splitter not initialized properly")
-                    content_chunks = splitter.split_text(item.text)
+                    content_chunks = splitter.split_text(text)
                     
                     for i, content in enumerate(content_chunks):
                         # Enhanced quality check for PDF chunks
                         stripped_content = content.strip()
                         word_count = len(stripped_content.split())
                         
-                        if (len(stripped_content) < settings.MIN_CHUNK_SIZE or 
-                            word_count < settings.MIN_WORD_COUNT):
+                        # More reasonable filtering for combined text
+                        if (len(stripped_content) < 10 or  # Allow shorter chunks from combined text
+                            word_count < 1):  # Just need some actual words
+                            logger.debug(f"Skipping tiny chunk: {len(stripped_content)} chars, {word_count} words")
                             continue
                             
                         chunk_id = f"{doc_id}_chunk_{chunk_counter}"
@@ -282,34 +356,41 @@ class DoclingIngestService:
                         content=content.strip(),
                         doc_id=doc_id,
                         chunk_id=chunk_id,
-                        page_number=page_num,
-                        heading=heading,
-                        section=section,
+                        page_number=text_item['page'],
+                        heading=text_item['heading'],
+                        section=text_item['section'],
                         doctype=doctype,
                         metadata={
                             "source_file": doc_path.name,
-                            "item_index": item_ix,
+                            "item_index": text_item['item_index'],
                             "chunk_index": i,
-                            "total_chunks": len(content_chunks)
+                            "total_chunks": len(content_chunks),
+                            "is_combined": True
                         }
                         )
                         
                         chunks.append(chunk)
                         chunk_counter += 1
                         
+                        if chunk_counter <= 5:  # Log first 5 chunks for debugging
+                            logger.debug(f"Created chunk {chunk_counter}: {len(content)} chars, page {text_item['page']}")
+                        
                 except Exception as item_error:
-                    logger.warning(f"Error processing text item {item_ix} in {doc_path.name}: {str(item_error)}")
-                    print(f"⚠️  Failed to chunk text item {item_ix}: {str(item_error)}")
+                    logger.warning(f"Error processing combined text item: {str(item_error)}")
                     continue
             
             # Extract and process tables separately
             table_chunks = await self._process_tables(document, doc_id, doctype)
             chunks.extend(table_chunks)
             
+            logger.info(f"✅ Processed {doc_path.name}: {len(chunks)} chunks created")
+            if len(chunks) == 0:
+                logger.warning(f"⚠️  No chunks created for {doc_path.name} - check content quality filters")
             print(f"✅ Processed {doc_path.name}: {len(chunks)} chunks created")
             return chunks
             
         except Exception as e:
+            logger.error(f"❌ Error processing {file_path}: {str(e)}", exc_info=True)
             print(f"❌ Error processing {file_path}: {str(e)}")
             raise Exception(f"Document processing failed: {str(e)}")
     

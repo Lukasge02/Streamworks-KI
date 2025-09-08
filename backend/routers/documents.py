@@ -6,8 +6,8 @@ Enterprise-grade REST API for document operations
 import logging
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Header
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_async_session
@@ -18,11 +18,40 @@ from schemas.core import (
 )
 from services.document_service import DocumentService
 from services.document_chunk_service import DocumentChunkService
+from services.adaptive_chunker import AdaptiveChunker, ChunkingStrategy
+from services.contextual_embedder import ContextualEmbedder, EmbeddingStrategy, ChunkContext, DocumentType
+from services.feature_flags import feature_flags
 from routers.websockets import connection_manager
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 doc_service = DocumentService()
 chunk_service = DocumentChunkService()
+
+# Advanced services (initialized lazily)
+_adaptive_chunker: Optional[AdaptiveChunker] = None
+_contextual_embedder: Optional[ContextualEmbedder] = None
+
+def get_adaptive_chunker() -> AdaptiveChunker:
+    global _adaptive_chunker
+    if _adaptive_chunker is None:
+        _adaptive_chunker = AdaptiveChunker()
+    return _adaptive_chunker
+
+def get_contextual_embedder() -> ContextualEmbedder:
+    global _contextual_embedder
+    if _contextual_embedder is None:
+        _contextual_embedder = ContextualEmbedder()
+    return _contextual_embedder
+
+async def get_user_id(x_user_id: Optional[str] = Header(None)) -> str:
+    """Extract user ID from header - for advanced features"""
+    if not x_user_id:
+        raise HTTPException(
+            status_code=401, 
+            detail="X-User-ID header required for advanced features"
+        )
+    return x_user_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -315,6 +344,112 @@ async def delete_document(
         raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
 
 
+# Add OPTIONS and HEAD handlers for CORS and availability checks
+@router.options("/{document_id}/pdf")
+async def pdf_options(document_id: UUID):
+    """Handle CORS preflight requests for PDF endpoint"""
+    return Response(
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "3600"
+        }
+    )
+
+@router.head("/{document_id}/pdf")
+async def pdf_head(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Handle HEAD requests for PDF availability checks"""
+    try:
+        file_info = await doc_service.get_document_file(db, document_id)
+        if not file_info:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        file_path, filename, mime_type = file_info
+        
+        # Only serve PDFs through this endpoint
+        if not mime_type or not mime_type.lower() == 'application/pdf':
+            raise HTTPException(status_code=400, detail="Document is not a PDF")
+        
+        # Return headers without body for HEAD request
+        return Response(
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Disposition": f"inline; filename=\"{filename}\"",
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "public, max-age=3600",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "ALLOWALL"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to check PDF {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check PDF: {str(e)}")
+
+@router.get("/{document_id}/pdf")
+async def serve_pdf(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Dedicated PDF serving endpoint with proper PDF headers
+    
+    - **document_id**: Document UUID
+    - Returns PDF with optimized headers for modern PDF viewers and iframe embedding
+    """
+    try:
+        file_info = await doc_service.get_document_file(db, document_id)
+        if not file_info:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        file_path, filename, mime_type = file_info
+        
+        # Only serve PDFs through this endpoint
+        if not mime_type or not mime_type.lower() == 'application/pdf':
+            raise HTTPException(status_code=400, detail="Document is not a PDF")
+        
+        # Create optimized PDF response for iframe embedding
+        response = FileResponse(
+            path=str(file_path),
+            media_type="application/pdf",
+            headers={
+                # Essential for iframe embedding
+                "Content-Disposition": "inline; filename=\"" + filename + "\"",
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "public, max-age=3600",
+                
+                # CORS headers for cross-origin iframe requests
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                "Access-Control-Expose-Headers": "Content-Length, Content-Range",
+                
+                # Security headers that allow iframe embedding from localhost
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "ALLOWALL",
+                
+                # Remove CSP that blocks iframe embedding
+                # "Content-Security-Policy": "frame-ancestors 'self' http://localhost:3000 https://localhost:3000"
+            }
+        )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve PDF {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to serve PDF: {str(e)}")
+
+
 @router.get("/{document_id}/download")
 async def download_document(
     document_id: UUID,
@@ -334,20 +469,22 @@ async def download_document(
         
         file_path, filename, mime_type = file_info
         
+        # Simple file download - no complex logic
         if inline:
-            # For inline display (PDF viewer) - don't force download
-            return FileResponse(
+            # For inline display
+            response = FileResponse(
                 path=str(file_path),
                 media_type=mime_type,
-                # No filename parameter = Content-Disposition: inline
             )
         else:
-            # For download - force download with filename
-            return FileResponse(
+            # For download
+            response = FileResponse(
                 path=str(file_path),
                 filename=filename,
                 media_type=mime_type
             )
+        
+        return response
         
     except HTTPException:
         raise
@@ -394,6 +531,62 @@ async def bulk_move_documents(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Bulk move failed: {str(e)}")
+
+
+@router.post("/reprocess-empty-chunks")
+async def reprocess_documents_with_empty_chunks(
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Automatically reprocess all ready documents that have 0 chunks
+    """
+    try:
+        from sqlalchemy import select
+        from models.core import Document
+        
+        # Find all ready documents with 0 chunks
+        query = select(Document).where(
+            (Document.status == 'ready') &
+            (Document.chunk_count == 0)
+        )
+        
+        result = await db.execute(query)
+        documents = result.scalars().all()
+        
+        reprocessed = []
+        failed = []
+        
+        logger.info(f"Found {len(documents)} documents with 0 chunks to reprocess")
+        
+        for document in documents:
+            try:
+                reprocessed_doc = await doc_service.reprocess_document(db, document.id)
+                if reprocessed_doc:
+                    reprocessed.append({
+                        "id": str(document.id),
+                        "filename": document.filename,
+                        "new_chunk_count": reprocessed_doc.chunk_count
+                    })
+                    logger.info(f"Reprocessed {document.filename}: {reprocessed_doc.chunk_count} chunks")
+            except Exception as e:
+                failed.append({
+                    "id": str(document.id),
+                    "filename": document.filename,
+                    "error": str(e)
+                })
+                logger.error(f"Failed to reprocess {document.filename}: {str(e)}")
+        
+        return {
+            "message": "Bulk reprocessing completed",
+            "total_found": len(documents),
+            "reprocessed": reprocessed,
+            "failed": failed,
+            "success_count": len(reprocessed),
+            "failure_count": len(failed)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk reprocess failed: {str(e)}")
 
 
 @router.post("/bulk-reprocess")
@@ -754,3 +947,285 @@ async def search_chunks(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to search chunks: {str(e)}")
+
+
+# ================================
+# ADVANCED CHUNKING AND EMBEDDING ENDPOINTS
+# ================================
+
+@router.post("/{document_id}/advanced-chunk")
+async def advanced_chunk_document(
+    document_id: UUID,
+    strategy: str = Query("adaptive_size", description="Chunking strategy: adaptive_size, hierarchical, semantic_boundary, sliding_window"),
+    max_chunk_size: int = Query(1000, description="Maximum chunk size in characters"),
+    overlap_size: int = Query(100, description="Overlap size between chunks"),
+    force_rechunk: bool = Query(False, description="Force rechunking even if already processed"),
+    user_id: str = Depends(get_user_id),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Apply advanced chunking to a document using AdaptiveChunker
+    
+    - **document_id**: Document UUID
+    - **strategy**: Chunking strategy to use
+    - **max_chunk_size**: Maximum chunk size
+    - **overlap_size**: Overlap between chunks
+    - **force_rechunk**: Force rechunking
+    """
+    try:
+        # Check if adaptive chunking is enabled for this user
+        if not feature_flags.is_enabled("adaptive_chunking", user_id):
+            raise HTTPException(
+                status_code=403,
+                detail="Advanced chunking features are not enabled for your account"
+            )
+        
+        # Validate document exists
+        document = await doc_service.get_document_by_id(db, document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Map string strategy to enum
+        strategy_mapping = {
+            "adaptive_size": ChunkingStrategy.ADAPTIVE_SIZE,
+            "hierarchical": ChunkingStrategy.HIERARCHICAL,
+            "semantic_boundary": ChunkingStrategy.SEMANTIC_BOUNDARY,
+            "sliding_window": ChunkingStrategy.SLIDING_WINDOW
+        }
+        
+        chunking_strategy = strategy_mapping.get(strategy)
+        if not chunking_strategy:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid strategy. Must be one of: {list(strategy_mapping.keys())}"
+            )
+        
+        # Get document content
+        # This assumes we have access to document content - you may need to adjust based on your storage
+        content = getattr(document, 'content', '') or ""
+        if not content:
+            raise HTTPException(status_code=400, detail="Document has no content to chunk")
+        
+        # Apply advanced chunking
+        adaptive_chunker = get_adaptive_chunker()
+        
+        result = await adaptive_chunker.chunk_document(
+            content=content,
+            strategy=chunking_strategy,
+            max_chunk_size=max_chunk_size,
+            overlap_size=overlap_size,
+            document_type=document.content_type or "application/pdf"
+        )
+        
+        return {
+            "document_id": str(document_id),
+            "filename": document.filename,
+            "strategy_used": chunking_strategy.value,
+            "total_chunks": len(result['chunks']),
+            "chunks_preview": result['chunks'][:3],  # First 3 chunks as preview
+            "processing_metadata": result.get('metadata', {}),
+            "performance_metrics": result.get('performance_metrics', {})
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Advanced chunking failed for document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Advanced chunking failed: {str(e)}")
+
+
+@router.post("/{document_id}/enhanced-embeddings")
+async def generate_enhanced_embeddings(
+    document_id: UUID,
+    strategy: str = Query("contextual", description="Embedding strategy: basic, contextual, hierarchical, domain_adaptive, multi_granular"),
+    document_type: str = Query("general", description="Document type: technical, academic, legal, medical, financial, general"),
+    batch_size: int = Query(32, description="Batch size for embedding generation"),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Generate enhanced embeddings for document chunks using ContextualEmbedder
+    
+    - **document_id**: Document UUID
+    - **strategy**: Embedding strategy to use
+    - **document_type**: Document domain type
+    - **batch_size**: Batch size for processing
+    """
+    try:
+        # Validate document exists
+        document = await doc_service.get_document_by_id(db, document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Get document chunks
+        chunks = await chunk_service.get_document_chunks(
+            db=db,
+            document_id=document_id,
+            page=1,
+            per_page=1000  # Get all chunks
+        )
+        
+        if not chunks:
+            raise HTTPException(status_code=400, detail="Document has no chunks to embed")
+        
+        # Map string parameters to enums
+        strategy_mapping = {
+            "basic": EmbeddingStrategy.BASIC,
+            "contextual": EmbeddingStrategy.CONTEXTUAL,
+            "hierarchical": EmbeddingStrategy.HIERARCHICAL,
+            "domain_adaptive": EmbeddingStrategy.DOMAIN_ADAPTIVE,
+            "multi_granular": EmbeddingStrategy.MULTI_GRANULAR
+        }
+        
+        type_mapping = {
+            "technical": DocumentType.TECHNICAL,
+            "academic": DocumentType.ACADEMIC,
+            "legal": DocumentType.LEGAL,
+            "medical": DocumentType.MEDICAL,
+            "financial": DocumentType.FINANCIAL,
+            "general": DocumentType.GENERAL
+        }
+        
+        embedding_strategy = strategy_mapping.get(strategy)
+        doc_type = type_mapping.get(document_type, DocumentType.GENERAL)
+        
+        if not embedding_strategy:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid strategy. Must be one of: {list(strategy_mapping.keys())}"
+            )
+        
+        # Prepare chunks with context
+        contextual_embedder = get_contextual_embedder()
+        
+        chunk_contexts = []
+        for i, chunk in enumerate(chunks):
+            context = ChunkContext(
+                document_id=str(document_id),
+                document_title=document.filename,
+                document_type=doc_type,
+                chunk_index=i,
+                total_chunks=len(chunks),
+                section_title=getattr(chunk, 'heading', None),
+                hierarchical_level=getattr(chunk, 'page_number', 0) or 0,
+                keywords=[]  # Could extract keywords from metadata
+            )
+            
+            chunk_contexts.append((chunk.content, context))
+        
+        # Generate embeddings
+        embedding_results = await contextual_embedder.embed_batch(
+            chunk_contexts,
+            strategy=embedding_strategy,
+            batch_size=batch_size
+        )
+        
+        # Prepare response
+        enhanced_chunks = []
+        for i, (chunk, result) in enumerate(zip(chunks, embedding_results)):
+            enhanced_chunks.append({
+                "chunk_id": str(chunk.id),
+                "chunk_index": chunk.chunk_index,
+                "content_preview": chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content,
+                "embedding_shape": result.embedding.shape,
+                "has_context_embedding": result.context_embedding is not None,
+                "has_hierarchical_features": result.hierarchical_features is not None,
+                "has_domain_features": result.domain_features is not None,
+                "metadata": result.metadata
+            })
+        
+        # Get performance metrics
+        performance_metrics = contextual_embedder.get_performance_metrics()
+        
+        return {
+            "document_id": str(document_id),
+            "filename": document.filename,
+            "strategy_used": embedding_strategy.value,
+            "document_type": doc_type.value,
+            "total_chunks_processed": len(enhanced_chunks),
+            "chunks": enhanced_chunks[:5],  # First 5 as preview
+            "performance_metrics": {
+                "total_embeddings": performance_metrics.total_embeddings,
+                "cache_hits": performance_metrics.cache_hits,
+                "cache_misses": performance_metrics.cache_misses,
+                "cache_hit_rate": performance_metrics.cache_hit_rate,
+                "avg_embedding_time": performance_metrics.avg_embedding_time,
+                "total_processing_time": performance_metrics.total_processing_time
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Enhanced embedding generation failed for document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Enhanced embedding generation failed: {str(e)}")
+
+
+@router.get("/advanced/chunking-strategies")
+async def get_chunking_strategies():
+    """Get available advanced chunking strategies and their descriptions"""
+    return {
+        "strategies": [
+            {
+                "name": "adaptive_size",
+                "description": "Adapts chunk size based on content structure and complexity",
+                "best_for": "General documents with mixed content types"
+            },
+            {
+                "name": "hierarchical", 
+                "description": "Respects document hierarchy (headers, sections, subsections)",
+                "best_for": "Structured documents with clear hierarchical organization"
+            },
+            {
+                "name": "semantic_boundary",
+                "description": "Splits at semantic boundaries using NLP analysis", 
+                "best_for": "Dense text documents requiring semantic coherence"
+            },
+            {
+                "name": "sliding_window",
+                "description": "Fixed-size chunks with configurable overlap",
+                "best_for": "Technical documents where context continuity is crucial"
+            }
+        ]
+    }
+
+
+@router.get("/advanced/embedding-strategies")
+async def get_embedding_strategies():
+    """Get available enhanced embedding strategies and their descriptions"""
+    return {
+        "strategies": [
+            {
+                "name": "basic",
+                "description": "Standard sentence transformer embeddings",
+                "performance": "Fastest",
+                "quality": "Basic"
+            },
+            {
+                "name": "contextual",
+                "description": "Context-aware embeddings incorporating document metadata",
+                "performance": "Fast",
+                "quality": "Good"
+            },
+            {
+                "name": "hierarchical",
+                "description": "Embeddings with hierarchical position encoding",
+                "performance": "Moderate", 
+                "quality": "Better"
+            },
+            {
+                "name": "domain_adaptive",
+                "description": "Domain-specific embeddings with adaptive weighting",
+                "performance": "Slower",
+                "quality": "High"
+            },
+            {
+                "name": "multi_granular",
+                "description": "Multi-level embeddings (sentence + paragraph level)",
+                "performance": "Slowest",
+                "quality": "Highest"
+            }
+        ],
+        "document_types": [
+            "technical", "academic", "legal", "medical", "financial", "general"
+        ]
+    }

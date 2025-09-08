@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import database and routers
 from database import init_database, close_database, check_database_health
-from routers import folders, documents, websockets, upload_progress_websocket, chat
+from routers import folders, documents, websockets, upload_progress_websocket, chat, xml_generator, feature_flags
 
 # Setup logging
 logging.basicConfig(
@@ -94,6 +94,8 @@ app.include_router(documents.router)
 app.include_router(websockets.router)
 app.include_router(chat.router)
 app.include_router(upload_progress_websocket.router)
+app.include_router(xml_generator.router)
+app.include_router(feature_flags.router)
 
 
 # Health check endpoints
@@ -216,7 +218,7 @@ async def internal_error_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "main_new:app",
+        "main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,

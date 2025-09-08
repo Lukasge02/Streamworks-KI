@@ -194,6 +194,11 @@ class EmbeddingService:
         
         logger.info(f"EmbeddingService initialized with provider: {self.provider}")
         
+    async def initialize(self):
+        """Initialize the embedding service (for compatibility with ChatService)"""
+        # Already initialized in __init__, but keep this for compatibility
+        logger.info("EmbeddingService initialization called (no-op)")
+        
     def _get_local_embedder(self) -> Optional[LocalGammaEmbedder]:
         """Get local embedder with lazy loading"""
         if self.local_embedder is None:
