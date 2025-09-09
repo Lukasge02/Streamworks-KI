@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     BATCH_SIZE_LOCAL: int = int(os.getenv("BATCH_SIZE_LOCAL", "32"))
     ENABLE_EMBEDDING_FALLBACK: bool = os.getenv("ENABLE_EMBEDDING_FALLBACK", "true").lower() == "true"
     
+    # Enhanced Embedding Cache Configuration
+    EMBEDDING_CACHE_SIZE: int = int(os.getenv("EMBEDDING_CACHE_SIZE", "2000"))  # Increased from 1000
+    EMBEDDING_CACHE_TTL: int = int(os.getenv("EMBEDDING_CACHE_TTL", "3600"))  # 1 hour
+    ENABLE_SEMANTIC_CACHE: bool = os.getenv("ENABLE_SEMANTIC_CACHE", "true").lower() == "true"
+    SEMANTIC_CACHE_SIZE: int = int(os.getenv("SEMANTIC_CACHE_SIZE", "500"))
+    SEMANTIC_CACHE_TTL: int = int(os.getenv("SEMANTIC_CACHE_TTL", "1800"))  # 30 minutes
+    SEMANTIC_SIMILARITY_THRESHOLD: float = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.85"))
+    
     
     # Reranker Configuration (Optional)
     RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "none")  # none|cohere|jina
@@ -119,10 +127,14 @@ class Settings(BaseSettings):
     MAX_CHUNK_SIZE: int = int(os.getenv("MAX_CHUNK_SIZE", "3000"))  # Maximum chunk size
     MIN_WORD_COUNT: int = int(os.getenv("MIN_WORD_COUNT", "20"))  # Minimum words per chunk
     
-    # RAG Pipeline Settings
+    # RAG Pipeline Settings - Optimized for better quality
     TOP_K_RETRIEVAL: int = int(os.getenv("TOP_K_RETRIEVAL", "10"))
     RERANK_TOP_K: int = int(os.getenv("RERANK_TOP_K", "5"))
-    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.1"))
+    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.3"))  # Improved from 0.1
+    
+    # Advanced RAG Thresholds
+    HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.7"))  # For high-confidence answers
+    FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.15"))  # Minimum for any answer
     
     # Model Settings
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")

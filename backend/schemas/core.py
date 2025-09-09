@@ -230,6 +230,18 @@ class BulkReprocessResponse(BaseModel):
     total_failed: int
 
 
+# AI Summary Schemas
+class DocumentSummaryResponse(BaseModel):
+    """AI Summary response schema"""
+    summary_data: Dict[str, Any]
+    document_id: UUID
+    cached: bool
+    generated_at: Optional[str]
+    
+    class Config:
+        from_attributes = True
+
+
 # Forward reference updates
 FolderTree.model_rebuild()
 DocumentWithFolder.model_rebuild()

@@ -7,10 +7,12 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 # Import database and routers
 from database import init_database, close_database, check_database_health
 from routers import folders, documents, websockets, upload_progress_websocket, chat, xml_generator, feature_flags, health
+from middleware.performance import PerformanceMiddleware
 
 # Setup logging
 logging.basicConfig(
@@ -95,15 +97,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add performance monitoring middleware
+app.add_middleware(PerformanceMiddleware)
+
+# Add response compression middleware
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000,  # Compress responses larger than 1KB
+    compresslevel=6      # Balance between speed and compression
+)
+
 # Include routers
-app.include_router(folders.router)
-app.include_router(documents.router)
-app.include_router(websockets.router)
-app.include_router(chat.router)
-app.include_router(upload_progress_websocket.router)
-app.include_router(xml_generator.router)
-app.include_router(feature_flags.router)
-app.include_router(health.router)
+app.include_router(folders)
+app.include_router(documents)
+app.include_router(websockets)
+app.include_router(chat)
+app.include_router(upload_progress_websocket)
+app.include_router(xml_generator)
+app.include_router(feature_flags)
+app.include_router(health)
 
 
 # Health check endpoints
