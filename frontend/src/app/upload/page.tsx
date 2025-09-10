@@ -17,7 +17,7 @@ import {
   Zap
 } from 'lucide-react';
 
-import { ProfessionalUploadDropzone } from '@/components/professional-upload';
+import { UploadModal } from '@/components/professional-upload';
 
 interface UploadStats {
   totalUploads: number;
@@ -178,11 +178,15 @@ export default function UnifiedUploadPage() {
               </TabsList>
               
               <TabsContent value="upload" className="mt-6">
-                <ProfessionalUploadDropzone
-                  onUploadComplete={handleUploadComplete}
-                  onUploadError={handleUploadError}
-                  maxFiles={10}
-                  maxSizeBytes={100 * 1024 * 1024}
+                <UploadModal
+                  isOpen={true}
+                  onClose={() => {}}
+                  onFilesSelected={(files) => {
+                    files.forEach(file => {
+                      handleUploadComplete({ file, success: true });
+                    });
+                  }}
+                  maxSize={100 * 1024 * 1024}
                   folderId="default"
                 />
               </TabsContent>

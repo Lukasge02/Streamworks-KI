@@ -1,6 +1,6 @@
 """
 Embedding Service für Streamworks RAG MVP
-Erstellt OpenAI Embeddings für document chunks
+Erstellt OpenAI Embeddings für document chunks mit Performance-Optimierung und Caching
 """
 
 import asyncio
@@ -11,6 +11,10 @@ import openai
 from openai import AsyncOpenAI
 import tiktoken
 import torch
+import time
+import hashlib
+import threading
+from collections import defaultdict
 
 from config import settings
 from .docling_ingest import DocumentChunk
@@ -178,7 +182,7 @@ class LocalGammaEmbedder:
 
 
 class EmbeddingService:
-    """Hybrid embedding service with local Gamma and OpenAI support"""
+    """Hybrid embedding service with local Gamma and OpenAI support mit Performance-Caching"""
     
     def __init__(self):
         # OpenAI setup
@@ -192,12 +196,180 @@ class EmbeddingService:
         self.provider = getattr(settings, 'EMBEDDING_PROVIDER', 'gamma')  # gamma|openai|hybrid
         self.enable_fallback = getattr(settings, 'ENABLE_EMBEDDING_FALLBACK', True)
         
-        logger.info(f"EmbeddingService initialized with provider: {self.provider}")
+        # Performance caching system - Enhanced with multiple tiers
+        self.embedding_cache = {}
+        self.semantic_cache = {}  # Cache for semantically similar queries
+        self.cache_ttl = getattr(settings, 'EMBEDDING_CACHE_TTL', 3600)  # 1 hour
+        self.semantic_cache_ttl = getattr(settings, 'SEMANTIC_CACHE_TTL', 1800)  # 30 minutes
+        self.cache_stats = {"hits": 0, "misses": 0, "evictions": 0, "semantic_hits": 0}
+        self.cache_lock = threading.RLock()
+        
+        # Cache optimization settings - improved configuration
+        self.max_cache_size = getattr(settings, 'EMBEDDING_CACHE_SIZE', 1500)  # Optimized
+        self.semantic_threshold = getattr(settings, 'SEMANTIC_SIMILARITY_THRESHOLD', 0.80)  # Less restrictive
+        self.enable_semantic_cache = getattr(settings, 'ENABLE_SEMANTIC_CACHE', True)
+        self.cache_cleanup_interval = getattr(settings, 'CACHE_CLEANUP_INTERVAL', 300)  # 5 minutes
+        self.enable_performance_logging = getattr(settings, 'CACHE_PERFORMANCE_LOGGING', True)
+        
+        # Performance monitoring
+        self.performance_stats = defaultdict(lambda: {"count": 0, "total_time": 0, "avg_time": 0})
+        
+        logger.info(f"EmbeddingService initialized with provider: {self.provider} and caching enabled")
         
     async def initialize(self):
         """Initialize the embedding service (for compatibility with ChatService)"""
         # Already initialized in __init__, but keep this for compatibility
         logger.info("EmbeddingService initialization called (no-op)")
+    
+    def _generate_cache_key(self, text: str, provider: str = None) -> str:
+        """Generate cache key for text"""
+        provider = provider or self.provider
+        content = f"{provider}:{text}"
+        return f"embed_{hashlib.md5(content.encode()).hexdigest()}"
+    
+    def _get_cached_embedding(self, cache_key: str) -> Optional[List[float]]:
+        """Get cached embedding if available and not expired"""
+        with self.cache_lock:
+            if cache_key in self.embedding_cache:
+                cached_data = self.embedding_cache[cache_key]
+                if time.time() - cached_data["timestamp"] < self.cache_ttl:
+                    self.cache_stats["hits"] += 1
+                    return cached_data["embedding"]
+                else:
+                    # Remove expired cache entry
+                    del self.embedding_cache[cache_key]
+                    self.cache_stats["evictions"] += 1
+            return None
+    
+    def _cache_embedding(self, cache_key: str, embedding: List[float]) -> None:
+        """Cache embedding with timestamp - Enhanced with smarter eviction"""
+        with self.cache_lock:
+            # Smart LRU: if cache is full, remove oldest AND least recently used entries
+            if len(self.embedding_cache) >= self.max_cache_size:
+                # Remove multiple oldest entries to reduce frequency of eviction operations
+                items_to_remove = max(1, len(self.embedding_cache) - int(self.max_cache_size * 0.9))
+                oldest_keys = sorted(self.embedding_cache.keys(), 
+                                   key=lambda k: self.embedding_cache[k]["timestamp"])[:items_to_remove]
+                for key in oldest_keys:
+                    del self.embedding_cache[key]
+                    self.cache_stats["evictions"] += 1
+            
+            self.embedding_cache[cache_key] = {
+                "embedding": embedding,
+                "timestamp": time.time(),
+                "access_count": 1  # Track access frequency for smarter eviction
+            }
+    
+    def _calculate_cosine_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
+        """Calculate cosine similarity between two embeddings"""
+        try:
+            import numpy as np
+            vec1 = np.array(embedding1)
+            vec2 = np.array(embedding2)
+            
+            dot_product = np.dot(vec1, vec2)
+            norm1 = np.linalg.norm(vec1)
+            norm2 = np.linalg.norm(vec2)
+            
+            if norm1 == 0 or norm2 == 0:
+                return 0.0
+            
+            return float(dot_product / (norm1 * norm2))
+        except Exception:
+            # Fallback to simple calculation if numpy not available
+            dot_product = sum(a * b for a, b in zip(embedding1, embedding2))
+            norm1 = sum(a * a for a in embedding1) ** 0.5
+            norm2 = sum(b * b for b in embedding2) ** 0.5
+            
+            if norm1 == 0 or norm2 == 0:
+                return 0.0
+            
+            return dot_product / (norm1 * norm2)
+    
+    def _find_semantic_match(self, query_embedding: List[float]) -> Optional[str]:
+        """Find semantically similar cached embeddings"""
+        if not self.enable_semantic_cache or not self.semantic_cache:
+            return None
+        
+        best_match_key = None
+        best_similarity = 0.0
+        
+        for cache_key, cached_data in self.semantic_cache.items():
+            similarity = self._calculate_cosine_similarity(query_embedding, cached_data["embedding"])
+            
+            if similarity >= self.semantic_threshold and similarity > best_similarity:
+                best_similarity = similarity
+                best_match_key = cache_key
+        
+        if best_match_key:
+            # Update access count for the matched entry
+            self.semantic_cache[best_match_key]["access_count"] = self.semantic_cache[best_match_key].get("access_count", 0) + 1
+            self.cache_stats["semantic_hits"] += 1
+            logger.debug(f"Semantic cache hit: similarity={best_similarity:.3f}")
+        
+        return best_match_key
+    
+    def _cache_semantic_embedding(self, cache_key: str, embedding: List[float], original_text: str) -> None:
+        """Cache embedding for semantic matching"""
+        if not self.enable_semantic_cache:
+            return
+        
+        with self.cache_lock:
+            # Clean expired entries
+            current_time = time.time()
+            expired_keys = [
+                key for key, data in self.semantic_cache.items()
+                if current_time - data["timestamp"] > self.semantic_cache_ttl
+            ]
+            for key in expired_keys:
+                del self.semantic_cache[key]
+            
+            # Limit semantic cache size
+            max_semantic_cache = getattr(settings, 'SEMANTIC_CACHE_SIZE', 500)
+            if len(self.semantic_cache) >= max_semantic_cache:
+                # Remove least recently used
+                oldest_key = min(self.semantic_cache.keys(),
+                                key=lambda k: self.semantic_cache[k].get("access_count", 0))
+                del self.semantic_cache[oldest_key]
+            
+            self.semantic_cache[cache_key] = {
+                "embedding": embedding,
+                "timestamp": current_time,
+                "original_text": original_text[:200],  # Store truncated original for debugging
+                "access_count": 1
+            }
+    
+    def _update_performance_stats(self, operation: str, processing_time: float) -> None:
+        """Update performance statistics"""
+        stats = self.performance_stats[operation]
+        stats["count"] += 1
+        stats["total_time"] += processing_time
+        stats["avg_time"] = stats["total_time"] / stats["count"]
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get enhanced cache performance statistics"""
+        total_requests = self.cache_stats["hits"] + self.cache_stats["misses"]
+        total_hits = self.cache_stats["hits"] + self.cache_stats["semantic_hits"]
+        hit_rate = (total_hits / total_requests * 100) if total_requests > 0 else 0
+        semantic_hit_rate = (self.cache_stats["semantic_hits"] / total_requests * 100) if total_requests > 0 else 0
+        
+        return {
+            "cache_stats": self.cache_stats.copy(),
+            "hit_rate": f"{hit_rate:.2f}%",
+            "semantic_hit_rate": f"{semantic_hit_rate:.2f}%",
+            "effective_hit_rate": f"{hit_rate:.2f}%",
+            "cache_size": len(self.embedding_cache),
+            "semantic_cache_size": len(self.semantic_cache),
+            "total_cache_size": len(self.embedding_cache) + len(self.semantic_cache),
+            "cache_config": {
+                "max_cache_size": self.max_cache_size,
+                "semantic_threshold": self.semantic_threshold,
+                "enable_semantic_cache": self.enable_semantic_cache,
+                "cache_ttl": self.cache_ttl,
+                "semantic_cache_ttl": self.semantic_cache_ttl
+            },
+            "performance_stats": dict(self.performance_stats)
+        }
         
     def _get_local_embedder(self) -> Optional[LocalGammaEmbedder]:
         """Get local embedder with lazy loading"""
@@ -375,9 +547,33 @@ class EmbeddingService:
         truncated_tokens = tokens[:self.max_tokens]
         return self.encoding.decode(truncated_tokens)
     
+    async def _generate_temp_embedding(self, text: str) -> List[float]:
+        """Generate a temporary embedding for semantic cache search - optimized for speed"""
+        # Use local model if available for faster semantic search
+        if self.provider == "gamma" or (self.provider == "hybrid" and self._get_local_embedder()):
+            try:
+                local_embedder = self._get_local_embedder()
+                if local_embedder:
+                    return local_embedder.embed_query(text)
+            except Exception:
+                pass
+        
+        # Fallback to generating full embedding (this is slower but ensures semantic cache works)
+        try:
+            # Use a shorter timeout for semantic search to avoid blocking
+            if self.provider == "openai":
+                embeddings = await self._embed_with_openai([text])
+            else:
+                embeddings = await self._embed_with_local([text])
+            return embeddings[0]
+        except Exception:
+            # If all else fails, return a dummy embedding (this prevents semantic cache from breaking)
+            logger.warning("Could not generate temp embedding for semantic search")
+            return [0.0] * 1536  # Default OpenAI embedding size
+    
     async def embed_query(self, query: str) -> List[float]:
         """
-        Create embedding for a search query using selected provider
+        Create embedding for a search query using selected provider with enhanced caching
         
         Args:
             query: Search query string
@@ -385,22 +581,65 @@ class EmbeddingService:
         Returns:
             Query embedding vector
         """
+        start_time = time.time()
+        
         try:
+            # Check exact cache first
+            cache_key = self._generate_cache_key(query)
+            cached_embedding = self._get_cached_embedding(cache_key)
+            
+            if cached_embedding is not None:
+                self._update_performance_stats("query_embedding_cache_hit", time.time() - start_time)
+                logger.debug(f"Query embedding cache hit for: {query[:50]}...")
+                return cached_embedding
+            
+            # If semantic caching is enabled, try to find semantically similar queries
+            if self.enable_semantic_cache:
+                # Generate a temporary embedding for semantic search (using faster method if available)
+                temp_embedding = await self._generate_temp_embedding(query)
+                
+                semantic_match_key = self._find_semantic_match(temp_embedding)
+                if semantic_match_key:
+                    semantic_embedding = self.semantic_cache[semantic_match_key]["embedding"]
+                    self._update_performance_stats("query_embedding_semantic_hit", time.time() - start_time)
+                    logger.debug(f"Query embedding semantic cache hit for: {query[:50]}...")
+                    
+                    # Also cache this exact query for future exact matches
+                    self._cache_embedding(cache_key, semantic_embedding)
+                    return semantic_embedding
+            
+            self.cache_stats["misses"] += 1
+            
             # Choose embedding method based on provider
             if self.provider == "gamma":
                 embeddings = await self._embed_with_local([query])
-                return embeddings[0]
+                result = embeddings[0]
+                used_provider = "gamma"
             elif self.provider == "openai":
                 embeddings = await self._embed_with_openai([query])
-                return embeddings[0]
+                result = embeddings[0]
+                used_provider = "openai"
             else:  # hybrid - try local first, fallback to OpenAI
                 try:
                     embeddings = await self._embed_with_local([query])
-                    return embeddings[0]
+                    result = embeddings[0]
+                    used_provider = "gamma"
                 except Exception as e:
                     logger.warning(f"Local query embedding failed, falling back to OpenAI: {str(e)}")
                     embeddings = await self._embed_with_openai([query])
-                    return embeddings[0]
+                    result = embeddings[0]
+                    used_provider = "openai"
+            
+            # Cache the result with both exact and semantic caching
+            result_cache_key = self._generate_cache_key(query, used_provider)
+            self._cache_embedding(result_cache_key, result)
+            self._cache_semantic_embedding(result_cache_key, result, query)
+            
+            processing_time = time.time() - start_time
+            self._update_performance_stats(f"query_embedding_{used_provider}", processing_time)
+            
+            logger.debug(f"Query embedding generated in {processing_time:.3f}s using {used_provider}")
+            return result
             
         except Exception as e:
             logger.error(f"Query embedding failed: {str(e)}")

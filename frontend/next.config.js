@@ -1,12 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Performance optimizations
-  swcMinify: true,
+  // Performance optimizations (swcMinify is now default in Next.js 15)
   compress: true,
+  
+  // Cache optimization for development stability
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
   
   // Experimental features (simplified)
   experimental: {
     optimizePackageImports: ['lucide-react', '@heroicons/react'],
+    // Stable incremental cache for development
+    incrementalCacheHandlerPath: require.resolve('./cache-handler.js'),
   },
   
   // API Proxy for Development
@@ -37,9 +44,9 @@ const nextConfig = {
     domains: ['localhost'],
   },
   
-  // Simplified Webpack Configuration
+  // Optimized Webpack Configuration for Next.js 15
   webpack: (config, { isServer }) => {
-    // Resolve fallbacks for client-side
+    // Basic fallbacks for client-side
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,

@@ -4,5 +4,5 @@
  */
 
 export { UploadModal } from './UploadModal'
-export { BottomProgressBar } from './TopProgressBar'
+export { BottomProgressBar, type UploadFile } from './TopProgressBar'
 export { ErrorHandler } from './ErrorHandler'

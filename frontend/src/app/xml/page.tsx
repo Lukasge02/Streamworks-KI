@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { XMLGenerator } from '@/components/xml/XMLGenerator'
+import XmlGenerator from '@/components/xml-wizard/XmlGenerator'
 
 export default function XMLPage() {
   useEffect(() => {
@@ -9,5 +9,9 @@ export default function XMLPage() {
     document.title = 'XML Generator | Streamworks'
   }, [])
 
-  return <XMLGenerator />
+  return (
+    <div className="h-screen">
+      <XmlGenerator className="h-full" />
+    </div>
+  )
 }

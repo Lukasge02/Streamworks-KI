@@ -17,6 +17,8 @@ from datetime import datetime
 from .di_container import ServiceLifecycle
 from .vectorstore import VectorStoreService
 from .embeddings import EmbeddingService
+from .reranker_v2 import RerankerService, RerankerProvider
+from .adaptive_retrieval import AdaptiveRetrievalService
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -72,7 +74,7 @@ class RAGServiceInterface(ABC):
 class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
     """
     OpenAI-based RAG Service for document queries
-    Clean, focused implementation using OpenAI for generation
+    Clean, focused implementation using OpenAI for generation + ChromaDB for persistence
     """
     
     def __init__(self, 
@@ -89,6 +91,19 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
             raise ValueError("OPENAI_API_KEY ist erforderlich für OpenAI RAG Service")
         
         self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        
+        # Initialize reranker if enabled
+        self.reranker = None
+        if settings.ENABLE_RERANKING:
+            self.reranker = RerankerService(
+                provider=settings.RERANKER_PROVIDER,
+                enable_fallback=settings.ENABLE_RERANKER_FALLBACK
+            )
+            logger.info(f"✅ Reranker enabled with provider: {settings.RERANKER_PROVIDER}")
+        
+        # Initialize adaptive retrieval service
+        self.adaptive_retrieval = AdaptiveRetrievalService()
+        logger.info("✅ Adaptive Retrieval Service initialized")
     
     async def initialize(self) -> None:
         """Initialize the service"""
@@ -133,7 +148,8 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
             # Test vectorstore
             vectorstore_healthy = False
             try:
-                test_embedding = [0.1] * 1024
+                # Generate a proper test embedding using the embeddings service
+                test_embedding = await self.embeddings.embed_query("health check test")
                 await self.vectorstore.search_similar(
                     query_embedding=test_embedding,
                     top_k=1
@@ -141,6 +157,18 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
                 vectorstore_healthy = True
             except Exception as e:
                 logger.error(f"Vectorstore health check failed: {str(e)}")
+                # Try with a simple embedding as fallback
+                try:
+                    # Try with OpenAI embedding dimension (1536 for text-embedding-3-large)
+                    test_embedding = [0.1] * 1536
+                    await self.vectorstore.search_similar(
+                        query_embedding=test_embedding,
+                        top_k=1
+                    )
+                    vectorstore_healthy = True
+                    logger.info("Vectorstore health check passed with fallback embedding")
+                except Exception as e2:
+                    logger.error(f"Vectorstore health check fallback also failed: {str(e2)}")
             
             return {
                 "status": "healthy" if (openai_healthy and embedding_healthy and vectorstore_healthy) else "unhealthy",
@@ -196,19 +224,32 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
             # Step 2: Generate response with OpenAI
             generation_result = await self._generate_response(query, retrieval_results, processing_mode)
             
-            # Step 3: Package result
+            # Step 3: Package result with enhanced performance tracking
+            processing_time = time.time() - start_time
             result = {
                 "answer": generation_result["answer"],
                 "confidence": generation_result["confidence"],
                 "sources": retrieval_results["sources"] if include_sources else [],
                 "processing_mode": processing_mode.value,
-                "response_time": time.time() - start_time,
+                "response_time": processing_time,
                 "metadata": {
                     "retrieved_chunks": len(retrieval_results["chunks"]),
                     "total_tokens": generation_result.get("total_tokens", 0),
                     "model_used": generation_result["model_used"],
                     "embedding_model": "EmbeddingGemma",
-                    "rag_type": self.config.rag_type.value
+                    "rag_type": self.config.rag_type.value,
+                    "performance": {
+                        "retrieval_time": retrieval_results.get("retrieval_time", 0),
+                        "adaptive_time": retrieval_results.get("adaptive_time", 0),
+                        "rerank_time": retrieval_results.get("rerank_time", 0),
+                        "generation_time": generation_result.get("generation_time", 0),
+                        "total_time": processing_time,
+                        "chunks_processed": len(retrieval_results["chunks"]),
+                        "sources_found": len(retrieval_results["sources"]),
+                        "reranking_enabled": self.reranker is not None,
+                        "reranker_provider": settings.RERANKER_PROVIDER if self.reranker else "none",
+                        "adaptive_retrieval": retrieval_results.get("adaptive_retrieval", {})
+                    }
                 }
             }
             
@@ -216,14 +257,34 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
             return result
             
         except Exception as e:
-            logger.error(f"❌ RAG Query failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"❌ RAG Query failed ({error_type}): {str(e)}")
+            
+            # Provide different error messages based on error type
+            if "OpenAI" in str(e) or "API" in str(e):
+                error_message = "Entschuldigung, es gab ein Problem mit dem KI-Service. Bitte versuchen Sie es später erneut."
+            elif "embedding" in str(e).lower():
+                error_message = "Entschuldigung, es gab ein Problem bei der Dokumentensuche. Bitte versuchen Sie es erneut."
+            elif "vector" in str(e).lower() or "chroma" in str(e).lower():
+                error_message = "Entschuldigung, es gab ein Problem beim Zugriff auf die Dokumentendatenbank."
+            else:
+                error_message = "Entschuldigung, es gab einen unerwarteten Fehler bei der Verarbeitung Ihrer Anfrage."
+            
             return {
-                "answer": "Entschuldigung, es gab einen Fehler bei der Verarbeitung Ihrer Anfrage.",
+                "answer": error_message,
                 "confidence": 0.0,
                 "sources": [],
-                "error": str(e),
+                "error": {
+                    "type": error_type,
+                    "message": str(e),
+                    "timestamp": time.time()
+                },
                 "response_time": time.time() - start_time,
-                "metadata": {"model_used": "error"}
+                "metadata": {
+                    "model_used": "error",
+                    "error_handled": True,
+                    "processing_mode": processing_mode.value if processing_mode else "unknown"
+                }
             }
     
     async def _retrieve_documents(
@@ -232,7 +293,11 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
         filters: Optional[Dict[str, Any]],
         mode: RAGMode
     ) -> Dict[str, Any]:
-        """Retrieve relevant documents using EmbeddingGemma"""
+        """Retrieve relevant documents using EmbeddingGemma with performance tracking"""
+        retrieval_start = time.time()
+        original_query = query
+        
+        # Step 1: Standard retrieval (no query expansion - handled by adaptive system)
         
         # Adjust retrieval based on mode
         if mode == RAGMode.FAST:
@@ -253,19 +318,17 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
         )
         
         # Process results
-        chunks = []
+        raw_chunks = []
         sources = []
         
         for result in search_results:
-            # Skip low-relevance chunks
             similarity_score = result.get("similarity_score", 0.0)
-            if similarity_score < self.config.similarity_threshold:
-                continue
-                
-            chunks.append({
+            raw_chunks.append({
                 "content": result.get("content", ""),
-                "score": similarity_score,
-                "metadata": result.get("metadata", {})
+                "similarity_score": similarity_score,  # Keep original name for adaptive system
+                "score": similarity_score,              # For compatibility
+                "metadata": result.get("metadata", {}),
+                "id": result.get("id", "")
             })
             
             # Extract source information
@@ -281,14 +344,68 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
             }
             sources.append(source_info)
         
+        # Step 2: Apply Adaptive Retrieval (replaces specific query expansion)
+        adaptive_start = time.time()
+        chunks, adaptive_metadata = self.adaptive_retrieval.retrieve_adaptively(
+            query=original_query,
+            initial_chunks=raw_chunks,
+            vectorstore_service=self.vectorstore
+        )
+        adaptive_time = time.time() - adaptive_start
+        
+        logger.info(f"🎯 Adaptive retrieval: {adaptive_metadata['query_type']} query, {adaptive_metadata['quality_tier_used']} tier, {len(chunks)} chunks")
+        
+        # Apply reranking if enabled
+        if self.reranker and len(chunks) > 0:
+            rerank_start = time.time()
+            try:
+                # Rerank chunks for better relevance
+                reranked_chunks = await self.reranker.rerank(
+                    query=query,
+                    chunks=chunks,
+                    top_k=settings.RERANKER_TOP_K if mode != RAGMode.COMPREHENSIVE else None,
+                    min_score=settings.RERANKER_MIN_SCORE
+                )
+                
+                # Update chunks with reranked results
+                chunks = reranked_chunks
+                
+                # Update sources based on reranked chunks
+                seen_sources = set()
+                reranked_sources = []
+                for chunk in chunks:
+                    source_id = chunk.get("metadata", {}).get("source")
+                    if source_id and source_id not in seen_sources:
+                        # Find matching source from original sources
+                        for src in sources:
+                            if src.get("id") == source_id or src.get("title") == chunk.get("metadata", {}).get("source_title"):
+                                reranked_sources.append(src)
+                                seen_sources.add(source_id)
+                                break
+                sources = reranked_sources
+                
+                rerank_time = time.time() - rerank_start
+                logger.info(f"🎯 Reranking completed in {rerank_time:.2f}s: {len(chunks)} chunks")
+                
+            except Exception as e:
+                logger.warning(f"Reranking failed, using original ranking: {str(e)}")
+                rerank_time = 0
+        else:
+            rerank_time = 0
+        
         # Limit sources
         sources = sources[:self.config.max_sources]
         
-        logger.info(f"🔍 Retrieval: {len(chunks)} chunks gefunden, {len(sources)} sources")
+        retrieval_time = time.time() - retrieval_start
+        logger.info(f"🔍 Retrieval: {len(chunks)} chunks gefunden, {len(sources)} sources in {retrieval_time:.2f}s")
         
         return {
             "chunks": chunks,
-            "sources": sources
+            "sources": sources,
+            "retrieval_time": retrieval_time,
+            "rerank_time": rerank_time,
+            "adaptive_time": adaptive_time,
+            "adaptive_retrieval": adaptive_metadata
         }
     
     async def _generate_response(
@@ -297,7 +414,8 @@ class OpenAIRAGService(RAGServiceInterface, ServiceLifecycle):
         retrieval_results: Dict[str, Any],
         mode: RAGMode
     ) -> Dict[str, Any]:
-        """Generate response using OpenAI"""
+        """Generate response using OpenAI with performance tracking"""
+        generation_start = time.time()
         
         chunks = retrieval_results["chunks"]
         
@@ -357,23 +475,68 @@ Bitte beantworte die Frage basierend auf dem Kontext. Falls nicht genügend Info
                 max_tokens=max_tokens
             )
             
-            # Calculate confidence
-            avg_score = sum(chunk["score"] for chunk in chunks) / len(chunks)
-            high_relevance_count = sum(1 for chunk in chunks if chunk["score"] > 0.7)
-            confidence = min(0.95, max(0.3, avg_score + (high_relevance_count * 0.1)))
+            # Universal confidence calculation (simplified from enhanced version)
+            confidence = self._calculate_universal_confidence(chunks, response.choices[0].message.content)
             
-            logger.info(f"✅ OpenAI Response: {response.usage.total_tokens} tokens, confidence: {confidence:.2f}")
+            generation_time = time.time() - generation_start
+            logger.info(f"✅ OpenAI Response: {response.usage.total_tokens} tokens, confidence: {confidence:.2f}, generation: {generation_time:.2f}s")
             
             return {
                 "answer": response.choices[0].message.content,
                 "confidence": confidence,
                 "total_tokens": response.usage.total_tokens,
-                "model_used": self.config.model_name
+                "model_used": self.config.model_name,
+                "generation_time": generation_time
             }
             
         except Exception as e:
-            logger.error(f"❌ OpenAI generation failed: {str(e)}")
-            raise Exception(f"OpenAI generation failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"❌ OpenAI generation failed ({error_type}): {str(e)}")
+            
+            # Return error result instead of raising exception
+            return {
+                "answer": "Entschuldigung, ich konnte keine Antwort generieren. Bitte versuchen Sie es mit einer anderen Formulierung.",
+                "confidence": 0.0,
+                "total_tokens": 0,
+                "model_used": f"{self.config.model_name} (error)",
+                "error": {
+                    "type": error_type,
+                    "message": str(e)
+                }
+            }
+    
+    def _calculate_universal_confidence(self, chunks: List[Dict], answer: str) -> float:
+        """
+        Universal confidence calculation (generalized from enhanced version)
+        Works for any query type without specific patterns
+        """
+        if not chunks:
+            return 0.0
+            
+        # Base confidence from chunk scores
+        avg_score = sum(chunk.get("score", 0) for chunk in chunks) / len(chunks)
+        
+        # Quality tier bonus (universal approach)
+        high_quality_count = sum(1 for chunk in chunks if chunk.get("score", 0) >= 0.7)
+        good_quality_count = sum(1 for chunk in chunks if chunk.get("score", 0) >= 0.4)
+        quality_factor = (high_quality_count * 0.1) + (good_quality_count * 0.05)
+        
+        # Answer completeness factor (universal indicators)
+        completeness_factor = 0.0
+        if answer and len(answer) > 50:
+            completeness_factor = 0.05
+        if answer and len(answer) > 150:
+            completeness_factor = 0.1
+            
+        # Universal negative indicators
+        if answer and any(neg in answer.lower() for neg in ["keine", "nicht", "unzureichend", "fehlt"]):
+            completeness_factor -= 0.1
+            
+        # Combine factors
+        final_confidence = avg_score + quality_factor + completeness_factor
+        
+        # Universal bounds
+        return max(0.05, min(0.95, final_confidence))
 
 
 class UnifiedRAGService:

@@ -53,11 +53,11 @@ async def lifespan(app: FastAPI):
     await shutdown_services()
 
 
-def get_service_health():
+async def get_service_health():
     """Get health status for all services"""
     try:
         container = get_container()
-        return container.health_check()
+        return await container.health_check()
     except Exception as e:
         logger.error(f"Failed to get service health: {str(e)}")
         return {"status": "unhealthy", "error": str(e)}

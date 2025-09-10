@@ -29,18 +29,28 @@ class Settings(BaseSettings):
     BATCH_SIZE_LOCAL: int = int(os.getenv("BATCH_SIZE_LOCAL", "32"))
     ENABLE_EMBEDDING_FALLBACK: bool = os.getenv("ENABLE_EMBEDDING_FALLBACK", "true").lower() == "true"
     
-    # Enhanced Embedding Cache Configuration
-    EMBEDDING_CACHE_SIZE: int = int(os.getenv("EMBEDDING_CACHE_SIZE", "2000"))  # Increased from 1000
-    EMBEDDING_CACHE_TTL: int = int(os.getenv("EMBEDDING_CACHE_TTL", "3600"))  # 1 hour
+    # Enhanced Embedding Cache Configuration - Optimized for better performance
+    EMBEDDING_CACHE_SIZE: int = int(os.getenv("EMBEDDING_CACHE_SIZE", "1500"))  # Optimized size
+    EMBEDDING_CACHE_TTL: int = int(os.getenv("EMBEDDING_CACHE_TTL", "7200"))  # 2 hours - longer retention
     ENABLE_SEMANTIC_CACHE: bool = os.getenv("ENABLE_SEMANTIC_CACHE", "true").lower() == "true"
-    SEMANTIC_CACHE_SIZE: int = int(os.getenv("SEMANTIC_CACHE_SIZE", "500"))
-    SEMANTIC_CACHE_TTL: int = int(os.getenv("SEMANTIC_CACHE_TTL", "1800"))  # 30 minutes
-    SEMANTIC_SIMILARITY_THRESHOLD: float = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.85"))
+    SEMANTIC_CACHE_SIZE: int = int(os.getenv("SEMANTIC_CACHE_SIZE", "300"))  # Smaller for efficiency
+    SEMANTIC_CACHE_TTL: int = int(os.getenv("SEMANTIC_CACHE_TTL", "3600"))  # 1 hour - longer retention
+    SEMANTIC_SIMILARITY_THRESHOLD: float = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.80"))  # Less restrictive from 0.85
+    
+    # Advanced Cache Settings
+    CACHE_CLEANUP_INTERVAL: int = int(os.getenv("CACHE_CLEANUP_INTERVAL", "300"))  # 5 minutes
+    CACHE_PERFORMANCE_LOGGING: bool = os.getenv("CACHE_PERFORMANCE_LOGGING", "true").lower() == "true"
     
     
-    # Reranker Configuration (Optional)
-    RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "none")  # none|cohere|jina
-    RERANKER_API_KEY: str = os.getenv("RERANKER_API_KEY", "")
+    # Reranker Configuration - Enhanced with BGE support
+    ENABLE_RERANKING: bool = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
+    RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "bge")  # bge|local|hybrid|cohere|jina|none
+    RERANKER_API_KEY: str = os.getenv("RERANKER_API_KEY", "")  # For external providers
+    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+    RERANKER_MIN_SCORE: float = float(os.getenv("RERANKER_MIN_SCORE", "0.0"))
+    RERANKER_TOP_K: int = int(os.getenv("RERANKER_TOP_K", "5"))
+    ENABLE_RERANKER_FALLBACK: bool = os.getenv("ENABLE_RERANKER_FALLBACK", "true").lower() == "true"
+    USE_ENHANCED_HYBRID: bool = os.getenv("USE_ENHANCED_HYBRID", "true").lower() == "true"
     
     # Supabase Configuration
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")

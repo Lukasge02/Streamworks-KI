@@ -44,7 +44,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" />
       </head>
-      <body className="min-h-full bg-gray-50 dark:bg-gray-900">
+      <body className="min-h-full bg-gray-50 dark:bg-gray-900" suppressHydrationWarning={true}>
         <Providers>
           <AppLayout>
             {children}

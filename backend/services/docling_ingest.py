@@ -19,13 +19,8 @@ from docling.document_converter import PdfFormatOption
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 # Note: ImageFormatOption and OcrOptions might need adjustment based on Docling version
 
-# LangChain for intelligent chunking
-from langchain.text_splitter import (
-    RecursiveCharacterTextSplitter,
-    MarkdownTextSplitter,
-    Language
-)
-from langchain.text_splitter import TextSplitter
+# Intelligent chunking system
+from .intelligent_chunker import IntelligentChunker, ContentType, ChunkingConfig
 
 from config import settings
 import tempfile
@@ -67,10 +62,7 @@ class DoclingIngestService:
     
     def __init__(self):
         self.converter = None
-        self.text_splitter = None
-        self.markdown_splitter = None
-        self.pdf_text_splitter = None  # PDF-specific splitter
-        self.code_splitter = None  # Code-specific splitter
+        self.chunker = None  # New intelligent chunker
         self._initialized = False
         self._initialization_error = None
         
@@ -98,37 +90,17 @@ class DoclingIngestService:
                 }
             )
             
-            # Initialize LangChain text splitters for intelligent chunking
-            self.text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=settings.TEXT_CHUNK_SIZE,
-                chunk_overlap=settings.CHUNK_OVERLAP,
-                length_function=len,
-                separators=["\n\n", "\n", ". ", " ", ""]
+            # Initialize intelligent chunker with optimized settings
+            chunking_config = ChunkingConfig(
+                min_chunk_size=settings.MIN_CHUNK_SIZE,
+                max_chunk_size=settings.MAX_CHUNK_SIZE,
+                pdf_chunk_size=settings.PDF_CHUNK_SIZE,
+                text_chunk_size=settings.TEXT_CHUNK_SIZE,
+                min_word_count=settings.MIN_WORD_COUNT,
+                overlap_ratio=settings.CHUNK_OVERLAP / settings.TEXT_CHUNK_SIZE  # Convert to ratio
             )
             
-            # PDF-specific splitter with larger chunks for better context
-            self.pdf_text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=settings.PDF_CHUNK_SIZE,
-                chunk_overlap=settings.CHUNK_OVERLAP,
-                length_function=len,
-                separators=["\n\n", "\n", ". ", " ", ""]
-            )
-            
-            self.markdown_splitter = MarkdownTextSplitter(
-                chunk_size=settings.TEXT_CHUNK_SIZE,
-                chunk_overlap=settings.CHUNK_OVERLAP
-            )
-            
-            # Code-specific splitter
-            try:
-                from langchain.text_splitter import PythonCodeTextSplitter
-                self.code_splitter = PythonCodeTextSplitter(
-                    chunk_size=settings.TEXT_CHUNK_SIZE,
-                    chunk_overlap=settings.CHUNK_OVERLAP
-                )
-            except ImportError:
-                # Fallback to regular text splitter if code splitter not available
-                self.code_splitter = self.text_splitter
+            self.chunker = IntelligentChunker(config=chunking_config)
             
             self._initialized = True
             return True
@@ -137,45 +109,47 @@ class DoclingIngestService:
             self._initialization_error = e
             raise e
             
-    def _get_appropriate_splitter(self, file_path: str, file_type: str = None) -> TextSplitter:
+    def _detect_content_type(self, file_path: str, file_type: str = None) -> ContentType:
         """
-        Get the most appropriate text splitter based on file type
+        Detect the appropriate content type for intelligent chunking
         
         Args:
             file_path: Path to the file being processed
             file_type: Optional file type override
             
         Returns:
-            Appropriate TextSplitter instance
+            ContentType for specialized chunking
         """
-        try:
-            if not self._initialized:
-                self._initialize()
-                
-            file_extension = Path(file_path).suffix.lower() if file_path else ""
+        if file_type:
+            # Map string types to ContentType enum
+            type_mapping = {
+                'pdf': ContentType.PDF,
+                'text': ContentType.TEXT,
+                'html': ContentType.HTML,
+                'markdown': ContentType.MARKDOWN,
+                'code': ContentType.CODE,
+                'table': ContentType.TABLE
+            }
+            if file_type in type_mapping:
+                return type_mapping[file_type]
+        
+        # Detect from file extension
+        if file_path:
+            file_extension = Path(file_path).suffix.lower()
             
-            # PDF files get larger chunks for better context retention
-            if file_extension == '.pdf' or file_type == 'pdf':
-                return self.pdf_text_splitter
-                
-            # Markdown files get specialized splitter
-            if file_extension in ['.md', '.markdown'] or file_type == 'markdown':
-                return self.markdown_splitter
-                
-            # Code files get specialized splitter
-            if file_extension in ['.py', '.js', '.ts', '.java', '.cpp', '.c', '.xml', '.json'] or file_type == 'code':
-                return self.code_splitter
-                
-            # Image/OCR files get smaller chunks for better quality
-            if file_extension in ['.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'] or file_type == 'image':
-                return self.text_splitter  # Use standard text splitter with smaller chunks
-                
-            # Default to standard text splitter
-            return self.text_splitter
-            
-        except Exception as e:
-            logger.warning(f"Failed to get appropriate splitter, using default: {str(e)}")
-            return self.text_splitter if self.text_splitter else None
+            if file_extension == '.pdf':
+                return ContentType.PDF
+            elif file_extension in ['.md', '.markdown']:
+                return ContentType.MARKDOWN
+            elif file_extension in ['.html', '.htm']:
+                return ContentType.HTML
+            elif file_extension in ['.py', '.js', '.ts', '.java', '.cpp', '.c', '.xml', '.json']:
+                return ContentType.CODE
+            elif file_extension in ['.txt', '.docx']:
+                return ContentType.TEXT
+        
+        # Default to text
+        return ContentType.TEXT
     
     async def process_document(
         self, 
@@ -333,40 +307,47 @@ class DoclingIngestService:
                 try:
                     text = text_item['text']
                     
-                    # Use appropriate text splitter for intelligent chunking
-                    splitter = self._get_appropriate_splitter(file_path, 'pdf')
-                    if not splitter:
-                        raise ValueError("Text splitter not initialized properly")
-                    content_chunks = splitter.split_text(text)
+                    # Use intelligent chunker with semantic boundaries
+                    content_type = self._detect_content_type(file_path, 'pdf')
                     
-                    for i, content in enumerate(content_chunks):
-                        # Enhanced quality check for PDF chunks
-                        stripped_content = content.strip()
-                        word_count = len(stripped_content.split())
-                        
-                        # More reasonable filtering for combined text
-                        if (len(stripped_content) < 10 or  # Allow shorter chunks from combined text
-                            word_count < 1):  # Just need some actual words
-                            logger.debug(f"Skipping tiny chunk: {len(stripped_content)} chars, {word_count} words")
-                            continue
-                            
+                    base_metadata = {
+                        "source_file": doc_path.name,
+                        "item_index": text_item['item_index'],
+                        "page_number": text_item['page'],
+                        "heading": text_item['heading'],
+                        "section": text_item['section'],
+                        "is_combined": True
+                    }
+                    
+                    # Apply intelligent chunking with quality gates
+                    intelligent_chunks = self.chunker.chunk_content(
+                        content=text,
+                        content_type=content_type,
+                        metadata=base_metadata
+                    )
+                    
+                    # Convert intelligent chunks to DocumentChunk objects
+                    for i, chunk_data in enumerate(intelligent_chunks):
                         chunk_id = f"{doc_id}_chunk_{chunk_counter}"
                         
-                        chunk = DocumentChunk(
-                        content=content.strip(),
-                        doc_id=doc_id,
-                        chunk_id=chunk_id,
-                        page_number=text_item['page'],
-                        heading=text_item['heading'],
-                        section=text_item['section'],
-                        doctype=doctype,
-                        metadata={
-                            "source_file": doc_path.name,
-                            "item_index": text_item['item_index'],
+                        # Combine base metadata with chunk-specific metadata
+                        combined_metadata = {**base_metadata, **chunk_data['metadata']}
+                        combined_metadata.update({
                             "chunk_index": i,
-                            "total_chunks": len(content_chunks),
-                            "is_combined": True
-                        }
+                            "total_chunks": len(intelligent_chunks),
+                            "quality_score": chunk_data.get('quality_score', 0.0),
+                            "has_overlap": chunk_data.get('has_overlap', False)
+                        })
+                        
+                        chunk = DocumentChunk(
+                            content=chunk_data['content'].strip(),
+                            doc_id=doc_id,
+                            chunk_id=chunk_id,
+                            page_number=text_item['page'],
+                            heading=text_item['heading'],
+                            section=text_item['section'],
+                            doctype=doctype,
+                            metadata=combined_metadata
                         )
                         
                         chunks.append(chunk)
@@ -417,35 +398,40 @@ class DoclingIngestService:
             chunk_counter = 0
             
             for section in sections:
-                # Use appropriate splitter based on file type
-                splitter = self._get_appropriate_splitter(str(doc_path))
-                if not splitter:
-                    raise ValueError("Text splitter not initialized properly")
-                content_chunks = splitter.split_text(section["content"])
+                # Use intelligent chunker with content-type detection
+                content_type = self._detect_content_type(str(doc_path))
                 
-                for i, chunk_content in enumerate(content_chunks):
-                    # Quality check for text file chunks
-                    stripped_content = chunk_content.strip()
-                    word_count = len(stripped_content.split())
-                    
-                    if (len(stripped_content) < settings.MIN_CHUNK_SIZE or 
-                        word_count < settings.MIN_WORD_COUNT):
-                        continue
-                    
+                base_metadata = {
+                    "source_file": doc_path.name,
+                    "section_heading": section["heading"],
+                    "is_text_file": True
+                }
+                
+                # Apply intelligent chunking
+                intelligent_chunks = self.chunker.chunk_content(
+                    content=section["content"],
+                    content_type=content_type,
+                    metadata=base_metadata
+                )
+                
+                for i, chunk_data in enumerate(intelligent_chunks):
                     chunk_id = f"{doc_id}_chunk_{chunk_counter}"
                     
+                    # Combine metadata
+                    combined_metadata = {**base_metadata, **chunk_data['metadata']}
+                    combined_metadata.update({
+                        "chunk_index": i,
+                        "total_chunks": len(intelligent_chunks),
+                        "quality_score": chunk_data.get('quality_score', 0.0)
+                    })
+                    
                     chunk = DocumentChunk(
-                        content=chunk_content.strip(),
+                        content=chunk_data['content'].strip(),
                         doc_id=doc_id,
                         chunk_id=chunk_id,
                         heading=section["heading"],
                         doctype=doctype,
-                        metadata={
-                            "source_file": doc_path.name,
-                            "chunk_index": i,
-                            "total_chunks": len(content_chunks),
-                            "file_type": doc_path.suffix.lower()
-                        }
+                        metadata=combined_metadata
                     )
                     
                     chunks.append(chunk)
@@ -488,34 +474,40 @@ class DoclingIngestService:
                         full_text += item.text + "\n"
                 
                 if full_text.strip():
-                    # Use appropriate splitter for OCR text (smaller chunks for better quality)
-                    splitter = self._get_appropriate_splitter(str(doc_path), 'image')  
-                    if not splitter:
-                        splitter = self.text_splitter  # Fallback
-                    text_chunks = splitter.split_text(full_text)
+                    # Use intelligent chunker for OCR text processing
+                    content_type = ContentType.TEXT  # OCR text treated as plain text
                     
-                    for i, chunk_content in enumerate(text_chunks):
-                        # Quality check: minimum content requirements
-                        stripped_content = chunk_content.strip()
-                        word_count = len(stripped_content.split())
-                        
-                        if (len(stripped_content) < settings.MIN_CHUNK_SIZE or 
-                            word_count < settings.MIN_WORD_COUNT):
-                            continue
-                        
+                    base_metadata = {
+                        "source_file": doc_path.name,
+                        "is_ocr_text": True,
+                        "extraction_method": "OCR"
+                    }
+                    
+                    # Apply intelligent chunking with quality gates
+                    intelligent_chunks = self.chunker.chunk_content(
+                        content=full_text,
+                        content_type=content_type,
+                        metadata=base_metadata
+                    )
+                    
+                    for i, chunk_data in enumerate(intelligent_chunks):
                         chunk_id = f"{doc_id}_chunk_{chunk_counter}"
+                        
+                        # Combine metadata
+                        combined_metadata = {**base_metadata, **chunk_data['metadata']}
+                        combined_metadata.update({
+                            "chunk_index": i,
+                            "total_chunks": len(intelligent_chunks),
+                            "quality_score": chunk_data.get('quality_score', 0.0),
+                            "ocr_confidence": 0.8  # Default OCR confidence
+                        })
+                        
                         chunk = DocumentChunk(
-                            content=chunk_content.strip(),
+                            content=chunk_data['content'].strip(),
                             doc_id=doc_id,
                             chunk_id=chunk_id,
                             doctype=doctype,
-                            metadata={
-                                "source_file": doc_path.name,
-                                "file_type": "image",
-                                "ocr_processed": True,
-                                "chunk_index": i,
-                                "total_chunks": len(text_chunks)
-                            }
+                            metadata=combined_metadata
                         )
                         chunks.append(chunk)
                         chunk_counter += 1
@@ -631,6 +623,60 @@ class DoclingIngestService:
             return None
         except:
             return None
+    
+    def _is_low_quality_chunk(self, content: str, word_count: int, sentence_count: int) -> bool:
+        """
+        Assess if a chunk is of low quality and should be filtered out
+        
+        Args:
+            content: The chunk content
+            word_count: Number of words in the chunk
+            sentence_count: Number of sentences in the chunk
+            
+        Returns:
+            True if the chunk should be filtered out
+        """
+        try:
+            # Basic quality checks
+            if not content or not content.strip():
+                return True
+            
+            # Check for mostly punctuation or numbers
+            alpha_chars = sum(1 for c in content if c.isalpha())
+            total_chars = len(content.replace(' ', ''))
+            alpha_ratio = alpha_chars / max(total_chars, 1)
+            
+            if alpha_ratio < 0.5:  # Less than 50% alphabetic characters
+                return True
+            
+            # Check for repetitive content (headers/footers)
+            words = content.lower().split()
+            unique_words = set(words)
+            uniqueness_ratio = len(unique_words) / max(word_count, 1)
+            
+            if uniqueness_ratio < 0.3 and word_count > 10:  # Too repetitive
+                return True
+            
+            # Check for common non-content patterns
+            low_value_patterns = [
+                'page', 'seite', 'datum', 'date', 'chapter', 'kapitel',
+                'inhaltsverzeichnis', 'table of contents', 'www.', 'http',
+                'copyright', '©', '®', 'all rights reserved'
+            ]
+            
+            content_lower = content.lower()
+            if any(pattern in content_lower for pattern in low_value_patterns) and word_count < 15:
+                return True
+            
+            # Check sentence quality
+            if sentence_count == 0 and word_count > 5:  # No sentences but many words (likely fragmented)
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.debug(f"Error in quality assessment: {str(e)}")
+            return False  # If assessment fails, don't filter
     
     async def reindex_all_documents(self) -> int:
         """Reprocess all documents in storage directory"""

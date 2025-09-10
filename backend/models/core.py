@@ -100,6 +100,11 @@ class Document(Base):
     status = Column(ENUM('uploading', 'analyzing', 'processing', 'ready', 'skipped', 'error', name='documentstatus'), default=DocumentStatus.UPLOADING.value, nullable=False)
     error_message = Column(Text, nullable=True)
     
+    # AI Summary Caching
+    ai_summary = Column(Text, nullable=True)
+    summary_key_points = Column(JSONB, nullable=True)
+    summary_generated_at = Column(DateTime, nullable=True)
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

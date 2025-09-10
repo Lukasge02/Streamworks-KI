@@ -2,9 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, Clock, Loader, Settings, History, Plus, Search, BarChart3, Trash2, X, Zap, Cloud } from 'lucide-react'
-import { localChatApiService } from '../../services/localChatApiService'
-import { useChatStorage, ChatMessage } from '../../hooks/useChatStorage'
+import { Send, Bot, User, Clock, Loader, Settings, History, Plus, Search, BarChart3, Trash2, X } from 'lucide-react'
+// Using Session API for OpenAI + EmbeddingGemma hybrid RAG
+import { useChatSession, ChatMessage } from '../../hooks/useChatSession'
+
+// Consistent user ID across all services
+const USER_ID = 'default-user'
 import { formatTimeForDisplay } from '../../utils/timeUtils'
 import { EnterpriseResponseFormatter } from './EnterpriseResponseFormatter'
 import { SourcePreviewModal } from './SourcePreviewModal'
@@ -13,7 +16,7 @@ import { EnterpriseInputArea } from './EnterpriseInputArea'
 // Toast context temporarily disabled
 
 export const ChatInterface = () => {
-  const chatStorage = useChatStorage()
+  const chatSession = useChatSession()
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -22,34 +25,23 @@ export const ChatInterface = () => {
   const [sourcePreviewOpen, setSourcePreviewOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showStats, setShowStats] = useState(false)
-  const [useLocalAI, setUseLocalAI] = useState(true) // Default to local AI
+  // Using OpenAI + EmbeddingGemma hybrid setup (configured in backend)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  // Only create new session after sessions are loaded and there are none
+  // Create new session if none exists
   useEffect(() => {
-    if (isClient && chatStorage.sessions.length === 0 && !chatStorage.currentSessionId) {
-      chatStorage.createNewSession()
+    if (isClient && chatSession.sessions.length === 0 && !chatSession.currentSessionId && !chatSession.isLoading) {
+      chatSession.createNewSession()
     }
-  }, [isClient, chatStorage.sessions.length, chatStorage.currentSessionId])
-  
-  // Separate effect for cleanup (only after a delay to avoid removing sessions being used)
-  useEffect(() => {
-    if (isClient && chatStorage.sessions.length > 1) {
-      const timeoutId = setTimeout(() => {
-        chatStorage.cleanupEmptySessions()
-      }, 5000) // Wait 5 seconds before cleanup
-      
-      return () => clearTimeout(timeoutId)
-    }
-  }, [isClient, chatStorage.sessions.length])
+  }, [isClient, chatSession.sessions.length, chatSession.currentSessionId, chatSession.isLoading])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatStorage.currentSession?.messages])
+  }, [chatSession.currentSession?.messages])
 
   const createConfidenceBadge = (score: number) => {
     if (score >= 0.8) return { level: 'high', color: 'emerald', description: 'Sehr zuverlässig' }
@@ -59,79 +51,27 @@ export const ChatInterface = () => {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || chatSession.isLoading) return
 
     const userMessageContent = input.trim()
     setInput('')
     setIsLoading(true)
 
-    // Add user message
-    chatStorage.addMessage({
-      type: 'user',
-      content: userMessageContent
-    })
-
     try {
-      const startTime = Date.now()
-      let data: any
-
-      if (useLocalAI) {
-        // Use local RAG pipeline
-        const localResponse = await localChatApiService.sendLocalMessage(userMessageContent, 'accurate')
-        data = localChatApiService.formatForChatInterface(localResponse)
-        data.model_info = `${localResponse.model_used} (${localResponse.chunks_used} Dokumente)`
-      } else {
-        // Use cloud API
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: userMessageContent,
-          }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-        
-        data = await response.json()
-        const endTime = Date.now()
-        data.processing_time = data.processing_time || `${endTime - startTime}ms`
-        data.model_info = 'OpenAI GPT (Cloud)'
+      // Use Session API which handles OpenAI + EmbeddingGemma
+      const success = await chatSession.sendMessage(userMessageContent)
+      
+      if (!success) {
+        throw new Error('Failed to send message')
       }
-
-      // Add assistant message
-      chatStorage.addMessage({
-        type: 'assistant',
-        content: data.answer || 'Entschuldigung, ich konnte keine passende Antwort finden.',
-        sources: data.sources?.map((source: any) => ({
-          id: source.id || source.source_file,
-          metadata: {
-            doc_id: source.metadata?.doc_id || source.source_file || source.doc_id,
-            original_filename: source.metadata?.original_filename || source.original_filename || source.source_file,
-            page_number: source.metadata?.page_number || source.page_number,
-            heading: source.metadata?.heading || source.heading,
-            section: source.metadata?.section || source.content_preview || source.content || '',
-          },
-          relevance_score: source.relevance_score || source.similarity_score,
-        })) || [],
-        confidence_score: data.confidence_score || data.confidence,
-        processing_time: data.processing_time,
-        model_info: data.model_info
-      })
-
+      
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
       
-      chatStorage.addMessage({
-        type: 'assistant',
-        content: `Es tut mir leid, es gab einen Fehler bei der Verarbeitung deiner Anfrage (${useLocalAI ? 'Lokale KI' : 'Cloud KI'}): ${errorMessage}`
-      })
+      // Show error to user - in a real implementation, you might want to show a toast
+      alert(`Fehler: ${errorMessage}`)
       
-      // Chat error logged to console
     } finally {
       setIsLoading(false)
     }
@@ -143,25 +83,28 @@ export const ChatInterface = () => {
   }
 
   const handleNewChat = () => {
-    chatStorage.createNewSession()
+    chatSession.createNewSession()
     setSearchQuery('') // Clear search when creating new chat
   }
 
 
 
-  const handleClearAllChats = () => {
+  const handleClearAllChats = async () => {
     if (confirm('⚠️ Möchtest du wirklich alle Chat-Verläufe löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-      chatStorage.clearAllSessions()
+      // Delete all sessions one by one (API doesn't have a bulk delete yet)
+      for (const session of chatSession.sessions) {
+        await chatSession.deleteSession(session.id)
+      }
       alert('Alle Chat-Verläufe wurden gelöscht')
     }
   }
 
   const handleSessionSelect = (sessionId: string) => {
-    chatStorage.switchToSession(sessionId)
+    chatSession.switchToSession(sessionId)
   }
 
-  const filteredSessions = searchQuery ? chatStorage.searchSessions(searchQuery) : chatStorage.sessions
-  const stats = chatStorage.getSessionStats()
+  const filteredSessions = searchQuery ? chatSession.searchSessions(searchQuery) : chatSession.sessions
+  const stats = chatSession.getSessionStats()
   
   const welcomeMessage = {
     id: 'welcome',
@@ -170,12 +113,12 @@ export const ChatInterface = () => {
     timestamp: new Date()
   }
   
-  const currentMessages = (chatStorage.currentSession?.messages?.length ?? 0) > 0 
-    ? chatStorage.currentSession?.messages ?? []
+  const currentMessages = (chatSession.currentSession?.messages?.length ?? 0) > 0 
+    ? chatSession.currentSession?.messages ?? []
     : [welcomeMessage]
     
   // Check if there are any user messages in current session
-  const hasUserMessages = chatStorage.currentSession?.messages?.some(msg => msg.type === 'user') || false
+  const hasUserMessages = chatSession.currentSession?.messages?.some(msg => msg.type === 'user') || false
 
   // Remove debug output for production
   // console.log('Debug - Current Session:', chatStorage.currentSession)
@@ -264,11 +207,16 @@ export const ChatInterface = () => {
             <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
               {searchQuery && (
                 <div className="mb-2 px-2 text-xs text-gray-500 dark:text-gray-400">
-                  {filteredSessions.length} von {chatStorage.sessions.length} Sessions gefunden
+                  {filteredSessions.length} von {chatSession.sessions.length} Sessions gefunden
                 </div>
               )}
               
-              {filteredSessions.length === 0 ? (
+              {chatSession.isLoading ? (
+                <div className="text-center p-8 text-gray-500 dark:text-gray-400">
+                  <div className="text-4xl mb-2">⏳</div>
+                  <div className="text-sm">Lade Chat-Verläufe...</div>
+                </div>
+              ) : filteredSessions.length === 0 ? (
                 <div className="text-center p-8 text-gray-500 dark:text-gray-400">
                   <div className="text-4xl mb-2">{searchQuery ? '🔍' : '💬'}</div>
                   <div className="text-sm">
@@ -290,7 +238,7 @@ export const ChatInterface = () => {
                     layout
                     onClick={() => handleSessionSelect(session.id)}
                     className={`w-full text-left p-3 rounded-lg mb-2 transition-colors group ${
-                      session.id === chatStorage.currentSessionId
+                      session.id === chatSession.currentSessionId
                         ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
@@ -300,10 +248,10 @@ export const ChatInterface = () => {
                         {session.title}
                       </div>
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation()
                           if (confirm('Diesen Chat löschen?')) {
-                            chatStorage.deleteSession(session.id)
+                            await chatSession.deleteSession(session.id)
                           }
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
@@ -321,23 +269,12 @@ export const ChatInterface = () => {
               )}
             </div>
             
-            {/* Delete All Chats Button - Bottom of Sidebar */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 mt-auto">
-              <button
-                onClick={handleClearAllChats}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                title="Alle Chats löschen"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>Alle Chats löschen</span>
-              </button>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Fixed Header */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between">
@@ -359,35 +296,7 @@ export const ChatInterface = () => {
               </div>
             </div>
             
-            {/* AI Provider Toggle */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                <button
-                  onClick={() => setUseLocalAI(true)}
-                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    useLocalAI 
-                      ? 'bg-blue-600 text-white shadow-sm' 
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                  title="Lokale KI verwenden (Ollama + ChromaDB)"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>Lokal</span>
-                </button>
-                <button
-                  onClick={() => setUseLocalAI(false)}
-                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    !useLocalAI 
-                      ? 'bg-blue-600 text-white shadow-sm' 
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                  title="Cloud KI verwenden (OpenAI)"
-                >
-                  <Cloud className="w-4 h-4" />
-                  <span>Cloud</span>
-                </button>
-              </div>
-            </div>
+            {/* OpenAI + EmbeddingGemma hybrid RAG active */}
           </div>
         </div>
 
@@ -470,7 +379,7 @@ export const ChatInterface = () => {
           </AnimatePresence>
 
           {/* Loading Indicator */}
-          {isLoading && (
+          {(isLoading || chatSession.isLoading) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -491,6 +400,21 @@ export const ChatInterface = () => {
             </motion.div>
           )}
 
+          {/* Error Display */}
+          {chatSession.error && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-start"
+            >
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 max-w-2xl">
+                <div className="text-red-800 dark:text-red-200 text-sm">
+                  <strong>Fehler:</strong> {chatSession.error}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -506,6 +430,20 @@ export const ChatInterface = () => {
             placeholder="Stelle eine Frage zu deinen StreamWorks Dokumenten..."
             showSuggestions={!hasUserMessages}
           />
+        </div>
+
+        {/* Footer with Delete All Chats */}
+        <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex justify-center">
+            <button
+              onClick={handleClearAllChats}
+              className="flex items-center space-x-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              title="Alle Chats löschen"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Alle Chats löschen</span>
+            </button>
+          </div>
         </div>
       </div>
 

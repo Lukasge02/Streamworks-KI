@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-import { ChatInterface } from '@/components/chat/ChatInterface'
+import { ChatProvider } from '@/components/chat/ChatProvider'
+import { ModernChatInterface } from '@/components/chat/ModernChatInterface'
 
 export default function ChatPage() {
   useEffect(() => {
@@ -9,5 +10,9 @@ export default function ChatPage() {
     document.title = 'Streamworks Chat | Streamworks'
   }, [])
 
-  return <ChatInterface />
+  return (
+    <ChatProvider>
+      <ModernChatInterface />
+    </ChatProvider>
+  )
 }

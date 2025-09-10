@@ -94,7 +94,9 @@ class XMLTemplateRAG:
             def __init__(self, model_name):
                 self.model_name = model_name
             
-            def __call__(self, input_texts):
+            def __call__(self, input):
+                # ChromaDB 0.4.16+ expects 'input' parameter instead of 'input_texts'  
+                input_texts = input if isinstance(input, list) else [input]
                 embeddings = []
                 for text in input_texts:
                     try:

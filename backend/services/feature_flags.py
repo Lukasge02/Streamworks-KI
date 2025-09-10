@@ -144,18 +144,17 @@ class FeatureFlagsService:
             # Advanced RAG Features
             "advanced_rag_orchestrator": FeatureFlag(
                 name="advanced_rag_orchestrator",
-                state=FeatureState.EXPERIMENTAL,
-                rollout_strategy=RolloutStrategy.PERCENTAGE,
-                rollout_percentage=10.0,
-                description="Enable advanced RAG orchestrator with hybrid retrieval",
-                dependencies=["bm25_service", "query_expansion"]
+                state=FeatureState.DEPRECATED,
+                rollout_strategy=RolloutStrategy.ALL_USERS,
+                description="DEPRECATED: Advanced RAG orchestrator - replaced by simpler approach",
+                dependencies=[]
             ),
             
             "bm25_service": FeatureFlag(
                 name="bm25_service",
-                state=FeatureState.ENABLED,
+                state=FeatureState.DEPRECATED,
                 rollout_strategy=RolloutStrategy.ALL_USERS,
-                description="Enable BM25 sparse retrieval service"
+                description="DEPRECATED: BM25 sparse retrieval service - not needed"
             ),
             
             "query_expansion": FeatureFlag(

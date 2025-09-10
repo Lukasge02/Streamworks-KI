@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { 
   XMarkIcon, 
@@ -21,13 +22,19 @@ import { useDocuments } from '@/hooks/useDocuments'
 import { useFolders } from '@/hooks/useFolders'
 import { FolderTree } from './FolderTree'
 import { DocumentGrid } from './DocumentGrid'
-import { DocumentViewerModal } from './DocumentViewerModal'
+import dynamic from 'next/dynamic'
+
+// Make DocumentViewerModal client-side only
+const DocumentViewerModal = dynamic(() => import('./DocumentViewerModal').then(mod => ({ default: mod.DocumentViewerModal })), {
+  ssr: false,
+  loading: () => null
+})
 import { UploadModal } from './professional-upload/UploadModal'
-import { BottomProgressBar, UploadFile } from './professional-upload/TopProgressBar'
+import { BottomProgressBar, type UploadFile } from './professional-upload'
 import { ActionToolbar } from './ActionToolbar'
 import { FolderCreateModal } from './modals/FolderCreateModal'
 import { ConfirmModal } from '@/components/ui/modal'
-import { DocumentSort, ViewState, SelectionState, UploadRequest, DocumentViewerState } from '@/types/api.types'
+import { DocumentSort, ViewState, SelectionState, UploadRequest } from '@/types/api.types'
 import { apiService } from '@/services/api.service'
 import { t, formatDocumentCount } from '@/lib/translations'
 import { toast } from 'sonner'
@@ -38,6 +45,7 @@ interface DocumentManagerProps {
 }
 
 export function DocumentManager({ defaultView }: DocumentManagerProps) {
+  const router = useRouter()
   
   // State management
   const [viewState, setViewState] = useState<ViewState>({
@@ -75,12 +83,13 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
     count?: number
   }>({ isOpen: false, type: 'document' })
 
-  // Document Viewer state
-  const [documentViewer, setDocumentViewer] = useState<DocumentViewerState>({
+  // Document Viewer state - simplified, no documents list needed
+  const [documentViewer, setDocumentViewer] = useState<{
+    isOpen: boolean
+    currentDocumentId: string | null
+  }>({
     isOpen: false,
-    currentDocumentId: null,
-    documents: [],
-    currentIndex: 0
+    currentDocumentId: null
   })
 
   // Hooks
@@ -226,13 +235,23 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
   }, [])
 
   const handleDocumentOpen = useCallback((documentId: string) => {
+    // Open document in modal - modal will load its own documents list
     setDocumentViewer({
       isOpen: true,
-      currentDocumentId: documentId,
-      documents: documents,
-      currentIndex: documents.findIndex(doc => doc.id === documentId)
+      currentDocumentId: documentId
     })
-  }, [documents])
+  }, [])
+  
+  // Check for document to open from direct link
+  useEffect(() => {
+    if (documents.length > 0) {
+      const openDocumentId = sessionStorage.getItem('openDocumentId')
+      if (openDocumentId) {
+        sessionStorage.removeItem('openDocumentId')
+        handleDocumentOpen(openDocumentId)
+      }
+    }
+  }, [documents, handleDocumentOpen])
 
   const handleDocumentDelete = useCallback((documentId: string) => {
     const document = documents.find(d => d.id === documentId)
@@ -523,10 +542,9 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
   const handleDocumentViewerNavigate = useCallback((documentId: string) => {
     setDocumentViewer(prev => ({
       ...prev,
-      currentDocumentId: documentId,
-      currentIndex: documents.findIndex(doc => doc.id === documentId)
+      currentDocumentId: documentId
     }))
-  }, [documents])
+  }, [])
 
   // Get current view name for breadcrumb
   const currentViewName = viewState.isGlobalView
@@ -861,7 +879,6 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
         <DocumentViewerModal
           isOpen={documentViewer.isOpen}
           onClose={handleCloseDocumentViewer}
-          documents={documentViewer.documents}
           initialDocumentId={documentViewer.currentDocumentId}
           onNavigate={handleDocumentViewerNavigate}
         />

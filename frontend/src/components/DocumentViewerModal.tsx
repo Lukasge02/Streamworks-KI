@@ -3,6 +3,8 @@
  * Large modal for viewing documents with chunks, metadata, and navigation
  */
 
+'use client'
+
 import { useState, useEffect, useCallback } from 'react'
 import { 
   XMarkIcon, 
@@ -14,15 +16,33 @@ import {
   CalendarDaysIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Modal } from '@/components/ui/modal'
-import { DocumentViewerProps, DocumentWithFolder, DocumentChunk } from '@/types/api.types'
+import { DocumentWithFolder, DocumentChunk } from '@/types/api.types'
 import { apiService } from '@/services/api.service'
-import { formatDistanceToNow } from 'date-fns'
-import { de } from 'date-fns/locale'
+import { useDocuments } from '@/hooks/useDocuments'
+import { formatUploadDate, formatProcessingDate } from '@/lib/translations'
 import { cn } from '@/lib/utils'
+import dynamic from 'next/dynamic'
 
-interface DocumentViewerModalProps extends DocumentViewerProps {}
+// Dynamic imports for components that require DOM APIs
+const Panel = dynamic(() => import('react-resizable-panels').then(mod => ({ default: mod.Panel })), { ssr: false })
+const PanelGroup = dynamic(() => import('react-resizable-panels').then(mod => ({ default: mod.PanelGroup })), { ssr: false })
+const PanelResizeHandle = dynamic(() => import('react-resizable-panels').then(mod => ({ default: mod.PanelResizeHandle })), { ssr: false })
+
+// Simple PDF viewer - completely client-side
+const SimplePDFViewer = dynamic(
+  () => import('./SimplePDFViewer').then(mod => ({ default: mod.SimplePDFViewer })), 
+  { 
+    ssr: false
+  }
+)
+
+interface DocumentViewerModalProps {
+  isOpen: boolean
+  onClose: () => void
+  initialDocumentId: string
+  onNavigate?: (documentId: string) => void
+}
 
 function formatFileSize(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB']
@@ -45,39 +65,68 @@ function getFileIcon(mimeType: string) {
 export function DocumentViewerModal({
   isOpen,
   onClose,
-  documents,
   initialDocumentId,
   onNavigate
 }: DocumentViewerModalProps) {
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [currentDocumentId, setCurrentDocumentId] = useState(initialDocumentId)
   const [chunks, setChunks] = useState<DocumentChunk[]>([])
   const [chunksLoading, setChunksLoading] = useState(false)
   const [chunksError, setChunksError] = useState<string | null>(null)
+  const [currentDocumentDetails, setCurrentDocumentDetails] = useState<DocumentWithFolder | null>(null)
+  const [documentLoading, setDocumentLoading] = useState(false)
+  const [aiSummary, setAiSummary] = useState<any>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
 
-  // Find current document
-  const currentDocument = documents[currentIndex]
+  // Load all documents (ungefiltert) for navigation
+  const { documents } = useDocuments({
+    isGlobalView: true, // Load all documents
+    sort: 'created_desc'
+  })
+  
+  // Find current document and index
+  const currentIndex = documents.findIndex(d => d.id === currentDocumentId)
+  const currentDocument = currentIndex >= 0 ? documents[currentIndex] : null
+  // Use detailed document if available, otherwise fall back to list item
+  const displayDocument = currentDocumentDetails || currentDocument
 
-  // Initialize current index based on initialDocumentId
+  // Update current document ID when initialDocumentId changes
   useEffect(() => {
     if (isOpen && initialDocumentId) {
-      const index = documents.findIndex(doc => doc.id === initialDocumentId)
-      if (index !== -1) {
-        setCurrentIndex(index)
+      setCurrentDocumentId(initialDocumentId)
+    }
+  }, [isOpen, initialDocumentId])
+
+  // Load document details and chunks when document changes
+  useEffect(() => {
+    const loadDocumentData = async () => {
+      if (currentDocumentId && isOpen) {
+        // Only reset chunks, keep other states to prevent flashing
+        setChunks([])
+        setChunksError(null)
+        
+        // Never show loading state - we already have document data from the list
+        setDocumentLoading(false)
+
+        try {
+          // Load chunks immediately
+          loadDocumentChunks(currentDocumentId)
+          
+          // Load AI summary immediately
+          loadAiSummary(currentDocumentId)
+          
+          // Load document details in background silently
+          const documentDetails = await apiService.getDocument(currentDocumentId)
+          setCurrentDocumentDetails(documentDetails)
+        } catch (error) {
+          console.error('Error loading document details:', error)
+          // Keep using the basic document from list if detailed fetch fails
+        }
       }
     }
-  }, [isOpen, initialDocumentId, documents])
 
-  // Load chunks when document changes
-  useEffect(() => {
-    if (currentDocument && isOpen) {
-      // Reset chunks state when switching documents to prevent stale data
-      setChunks([])
-      setChunksError(null)
-      loadDocumentChunks(currentDocument.id)
-      // Don't call onNavigate here - it creates infinite loops
-      // onNavigate should only be called on manual user navigation
-    }
-  }, [currentDocument?.id, isOpen])
+    loadDocumentData()
+  }, [currentDocumentId, isOpen])
 
   // Reset state when modal closes
   useEffect(() => {
@@ -85,6 +134,9 @@ export function DocumentViewerModal({
       setChunks([])
       setChunksError(null)
       setChunksLoading(false)
+      setAiSummary(null)
+      setSummaryError(null)
+      setSummaryLoading(false)
     }
   }, [isOpen])
 
@@ -122,21 +174,69 @@ export function DocumentViewerModal({
     }
   }
 
+  const loadAiSummary = async (documentId: string) => {
+    setSummaryLoading(true)
+    setSummaryError(null)
+    
+    try {
+      console.log('Loading AI summary for document ID:', documentId)
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+      const response = await fetch(`${backendUrl}/api/v1/documents/${documentId}/summary`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      console.log('AI Summary API response:', data)
+      
+      setAiSummary(data.summary_data)
+      
+    } catch (error) {
+      console.error('AI Summary API error:', error)
+      
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          setSummaryError('Dokument nicht gefunden')
+        } else if (error.message.includes('500')) {
+          setSummaryError('KI-Service nicht verfügbar. Stellen Sie sicher, dass Ollama läuft.')
+        } else {
+          setSummaryError(`Fehler beim Laden der Zusammenfassung: ${error.message}`)
+        }
+      } else {
+        setSummaryError('KI-Zusammenfassung nicht verfügbar - Backend oder Ollama nicht erreichbar')
+      }
+      
+      setAiSummary(null)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
+
   const handlePrevious = useCallback(() => {
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1
-      setCurrentIndex(newIndex)
-      // Call onNavigate when user manually navigates
-      onNavigate?.(documents[newIndex].id)
+    if (currentIndex > 0 && documents.length > 0) {
+      const newDocumentId = documents[currentIndex - 1].id
+      setCurrentDocumentId(newDocumentId)
+      // Notify parent immediately
+      if (onNavigate) {
+        onNavigate(newDocumentId)
+      }
     }
   }, [currentIndex, documents, onNavigate])
 
   const handleNext = useCallback(() => {
-    if (currentIndex < documents.length - 1) {
-      const newIndex = currentIndex + 1
-      setCurrentIndex(newIndex)
-      // Call onNavigate when user manually navigates
-      onNavigate?.(documents[newIndex].id)
+    if (currentIndex >= 0 && currentIndex < documents.length - 1) {
+      const newDocumentId = documents[currentIndex + 1].id
+      setCurrentDocumentId(newDocumentId)
+      // Notify parent immediately
+      if (onNavigate) {
+        onNavigate(newDocumentId)
+      }
     }
   }, [currentIndex, documents, onNavigate])
 
@@ -158,7 +258,7 @@ export function DocumentViewerModal({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, handlePrevious, handleNext])
 
-  if (!currentDocument) {
+  if (!displayDocument || !currentDocumentId) {
     return null
   }
 
@@ -205,13 +305,13 @@ export function DocumentViewerModal({
 
               {/* Document Title */}
               <div className="flex items-center space-x-3">
-                <div className="text-2xl">{getFileIcon(currentDocument.mime_type)}</div>
+                <div className="text-2xl">{getFileIcon(displayDocument.mime_type)}</div>
                 <div>
                   <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[300px]">
-                    {currentDocument.original_filename}
+                    {displayDocument.original_filename}
                   </h1>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {currentDocument.folder?.name}
+                    {displayDocument.folder?.name}
                   </p>
                 </div>
               </div>
@@ -233,29 +333,23 @@ export function DocumentViewerModal({
               {/* File Size */}
               <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
                 <ScaleIcon className="w-4 h-4" />
-                <span>{formatFileSize(currentDocument.file_size)}</span>
+                <span>{formatFileSize(displayDocument.file_size)}</span>
               </div>
 
               {/* Created Date */}
               <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
                 <CalendarDaysIcon className="w-4 h-4" />
                 <span>
-                  {formatDistanceToNow(new Date(currentDocument.created_at), { 
-                    addSuffix: true, 
-                    locale: de 
-                  })}
+                  {formatUploadDate(displayDocument.created_at)}
                 </span>
               </div>
 
               {/* Processing Time */}
-              {currentDocument.processed_at && (
+              {displayDocument.processed_at && (
                 <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
                   <ClockIcon className="w-4 h-4" />
                   <span>
-                    Verarbeitet {formatDistanceToNow(new Date(currentDocument.processed_at), { 
-                      addSuffix: true, 
-                      locale: de 
-                    })}
+                    Verarbeitet {formatProcessingDate(displayDocument.processed_at)}
                   </span>
                 </div>
               )}
@@ -272,31 +366,24 @@ export function DocumentViewerModal({
               <span className={cn(
                 "inline-flex px-2 py-1 text-xs font-medium rounded-full",
                 {
-                  'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': currentDocument.status === 'ready',
-                  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': currentDocument.status === 'processing',
-                  'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400': currentDocument.status === 'error',
-                  'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400': !['ready', 'processing', 'error'].includes(currentDocument.status as string)
+                  'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': displayDocument.status === 'ready',
+                  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': displayDocument.status === 'processing',
+                  'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400': displayDocument.status === 'error',
+                  'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400': !['ready', 'processing', 'error'].includes(displayDocument.status as string)
                 }
               )}>
-                {currentDocument.status}
+                {displayDocument.status}
               </span>
             </div>
           </div>
 
-          {/* AI Summary Placeholder */}
-          <div className="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
-            <div className="flex items-center space-x-3">
-              <SparklesIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <div className="flex-1">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <span className="font-medium">KI-Zusammenfassung:</span> Diese Funktion wird demnächst verfügbar sein
-                </p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  Hier wird eine intelligente Zusammenfassung des Dokuments angezeigt
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* AI Summary Section */}
+          <AiSummarySection 
+            summary={aiSummary}
+            loading={summaryLoading}
+            error={summaryError}
+            onRetry={() => loadAiSummary(currentDocumentId || '')}
+          />
         </div>
 
         {/* Content Area - Split View */}
@@ -304,7 +391,7 @@ export function DocumentViewerModal({
           <PanelGroup direction="horizontal">
             {/* Left Panel - Document Preview */}
             <Panel defaultSize={50} minSize={30}>
-              <DocumentPreview document={currentDocument} />
+              <DocumentPreview document={displayDocument} />
             </Panel>
 
             <PanelResizeHandle className="w-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" />
@@ -315,7 +402,7 @@ export function DocumentViewerModal({
                 chunks={chunks}
                 loading={chunksLoading}
                 error={chunksError}
-                onRetry={() => loadDocumentChunks(currentDocument.id)}
+                onRetry={() => loadDocumentChunks(currentDocumentId || '')}
               />
             </Panel>
           </PanelGroup>
@@ -327,9 +414,8 @@ export function DocumentViewerModal({
 
 // Document Preview Component - Direct Implementation
 function DocumentPreview({ document }: { document: DocumentWithFolder }) {
+  // Simple state - no complex loading logic
   const [previewError, setPreviewError] = useState<string | null>(null)
-  const [isValidatingPDF, setIsValidatingPDF] = useState(false)
-  const [iframeLoadTimeout, setIframeLoadTimeout] = useState<NodeJS.Timeout | null>(null)
 
   const isPDF = document.mime_type.includes('pdf')
   const isImage = document.mime_type.startsWith('image/')
@@ -338,46 +424,10 @@ function DocumentPreview({ document }: { document: DocumentWithFolder }) {
   const downloadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/v1/documents/${document.id}/download`
   const inlineViewUrl = `${downloadUrl}?inline=true`
 
-  // Enhanced PDF loading with timeout detection
-  useEffect(() => {
-    if (isPDF) {
-      // Reset states when document changes
-      setPreviewError(null)
-      setIsValidatingPDF(true)
-      
-      // Clear any existing timeout
-      if (iframeLoadTimeout) {
-        clearTimeout(iframeLoadTimeout)
-      }
-      
-      // Set timeout to detect if iframe doesn't load within 10 seconds
-      const timeout = setTimeout(() => {
-        setIsValidatingPDF(false)
-        setPreviewError('Chrome blockiert PDF-Anzeige in iframes. Verwende die Alternativen unten.')
-      }, 10000)
-      
-      setIframeLoadTimeout(timeout)
-    }
-    
-    // Cleanup timeout on unmount
-    return () => {
-      if (iframeLoadTimeout) {
-        clearTimeout(iframeLoadTimeout)
-      }
-    }
-  }, [document.id, isPDF])
+  // No complex loading logic needed
 
   const handleDownload = () => {
     window.open(downloadUrl, '_blank')
-  }
-  
-  const handleOpenInNewTab = () => {
-    window.open(inlineViewUrl, '_blank')
-  }
-  
-  const handleTryPDFjs = () => {
-    // Future: This will trigger PDF.js viewer
-    alert('PDF.js-Integration kommt als nächstes!')
   }
   
   return (
@@ -397,81 +447,12 @@ function DocumentPreview({ document }: { document: DocumentWithFolder }) {
       </div>
       
       <div className="flex-1 overflow-auto p-4">
-        {isPDF && (
-          <div className="h-full">
-            {isValidatingPDF ? (
-              <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-800">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-400">PDF wird überprüft...</p>
-                </div>
-              </div>
-            ) : previewError ? (
-              <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-800">
-                <div className="text-center p-6 max-w-md">
-                  <div className="text-6xl mb-4">📄</div>
-                  <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    PDF-Vorschau nicht verfügbar
-                  </h4>
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-red-800 dark:text-red-200">{previewError}</p>
-                  </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      <strong>Dateiname:</strong> {document.original_filename}<br/>
-                      <strong>Größe:</strong> {formatFileSize(document.file_size)}<br/>
-                      <strong>Status:</strong> {document.status}<br/>
-                      <strong>Erstellt:</strong> {formatDistanceToNow(new Date(document.created_at), { addSuffix: true, locale: de })}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <button 
-                      onClick={handleOpenInNewTab} 
-                      className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      🔗 In neuem Tab öffnen
-                    </button>
-                    <button 
-                      onClick={handleTryPDFjs} 
-                      className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      📖 Mit PDF.js öffnen
-                    </button>
-                    <button 
-                      onClick={handleDownload} 
-                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      📥 PDF herunterladen
-                    </button>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Chrome blockiert oft PDF-Anzeige in eingebetteten Frames. Nutze die Alternativen oben.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <iframe 
-                src={inlineViewUrl}
-                className="w-full h-full border-0 rounded-lg"
-                title={document.original_filename}
-                allow="fullscreen"
-                onLoad={() => {
-                  // Clear timeout - PDF loaded successfully
-                  if (iframeLoadTimeout) {
-                    clearTimeout(iframeLoadTimeout)
-                    setIframeLoadTimeout(null)
-                  }
-                  setIsValidatingPDF(false)
-                  setPreviewError(null)
-                }}
-                onError={() => {
-                  // PDF failed to load  
-                  setPreviewError('PDF konnte nicht geladen werden - Browser blockiert Anzeige oder Datei ist beschädigt')
-                }}
-              />
-            )}
-          </div>
-        )}
+        {isPDF ? (
+          <SimplePDFViewer 
+            documentId={document.id}
+            fileName={document.original_filename}
+          />
+        ) : null}
         
         {isImage && (
           <div className="h-full flex items-center justify-center">
@@ -751,6 +732,94 @@ function ChunksPanel({
             ))}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// AI Summary Section Component
+function AiSummarySection({ 
+  summary, 
+  loading, 
+  error, 
+  onRetry 
+}: { 
+  summary: any
+  loading: boolean
+  error: string | null
+  onRetry: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (loading) {
+    return (
+      <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
+        <div className="flex items-center space-x-3">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+          <div className="flex-1">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <span className="font-medium">KI-Zusammenfassung wird generiert...</span>
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              Dies kann einen Moment dauern. Die lokale KI analysiert das Dokument.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="px-6 py-4 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
+        <div className="flex items-start space-x-3">
+          <SparklesIcon className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-red-700 dark:text-red-300">
+              <span className="font-medium">KI-Zusammenfassung nicht verfügbar</span>
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+              {error}
+            </p>
+            <button
+              onClick={onRetry}
+              className="mt-2 text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline"
+            >
+              Erneut versuchen
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!summary) {
+    return (
+      <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-3">
+          <SparklesIcon className="w-5 h-5 text-gray-400" />
+          <div className="flex-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Keine KI-Zusammenfassung verfügbar
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
+      <div className="flex items-center space-x-3">
+        <SparklesIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">
+            KI-Zusammenfassung
+          </p>
+          <div className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed line-clamp-3">
+            {summary.summary}
+          </div>
+        </div>
       </div>
     </div>
   )

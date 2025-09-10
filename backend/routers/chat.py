@@ -13,8 +13,7 @@ import logging
 from pydantic import BaseModel
 
 from services.chat_service_sqlalchemy import ChatServiceSQLAlchemy as ChatService
-# Note: RAG Orchestrator is disabled for MVP - using simpler OpenAI RAG Service
-# from services.rag_orchestrator import RAGOrchestrator, RAGRequest, RAGMode
+# Using clean UnifiedRAGService for optimal performance
 from services.feature_flags import feature_flags
 from config import settings
 
@@ -41,6 +40,9 @@ class UpdateSessionRequest(BaseModel):
     title: Optional[str] = None
     rag_config: Optional[Dict[str, Any]] = None
     context_filters: Optional[Dict[str, Any]] = None
+
+class UpdateTitleRequest(BaseModel):
+    title: str
 
 class ChatSessionResponse(BaseModel):
     id: str
@@ -76,9 +78,10 @@ class SendMessageResponse(BaseModel):
 
 async def get_chat_service() -> ChatService:
     """Dependency to get ChatService instance"""
+    from services.chat_service_sqlalchemy import ChatServiceSQLAlchemy as ChatService
     return ChatService()
 
-# RAG Service Dependency Injection
+# RAG Service Dependency Injection - Unified Service
 async def get_rag_service():
     """Dependency to get Unified RAG Service instance"""
     from services.di_container import get_service
@@ -107,7 +110,7 @@ async def create_chat_session(
     try:
         session_id = await chat_service.create_session(
             user_id=user_id,
-            title=request.title or f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            title=request.title or "Neue Unterhaltung",  # Will be auto-updated on first message
             rag_config=request.rag_config,
             context_filters=request.context_filters
         )
@@ -293,20 +296,34 @@ async def direct_rag_query(
     user_id: str = Depends(get_user_id),
     rag_service = Depends(get_rag_service)
 ):
-    """Direct RAG query using simplified OpenAI RAG service"""
+    """Direct RAG query using Unified RAG service - optimized endpoint"""
     start_time = time.time()
     
     try:
-        # Process query with OpenAI RAG service
+        # Convert processing mode to RAGMode enum  
+        from services.unified_rag_service import RAGMode, RAGType
+        rag_mode = RAGMode.ACCURATE
+        if request.processing_mode:
+            if request.processing_mode.upper() == "FAST":
+                rag_mode = RAGMode.FAST
+            elif request.processing_mode.upper() == "COMPREHENSIVE":
+                rag_mode = RAGMode.COMPREHENSIVE
+        
+        # Process query with Unified RAG service
         response = await rag_service.query(
             query=request.query,
-            mode=request.processing_mode or "accurate",
+            rag_type=RAGType.DOCUMENT,  # Explicit type specification
+            mode=rag_mode,
             include_sources=request.include_sources
         )
         
+        # Enhanced response with better error handling
+        if response.get("error"):
+            logger.warning(f"RAG service returned error: {response['error']}")
+            
         # Track successful usage
         processing_time = time.time() - start_time
-        feature_flags.track_usage("openai_rag_service", True, processing_time, user_id)
+        feature_flags.track_usage("unified_rag_service", True, processing_time, user_id)
         
         return {
             "answer": response["answer"],
@@ -314,17 +331,19 @@ async def direct_rag_query(
             "processing_time": f"{response.get('response_time', 0):.2f}s",
             "sources": response.get("sources", []),
             "metadata": {
-                "service": "openai_rag",
+                "service": "unified_rag",
                 "processing_mode": request.processing_mode or "accurate",
+                "performance": response.get("metadata", {}).get("performance", {}),
                 **response.get("metadata", {})
             },
-            "model_used": response.get("metadata", {}).get("model_used")
+            "model_used": response.get("metadata", {}).get("model_used"),
+            "error": response.get("error")  # Include error info if present
         }
         
     except Exception as e:
         # Track failed usage
         processing_time = time.time() - start_time if 'start_time' in locals() else 0.0
-        feature_flags.track_usage("openai_rag_service", False, processing_time, user_id)
+        feature_flags.track_usage("unified_rag_service", False, processing_time, user_id)
         
         logger.error(f"Direct RAG query failed: {str(e)}")
         raise HTTPException(
@@ -376,6 +395,56 @@ async def search_messages(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to search messages: {str(e)}"
+        )
+
+# ================================
+# TITLE MANAGEMENT ROUTES
+# ================================
+
+@router.post("/sessions/{session_id}/regenerate-title", response_model=Dict[str, str])
+async def regenerate_session_title(
+    session_id: str,
+    user_id: str = Depends(get_user_id),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """Regenerate title for a chat session using AI"""
+    try:
+        new_title = await chat_service.regenerate_session_title(
+            session_id=session_id,
+            user_id=user_id
+        )
+        
+        return {"title": new_title}
+        
+    except Exception as e:
+        logger.error(f"Failed to regenerate title: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to regenerate title: {str(e)}"
+        )
+
+@router.put("/sessions/{session_id}/title", response_model=Dict[str, str])
+async def update_session_title(
+    session_id: str,
+    request: UpdateTitleRequest,
+    user_id: str = Depends(get_user_id),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """Update session title with custom title"""
+    try:
+        new_title = await chat_service.update_session_title(
+            session_id=session_id,
+            user_id=user_id,
+            title=request.title
+        )
+        
+        return {"title": new_title}
+        
+    except Exception as e:
+        logger.error(f"Failed to update title: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update title: {str(e)}"
         )
 
 # ================================

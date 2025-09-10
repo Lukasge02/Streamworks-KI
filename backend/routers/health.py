@@ -28,7 +28,7 @@ async def comprehensive_health_check() -> Dict[str, Any]:
         db_health = await check_database_health()
         
         # Check service health
-        services_health = get_service_health()
+        services_health = await get_service_health()
         
         # Determine overall system status
         db_healthy = db_health.get("status") == "healthy"
@@ -106,7 +106,7 @@ async def readiness_check() -> Dict[str, Any]:
         db_ready = db_health.get("status") == "healthy"
         
         # Check services
-        services_health = get_service_health()
+        services_health = await get_service_health()
         services_ready = services_health.get("status") == "healthy"
         
         # Additional readiness checks
@@ -143,3 +143,107 @@ async def liveness_check() -> Dict[str, str]:
         "alive": "true",
         "timestamp": datetime.utcnow().isoformat()
     }
+
+
+@router.get("/performance")
+async def performance_metrics() -> Dict[str, Any]:
+    """
+    Performance metrics endpoint
+    Returns detailed performance statistics for monitoring
+    """
+    try:
+        # Get embedding cache stats
+        try:
+            from services.embeddings import EmbeddingService
+            embedding_service = EmbeddingService()
+            cache_stats = embedding_service.get_cache_stats()
+        except Exception as e:
+            logger.warning(f"Could not get embedding cache stats: {e}")
+            cache_stats = {"error": str(e)}
+        
+        # Get database performance stats
+        try:
+            from database import async_engine
+            db_pool_stats = {
+                "pool_size": async_engine.pool.size(),
+                "pool_overflow": async_engine.pool.overflow(),
+                "pool_checked_in": async_engine.pool.checkedin(),
+                "pool_checked_out": async_engine.pool.checkedout()
+            }
+        except Exception as e:
+            logger.warning(f"Could not get database pool stats: {e}")
+            db_pool_stats = {"error": str(e)}
+        
+        # Get API performance stats from middleware
+        try:
+            from core.app_state import app_state
+            api_stats = app_state.get_performance_stats()
+        except Exception as e:
+            logger.warning(f"Could not access performance stats: {e}")
+            api_stats = {
+                "total_requests": 0,
+                "avg_response_time": 0.0,
+                "error_rate": 0.0,
+                "status": "middleware_not_accessible"
+            }
+        
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "api_performance": api_stats,
+            "embedding_cache": cache_stats,
+            "database_pool": db_pool_stats,
+            "system_info": {
+                "performance_optimizations_enabled": True,
+                "caching_enabled": True,
+                "compression_enabled": True
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Performance metrics failed: {str(e)}")
+        return {
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
+@router.get("/performance/slow")
+async def slow_endpoints(threshold: float = 1.0) -> Dict[str, Any]:
+    """
+    Get slow endpoints based on average response time
+    Useful for identifying performance bottlenecks
+    """
+    try:
+        # Get slow endpoints from middleware
+        from core.app_state import app_state
+        slow_endpoints_data = app_state.get_slow_endpoints(threshold)
+        
+        # Format the response properly
+        if isinstance(slow_endpoints_data, dict) and "status" in slow_endpoints_data:
+            slow_endpoints = slow_endpoints_data
+        else:
+            slow_endpoints = {
+                "status": "success",
+                "slow_endpoints": slow_endpoints_data,
+                "count": len(slow_endpoints_data) if isinstance(slow_endpoints_data, dict) else 0
+            }
+            
+    except Exception as e:
+        logger.warning(f"Could not get slow endpoints: {e}")
+        slow_endpoints = {
+            "status": "middleware_not_accessible",
+            "message": f"Could not access middleware: {str(e)}"
+        }
+        
+        return {
+            "threshold_seconds": threshold,
+            "slow_endpoints": slow_endpoints,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Slow endpoints check failed: {str(e)}")
+        return {
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }

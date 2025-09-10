@@ -387,7 +387,10 @@ class DocumentService:
             
         except Exception as e:
             logger.error(f"Failed to get documents list: {str(e)}")
-            return []
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            # Instead of returning empty list, raise the error so it can be handled properly
+            raise e
 
     async def update_document(
         self,

@@ -5,19 +5,24 @@ Clean Supabase integration with enterprise-grade connection pooling
 
 import os
 import logging
+from datetime import datetime
 from typing import AsyncGenerator
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from models.core import Base
 
+# Load environment variables
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 # Supabase Database Configuration
-SUPABASE_DB_URL = os.getenv(
-    "SUPABASE_DB_URL",
-    "postgresql://postgres:Specki2002!@db.snzxgfmewxbeevoywula.supabase.co:5432/postgres"
-)
+SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL")
+
+if not SUPABASE_DB_URL:
+    raise ValueError("SUPABASE_DB_URL environment variable is required")
 
 # For async operations, use asyncpg driver
 SUPABASE_ASYNC_URL = SUPABASE_DB_URL.replace("postgresql://", "postgresql+asyncpg://")
@@ -26,12 +31,19 @@ SUPABASE_ASYNC_URL = SUPABASE_DB_URL.replace("postgresql://", "postgresql+asyncp
 async_engine = create_async_engine(
     SUPABASE_ASYNC_URL,
     pool_pre_ping=True,
-    pool_recycle=1800,  # Recycle connections every 30 minutes
-    pool_size=10,        # Base pool size
-    max_overflow=20,     # Additional connections when needed
-    pool_timeout=30,     # Wait time for connection from pool
+    pool_recycle=3600,  # Recycle connections every 60 minutes (increased)
+    pool_size=20,        # Base pool size (increased for better concurrency)
+    max_overflow=30,     # Additional connections when needed (increased)
+    pool_timeout=60,     # Wait time for connection from pool (increased)
     pool_reset_on_return='commit',  # Reset connections on return
     echo=False,  # Set to True for SQL debugging
+    # SSL configuration for Supabase
+    connect_args={
+        "ssl": "require",
+        "server_settings": {
+            "application_name": "streamworks_backend"
+        }
+    }
 )
 
 # Session makers
@@ -105,7 +117,7 @@ async def close_database():
 
 
 # Health check function
-async def check_database_health() -> bool:
+async def check_database_health() -> dict:
     """
     Check if database is healthy
     Used for health endpoints
@@ -113,8 +125,27 @@ async def check_database_health() -> bool:
     try:
         async with AsyncSessionLocal() as session:
             from sqlalchemy import text
-            await session.execute(text("SELECT 1"))
-            return True
+            result = await session.execute(text("SELECT 1"))
+            
+            # Get connection pool stats
+            pool = async_engine.pool
+            pool_stats = {
+                "pool_size": pool.size(),
+                "pool_overflow": pool.overflow(),
+                "pool_checked_in": pool.checkedin(),
+                "pool_checked_out": pool.checkedout()
+            }
+            
+            return {
+                "status": "healthy",
+                "connection_test": "successful",
+                "pool_stats": pool_stats,
+                "timestamp": datetime.utcnow().isoformat()
+            }
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")
-        return False
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }

@@ -40,6 +40,57 @@ function getFileIcon(mimeType: string) {
   return DocumentTextIcon
 }
 
+function getFileTypeTheme(mimeType: string) {
+  if (mimeType === 'application/pdf') {
+    return {
+      bgColor: 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20',
+      iconColor: 'text-red-600 dark:text-red-400',
+      borderColor: 'border-red-200/50 dark:border-red-800/50'
+    }
+  }
+  if (mimeType.startsWith('image/')) {
+    return {
+      bgColor: 'bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      borderColor: 'border-purple-200/50 dark:border-purple-800/50'
+    }
+  }
+  if (mimeType.startsWith('video/')) {
+    return {
+      bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      borderColor: 'border-blue-200/50 dark:border-blue-800/50'
+    }
+  }
+  if (mimeType.includes('sheet') || mimeType.includes('excel')) {
+    return {
+      bgColor: 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20',
+      iconColor: 'text-green-600 dark:text-green-400',
+      borderColor: 'border-green-200/50 dark:border-green-800/50'
+    }
+  }
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) {
+    return {
+      bgColor: 'bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      borderColor: 'border-orange-200/50 dark:border-orange-800/50'
+    }
+  }
+  if (mimeType.includes('zip') || mimeType.includes('tar') || mimeType.includes('rar')) {
+    return {
+      bgColor: 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      borderColor: 'border-amber-200/50 dark:border-amber-800/50'
+    }
+  }
+  // Default for documents
+  return {
+    bgColor: 'bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20',
+    iconColor: 'text-primary-600 dark:text-primary-400',
+    borderColor: 'border-primary-200/50 dark:border-primary-800/50'
+  }
+}
+
 interface DocumentInfoModalProps {
   isOpen: boolean
   onClose: () => void
@@ -47,19 +98,17 @@ interface DocumentInfoModalProps {
 }
 
 function DocumentInfoModal({ isOpen, onClose, document: doc }: DocumentInfoModalProps) {
-  if (!isOpen) return null
-
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose()
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = React.useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose()
     }
-  }
+  }, [onClose])
 
   // Add escape key listener
   React.useEffect(() => {
@@ -67,7 +116,9 @@ function DocumentInfoModal({ isOpen, onClose, document: doc }: DocumentInfoModal
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen])
+  }, [isOpen, handleKeyDown])
+
+  if (!isOpen) return null
 
   return (
     <div 
@@ -258,6 +309,21 @@ function getStatusColor(status: string) {
 function DocumentCard({ document, isSelected, onSelect, onOpen, onDelete, onShowInfo, viewMode, showFolderInfo = false }: DocumentCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const FileIcon = getFileIcon(document.mime_type)
+  const fileTheme = getFileTypeTheme(document.mime_type)
+  
+  // Click outside handler for menu
+  const menuRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false)
+      }
+    }
+    if (showMenu) {
+      window.document.addEventListener('mousedown', handleClickOutside)
+      return () => window.document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
 
   if (viewMode === 'list') {
     return (
@@ -371,133 +437,170 @@ function DocumentCard({ document, isSelected, onSelect, onOpen, onDelete, onShow
     )
   }
 
-  // Grid view
+  // Modern Grid Card Design with Hidden Actions
   return (
-    <div 
-      className={`
-        relative p-4 rounded-lg border transition-all duration-150 cursor-pointer
-        ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'}
-      `}
-      onClick={onSelect}
-    >
-      {/* Selection Checkbox */}
-      <div className="absolute top-3 left-3">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={onSelect}
-          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
+    <div className="relative group h-[200px]">
+      <div 
+        className={`
+          relative w-full h-full rounded-xl cursor-pointer transition-all duration-300 ease-out
+          border-2 shadow-sm hover:shadow-lg transform hover:-translate-y-1
+          ${isSelected 
+            ? 'bg-gradient-to-br from-primary-50 to-primary-100/90 dark:from-primary-900/40 dark:to-primary-800/30 border-primary-300 dark:border-primary-600 shadow-primary-200/50' 
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600'
+          }
+        `}
+        onClick={onSelect}
+      >
+        {/* 3-Dot Menu - Always visible in top right */}
+        <div className="absolute top-3 right-3 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowMenu(!showMenu)
+            }}
+            className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-150 touch-manipulation min-h-[36px] min-w-[36px] flex items-center justify-center"
+            aria-label="Aktionen anzeigen"
+          >
+            <EllipsisVerticalIcon className="w-5 h-5" />
+          </button>
 
-      {/* Actions Menu */}
-      <div className="absolute top-3 right-3">
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            setShowMenu(!showMenu)
-          }}
-          className="p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <EllipsisVerticalIcon className="w-5 h-5" />
-        </button>
-
-        {showMenu && (
-          <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpen()
-                setShowMenu(false)
-              }}
-              className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          {/* Dropdown Menu */}
+          {showMenu && (
+            <div 
+              ref={menuRef}
+              className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-200"
             >
-              <EyeIcon className="w-4 h-4 mr-2" />
-              {t('actions.view')}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onShowInfo()
-                setShowMenu(false)
-              }}
-              className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <InformationCircleIcon className="w-4 h-4 mr-2" />
-              {t('actions.showInfo')}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                // TODO: Implement download
-                setShowMenu(false)
-              }}
-              className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-              {t('actions.download')}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-                setShowMenu(false)
-              }}
-              className="flex items-center w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-            >
-              <TrashIcon className="w-4 h-4 mr-2" />
-              {t('actions.delete')}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* File Icon */}
-      <div className="flex justify-center mb-3 mt-2">
-        <FileIcon className="w-12 h-12 text-gray-400 dark:text-gray-500" />
-      </div>
-
-      {/* File Info */}
-      <div className="text-center">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" title={document.original_filename}>
-          {document.original_filename}
-        </p>
-        <div className="space-y-1 mt-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {formatFileSize(document.file_size)}
-          </p>
-          <p className="text-xs text-gray-600 dark:text-gray-300">
-            {formatUploadDate(document.created_at)}
-          </p>
-        </div>
-        {showFolderInfo && document.folder && (
-          <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded mt-2">
-            📁 {document.folder.name}
-          </p>
-        )}
-      </div>
-
-      {/* Status Badge */}
-      <div className="flex justify-center mt-2">
-        <StatusBadge status={document.status} size="sm" />
-      </div>
-
-      {/* Tags */}
-      {document.tags && document.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {document.tags.slice(0, 2).map(tag => (
-            <span key={tag} className="inline-flex px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-              {tag}
-            </span>
-          ))}
-          {document.tags.length > 2 && (
-            <span className="inline-flex px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-              +{document.tags.length - 2}
-            </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpen()
+                  setShowMenu(false)
+                }}
+                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+              >
+                <EyeIcon className="w-4 h-4 mr-1.5" />
+                Ansehen
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onShowInfo()
+                  setShowMenu(false)
+                }}
+                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+              >
+                <InformationCircleIcon className="w-4 h-4 mr-1.5" />
+                Informationen
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // TODO: Implement download
+                  setShowMenu(false)
+                }}
+                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4 mr-1.5" />
+                Herunterladen
+              </button>
+              <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                  setShowMenu(false)
+                }}
+                className="flex items-center w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors touch-manipulation"
+              >
+                <TrashIcon className="w-4 h-4 mr-1.5" />
+                Löschen
+              </button>
+            </div>
           )}
         </div>
-      )}
+
+        {/* Modern Card Content */}
+        <div className="p-4 h-full flex flex-col">
+          {/* Top Section - Checkbox & File Icon */}
+          <div className="flex items-start justify-between mb-3">
+            {/* Checkbox - Top left */}
+            <div className="flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={onSelect}
+                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            
+            {/* File Icon - Top center */}
+            <div className={`p-3 ${fileTheme.bgColor} rounded-xl border ${fileTheme.borderColor} shadow-sm`}>
+              <FileIcon className={`w-6 h-6 ${fileTheme.iconColor}`} />
+            </div>
+            
+            {/* Space for 3-dot menu */}
+            <div className="w-6">
+            </div>
+          </div>
+
+          {/* Document Title - Prominent */}
+          <div className="flex-1 mb-3">
+            <h3 
+              className="text-sm font-semibold text-gray-900 dark:text-gray-100 cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors leading-tight mb-2"
+              style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden'
+              }}
+              title={`${document.original_filename} - Doppelklick zum Öffnen`}
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                onOpen()
+              }}
+            >
+              {document.original_filename}
+            </h3>
+            
+            {/* File Metadata - Clean layout */}
+            <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
+              <div className="flex items-center space-x-2">
+                <span className="font-medium">{formatFileSize(document.file_size)}</span>
+                <span>•</span>
+                <span>{formatUploadDate(document.created_at)}</span>
+              </div>
+              
+              {/* Tags - When available */}
+              {document.tags && document.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {document.tags.slice(0, 2).map(tag => (
+                    <span key={tag} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs">
+                      {tag}
+                    </span>
+                  ))}
+                  {document.tags.length > 2 && (
+                    <span className="px-1.5 py-0.5 bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-300 rounded text-xs">
+                      +{document.tags.length - 2}
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              {/* Folder Info and Status on same line */}
+              <div className="flex items-center justify-between">
+                {showFolderInfo && document.folder && (
+                  <div className="flex items-center text-primary-600 dark:text-primary-400">
+                    <span className="truncate">📁 {document.folder.name}</span>
+                  </div>
+                )}
+                <StatusBadge status={document.status} size="sm" />
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
     </div>
   )
 }
@@ -526,14 +629,14 @@ export function DocumentGrid({
       <div className="p-6">
         <div className={`
           ${viewMode === 'grid' 
-            ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' 
+            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6' 
             : 'space-y-2'
           }
         `}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className={`
-              animate-pulse bg-gray-200 rounded-lg
-              ${viewMode === 'grid' ? 'h-48' : 'h-16'}
+              animate-pulse bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-600
+              ${viewMode === 'grid' ? 'min-h-[140px]' : 'h-16'}
             `} />
           ))}
         </div>
@@ -543,14 +646,19 @@ export function DocumentGrid({
 
   if (documents.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500">
-        <DocumentTextIcon className="w-16 h-16 mb-4 text-gray-300" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+      <div className="flex flex-col items-center justify-center h-full text-gray-500 p-8">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-400/20 to-primary-600/20 rounded-3xl blur-2xl"></div>
+          <div className="relative p-6 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-3xl border-2 border-primary-200/30 dark:border-primary-700/30 shadow-xl">
+            <DocumentTextIcon className="w-20 h-20 text-primary-400 dark:text-primary-500" />
+          </div>
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
           Keine Dokumente gefunden
         </h3>
-        <p className="text-gray-600 text-center max-w-sm">
+        <p className="text-gray-600 dark:text-gray-400 text-center max-w-md leading-relaxed">
           {showFolderInfo 
-            ? "Es wurden noch keine Dokumente in Ordner hochgeladen." 
+            ? "Es wurden noch keine Dokumente in diesem Ordner hochgeladen." 
             : "Laden Sie Dokumente über den Upload-Bereich oben hoch, um zu beginnen."}
         </p>
       </div>
@@ -561,7 +669,7 @@ export function DocumentGrid({
     <div className="p-6">
       <div className={`
         ${viewMode === 'grid' 
-          ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' 
+          ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6' 
           : 'space-y-2'
         }
       `}>

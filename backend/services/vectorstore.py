@@ -12,6 +12,7 @@ import uuid
 
 from config import settings
 from .docling_ingest import DocumentChunk
+from .adaptive_retrieval import AdaptiveRetrievalService
 
 class VectorStoreService:
     """Service für vector storage mit ChromaDB"""
@@ -20,6 +21,9 @@ class VectorStoreService:
         self.chroma_client = None
         self.collection = None
         self.collection_name = "streamworks_documents"
+        
+        # Initialize adaptive retrieval service
+        self.adaptive_retrieval = AdaptiveRetrievalService()
         
     async def initialize(self):
         """Initialize ChromaDB connection und collection"""
@@ -214,22 +218,34 @@ class VectorStoreService:
                 
                 similar_chunks.append(chunk_data)
             
-            # Improved adaptive threshold with performance optimization
-            base_threshold = 0.05  # Lower threshold for better recall
-            adaptive_threshold = max(base_threshold, settings.SIMILARITY_THRESHOLD * 0.7)
+            # Improved adaptive threshold system with quality tiers
+            high_quality_threshold = getattr(settings, 'HIGH_QUALITY_THRESHOLD', 0.7)
+            base_threshold = settings.SIMILARITY_THRESHOLD  # Now 0.3
+            fallback_threshold = getattr(settings, 'FALLBACK_THRESHOLD', 0.15)
             
-            # Smart filtering: ensure we get meaningful results
+            # Smart filtering with quality tiers
             if similar_chunks:
-                # Take top results that meet threshold OR top 3 regardless of threshold
-                filtered_chunks = []
-                high_quality = [c for c in similar_chunks if c['similarity_score'] >= adaptive_threshold]
+                # Tier 1: High quality chunks (>0.7)
+                high_quality = [c for c in similar_chunks if c['similarity_score'] >= high_quality_threshold]
+                # Tier 2: Good quality chunks (>base_threshold)
+                good_quality = [c for c in similar_chunks if c['similarity_score'] >= base_threshold]
+                # Tier 3: Acceptable chunks (>fallback_threshold)
+                acceptable = [c for c in similar_chunks if c['similarity_score'] >= fallback_threshold]
                 
                 if high_quality:
                     filtered_chunks = high_quality
+                    print(f"🔍 Using {len(filtered_chunks)} high-quality chunks (score ≥{high_quality_threshold})")
+                elif good_quality:
+                    filtered_chunks = good_quality
+                    print(f"🔍 Using {len(filtered_chunks)} good-quality chunks (score ≥{base_threshold})")
+                elif acceptable:
+                    # Only take top 3 from acceptable tier to maintain quality
+                    filtered_chunks = acceptable[:3]
+                    print(f"🔍 Using top {len(filtered_chunks)} acceptable chunks (score ≥{fallback_threshold})")
                 else:
-                    # Take top 3 even if below threshold (for better UX)
-                    filtered_chunks = similar_chunks[:3]
-                    print(f"🔍 Using top {len(filtered_chunks)} chunks (below threshold but best available)")
+                    # Last resort: take top 2 best matches regardless of score
+                    filtered_chunks = similar_chunks[:2]
+                    print(f"⚠️ Using top {len(filtered_chunks)} chunks (all below thresholds)")
             else:
                 filtered_chunks = []
             

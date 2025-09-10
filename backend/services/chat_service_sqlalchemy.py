@@ -13,9 +13,9 @@ from sqlalchemy import text, select, insert, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import AsyncSessionLocal
-from .openai_rag_service import OpenAIRAGService
-from .vectorstore import VectorStoreService
-from .embeddings import EmbeddingService
+from .unified_rag_service import RAGMode
+from .di_container import get_service
+from .chat_title_generator import chat_title_generator
 
 logger = logging.getLogger(__name__)
 
@@ -23,26 +23,20 @@ class ChatServiceSQLAlchemy:
     """SQLAlchemy-based Chat Service - compatible with existing database setup"""
     
     def __init__(self):
-        self.rag_service: OpenAIRAGService = None
+        self.rag_service = None
         self._initialized = False
     
     async def _initialize(self):
-        """Initialize RAG service (database connection is handled by SQLAlchemy)"""
+        """Initialize RAG service using DI container"""
         if self._initialized:
             return
             
         try:
-            # Initialize RAG service
-            vectorstore = VectorStoreService()
-            await vectorstore.initialize()
-            
-            embeddings = EmbeddingService()
-            await embeddings.initialize()
-            
-            self.rag_service = OpenAIRAGService(vectorstore, embeddings)
+            # Get RAG service from DI container
+            self.rag_service = await get_service("openai_rag_service")
             
             self._initialized = True
-            logger.info("ChatServiceSQLAlchemy initialized successfully")
+            logger.info("ChatServiceSQLAlchemy initialized successfully with DI container")
             
         except Exception as e:
             logger.error(f"Failed to initialize ChatServiceSQLAlchemy: {str(e)}")
@@ -136,8 +130,8 @@ class ChatServiceSQLAlchemy:
                         "user_id": row[2],
                         "company_id": str(row[3]) if row[3] else None,
                         "message_count": row[4],
-                        "rag_config": json.loads(row[5]) if row[5] else {},
-                        "context_filters": json.loads(row[6]) if row[6] else {},
+                        "rag_config": json.loads(row[5]) if isinstance(row[5], str) and row[5] else (row[5] if row[5] else {}),
+                        "context_filters": json.loads(row[6]) if isinstance(row[6], str) and row[6] else (row[6] if row[6] else {}),
                         "is_active": row[7],
                         "is_archived": row[8],
                         "created_at": row[9],
@@ -270,7 +264,7 @@ class ChatServiceSQLAlchemy:
                         "content": row[4],
                         "confidence_score": float(row[5]) if row[5] else None,
                         "processing_time_ms": row[6],
-                        "sources": json.loads(row[7]) if row[7] else [],
+                        "sources": json.loads(row[7]) if isinstance(row[7], str) and row[7] else (row[7] if row[7] else []),
                         "model_used": row[8],
                         "created_at": row[9],
                         "sequence_number": row[10]
@@ -323,6 +317,34 @@ class ChatServiceSQLAlchemy:
                 await session.commit()
                 logger.debug(f"Added {role} message to session {session_id}")
                 
+                # Auto-generate title if this is the first user message
+                if role == "user":
+                    try:
+                        # Check if this is the first user message in session
+                        result = await session.execute(text("""
+                            SELECT title FROM chat_sessions 
+                            WHERE id = :session_id AND title = 'Neue Unterhaltung'
+                        """), {"session_id": session_id})
+                        
+                        if result.fetchone():
+                            # Generate title immediately from this message
+                            title = await chat_title_generator.generate_title_from_user_message(content)
+                            
+                            # Update session title
+                            await session.execute(text("""
+                                UPDATE chat_sessions 
+                                SET title = :title, updated_at = now()
+                                WHERE id = :session_id
+                            """), {
+                                "session_id": session_id,
+                                "title": title
+                            })
+                            
+                            await session.commit()
+                            logger.info(f"Auto-generated title '{title}' for session {session_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to auto-generate title: {str(e)}")
+                
                 return message_id
                 
         except Exception as e:
@@ -339,7 +361,7 @@ class ChatServiceSQLAlchemy:
         user_id: str,
         query: str,
         processing_mode: str = "accurate",
-        enable_rerank: bool = False
+        include_sources: bool = True
     ) -> Dict[str, Any]:
         """Process user message and generate RAG response"""
         await self._initialize()
@@ -385,14 +407,21 @@ class ChatServiceSQLAlchemy:
                 """), {"session_id": session_id})
                 
                 row = result.fetchone()
-                context_filters = json.loads(row[0]) if row and row[0] else {}
+                context_filters = json.loads(row[0]) if row and isinstance(row[0], str) and row[0] else (row[0] if row and row[0] else {})
             
             # 6. Process with OpenAI RAG
+            # Convert string mode to RAGMode enum
+            rag_mode = RAGMode.ACCURATE
+            if processing_mode.upper() == "FAST":
+                rag_mode = RAGMode.FAST
+            elif processing_mode.upper() == "COMPREHENSIVE":
+                rag_mode = RAGMode.COMPREHENSIVE
+            
             rag_response = await self.rag_service.query(
                 query=enhanced_query,
                 filters=context_filters,
-                mode=processing_mode,
-                include_sources=True
+                mode=rag_mode,
+                include_sources=include_sources
             )
             
             processing_time_ms = int((time.time() - start_time) * 1000)
@@ -409,6 +438,7 @@ class ChatServiceSQLAlchemy:
                 model_used=rag_response.get("metadata", {}).get("model_used")
             )
             
+            # Title is now auto-generated in add_message when first user message is added
             return {
                 "message_id": assistant_message_id,
                 "answer": rag_response["answer"],
@@ -526,7 +556,7 @@ class ChatServiceSQLAlchemy:
                         "content": row[4],
                         "confidence_score": float(row[5]) if row[5] else None,
                         "processing_time_ms": row[6],
-                        "sources": json.loads(row[7]) if row[7] else [],
+                        "sources": json.loads(row[7]) if isinstance(row[7], str) and row[7] else (row[7] if row[7] else []),
                         "model_used": row[8],
                         "created_at": row[9],
                         "sequence_number": row[10],
@@ -576,3 +606,58 @@ class ChatServiceSQLAlchemy:
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat()
             }
+    
+    # ================================
+    # TITLE MANAGEMENT
+    # ================================
+    
+    async def regenerate_session_title(
+        self,
+        session_id: str,
+        user_id: str
+    ) -> str:
+        """Regenerate title for a chat session"""
+        await self._initialize()
+        
+        try:
+            # Verify session ownership
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(text("""
+                    SELECT id FROM chat_sessions 
+                    WHERE id = :session_id AND user_id = :user_id
+                """), {"session_id": session_id, "user_id": user_id})
+                
+                if not result.fetchone():
+                    raise Exception("Session not found or access denied")
+            
+            # Generate new title
+            new_title = await chat_title_generator.generate_title_for_session(
+                session_id, force_refresh=True
+            )
+            
+            logger.info(f"Regenerated title '{new_title}' for session {session_id}")
+            return new_title
+            
+        except Exception as e:
+            logger.error(f"Failed to regenerate title: {str(e)}")
+            raise Exception(f"Title regeneration failed: {str(e)}")
+    
+    async def update_session_title(
+        self,
+        session_id: str,
+        user_id: str,
+        title: str
+    ) -> str:
+        """Update session title with custom title"""
+        await self._initialize()
+        
+        try:
+            return await chat_title_generator.update_session_title(
+                session_id=session_id,
+                user_id=user_id,
+                custom_title=title
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to update title: {str(e)}")
+            raise Exception(f"Title update failed: {str(e)}")

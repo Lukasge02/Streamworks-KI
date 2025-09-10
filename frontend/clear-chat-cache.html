@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>StreamWorks Chat Cache Cleaner</title>
+    <style>
+        body { 
+            font-family: system-ui, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: #f5f5f5;
+        }
+        .card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        button { 
+            background: #2563eb; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover { background: #1d4ed8; }
+        .success { color: #059669; font-weight: bold; }
+        .info { background: #eff6ff; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 6px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🧹 StreamWorks Chat Cache Cleaner</h1>
+        <p>Dieses Tool löscht alle alten Chat-Sessions mit ungültigen Session-IDs aus dem Browser-Cache.</p>
+        
+        <div class="info">
+            <strong>Problem:</strong> Alte Sessions verwenden das Format <code>session_123_abc</code><br>
+            <strong>Lösung:</strong> Nur richtige UUID-Sessions behalten: <code>uuid-4-format</code>
+        </div>
+
+        <button onclick="cleanCache()">🗑️ Cache Leeren</button>
+        <button onclick="inspectCache()">🔍 Cache Anzeigen</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function cleanCache() {
+            const results = document.getElementById('results');
+            
+            try {
+                // Liste aller localStorage Keys
+                const allKeys = Object.keys(localStorage);
+                const chatKeys = allKeys.filter(key => 
+                    key.includes('streamworks') || 
+                    key.includes('chat') || 
+                    key.includes('session')
+                );
+                
+                let cleaned = 0;
+                chatKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value && value.includes('session_')) {
+                        // Alte Session-IDs gefunden
+                        localStorage.removeItem(key);
+                        cleaned++;
+                    }
+                });
+                
+                // Session Storage auch leeren
+                sessionStorage.clear();
+                
+                results.innerHTML = `
+                    <div class="success">
+                        ✅ Cache erfolgreich geleert!<br>
+                        📊 ${cleaned} alte Session-Einträge entfernt<br>
+                        🔄 Session Storage geleert<br><br>
+                        <strong>Jetzt können Sie http://localhost:3000/chat neu laden!</strong>
+                    </div>
+                `;
+                
+            } catch (error) {
+                results.innerHTML = `<div style="color: red;">❌ Fehler: ${error.message}</div>`;
+            }
+        }
+        
+        function inspectCache() {
+            const results = document.getElementById('results');
+            
+            try {
+                const allKeys = Object.keys(localStorage);
+                const chatKeys = allKeys.filter(key => 
+                    key.includes('streamworks') || 
+                    key.includes('chat') || 
+                    key.includes('session')
+                );
+                
+                if (chatKeys.length === 0) {
+                    results.innerHTML = '<div class="success">✅ Kein Chat-Cache gefunden - alles sauber!</div>';
+                    return;
+                }
+                
+                let output = '<h3>📋 Gefundene Cache-Einträge:</h3><pre>';
+                chatKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    const preview = value ? value.substring(0, 100) + '...' : 'null';
+                    output += `${key}: ${preview}\n`;
+                });
+                output += '</pre>';
+                
+                results.innerHTML = output;
+                
+            } catch (error) {
+                results.innerHTML = `<div style="color: red;">❌ Fehler: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
