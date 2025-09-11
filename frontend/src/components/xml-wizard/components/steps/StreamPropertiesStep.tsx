@@ -37,11 +37,7 @@ export const StreamPropertiesStep: React.FC<WizardStepProps> = ({
       lastName: '',
       company: 'Arvato Systems',
       department: ''
-    },
-    maxRuns: 5,
-    retentionDays: 30,
-    severityGroup: '',
-    streamPath: ''
+    }
   }
 
   const handleFieldChange = (field: string, value: any) => {
@@ -135,22 +131,6 @@ export const StreamPropertiesStep: React.FC<WizardStepProps> = ({
               />
             </div>
 
-            <div>
-              <Label htmlFor="streamPath" className="text-sm font-medium">
-                Stream-Pfad
-              </Label>
-              <Input
-                id="streamPath"
-                type="text"
-                value={streamProps.streamPath}
-                onChange={(e) => handleFieldChange('streamPath', e.target.value)}
-                placeholder="/Batch/Daily"
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Organisatorischer Pfad in der Stream-Hierarchie
-              </p>
-            </div>
           </div>
         </Card>
 
@@ -226,70 +206,6 @@ export const StreamPropertiesStep: React.FC<WizardStepProps> = ({
           </div>
         </Card>
 
-        {/* Advanced Settings */}
-        <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center space-x-2 mb-4">
-            <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              Erweiterte Einstellungen
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="maxRuns" className="text-sm font-medium">
-                Max. parallele Läufe
-              </Label>
-              <Input
-                id="maxRuns"
-                type="number"
-                min="1"
-                max="20"
-                value={streamProps.maxRuns}
-                onChange={(e) => handleFieldChange('maxRuns', parseInt(e.target.value) || 5)}
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Maximale Anzahl gleichzeitig laufender Stream-Instanzen
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="retentionDays" className="text-sm font-medium">
-                Aufbewahrung (Tage)
-              </Label>
-              <Input
-                id="retentionDays"
-                type="number"
-                min="1"
-                max="365"
-                value={streamProps.retentionDays || 30}
-                onChange={(e) => handleFieldChange('retentionDays', parseInt(e.target.value) || 30)}
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Wie lange sollen Lauf-Daten gespeichert werden?
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="severityGroup" className="text-sm font-medium">
-                Schweregrad-Gruppe
-              </Label>
-              <Input
-                id="severityGroup"
-                type="text"
-                value={streamProps.severityGroup}
-                onChange={(e) => handleFieldChange('severityGroup', e.target.value)}
-                placeholder="PROD, TEST, DEV"
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Kategorisierung für Monitoring und Alerting
-              </p>
-            </div>
-          </div>
-        </Card>
       </div>
 
       {/* Info Box */}

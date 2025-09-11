@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_async_session
 from schemas.core import DocumentSummaryResponse
-from services.document_service import DocumentService
+from services.document import DocumentService
 from services.contextual_embedder import ContextualEmbedder, EmbeddingStrategy, ChunkContext, DocumentType
 from services.document_summarizer import document_summarizer
 

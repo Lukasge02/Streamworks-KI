@@ -127,7 +127,7 @@ async def get_folder(
             raise HTTPException(status_code=404, detail="Folder not found")
         
         # Get counts
-        from services.document_service import DocumentService
+        from services.document import DocumentService
         from sqlalchemy import select, func
         from models.core import Document, Folder as FolderModel
         

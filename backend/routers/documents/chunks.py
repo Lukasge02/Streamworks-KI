@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_async_session
-from services.document_service import DocumentService
+from services.document import DocumentService
 from services.document_chunk_service import DocumentChunkService
 
 # Shared dependencies

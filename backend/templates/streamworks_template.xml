@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>{{STREAM_NAME}}</StreamName>
+    <StreamDocumentation><![CDATA[{{STREAM_DOCUMENTATION}}]]></StreamDocumentation>
+    <AgentDetail>{{AGENT_DETAIL}}</AgentDetail>
+    <AccountNoId />
+    <CalendarId>{{CALENDAR_ID}}</CalendarId>
+    <StreamType>Normal</StreamType>
+    <MaxStreamRuns>{{MAX_STREAM_RUNS}}</MaxStreamRuns>
+    <ShortDescription><![CDATA[{{SHORT_DESCRIPTION}}]]></ShortDescription>
+    <SchedulingRequiredFlag>{{SCHEDULING_REQUIRED}}</SchedulingRequiredFlag>
+    <ScheduleRuleObject />
+    <RuntimeDataStorageDays IsNull="True" />
+    <RuntimeDataStorageDaySource IsNull="True" />
+    <StreamRunDeletionSource IsNull="True" />
+    <StreamRunDeletionType>None</StreamRunDeletionType>
+    <StreamRunDeletionTime IsNull="True" />
+    <StreamRunDeletionDays IsNull="True" />
+    <StreamRunDeletionDayType IsNull="True" />
+    <DeletionTimeTimeZoneId />
+    <DeletionTimeValidFlag IsNull="True" />
+    <DeletionTimeValidSource IsNull="True" />
+    <StreamRunTimeStatisticsDays IsNull="True" />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityGroup>{{SEVERITY_GROUP}}</SeverityGroup>
+    <MaxStreamRunDuration IsNull="True" />
+    <MinStreamRunDuration IsNull="True" />
+    <CentralJobLogAreaFlag IsNull="True" />
+    <CentralJobLogSource IsNull="True" />
+    <CentralJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDaySource IsNull="True" />
+    <StreamRunInterval IsNull="True" />
+    <MaxJobLogSize IsNull="True" />
+    <ReorgType IsNull="True" />
+    <ExternalJobScriptRequired IsNull="True" />
+    <KeepPreparedRuns IsNull="True" />
+    <InteractivePslFlag>False</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled>False</ConcurrentPlanDatesEnabled>
+    <UncatExclusion IsNull="True" />
+    <Jobs>
+      <!-- Recovery Jobs -->
+      <Job>
+        <JobName>RecoveryJobNetStartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Recovery Jobnet Start Point]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetStartPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>0</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>200</CoordinateX>
+        <CoordinateY>100</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          {{STREAM_RUN_JOB_PROPERTIES}}
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+      
+      <Job>
+        <JobName>RecoveryJobNetEndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Recovery Jobnet End Point]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>RecoveryJobNetEndPoint</JobCategory>
+        <NormalJobFlag>False</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>0</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>200</CoordinateX>
+        <CoordinateY>350</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          {{STREAM_RUN_JOB_PROPERTIES}}
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+
+      <!-- StartPoint Job -->
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Start Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>1</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>145</CoordinateX>
+        <CoordinateY>0</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>{{MAIN_JOB_NAME}}</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          {{STREAM_RUN_JOB_PROPERTIES}}
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+
+      <!-- Main Job -->
+      <Job>
+        <JobName>{{MAIN_JOB_NAME}}</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules>{{JOB_NOTIFICATION_RULES}}</JobNotificationRules>
+        <LoginObject>{{LOGIN_OBJECT}}</LoginObject>
+        <ShortDescription><![CDATA[{{JOB_DESCRIPTION}}]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>{{JOB_TYPE}}</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[{{MAIN_SCRIPT}}]]></MainScript>
+        <DisplayOrder>2</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>145</CoordinateX>
+        <CoordinateY>192</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks IsNull="True" />
+            <EdgeEndPosition>2</EdgeEndPosition>
+            <EdgeStartPosition>6</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          {{STREAM_RUN_JOB_PROPERTIES}}
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>0</PreparationScriptJobOrder>
+          <Script><![CDATA[{{PREPARATION_SCRIPT}}]]></Script>
+          <ScriptLanguage>Lua</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions>{{JOB_EXTENSIONS}}</JobExtensions>
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+
+      <!-- EndPoint Job -->
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[End Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Endpoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder>3</DisplayOrder>
+        <JobShortName IsNull="True" />
+        <TemplateType>Normal</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX>135</CoordinateX>
+        <CoordinateY>416</CoordinateY>
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          {{STREAM_RUN_JOB_PROPERTIES}}
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <JobExtensions />
+        <ControlFilePathLoginObject />
+        <ExternalProcedureDependencies />
+      </Job>
+    </Jobs>
+    <StreamContactPersons>
+      <StreamContactPerson>
+        <FirstName>{{CONTACT_FIRST_NAME}}</FirstName>
+        <LastName>{{CONTACT_LAST_NAME}}</LastName>
+        <MiddleName />
+        <CompanyName>{{CONTACT_COMPANY}}</CompanyName>
+        <Department>{{CONTACT_DEPARTMENT}}</Department>
+        <Comment IsNull="True" />
+        <ContactType>None</ContactType>
+        <HierarchyLevelCd>1</HierarchyLevelCd>
+      </StreamContactPerson>
+    </StreamContactPersons>
+    <ScheduleRule>
+      <ScheduleRuleXml><![CDATA[{{SCHEDULE_RULE_XML}}]]></ScheduleRuleXml>
+    </ScheduleRule>
+    <StreamPreparationScript>
+      <Script><![CDATA[{{STREAM_PREPARATION_SCRIPT}}]]></Script>
+      <ScriptLanguage>Lua</ScriptLanguage>
+    </StreamPreparationScript>
+    <MasterStreamId />
+    <StreamPath><![CDATA[{{STREAM_PATH}}]]></StreamPath>
+    <StatusFlag>True</StatusFlag>
+    <StreamVersionDetail>
+      <StreamVersionType>Current</StreamVersionType>
+      <StreamVersion>1.0</StreamVersion>
+      <DeploymentDateTime>{{DEPLOYMENT_DATETIME}}</DeploymentDateTime>
+      <DeployAsActive>True</DeployAsActive>
+      <PlannedDeploymentDateTime />
+      <StorageDateTime />
+      <AutoDeploymentStatus>Finished</AutoDeploymentStatus>
+      <ScheduleRulesMergeType>FromNew</ScheduleRulesMergeType>
+    </StreamVersionDetail>
+    <AutomaticPreparedRuns>0</AutomaticPreparedRuns>
+    <BusinessServiceFlag>False</BusinessServiceFlag>
+    <StreamBusinessServiceProperty />
+    <AutoPreparationType>Complete</AutoPreparationType>
+    <RunVariables>{{RUN_VARIABLES}}</RunVariables>
+    <ConcurrentStreamRunsEnabled />
+    <EnableStreamRunCancelation>False</EnableStreamRunCancelation>
+    <Tags />
+    <GitEnabled IsNull="True" />
+  </Stream>
+</ExportableStream>

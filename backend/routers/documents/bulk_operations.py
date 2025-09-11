@@ -14,7 +14,7 @@ from schemas.core import (
     BulkDeleteRequest, BulkDeleteResponse,
     BulkMoveRequest, BulkMoveResponse, BulkReprocessRequest
 )
-from services.document_service import DocumentService
+from services.document import DocumentService
 
 # Shared dependencies
 def get_document_service() -> DocumentService:

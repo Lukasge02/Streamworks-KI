@@ -1,0 +1,44 @@
+{
+  "defaults": {
+    "AGENT_DETAIL": "gtasswvk05445",
+    "CALENDAR_ID": "Default Calendar",
+    "MAX_STREAM_RUNS": "5",
+    "SCHEDULING_REQUIRED": "True",
+    "SEVERITY_GROUP": "",
+    "CONTACT_COMPANY": "Arvato Systems",
+    "STREAM_PATH": "",
+    "DEPLOYMENT_DATETIME": "",
+    "STREAM_PREPARATION_SCRIPT": "",
+    "PREPARATION_SCRIPT": "",
+    "RUN_VARIABLES": "",
+    "JOB_AGENT": "",
+    "JOB_ACCOUNT": "",
+    "JOB_SEVERITY": ""
+  },
+  "job_types": {
+    "standard": {
+      "JOB_TYPE": "Windows",
+      "JOB_EXTENSIONS": "",
+      "LOGIN_OBJECT": "",
+      "JOB_NOTIFICATION_RULES": ""
+    },
+    "sap": {
+      "JOB_TYPE": "SAP",
+      "JOB_EXTENSIONS": "<SAPJobExtension><System>{{SAP_SYSTEM}}</System><Report>{{SAP_REPORT}}</Report><Variant>{{SAP_VARIANT}}</Variant><BatchUser>{{BATCH_USER}}</BatchUser></SAPJobExtension>",
+      "LOGIN_OBJECT": "{{SAP_LOGIN_OBJECT}}",
+      "JOB_NOTIFICATION_RULES": ""
+    },
+    "fileTransfer": {
+      "JOB_TYPE": "FileTransfer",
+      "JOB_EXTENSIONS": "<FileTransferExtension><SourceAgent>{{SOURCE_AGENT}}</SourceAgent><SourcePath>{{SOURCE_PATH}}</SourcePath><TargetAgent>{{TARGET_AGENT}}</TargetAgent><TargetPath>{{TARGET_PATH}}</TargetPath></FileTransferExtension>",
+      "LOGIN_OBJECT": "",
+      "JOB_NOTIFICATION_RULES": ""
+    }
+  },
+  "schedule_templates": {
+    "daily": "&lt;SchedulingRules ShiftRule=&quot;3&quot; ScheduleRuleDialogNotYetVisited=&quot;1&quot;&gt;&lt;FixedDates&gt;&lt;FixedDate&gt;Daily&lt;/FixedDate&gt;&lt;/FixedDates&gt;&lt;/SchedulingRules&gt;",
+    "weekly": "&lt;SchedulingRules&gt;&lt;WeeklyPattern&gt;&lt;DaysOfWeek&gt;Monday,Tuesday,Wednesday,Thursday,Friday&lt;/DaysOfWeek&gt;&lt;/WeeklyPattern&gt;&lt;/SchedulingRules&gt;",
+    "monthly": "&lt;SchedulingRules&gt;&lt;MonthlyPattern&gt;&lt;DayOfMonth&gt;1&lt;/DayOfMonth&gt;&lt;/MonthlyPattern&gt;&lt;/SchedulingRules&gt;",
+    "manual": "&lt;SchedulingRules ShiftRule=&quot;3&quot; ScheduleRuleDialogNotYetVisited=&quot;1&quot; /&gt;"
+  }
+}

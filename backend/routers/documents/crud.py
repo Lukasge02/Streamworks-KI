@@ -16,7 +16,7 @@ from schemas.core import (
     DocumentUpdate, DocumentResponse, DocumentWithFolder,
     DocumentFilter, DocumentSort, UploadResponse
 )
-from services.document_service import DocumentService
+from services.document import DocumentService
 from routers.websockets import connection_manager
 
 # Shared dependencies

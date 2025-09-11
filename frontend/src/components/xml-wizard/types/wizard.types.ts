@@ -102,10 +102,6 @@ export interface StreamProperties {
   description: string
   documentation?: string
   contactPerson: ContactPerson
-  maxRuns: number
-  retentionDays?: number
-  severityGroup?: string
-  streamPath?: string
 }
 
 // Scheduling

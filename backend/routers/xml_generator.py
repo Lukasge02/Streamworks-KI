@@ -18,6 +18,7 @@ from schemas.xml_generation import (
 )
 from services.xml_rag_service import get_rag_service, XMLTemplateRAG
 from services.xml_validator import get_validator, XSDValidator
+from services.xml_template_engine import get_template_engine, XMLTemplateEngine
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,9 @@ def get_rag_service_dep() -> XMLTemplateRAG:
 
 def get_validator_dep() -> XSDValidator:
     return get_validator()
+
+def get_template_engine_dep() -> XMLTemplateEngine:
+    return get_template_engine()
 
 
 @router.get("/job-types", response_model=JobTypesResponse)
@@ -140,10 +144,12 @@ async def search_similar_templates(
 @router.post("/generate", response_model=XMLGenerationResult)
 async def generate_xml_from_wizard(
     wizard_data: WizardFormData,
-    rag_service: XMLTemplateRAG = Depends(get_rag_service_dep)
+    use_template_engine: bool = True,
+    rag_service: XMLTemplateRAG = Depends(get_rag_service_dep),
+    template_engine: XMLTemplateEngine = Depends(get_template_engine_dep)
 ) -> XMLGenerationResult:
     """
-    Generate StreamWorks XML from wizard form data using RAG pipeline
+    Generate StreamWorks XML from wizard form data using Template Engine (default) or RAG pipeline
     """
     try:
         logger.info(f"Starting XML generation for job type: {wizard_data.job_type}")
@@ -155,8 +161,13 @@ async def generate_xml_from_wizard(
         if not wizard_data.stream_properties.description:
             raise HTTPException(status_code=400, detail="Stream description is required")
         
-        # Generate XML using RAG
-        result = await rag_service.generate_xml(wizard_data)
+        # Generate XML using Template Engine (faster, simpler) or RAG (more intelligent)
+        if use_template_engine:
+            logger.info("Using Template Engine for XML generation")
+            result = template_engine.generate_xml(wizard_data)
+        else:
+            logger.info("Using RAG pipeline for XML generation")
+            result = await rag_service.generate_xml(wizard_data)
         
         if not result.success:
             logger.error(f"XML generation failed: {result.error_message}")
@@ -171,6 +182,48 @@ async def generate_xml_from_wizard(
     except Exception as e:
         logger.error(f"XML generation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"XML generation failed: {str(e)}")
+
+
+@router.post("/generate-template", response_model=XMLGenerationResult)
+async def generate_xml_template_only(
+    wizard_data: WizardFormData,
+    template_engine: XMLTemplateEngine = Depends(get_template_engine_dep)
+) -> XMLGenerationResult:
+    """
+    Generate StreamWorks XML using only the Template Engine (fast, lightweight)
+    """
+    try:
+        logger.info(f"Starting template-only XML generation for job type: {wizard_data.job_type}")
+        
+        # Validate wizard data
+        if not wizard_data.stream_properties.stream_name:
+            raise HTTPException(status_code=400, detail="Stream name is required")
+        
+        if not wizard_data.stream_properties.description:
+            raise HTTPException(status_code=400, detail="Stream description is required")
+        
+        # Generate XML using Template Engine
+        start_time = time.time()
+        result = template_engine.generate_xml(wizard_data)
+        generation_time_ms = int((time.time() - start_time) * 1000)
+        
+        # Update timing info
+        if hasattr(result, 'generation_time_ms'):
+            result.generation_time_ms = generation_time_ms
+        
+        if not result.success:
+            logger.error(f"Template XML generation failed: {result.error_message}")
+        else:
+            logger.info(f"Template XML generation completed in {generation_time_ms}ms - "
+                       f"Success: {result.success}, Review required: {result.requires_human_review}")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Template XML generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Template XML generation failed: {str(e)}")
 
 
 @router.post("/validate", response_model=ValidationResponse)
