@@ -62,9 +62,10 @@ class StreamWorksErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    const normalizedError = StreamWorksErrorBoundary.staticNormalizeError(error)
     return {
       hasError: true,
-      error: this.normalizeError(error),
+      error: normalizedError,
       errorInfo: null
     }
   }
@@ -85,6 +86,50 @@ class StreamWorksErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
       error: normalizedError,
       errorInfo
     })
+  }
+
+  static staticNormalizeError(error: Error): AppError {
+    // Extract error type from error message or stack
+    const errorType = StreamWorksErrorBoundary.staticExtractErrorType(error)
+    
+    return {
+      type: errorType,
+      message: error.message || 'An unexpected error occurred',
+      code: StreamWorksErrorBoundary.staticExtractErrorCode(error),
+      timestamp: new Date().toISOString(),
+      stack: error.stack,
+      recoverable: StreamWorksErrorBoundary.staticIsRecoverable(errorType)
+    }
+  }
+
+  static staticExtractErrorType(error: Error): ErrorType {
+    const message = error.message.toLowerCase()
+    
+    if (message.includes('network') || message.includes('fetch')) return ErrorType.NETWORK
+    if (message.includes('api') || message.includes('http')) return ErrorType.API
+    if (message.includes('validation') || message.includes('invalid')) return ErrorType.VALIDATION
+    if (message.includes('auth') || message.includes('unauthorized')) return ErrorType.AUTHENTICATION
+    if (message.includes('permission') || message.includes('forbidden')) return ErrorType.AUTHORIZATION
+    if (message.includes('database') || message.includes('sql')) return ErrorType.DATABASE
+    if (message.includes('upload') || message.includes('file')) return ErrorType.FILE_UPLOAD
+    if (message.includes('chat') || message.includes('rag')) return ErrorType.CHAT
+    
+    return ErrorType.UNKNOWN
+  }
+
+  static staticExtractErrorCode(error: Error): string | undefined {
+    const match = error.message.match(/\[([A-Z_]+)\]/)
+    return match ? match[1] : undefined
+  }
+
+  static staticIsRecoverable(errorType: ErrorType): boolean {
+    const recoverableTypes = [
+      ErrorType.NETWORK,
+      ErrorType.API,
+      ErrorType.VALIDATION,
+      ErrorType.FILE_UPLOAD
+    ]
+    return recoverableTypes.includes(errorType)
   }
 
   private normalizeError(error: Error): AppError {

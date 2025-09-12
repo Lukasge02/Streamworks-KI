@@ -117,13 +117,6 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
                   }`}>
                     {chapter.title}
                   </h3>
-                  <p className={`text-xs mt-0.5 truncate ${
-                    isCurrentChapter
-                      ? 'text-blue-700 dark:text-blue-200'
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {chapter.description}
-                  </p>
                 </div>
               </div>
 
@@ -182,13 +175,6 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
                         }`}>
                           {subChapter.title}
                         </h4>
-                        <p className={`text-xs mt-0.5 truncate ${
-                          isCurrentSubChapter
-                            ? 'text-blue-600 dark:text-blue-300'
-                            : 'text-gray-500 dark:text-gray-400'
-                        }`}>
-                          {subChapter.description}
-                        </p>
                         
                         {/* Validation Message */}
                         {subChapter.validationMessage && (

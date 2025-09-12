@@ -104,7 +104,7 @@ class DocumentProcessingPipeline:
                 )
                 if job:
                     from routers.websockets import send_upload_progress_to_document_sync
-                await send_upload_progress_to_document_sync(job_id, job)
+                    await send_upload_progress_to_document_sync(job_id, job)
             
             # Update status to processing
             document.status = DocumentStatus.PROCESSING.value
@@ -145,7 +145,7 @@ class DocumentProcessingPipeline:
                 )
                 if job:
                     from routers.websockets import send_upload_progress_to_document_sync
-                await send_upload_progress_to_document_sync(job_id, job)
+                    await send_upload_progress_to_document_sync(job_id, job)
             
             # Process document with Docling (with defensive file protection)
             docling_chunks = []
@@ -188,6 +188,14 @@ class DocumentProcessingPipeline:
                     logger.info(f"Docling created {len(docling_chunks)} chunks for {document.filename}")
                 else:
                     logger.warning(f"Docling service not available for {document.filename}, document stored without processing")
+                    # Mark document as skipped when Docling is not available
+                    document.status = DocumentStatus.SKIPPED.value
+                    document.processing_metadata.update({
+                        "processing_completed_at": datetime.utcnow().isoformat(),
+                        "processing_skipped": True,
+                        "reason": "Docling service not available"
+                    })
+                    await db.flush()
                 
                 if job_id:
                     job = upload_job_manager.update_job_progress(
@@ -195,7 +203,7 @@ class DocumentProcessingPipeline:
                     )
                     if job:
                         from routers.websockets import send_upload_progress_to_document_sync
-                await send_upload_progress_to_document_sync(job_id, job)
+                        await send_upload_progress_to_document_sync(job_id, job)
                 
             except Exception as docling_error:
                 # In case of error, restore from backup if file is missing
@@ -243,21 +251,27 @@ class DocumentProcessingPipeline:
             
         except Exception as e:
             # Update document status to failed
-            document.status = DocumentStatus.FAILED.value
-            document.error_message = str(e)
+            error_message = f"Processing error: {str(e)}"
+            if str(e) == "FAILED":
+                error_message = "Document processing failed due to internal error"
+                
+            document.status = DocumentStatus.ERROR.value
+            document.error_message = error_message
             document.processing_metadata = document.processing_metadata or {}
             document.processing_metadata.update({
                 "processing_failed_at": datetime.utcnow().isoformat(),
                 "processing_success": False,
-                "error": str(e)
+                "error": error_message,
+                "original_error": str(e)
             })
             
             await db.commit()
             
             if job_id:
-                upload_job_manager.fail_job(job_id, str(e))
+                upload_job_manager.fail_job(job_id, error_message)
             
-            logger.error(f"❌ Document processing failed: {document.filename} - {str(e)}")
+            logger.error(f"❌ Document processing failed: {document.filename} - {error_message}")
+            logger.debug(f"Full error details: {str(e)}", exc_info=True)
             raise
 
     async def _save_chunks_and_embeddings(
@@ -270,7 +284,12 @@ class DocumentProcessingPipeline:
         """Save chunks to database and generate embeddings"""
         
         chunk_service = self._get_chunk_service()
-        if not docling_chunks or not chunk_service:
+        if not docling_chunks:
+            logger.info(f"No chunks to save for document {document.filename}")
+            return
+        
+        if not chunk_service:
+            logger.warning(f"ChunkService not available for document {document.filename}")
             return
             
         try:
@@ -280,7 +299,7 @@ class DocumentProcessingPipeline:
                 )
                 if job:
                     from routers.websockets import send_upload_progress_to_document_sync
-                await send_upload_progress_to_document_sync(job_id, job)
+                    await send_upload_progress_to_document_sync(job_id, job)
             
             db_chunks = await chunk_service.create_chunks_from_docling(
                 db, document.id, docling_chunks
@@ -295,7 +314,7 @@ class DocumentProcessingPipeline:
                     )
                     if job:
                         from routers.websockets import send_upload_progress_to_document_sync
-                await send_upload_progress_to_document_sync(job_id, job)
+                        await send_upload_progress_to_document_sync(job_id, job)
                 
                 # Convert db chunks to dictionary format for embedding service
                 chunks_for_embedding = []

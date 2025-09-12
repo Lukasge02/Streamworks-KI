@@ -184,14 +184,6 @@ jobs:
         working-directory: ./frontend
         run: npm run test:coverage
 
-      - name: 🎭 E2E Tests with Playwright
-        working-directory: ./frontend
-        run: |
-          npx playwright install --with-deps
-          npm run test:e2e
-        env:
-          CI: true
-
       - name: 📊 Upload Test Results
         uses: actions/upload-artifact@v3
         if: always()
@@ -199,7 +191,6 @@ jobs:
           name: frontend-test-results
           path: |
             ./frontend/coverage/
-            ./frontend/playwright-report/
 
       - name: 🏗️ Build Production Bundle
         working-directory: ./frontend

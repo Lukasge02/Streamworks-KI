@@ -33,10 +33,12 @@ class ValidationSeverity(str, Enum):
 
 # Base Forms
 class ContactPerson(BaseModel):
-    first_name: str = Field(..., min_length=1)
-    last_name: str = Field(..., min_length=1)
+    first_name: Optional[str] = Field(default="", alias="firstName")
+    last_name: Optional[str] = Field(default="", alias="lastName") 
     company: str = Field(default="Arvato Systems")
     department: Optional[str] = None
+    
+    model_config = {"populate_by_name": True}
 
 
 class SAPParameter(BaseModel):
@@ -76,10 +78,10 @@ class FileTransferForm(BaseModel):
 
 # Stream properties
 class StreamProperties(BaseModel):
-    stream_name: str = Field(..., min_length=1)
-    description: str = Field(..., min_length=1)
+    stream_name: Optional[str] = Field(default="")
+    description: Optional[str] = Field(default="")
     documentation: Optional[str] = None
-    contact_person: ContactPerson
+    contact_person: Optional[ContactPerson] = Field(default_factory=ContactPerson)
     max_runs: int = Field(default=5, ge=1, le=50)
     retention_days: Optional[int] = None
     severity_group: Optional[str] = None

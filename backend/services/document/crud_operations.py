@@ -109,7 +109,8 @@ class DocumentCrudOperations:
                 file_hash=file_hash,
                 file_size=file_size,
                 mime_type=mime_type,
-                status=DocumentStatus.UPLOADED.value,
+                storage_path=filename,  # Use same path for both fields
+                status=DocumentStatus.UPLOADING.value,
                 tags=tags or [],
                 description=description,
                 chunk_count=0,

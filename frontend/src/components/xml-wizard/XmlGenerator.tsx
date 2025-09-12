@@ -4,12 +4,14 @@
  */
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import WizardForm from './components/WizardForm'
 import XmlDisplay from './components/XmlDisplay'
 import { generateStreamworksXML, validateXML } from './utils/xmlGenerator'
 import { WizardFormData } from './types/wizard.types'
+import { useWizardState } from './hooks/useWizardState'
+import { useXMLPreview } from './hooks/useXMLPreview'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { 
@@ -36,7 +38,23 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
   const [validationResults, setValidationResults] = useState<any>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [viewMode, setViewMode] = useState<'split' | 'wizard-only' | 'xml-only'>('split')
-  const [currentFormData, setCurrentFormData] = useState<Partial<WizardFormData>>({})
+  
+  // Central wizard state management
+  const wizard = useWizardState({ totalSteps: 5 })
+  
+  // Live XML preview functionality
+  const xmlPreview = useXMLPreview({
+    debounceMs: 500,
+    enableAutoPreview: true,
+    apiBaseUrl: '/api/xml-generator'
+  })
+
+  // Trigger preview when form data changes
+  useEffect(() => {
+    if (wizard.state.formData) {
+      xmlPreview.generatePreview(wizard.state.formData)
+    }
+  }, [wizard.state.formData, xmlPreview.generatePreview])
 
   const handleXMLGenerated = useCallback(async (content: string, validation?: any) => {
     setXmlContent(content)
@@ -50,21 +68,23 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
   }, [])
 
   const handleRegenerate = useCallback(async () => {
-    if (!currentFormData.jobType || !currentFormData.streamProperties) {
+    if (!wizard.state.jobType || !wizard.state.formData.streamProperties) {
       toast.error('Bitte füllen Sie zuerst alle erforderlichen Formulardaten aus')
       return
     }
 
     setIsGenerating(true)
+    wizard.setGenerating(true)
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate processing
       
-      const result = generateStreamworksXML(currentFormData)
+      const result = generateStreamworksXML(wizard.state.formData)
       
       if (result.success && result.xmlContent) {
         const validation = validateXML(result.xmlContent)
         handleXMLGenerated(result.xmlContent, validation)
+        wizard.setGeneratedXML(result.xmlContent, validation)
         toast.success('XML wurde erfolgreich neu generiert!')
       } else {
         toast.error(`Fehler bei der XML-Generierung: ${result.error}`)
@@ -73,12 +93,11 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
       toast.error('Unerwarteter Fehler bei der XML-Generierung')
     } finally {
       setIsGenerating(false)
+      wizard.setGenerating(false)
     }
-  }, [currentFormData, handleXMLGenerated])
+  }, [wizard, handleXMLGenerated])
 
-  const handleFormDataChange = useCallback((data: Partial<WizardFormData>) => {
-    setCurrentFormData(prev => ({ ...prev, ...data }))
-  }, [])
+  // Remove handleFormDataChange as we'll use wizard.updateFormData directly
 
   const handleToggleViewMode = () => {
     switch (viewMode) {
@@ -105,7 +124,7 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
   const handleReset = () => {
     setXmlContent('')
     setValidationResults(null)
-    setCurrentFormData({})
+    wizard.resetWizard()
     setViewMode('split')
     toast.info('Generator wurde zurückgesetzt')
   }
@@ -134,7 +153,7 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
               variant="outline"
               size="sm"
               onClick={handleRegenerate}
-              disabled={isGenerating || !currentFormData.jobType}
+              disabled={isGenerating || !wizard.state.jobType}
               className="flex items-center space-x-2"
             >
               <RotateCcw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
@@ -197,7 +216,7 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {viewMode === 'xml-only' ? (
           // XML Only View
           <div className="h-full p-6">
@@ -205,14 +224,16 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
               xmlContent={xmlContent}
               isGenerating={isGenerating}
               validationResults={validationResults}
+              previewHook={xmlPreview}
               className="h-full"
             />
           </div>
         ) : viewMode === 'wizard-only' ? (
           // Wizard Only View
-          <div className="h-full bg-white dark:bg-gray-800">
+          <div className="h-full bg-white dark:bg-gray-800 min-h-0">
             <WizardForm
               onXMLGenerated={handleXMLGenerated}
+              externalWizardState={wizard}
               className="h-full"
             />
           </div>
@@ -220,10 +241,11 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
           // Split Panel Layout
           <PanelGroup direction="horizontal" className="h-full">
             {/* Left Panel - Wizard Form */}
-            <Panel defaultSize={50} minSize={30}>
-              <div className="h-full bg-white dark:bg-gray-800">
+            <Panel defaultSize={50} minSize={30} maxSize={70}>
+              <div className="h-full bg-white dark:bg-gray-800 min-h-0">
                 <WizardForm
                   onXMLGenerated={handleXMLGenerated}
+                  externalWizardState={wizard}
                   className="h-full"
                 />
               </div>
@@ -241,6 +263,7 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
                   xmlContent={xmlContent}
                   isGenerating={isGenerating}
                   validationResults={validationResults}
+                  previewHook={xmlPreview}
                   className="h-full"
                 />
               </div>
@@ -250,7 +273,7 @@ export const XmlGenerator: React.FC<XmlGeneratorProps> = ({
       </div>
 
       {/* Help/Info Footer */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-3">
+      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
             <div className="flex items-center space-x-1">

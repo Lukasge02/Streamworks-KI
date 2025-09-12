@@ -43,14 +43,6 @@ const createDefaultChapters = (): WizardChapter[] => [
         isCompleted: false,
         isValid: false,
         hasErrors: false
-      },
-      {
-        id: 'technical-settings',
-        title: 'Technische Einstellungen',
-        description: 'Läufe, Aufbewahrung & erweiterte Optionen',
-        isCompleted: false,
-        isValid: false,
-        hasErrors: false
       }
     ]
   },
@@ -443,9 +435,6 @@ export const useWizardState = ({
             } else if (subChapter.id === 'contact-person') {
               isValid = !!(prev.formData.streamProperties?.contactPerson?.firstName && 
                           prev.formData.streamProperties?.contactPerson?.lastName)
-              isCompleted = isValid
-            } else if (subChapter.id === 'technical-settings') {
-              isValid = !!(prev.formData.streamProperties?.maxRuns)
               isCompleted = isValid
             }
           } else if (chapter.id === 'job-configuration') {

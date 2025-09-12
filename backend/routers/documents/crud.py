@@ -61,6 +61,16 @@ async def upload_document(
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
         
+        # Validate folder exists
+        from services.folder_service import FolderService
+        try:
+            folder = await FolderService.get_folder_by_id(db, folder_id)
+            if not folder:
+                raise HTTPException(status_code=400, detail=f"Folder {folder_id} not found")
+        except Exception as folder_error:
+            logger.error(f"Error validating folder {folder_id}: {str(folder_error)}")
+            raise HTTPException(status_code=400, detail=f"Invalid folder ID: {folder_id}")
+        
         # Upload document with optional progress tracking
         document = await doc_service.upload_document(
             db=db,
@@ -119,8 +129,10 @@ async def upload_document(
         return response
         
     except ValueError as e:
+        logger.error(f"Upload validation error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        logger.error(f"Upload failed with exception: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 

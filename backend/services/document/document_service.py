@@ -20,6 +20,7 @@ from schemas.core import (
 from .storage_handler import DocumentStorageHandler
 from .crud_operations import DocumentCrudOperations
 from .processing_pipeline import DocumentProcessingPipeline
+from services.document_chunk_service import DocumentChunkService
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class DocumentService:
         self.storage = DocumentStorageHandler()
         self.crud = DocumentCrudOperations()
         self.processor = DocumentProcessingPipeline()
+        self.chunk_service = DocumentChunkService()
     
     async def upload_document(
         self,
@@ -101,7 +103,12 @@ class DocumentService:
                 )
             except Exception as processing_error:
                 logger.warning(f"Document processing failed for {file.filename}: {str(processing_error)}")
-                # Document is still saved, just without processing
+                # Update document status to ERROR when processing fails
+                from models.core import DocumentStatus
+                document.status = DocumentStatus.ERROR.value
+                document.error_message = str(processing_error)
+                await db.commit()
+                logger.info(f"Document {document.id} marked as ERROR due to processing failure")
             
             return document
             
@@ -144,20 +151,46 @@ class DocumentService:
         db: AsyncSession,
         document_id: UUID
     ) -> bool:
-        """Delete document and its file"""
+        """Delete document and its file with complete cleanup"""
         try:
             # Get document info
             document = await self.crud.get_document_by_id(db, document_id)
             if not document:
                 return False
             
-            # Delete from database
+            logger.info(f"Starting comprehensive deletion for document: {document_id}")
+            
+            # Step 1: Delete document chunks from database
+            chunk_count = 0
+            try:
+                chunk_count = await self.chunk_service.delete_chunks_by_document(db, document_id)
+                logger.info(f"Deleted {chunk_count} chunks from database for document: {document_id}")
+            except Exception as chunk_error:
+                logger.error(f"Failed to delete chunks from database: {str(chunk_error)}")
+                # Continue with deletion even if chunks fail - we'll clean up orphans later
+            
+            # Step 2: Delete from vector database
+            try:
+                from services.di_container import get_service
+                vectorstore = await get_service("vectorstore")
+                await vectorstore.delete_document(str(document_id))
+                logger.info(f"Deleted vectors from ChromaDB for document: {document_id}")
+            except Exception as vector_error:
+                logger.error(f"Failed to delete from vector store: {str(vector_error)}")
+                # Continue with deletion - orphaned vectors can be cleaned up later
+            
+            # Step 3: Delete document from database
             success = await self.crud.delete_document(db, document_id)
             
             if success:
-                # Delete file from storage
-                self.storage.delete_file(document.filename)
-                logger.info(f"Deleted document and file: {document_id}")
+                # Step 4: Delete file from storage
+                try:
+                    self.storage.delete_file(document.filename)
+                    logger.info(f"Deleted file from storage: {document.filename}")
+                except Exception as file_error:
+                    logger.warning(f"Failed to delete file: {str(file_error)}")
+                
+                logger.info(f"✅ Complete deletion successful for document: {document_id} (chunks: {chunk_count})")
             
             return success
             
@@ -197,26 +230,39 @@ class DocumentService:
         db: AsyncSession,
         document_ids: List[UUID]
     ) -> BulkDeleteResponse:
-        """Delete multiple documents"""
-        # Get all documents first to track files for deletion
-        documents_to_delete = []
+        """Delete multiple documents with complete cleanup"""
+        logger.info(f"Starting bulk deletion for {len(document_ids)} documents")
+        
+        # Use individual delete method to ensure proper cleanup
+        deleted = []
+        failed = []
+        
         for doc_id in document_ids:
-            doc = await self.crud.get_document_by_id(db, doc_id)
-            if doc:
-                documents_to_delete.append(doc)
+            try:
+                success = await self.delete_document(db, doc_id)
+                if success:
+                    deleted.append(str(doc_id))
+                else:
+                    failed.append({
+                        "id": str(doc_id),
+                        "error": "Document not found"
+                    })
+            except Exception as e:
+                failed.append({
+                    "id": str(doc_id),
+                    "error": str(e)
+                })
+                logger.error(f"Failed to delete document {doc_id}: {str(e)}")
         
-        # Delete from database
-        result = await self.crud.bulk_delete_documents(db, document_ids)
+        logger.info(f"Bulk deletion completed: {len(deleted)} deleted, {len(failed)} failed")
         
-        # Delete files for successfully deleted documents
-        for doc in documents_to_delete:
-            if str(doc.id) in result.deleted:
-                try:
-                    self.storage.delete_file(doc.filename)
-                except Exception as e:
-                    logger.warning(f"Failed to delete file for document {doc.id}: {str(e)}")
-        
-        return result
+        return BulkDeleteResponse(
+            deleted=deleted,
+            failed=failed,
+            total_requested=len(document_ids),
+            total_deleted=len(deleted),
+            total_failed=len(failed)
+        )
 
     async def bulk_move_documents(
         self,

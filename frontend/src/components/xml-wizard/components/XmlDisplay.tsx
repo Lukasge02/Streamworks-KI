@@ -1,14 +1,17 @@
 /**
  * XmlDisplay Component
- * Read-only Monaco Editor for displaying generated XML
+ * Live XML preview with Monaco Editor and progress indicators
  */
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Editor } from '@monaco-editor/react'
-import { Copy, Download, CheckCircle, AlertCircle } from 'lucide-react'
+import { Copy, Download, CheckCircle, AlertCircle, Eye, Code2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import XMLHighlighter from './XMLHighlighter'
+import { XMLPreviewHook } from '../hooks/useXMLPreview'
 
 interface XmlDisplayProps {
   xmlContent: string
@@ -17,6 +20,7 @@ interface XmlDisplayProps {
     isValid: boolean
     errors: string[]
   }
+  previewHook?: XMLPreviewHook // Optional live preview data
   className?: string
 }
 
@@ -24,9 +28,11 @@ export const XmlDisplay: React.FC<XmlDisplayProps> = ({
   xmlContent,
   isGenerating = false,
   validationResults,
+  previewHook,
   className = ''
 }) => {
   const editorRef = useRef<any>(null)
+  const [viewMode, setViewMode] = useState<'editor' | 'highlighted'>('editor')
 
   // Auto-format XML when content changes
   useEffect(() => {
@@ -106,13 +112,19 @@ export const XmlDisplay: React.FC<XmlDisplayProps> = ({
     }
   }
 
+  // Use preview data if available, otherwise fall back to props
+  const displayXml = previewHook?.xmlContent || xmlContent
+  const displayIsGenerating = previewHook?.isGenerating || isGenerating
+  const displayError = previewHook?.error
+
   return (
     <div className={`flex flex-col h-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg ${className}`}>
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-3">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Generated XML
+            {previewHook ? 'Live XML Preview' : 'Generated XML'}
           </h3>
           
           {validationResults && (
@@ -127,14 +139,39 @@ export const XmlDisplay: React.FC<XmlDisplayProps> = ({
               </span>
             </div>
           )}
+
+          {displayError && (
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-red-600 dark:text-red-400">
+                Fehler bei Preview
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* View Mode Toggle */}
+          {previewHook && previewHook.hasPlaceholders && (
+            <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as any)}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="editor" className="flex items-center space-x-1">
+                  <Code2 className="w-3 h-3" />
+                  <span>Editor</span>
+                </TabsTrigger>
+                <TabsTrigger value="highlighted" className="flex items-center space-x-1">
+                  <Eye className="w-3 h-3" />
+                  <span>Preview</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+
           <Button
             variant="outline"
             size="sm"
             onClick={handleCopyXML}
-            disabled={isGenerating || !xmlContent}
+            disabled={displayIsGenerating || !displayXml}
             className="flex items-center space-x-2"
           >
             <Copy className="w-4 h-4" />
@@ -145,7 +182,7 @@ export const XmlDisplay: React.FC<XmlDisplayProps> = ({
             variant="outline"
             size="sm"
             onClick={handleDownloadXML}
-            disabled={isGenerating || !xmlContent}
+            disabled={displayIsGenerating || !displayXml}
             className="flex items-center space-x-2"
           >
             <Download className="w-4 h-4" />
@@ -154,48 +191,62 @@ export const XmlDisplay: React.FC<XmlDisplayProps> = ({
         </div>
       </div>
 
-      {/* Editor */}
+      {/* Content */}
       <div className="flex-1 relative">
-        {isGenerating && (
+        {displayIsGenerating && (
           <div className="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center z-10">
             <div className="flex flex-col items-center space-y-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                XML wird generiert...
+                {previewHook ? 'Preview wird generiert...' : 'XML wird generiert...'}
               </span>
             </div>
           </div>
         )}
 
-        {xmlContent ? (
-          <Editor
-            height="100%"
-            language="xml"
-            theme="vs-light"
-            value={xmlContent}
-            onMount={handleEditorDidMount}
-            options={{
-              readOnly: true,
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              wordWrap: 'on',
-              automaticLayout: true,
-              fontSize: 14,
-              lineHeight: 20,
-              padding: { top: 16, bottom: 16 },
-              scrollbar: {
-                vertical: 'visible',
-                horizontal: 'visible',
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10
-              },
-              bracketPairColorization: {
-                enabled: true
-              },
-              folding: true,
-              showFoldingControls: 'always'
-            }}
-          />
+        {displayXml ? (
+          <div className="h-full">
+            {/* Monaco Editor View */}
+            {viewMode === 'editor' ? (
+              <Editor
+                height="100%"
+                language="xml"
+                theme="vs-light"
+                value={displayXml}
+                onMount={handleEditorDidMount}
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  automaticLayout: true,
+                  fontSize: 14,
+                  lineHeight: 20,
+                  padding: { top: 16, bottom: 16 },
+                  scrollbar: {
+                    vertical: 'visible',
+                    horizontal: 'visible',
+                    verticalScrollbarSize: 10,
+                    horizontalScrollbarSize: 10
+                  },
+                  bracketPairColorization: {
+                    enabled: true
+                  },
+                  folding: true,
+                  showFoldingControls: 'always'
+                }}
+              />
+            ) : (
+              /* Custom Highlighted View */
+              <div className="h-full overflow-auto p-4">
+                <XMLHighlighter
+                  xmlContent={displayXml}
+                  highlightPlaceholders={true}
+                  showLineNumbers={true}
+                />
+              </div>
+            )}
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -205,10 +256,12 @@ export const XmlDisplay: React.FC<XmlDisplayProps> = ({
                 </svg>
               </div>
               <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Noch keine XML generiert
+                {previewHook ? 'Live Preview startet...' : 'Noch keine XML generiert'}
               </h4>
               <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
-                Füllen Sie das Formular links aus, um automatisch eine gültige Streamworks-XML zu generieren.
+                {previewHook 
+                  ? 'Füllen Sie den Wizard aus, um sofort eine Live-Vorschau zu sehen.' 
+                  : 'Füllen Sie das Formular links aus, um automatisch eine gültige Streamworks-XML zu generieren.'}
               </p>
             </div>
           </div>
@@ -241,7 +294,7 @@ export const XmlDisplay: React.FC<XmlDisplayProps> = ({
       <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2">
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <span>
-            {xmlContent ? `${xmlContent.split('\n').length} Zeilen` : 'Keine Daten'}
+            {displayXml ? `${displayXml.split('\n').length} Zeilen` : 'Keine Daten'}
           </span>
           <span>
             Format: XML (UTF-8)

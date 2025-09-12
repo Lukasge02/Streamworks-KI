@@ -188,7 +188,8 @@ async def initialize_container():
     
     # Register core services
     from .upload_job_manager_refactored import create_upload_job_manager
-    from .unified_rag_service import create_unified_rag_service, create_openai_rag_service
+    from .unified_rag_service import create_unified_rag_service
+    from .rag.rag_coordinator import create_openai_rag_service
     from .vectorstore import VectorStoreService
     from .embeddings import EmbeddingService
     
@@ -218,7 +219,10 @@ async def initialize_container():
     container.register(
         name="openai_rag_service",
         service_class=None,  # Using factory with dependencies
-        factory=lambda **deps: create_openai_rag_service(**deps),
+        factory=lambda vectorstore, embeddings: create_openai_rag_service(
+            vectorstore_service=vectorstore,
+            embeddings_service=embeddings
+        ),
         singleton=True,
         dependencies=["vectorstore", "embeddings"]
     )

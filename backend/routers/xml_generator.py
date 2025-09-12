@@ -5,7 +5,7 @@ FastAPI endpoints for RAG-based XML generation
 import logging
 import time
 import asyncio
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import Response
 
@@ -224,6 +224,146 @@ async def generate_xml_template_only(
     except Exception as e:
         logger.error(f"Template XML generation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Template XML generation failed: {str(e)}")
+
+
+@router.post("/preview", response_model=XMLGenerationResult)
+async def generate_xml_preview(
+    wizard_data: Dict[str, Any],
+    template_engine: XMLTemplateEngine = Depends(get_template_engine_dep)
+) -> XMLGenerationResult:
+    """
+    Generate XML preview from partial wizard data with smart defaults
+    Accepts incomplete/partial form data and generates preview with placeholders
+    """
+    try:
+        logger.info("Starting XML preview generation")
+        
+        # Convert dict to WizardFormData with defaults for missing fields
+        partial_wizard_data = _create_partial_wizard_data(wizard_data)
+        
+        # Generate XML using Template Engine in preview mode
+        start_time = time.time()
+        result = template_engine.generate_xml(partial_wizard_data, preview_mode=True)
+        generation_time_ms = int((time.time() - start_time) * 1000)
+        
+        # Update timing info
+        if hasattr(result, 'generation_time_ms'):
+            result.generation_time_ms = generation_time_ms
+        
+        logger.info(f"XML preview generated in {generation_time_ms}ms - "
+                   f"Success: {result.success}, Placeholders: {len(result.review_reasons)}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"XML preview generation failed: {str(e)}")
+        # Return a basic XML structure even on error
+        return XMLGenerationResult(
+            success=True,
+            xml_content=_get_minimal_xml_template(),
+            requires_human_review=True,
+            review_reasons=[f"Error during preview: {str(e)}"],
+            generation_time_ms=0
+        )
+
+
+def _create_partial_wizard_data(data: Dict[str, Any]) -> WizardFormData:
+    """Convert partial dict data to WizardFormData with smart defaults"""
+    from schemas.xml_generation import JobType, ScheduleMode
+    
+    # Default job type
+    job_type_str = data.get('jobType', 'standard')
+    try:
+        job_type = JobType(job_type_str)
+    except ValueError:
+        job_type = JobType.STANDARD
+    
+    # Create minimal stream properties
+    stream_props_data = data.get('streamProperties', {})
+    contact_data = stream_props_data.get('contactPerson', {})
+    
+    # Use dynamic imports to avoid circular dependencies
+    try:
+        from schemas.xml_generation import StreamProperties, ContactPerson
+        
+        contact_person = ContactPerson(
+            firstName=contact_data.get('firstName', ''),
+            lastName=contact_data.get('lastName', ''),
+            company=contact_data.get('company', 'Arvato Systems'),
+            department=contact_data.get('department', '')
+        )
+        
+        stream_properties = StreamProperties(
+            streamName=stream_props_data.get('streamName', ''),
+            description=stream_props_data.get('description', ''),
+            documentation=stream_props_data.get('documentation', ''),
+            contactPerson=contact_person
+        )
+    except ImportError:
+        # Fallback: create simple objects
+        class SimpleContact:
+            def __init__(self, **kwargs):
+                self.first_name = kwargs.get('firstName', '')
+                self.last_name = kwargs.get('lastName', '') 
+                self.company = kwargs.get('company', 'Arvato Systems')
+                self.department = kwargs.get('department', '')
+        
+        class SimpleStreamProps:
+            def __init__(self, **kwargs):
+                self.stream_name = kwargs.get('streamName', '')
+                self.description = kwargs.get('description', '')
+                self.documentation = kwargs.get('documentation', '')
+                self.contact_person = SimpleContact(**kwargs.get('contactPerson', {}))
+        
+        stream_properties = SimpleStreamProps(**stream_props_data)
+    
+    # Create minimal scheduling
+    scheduling_data = data.get('scheduling', {})
+    try:
+        from schemas.xml_generation import SchedulingForm, SimpleSchedule
+        
+        scheduling = SchedulingForm(
+            mode=ScheduleMode.SIMPLE,
+            simple=SimpleSchedule(
+                preset=scheduling_data.get('simple', {}).get('preset', 'manual'),
+                weekdays=[True] * 7
+            )
+        )
+    except ImportError:
+        class SimpleScheduling:
+            def __init__(self):
+                self.mode = None
+                self.simple = None
+        
+        scheduling = SimpleScheduling()
+    
+    # Create minimal wizard data
+    class PartialWizardData:
+        def __init__(self):
+            self.job_type = job_type
+            self.stream_properties = stream_properties
+            self.job_form = data.get('jobForm', {})
+            self.scheduling = scheduling
+    
+    return PartialWizardData()
+
+
+def _get_minimal_xml_template() -> str:
+    """Return minimal XML template for error cases"""
+    return '''<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>{{Neuer_Stream}}</StreamName>
+    <StreamDocumentation><![CDATA[{{Stream_wird_konfiguriert}}]]></StreamDocumentation>
+    <ShortDescription><![CDATA[{{Bitte_Wizard_ausfuellen}}]]></ShortDescription>
+    <Jobs>
+      <Job>
+        <JobName>{{Job_wird_erstellt}}</JobName>
+        <JobType>{{Bitte_Job_Type_waehlen}}</JobType>
+      </Job>
+    </Jobs>
+  </Stream>
+</ExportableStream>'''
 
 
 @router.post("/validate", response_model=ValidationResponse)

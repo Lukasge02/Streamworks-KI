@@ -10,7 +10,7 @@ export default function XMLPage() {
   }, [])
 
   return (
-    <div className="h-screen">
+    <div className="h-full">
       <XmlGenerator className="h-full" />
     </div>
   )

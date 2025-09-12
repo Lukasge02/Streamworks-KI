@@ -27,6 +27,8 @@ import ChapterNavigation from './ChapterNavigation'
 interface WizardFormProps {
   onXMLGenerated?: (xmlContent: string, validationResults?: any) => void
   className?: string
+  // External state props (optional - if provided, use external state instead of internal hook)
+  externalWizardState?: ReturnType<typeof import('../hooks/useWizardState').useWizardState>
 }
 
 // Chapter to step component mapping
@@ -48,9 +50,12 @@ const getStepComponent = (chapterId: string, subChapterId: string) => {
 
 export const WizardForm: React.FC<WizardFormProps> = ({
   onXMLGenerated,
-  className = ''
+  className = '',
+  externalWizardState
 }) => {
-  const wizard = useWizardState({ totalSteps: 5 })
+  // Use external state if provided, otherwise use internal hook
+  const internalWizard = useWizardState({ totalSteps: 5 })
+  const wizard = externalWizardState || internalWizard
 
   // Handle XML generation callback
   React.useEffect(() => {
@@ -97,24 +102,6 @@ export const WizardForm: React.FC<WizardFormProps> = ({
           />
         </div>
 
-        {/* Footer Actions */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={wizard.resetWizard}
-            className="w-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Neu starten
-          </Button>
-          <div className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-            {wizard.isComplete 
-              ? 'Stream erfolgreich konfiguriert!'
-              : `${wizard.getProgress()}% abgeschlossen`
-            }
-          </div>
-        </div>
       </div>
 
       {/* Step Content */}

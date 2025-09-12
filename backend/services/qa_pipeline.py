@@ -34,7 +34,6 @@ class QAConfig:
     top_k: int = 6
     max_sources: int = 6
     min_chunk_relevance: float = 0.5
-    enable_reranking: bool = False
     
     # LLM settings
     model_name: str = "gpt-4o-mini"

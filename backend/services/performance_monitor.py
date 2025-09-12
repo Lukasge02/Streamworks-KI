@@ -60,7 +60,6 @@ class PerformanceMonitor:
             "embedding": 200,      # ms
             "vectorsearch": 100,   # ms  
             "llm_generation": 800, # ms
-            "reranking": 150,      # ms
             "cache_get": 5,        # ms
             "cache_set": 10        # ms
         }

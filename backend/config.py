@@ -42,15 +42,6 @@ class Settings(BaseSettings):
     CACHE_PERFORMANCE_LOGGING: bool = os.getenv("CACHE_PERFORMANCE_LOGGING", "true").lower() == "true"
     
     
-    # Reranker Configuration - Enhanced with BGE support
-    ENABLE_RERANKING: bool = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
-    RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "bge")  # bge|local|hybrid|cohere|jina|none
-    RERANKER_API_KEY: str = os.getenv("RERANKER_API_KEY", "")  # For external providers
-    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
-    RERANKER_MIN_SCORE: float = float(os.getenv("RERANKER_MIN_SCORE", "0.0"))
-    RERANKER_TOP_K: int = int(os.getenv("RERANKER_TOP_K", "5"))
-    ENABLE_RERANKER_FALLBACK: bool = os.getenv("ENABLE_RERANKER_FALLBACK", "true").lower() == "true"
-    USE_ENHANCED_HYBRID: bool = os.getenv("USE_ENHANCED_HYBRID", "true").lower() == "true"
     
     # Supabase Configuration
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
@@ -139,7 +130,6 @@ class Settings(BaseSettings):
     
     # RAG Pipeline Settings - Optimized for better quality
     TOP_K_RETRIEVAL: int = int(os.getenv("TOP_K_RETRIEVAL", "10"))
-    RERANK_TOP_K: int = int(os.getenv("RERANK_TOP_K", "5"))
     SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.3"))  # Improved from 0.1
     
     # Advanced RAG Thresholds
