@@ -1,7 +1,7 @@
 # 🚀 Setup Guide
 
 > **Schritt-für-Schritt Installation und Konfiguration von Streamworks-KI**  
-> Von der lokalen Entwicklung bis zur Produktion
+> Von der lokalen Entwicklung bis zur Produktion - inkl. XML Wizard Setup
 
 ---
 
@@ -10,7 +10,8 @@
 Dieser Guide führt Sie durch die vollständige Einrichtung des Streamworks-KI RAG Systems:
 
 - **⚡ Schnellstart** - Lokales System in 5 Minuten
-- **🔧 Detaillierte Konfiguration** - Erweiterte Setup-Optionen
+- **🔧 Detaillierte Konfiguration** - Erweiterte Setup-Optionen inkl. XML Wizard
+- **🤖 Ollama Integration** - Lokale LLM-Modelle für XML-Generierung
 - **🐳 Docker Deployment** - Containerisierte Bereitstellung
 - **🏭 Produktion Setup** - Enterprise-grade Konfiguration
 - **🛠️ Troubleshooting** - Häufige Probleme und Lösungen
@@ -25,12 +26,14 @@ Dieser Guide führt Sie durch die vollständige Einrichtung des Streamworks-KI R
 - **Storage**: 2GB verfügbarer Speicherplatz
 - **Python**: 3.11+ 
 - **Node.js**: 18.0+
+- **Ollama**: Für lokale XML-Generierung (optional)
 
 ### **Empfohlen für Production**
 - **CPU**: 8+ Cores
 - **RAM**: 16GB+ 
 - **Storage**: SSD mit 50GB+
 - **GPU**: NVIDIA GPU für lokale AI Models (optional)
+- **Ollama**: Mit Llama2/CodeLlama Modellen für XML-Generierung
 
 ---
 
@@ -74,8 +77,9 @@ npm run dev
 - **Frontend**: http://localhost:3000
 - **API Docs**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/health
+- **XML Wizard**: http://localhost:3000/xml
 
-✅ **Das System ist einsatzbereit!** Laden Sie ein Dokument hoch und stellen Sie Fragen.
+✅ **Das System ist einsatzbereit!** Laden Sie ein Dokument hoch, stellen Sie Fragen, oder erstellen Sie XML-Dokumente.
 
 ---
 

@@ -1,20 +1,21 @@
 # 🏗️ System Architecture
 
 > **Detaillierte Architektur-Dokumentation des Streamworks-KI RAG Systems**  
-> Enterprise-grade Design für skalierbare Dokumentenverarbeitung
+> Enterprise-grade Design für skalierbare Dokumentenverarbeitung und XML-Generierung
 
 ---
 
 ## 🎯 **Architektur-Übersicht**
 
-Streamworks-KI implementiert eine **moderne Mikroservice-Architektur** mit klarer Trennung zwischen Frontend, Backend und Datenebene:
+Streamworks-KI implementiert eine **moderne modulare Mikroservice-Architektur** mit klarer Trennung zwischen Frontend, Backend und Datenebene:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Frontend Layer                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  Next.js 14 App Router │ TypeScript │ TailwindCSS │ 66 Components│
+│  Next.js 15 App Router │ TypeScript │ TailwindCSS │ 600+ Files  │
 │  React Query │ Zustand │ Framer Motion │ Real-time WebSockets    │
+│  XML Wizard │ Monaco Editor │ Advanced UI Components           │
 └─────────────────┬───────────────────────────────────────────────┘
                   │ HTTP/WebSocket APIs
 ┌─────────────────▼───────────────────────────────────────────────┐
@@ -25,11 +26,11 @@ Streamworks-KI implementiert eine **moderne Mikroservice-Architektur** mit klare
 └─────────────────┬───────────────────────────────────────────────┘
                   │ Internal Service Communication
 ┌─────────────────▼───────────────────────────────────────────────┐
-│                    Service Layer (16+ Services)                 │
+│                    Service Layer (100+ Modules)                 │
 ├─────────────────────────────────────────────────────────────────┤
-│ DocumentService │ ChatService │ EmbeddingService │ RAGService   │
+│ document/ │ embeddings/ │ rag/ │ xml_template_engine │ chat_service │
 │ FolderService │ VectorStore │ DoclingIngest │ WebSocketManager  │
-│ CacheService │ RerankerService │ UploadJobManager │ ...        │
+│ CacheService │ Ollama Integration │ UploadJobManager │ ...        │
 └─────────────────┬───────────────────────────────────────────────┘
                   │ Data Access Layer
 ┌─────────────────▼───────────────────────────────────────────────┐
@@ -44,7 +45,7 @@ Streamworks-KI implementiert eine **moderne Mikroservice-Architektur** mit klare
 
 ## 🏛️ **System Components**
 
-### **1. Frontend Architecture (Next.js 14)**
+### **1. Frontend Architecture (Next.js 15)**
 
 #### **App Router Structure**
 ```
@@ -54,10 +55,15 @@ frontend/src/
 │   ├── page.tsx           # Landing Page  
 │   ├── chat/              # Chat Interface
 │   ├── documents/         # Document Management
+│   ├── xml/               # XML Wizard Pages (NEW)
 │   ├── dashboard/         # System Monitoring
 │   └── providers.tsx     # Global Providers
 │
-├── components/            # 66+ React Components
+├── components/            # 600+ React Components & Files
+│   ├── xml-wizard/       # XML Wizard Components (NEW)
+│   │   ├── XmlGenerator.tsx
+│   │   ├── components/   # Sub-components
+│   │   └── hooks/        # Custom Hooks
 │   ├── chat/             # Chat System (8 Components)
 │   │   ├── ChatInterface.tsx
 │   │   ├── EnterpriseInputArea.tsx
@@ -105,34 +111,44 @@ interface AppState {
 
 #### **Service Layer Design**
 ```python
-# 16+ Specialized Services
+# 100+ Modular Services (Latest Architecture)
 backend/services/
-├── chat_service.py           # Chat Session Management
-├── document_service.py       # Document CRUD Operations
-├── folder_service.py         # Hierarchical Folder Management
-├── docling_ingest.py         # Layout-aware Document Processing
-├── embeddings.py             # Embedding Generation Service
-├── vectorstore.py            # ChromaDB Vector Operations
-├── unified_rag_service.py    # RAG Pipeline Orchestration
-├── local_rag_service.py      # Local AI Model Integration
-├── ollama_service.py         # Ollama Model Interface
-├── web_agent_service.py      # Web Search Integration
-├── reranker.py               # Result Reranking Service
-├── enterprise_cache.py      # Multi-level Caching System
-├── upload_job_manager.py     # Async Upload Processing
-├── websocket_manager.py      # Real-time Communication
-├── performance_monitor.py    # System Performance Tracking
-└── qa_pipeline.py            # Question-Answering Pipeline
+├── document/                 # → Document Service Module
+│   ├── crud_operations.py       # Document CRUD Operations
+│   ├── document_service.py      # Main Document Service
+│   └── processing_pipeline.py   # Processing Pipeline
+├── embeddings/               # → Embedding Service Module
+│   ├── embedding_service.py     # Main Embedding Service
+│   ├── local_embeddings.py      # Local Gamma Embeddings
+│   └── openai_embeddings.py     # OpenAI Embeddings
+├── rag/                      # → RAG Pipeline Module
+│   ├── adaptive_retrieval.py    # Intelligent Context Selection
+│   ├── qa_pipeline.py           # Question-Answering Pipeline
+│   └── unified_rag_service.py   # Unified RAG Logic
+├── chat_service_sqlalchemy.py   # Chat Session Management
+├── folder_service.py            # Hierarchical Folder Management
+├── docling_ingest.py            # Layout-aware Document Processing
+├── xml_template_engine.py       # XML Generation Engine (NEW)
+├── vectorstore.py               # ChromaDB Vector Operations
+├── enterprise_cache.py         # Multi-level Caching System
+├── upload_job_manager.py        # Async Upload Processing
+├── websocket_manager.py         # Real-time Communication
+├── performance_monitor.py       # System Performance Tracking
+└── [80+ other specialized modules...]
 ```
 
 #### **Router Architecture**
 ```python
-# API Endpoint Organization
+# API Endpoint Organization (Modular)
 backend/routers/
-├── folders.py              # Folder Management API
-├── documents.py            # Document Operations API  
-├── chat.py                 # Chat & RAG API
-├── websockets.py           # Real-time WebSocket API
+├── folders.py                    # Folder Management API
+├── documents/                    # → Modular Document API
+│   ├── upload.py                    # Upload Endpoints
+│   ├── crud.py                     # CRUD Endpoints
+│   └── search.py                   # Search Endpoints
+├── chat.py                       # Chat & RAG API
+├── xml_generator.py              # XML Wizard API (NEW)
+├── websockets.py                 # Real-time WebSocket API
 └── upload_progress_websocket.py  # Upload Progress API
 ```
 

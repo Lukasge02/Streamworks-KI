@@ -78,14 +78,16 @@ class FileTransferForm(BaseModel):
 
 # Stream properties
 class StreamProperties(BaseModel):
-    stream_name: Optional[str] = Field(default="")
+    stream_name: Optional[str] = Field(default="", alias="streamName")
     description: Optional[str] = Field(default="")
     documentation: Optional[str] = None
-    contact_person: Optional[ContactPerson] = Field(default_factory=ContactPerson)
-    max_runs: int = Field(default=5, ge=1, le=50)
-    retention_days: Optional[int] = None
-    severity_group: Optional[str] = None
-    stream_path: Optional[str] = None
+    contact_person: Optional[ContactPerson] = Field(default_factory=ContactPerson, alias="contactPerson")
+    max_runs: int = Field(default=5, ge=1, le=50, alias="maxRuns")
+    retention_days: Optional[int] = Field(default=None, alias="retentionDays")
+    severity_group: Optional[str] = Field(default=None, alias="severityGroup")
+    stream_path: Optional[str] = Field(default=None, alias="streamPath")
+    
+    model_config = {"populate_by_name": True}
 
 
 # Scheduling

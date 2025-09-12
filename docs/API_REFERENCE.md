@@ -1,7 +1,7 @@
 # 🔌 API Reference
 
 > **Vollständige REST API Dokumentation für Streamworks-KI RAG System**  
-> Interactive docs: `http://localhost:8000/docs`
+> Interactive docs: `http://localhost:8000/docs` | XML Wizard API included
 
 ---
 
@@ -432,6 +432,180 @@ ws.onmessage = (event) => {
   */
 };
 ```
+
+---
+
+## 📄 **XML Wizard API (NEW)**
+
+Intelligente XML-Generierung für Streamworks-konforme Dokumente mit Ollama LLM Integration.
+
+### **Get Job Types**
+```http
+GET /api/xml-generator/job-types
+```
+
+**Response:**
+```json
+{
+  "job_types": [
+    {
+      "job_type": "BROADCAST",
+      "display_name": "Broadcast Auftrag",
+      "description": "Standard Broadcast Auftrag für Sendungen",
+      "example_values": {
+        "title": "Heute Show",
+        "description": "Satirische Nachrichten"
+      }
+    }
+  ],
+  "total": 1
+}
+```
+
+### **Search Templates**
+```http
+POST /api/xml-generator/templates/search
+Content-Type: application/json
+
+{
+  "query": "broadcast evening news",
+  "job_type": "BROADCAST",
+  "limit": 5
+}
+```
+
+**Response:**
+```json
+{
+  "matches": [
+    {
+      "template_id": "tpl-123",
+      "job_type": "BROADCAST", 
+      "title": "Evening News Template",
+      "description": "Template for evening news broadcasts",
+      "similarity_score": 0.92,
+      "example_usage": "Perfect for daily news shows"
+    }
+  ],
+  "total": 1,
+  "query_used": "broadcast evening news"
+}
+```
+
+### **Generate XML from Form**
+```http
+POST /api/xml-generator/generate
+Content-Type: application/json
+
+{
+  "job_type": "BROADCAST",
+  "title": "Heute Show",
+  "description": "Satirische Nachrichten",
+  "duration": "00:30:00",
+  "language": "de",
+  "additional_data": {
+    "presenter": "Oliver Welke",
+    "format": "Comedy"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "xml_content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n<streamworks-job>...",
+  "job_type": "BROADCAST",
+  "title": "Heute Show",
+  "validation_status": "valid",
+  "generation_time_seconds": 2.3,
+  "template_used": "broadcast_template_v1"
+}
+```
+
+### **Generate XML from Template**
+```http
+POST /api/xml-generator/generate-template
+Content-Type: application/json
+
+{
+  "template_id": "tpl-123",
+  "parameters": {
+    "title": "Custom Show",
+    "duration": "01:00:00"
+  }
+}
+```
+
+### **Preview XML Generation**
+```http
+POST /api/xml-generator/preview
+Content-Type: application/json
+
+{
+  "job_type": "BROADCAST",
+  "title": "Preview Show",
+  "description": "Test description"
+}
+```
+
+### **Validate XML Content**
+```http
+POST /api/xml-generator/validate
+Content-Type: application/json
+
+{
+  "xml_content": "<?xml version=\"1.0\"?>\\n<streamworks-job>...</streamworks-job>"
+}
+```
+
+**Response:**
+```json
+{
+  "is_valid": true,
+  "validation_results": [
+    {
+      "type": "success",
+      "message": "XML is valid according to Streamworks schema",
+      "line": null,
+      "column": null
+    }
+  ],
+  "schema_version": "1.0"
+}
+```
+
+### **Parse Natural Language Schedule**
+```http
+POST /api/xml-generator/natural-language/schedule
+Content-Type: application/json
+
+{
+  "text": "jeden Montag um 20:15 Uhr für 30 Minuten"
+}
+```
+
+**Response:**
+```json
+{
+  "schedule_rules": [
+    {
+      "day_of_week": "monday",
+      "time": "20:15:00",
+      "duration_minutes": 30,
+      "confidence": 0.95,
+      "raw_text": "jeden Montag um 20:15 Uhr für 30 Minuten"
+    }
+  ],
+  "parsing_confidence": 0.95
+}
+```
+
+### **Download Template**
+```http
+GET /api/xml-generator/templates/{template_id}/download
+```
+
+**Response:** Binary XML file download
 
 ---
 

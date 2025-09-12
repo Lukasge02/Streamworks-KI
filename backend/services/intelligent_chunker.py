@@ -213,8 +213,12 @@ class IntelligentChunker:
         Returns:
             List of high-quality chunks with metadata
         """
-        if not content or len(content.strip()) < self.config.min_chunk_size:
+        # Early return nur für komplett leeren Content
+        if not content or not content.strip():
             return []
+        
+        # Für sehr kurze Inhalte wird Single-Chunk Fallback später angewendet
+        # Hier nicht mehr früh returnen!
         
         # Get content-specific chunk size
         target_chunk_size = self._get_target_chunk_size(content_type)
@@ -245,10 +249,45 @@ class IntelligentChunker:
         # Phase 3: Quality filtering
         quality_chunks = self._apply_quality_gates(chunks)
         
+        # Phase 3.5: Single-Chunk Fallback - JEDES Dokument bekommt mindestens 1 Chunk!
+        if not quality_chunks and content.strip():
+            logger.warning(f"No chunks passed quality gates - applying Single-Chunk Fallback for {len(content)} chars")
+            fallback_chunk = self._create_single_chunk_fallback(content, metadata or {})
+            quality_chunks = [fallback_chunk]
+        
+        # Phase 3.6: Ultra-Fallback für extrem kurze Texte - GARANTIE für jeden Text!
+        if not quality_chunks and content.strip() and len(content.strip()) >= 5:
+            logger.warning(f"Ultra-Fallback: Creating chunk for very short content ({len(content.strip())} chars)")
+            ultra_fallback = self._create_ultra_fallback_chunk(content, metadata or {})
+            quality_chunks = [ultra_fallback]
+        
         # Phase 4: Overlap optimization
         final_chunks = self._optimize_overlap(quality_chunks, target_chunk_size)
         
-        logger.info(f"Chunking: {len(content)} chars → {len(chunks)} raw → {len(quality_chunks)} quality → {len(final_chunks)} final chunks")
+        # Erweiterte Logging-Statistiken
+        has_fallback = any(chunk.get('metadata', {}).get('chunk_type') == 'fallback' for chunk in final_chunks)
+        relaxed_count = len([c for c in final_chunks if c.get('metadata', {}).get('quality_tier') == 'small_document_relaxed'])
+        
+        logger.info(f"📊 Chunking Results: {len(content)} chars → {len(chunks)} raw → {len(quality_chunks)} quality → {len(final_chunks)} final chunks")
+        
+        if final_chunks:
+            avg_chunk_size = sum(len(c['content']) for c in final_chunks) / len(final_chunks)
+            quality_scores = [c.get('quality_score', 0) for c in final_chunks]
+            avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
+            
+            logger.info(f"📈 Quality Metrics: avg_chunk_size={int(avg_chunk_size)}, avg_quality={avg_quality:.2f}, fallback={has_fallback}, relaxed={relaxed_count}")
+            
+            # Detail-Log für problematische Fälle
+            if has_fallback:
+                logger.warning("⚠️ Single-Chunk Fallback was used - document may have had quality issues")
+            if relaxed_count > 0:
+                logger.info(f"ℹ️ Used relaxed quality gates for {relaxed_count} chunks (small document)")
+        else:
+            logger.error("❌ No chunks created! This should never happen with fallback enabled.")
+        
+        # Content-Type spezifisches Logging
+        if content_type:
+            logger.debug(f"📄 Content-Type: {content_type}, Target Size: {target_chunk_size}")
         
         return final_chunks
     
@@ -471,20 +510,47 @@ class IntelligentChunker:
         return chunks
     
     def _apply_quality_gates(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply quality filters to chunks"""
+        """Apply quality filters to chunks with flexible gates for small documents"""
         quality_chunks = []
+        
+        # Detect if this is likely a small document
+        total_content_length = sum(len(chunk['content']) for chunk in chunks)
+        is_small_document = total_content_length < 1000  # Less than 1KB of text
         
         for chunk in chunks:
             quality = self._assess_chunk_quality(chunk['content'])
             
-            if quality.is_high_quality or quality.is_acceptable:
+            # Standard quality check
+            passes_standard = quality.is_high_quality or quality.is_acceptable
+            
+            # Relaxed quality check for small documents
+            passes_relaxed = False
+            if is_small_document:
+                passes_relaxed = self._is_acceptable_for_small_document(quality)
+            
+            if passes_standard or passes_relaxed:
                 chunk['quality_score'] = self._calculate_quality_score(quality)
                 chunk['quality_metrics'] = quality
+                if passes_relaxed and not passes_standard:
+                    chunk['metadata'] = {**chunk.get('metadata', {}), 'quality_tier': 'small_document_relaxed'}
+                    logger.debug(f"Accepted chunk with relaxed gates (small doc): {quality.word_count} words, {len(chunk['content'])} chars")
                 quality_chunks.append(chunk)
             else:
-                logger.debug(f"Filtered low-quality chunk: {len(chunk['content'])} chars, {quality.word_count} words")
+                logger.debug(f"Filtered low-quality chunk: {len(chunk['content'])} chars, {quality.word_count} words, tier: {quality.quality_tier}")
         
         return quality_chunks
+    
+    def _is_acceptable_for_small_document(self, quality: ChunkQuality) -> bool:
+        """
+        Relaxed quality criteria for small documents
+        Ensures small docs like Kuendigung-Mietvertrag.pdf get chunked
+        """
+        return (
+            quality.word_count >= 5 and           # Sehr niedrige Mindestanforderung (statt 25)
+            quality.sentence_count >= 0 and       # Auch Fragmente erlaubt (statt 1)
+            quality.alpha_ratio >= 0.2 and        # Niedrigere Textqualität OK (statt 0.5)
+            quality.repetition_ratio <= 0.9       # Mehr Wiederholung erlaubt (statt 0.5)
+        )
     
     def _assess_chunk_quality(self, content: str) -> ChunkQuality:
         """Assess quality metrics of a chunk - 2024 enhanced"""
@@ -901,3 +967,116 @@ class IntelligentChunker:
                 bridge = bridge[:150] + "..."
             return bridge
         return ""
+    
+    def _create_single_chunk_fallback(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Erstelle Single-Chunk Fallback für Dokumente ohne normale Chunks
+        GARANTIERT: Jedes Dokument mit Text bekommt mindestens 1 Chunk!
+        """
+        # Bereinige Content
+        cleaned_content = content.strip()
+        
+        # Begrenze sehr lange Inhalte auf max_chunk_size
+        if len(cleaned_content) > self.config.max_chunk_size:
+            # Schneide am letzten Satz ab, wenn möglich
+            truncated = cleaned_content[:self.config.max_chunk_size]
+            last_sentence_end = max(
+                truncated.rfind('.'),
+                truncated.rfind('!'),
+                truncated.rfind('?')
+            )
+            
+            if last_sentence_end > len(truncated) * 0.7:  # Mindestens 70% des Texts behalten
+                cleaned_content = truncated[:last_sentence_end + 1]
+            else:
+                # Fallback: Am letzten Leerzeichen abschneiden
+                last_space = truncated.rfind(' ')
+                if last_space > 0:
+                    cleaned_content = truncated[:last_space]
+                else:
+                    cleaned_content = truncated
+        
+        # Erweiterte Metadaten für Fallback-Chunk
+        fallback_metadata = {
+            **metadata,
+            'chunk_type': 'fallback',
+            'fallback_reason': 'quality_gates_failed',
+            'original_content_length': len(content),
+            'truncated': len(cleaned_content) < len(content.strip()),
+            'processing_timestamp': self._get_timestamp()
+        }
+        
+        # Basis-Qualitäts-Assessment für Logging
+        words = cleaned_content.split()
+        sentences = self._get_sentences(cleaned_content)
+        
+        # Erstelle Chunk
+        fallback_chunk = {
+            'content': cleaned_content,
+            'start_char': 0,
+            'end_char': len(cleaned_content),
+            'metadata': fallback_metadata,
+            'quality_score': 0.3,  # Niedrigere Score für Fallback
+            'quality_metrics': ChunkQuality(
+                word_count=len(words),
+                sentence_count=len(sentences),
+                alpha_ratio=sum(1 for c in cleaned_content if c.isalpha()) / len(cleaned_content) if cleaned_content else 0,
+                repetition_ratio=0.0,  # Nicht berechnet für Fallback
+                semantic_completeness=0.5,  # Standard-Wert für Fallback
+                content_density=1.0,  # Fallback ist immer "dicht"
+                semantic_coherence=0.3,  # Niedriger für ungeprüfte Inhalte
+                contextual_completeness=0.4  # Moderate Vollständigkeit
+            )
+        }
+        
+        logger.info(f"✅ Single-Chunk Fallback created: {len(words)} words, {len(sentences)} sentences, {len(cleaned_content)} chars")
+        
+        return fallback_chunk
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp for metadata"""
+        from datetime import datetime
+        return datetime.utcnow().isoformat()
+    
+    def _create_ultra_fallback_chunk(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Ultra-Fallback für extrem kurze Texte - ABSOLUTE GARANTIE!
+        Selbst für minimale Inhalte wird ein Chunk erstellt
+        """
+        cleaned_content = content.strip()
+        words = cleaned_content.split()
+        
+        # Ultra-minimale Metadaten
+        ultra_metadata = {
+            **metadata,
+            'chunk_type': 'ultra_fallback',
+            'fallback_reason': 'extremely_short_content',
+            'word_count': len(words),
+            'char_count': len(cleaned_content),
+            'processing_timestamp': self._get_timestamp()
+        }
+        
+        # Ultra-minimale Quality Metrics (nur für Konsistenz)
+        ultra_quality = ChunkQuality(
+            word_count=len(words),
+            sentence_count=max(1, len(self._get_sentences(cleaned_content))),
+            alpha_ratio=sum(1 for c in cleaned_content if c.isalpha()) / len(cleaned_content) if cleaned_content else 0,
+            repetition_ratio=0.0,
+            semantic_completeness=0.3,  # Niedrig aber akzeptabel
+            content_density=1.0,
+            semantic_coherence=0.2,
+            contextual_completeness=0.2
+        )
+        
+        ultra_chunk = {
+            'content': cleaned_content,
+            'start_char': 0,
+            'end_char': len(cleaned_content),
+            'metadata': ultra_metadata,
+            'quality_score': 0.2,  # Niedrigste Score aber immer noch gültig
+            'quality_metrics': ultra_quality
+        }
+        
+        logger.info(f"🆘 Ultra-Fallback chunk created: '{cleaned_content[:50]}...', {len(words)} words")
+        
+        return ultra_chunk
