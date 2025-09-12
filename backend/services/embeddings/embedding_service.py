@@ -9,7 +9,6 @@ import numpy as np
 
 from .base import EmbeddingProvider, EmbeddingConfig, EmbeddingException
 from .local_embedder import LocalGammaEmbedder
-from .openai_embedder import OpenAIEmbedder
 from .cache_manager import EmbeddingCacheManager
 from config import settings
 
@@ -20,31 +19,21 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
-    """Hybrid embedding service with local Gamma and OpenAI support with performance caching"""
+    """Local Gamma embedding service with performance caching"""
     
     def __init__(self):
-        # Configuration
-        self.provider = EmbeddingProvider(getattr(settings, 'EMBEDDING_PROVIDER', 'gamma'))
-        self.enable_fallback = getattr(settings, 'ENABLE_EMBEDDING_FALLBACK', True)
+        # Configuration - force to gamma only
+        self.provider = EmbeddingProvider.GAMMA
         
-        # Initialize embedders
+        # Initialize local embedder
         self.local_embedder = None
-        self.openai_embedder = None
         
-        # Setup OpenAI embedder
-        self.openai_embedder = OpenAIEmbedder(
-            api_key=settings.OPENAI_API_KEY,
-            model=settings.EMBEDDING_MODEL
-        )
-        
-        # Setup local embedder if available
+        # Setup local embedder
         try:
             self.local_embedder = LocalGammaEmbedder()
         except Exception as e:
-            logger.warning(f"Local embedder not available: {e}")
-            if self.provider == EmbeddingProvider.GAMMA:
-                logger.warning("Falling back to OpenAI provider")
-                self.provider = EmbeddingProvider.OPENAI
+            logger.error(f"Local embedder initialization failed: {e}")
+            raise EmbeddingException(f"Failed to initialize local embedder: {e}")
         
         # Cache manager
         self.cache_manager = EmbeddingCacheManager(
@@ -57,29 +46,19 @@ class EmbeddingService:
         self.stats = {
             "total_embeddings": 0,
             "cache_hits": 0,
-            "local_embeddings": 0,
-            "openai_embeddings": 0,
-            "fallback_count": 0
+            "local_embeddings": 0
         }
         
-        logger.info(f"EmbeddingService initialized with provider: {self.provider.value}")
+        logger.info(f"EmbeddingService initialized with local Gamma provider: {self.provider.value}")
     
     async def initialize(self) -> None:
         """Initialize embedding service"""
-        if self.openai_embedder:
-            await self.openai_embedder.initialize()
-        
         if self.local_embedder:
-            try:
-                await self.local_embedder.initialize()
-            except Exception as e:
-                logger.warning(f"Local embedder initialization failed: {e}")
+            await self.local_embedder.initialize()
+            logger.info("Local Gamma embedder initialized successfully")
     
     async def cleanup(self) -> None:
         """Cleanup resources"""
-        if self.openai_embedder:
-            await self.openai_embedder.cleanup()
-        
         if self.local_embedder:
             await self.local_embedder.cleanup()
         
@@ -145,7 +124,7 @@ class EmbeddingService:
         if not chunks:
             return chunks
         
-        logger.info(f"Embedding {len(chunks)} chunks using {self.provider.value} provider")
+        logger.info(f"Embedding {len(chunks)} chunks using local Gamma provider")
         start_time = time.time()
         
         # Prepare texts and check cache
@@ -170,27 +149,15 @@ class EmbeddingService:
         new_embeddings = []
         if texts_to_embed:
             try:
-                if self.provider == EmbeddingProvider.GAMMA:
-                    new_embeddings = await self._embed_with_local(texts_to_embed)
-                elif self.provider == EmbeddingProvider.OPENAI:
-                    new_embeddings = await self._embed_with_openai(texts_to_embed)
-                else:  # HYBRID
-                    # Try local first, fallback to OpenAI
-                    try:
-                        new_embeddings = await self._embed_with_local(texts_to_embed)
-                    except Exception as e:
-                        logger.warning(f"Local embedding failed, using OpenAI: {e}")
-                        new_embeddings = await self._embed_with_openai(texts_to_embed)
-                        self.stats["fallback_count"] += 1
+                new_embeddings = await self._embed_with_local(texts_to_embed)
                 
                 # Cache new embeddings
                 for text, embedding in zip(texts_to_embed, new_embeddings):
                     self.cache_manager.cache_embedding(text, embedding)
                     
             except Exception as e:
-                logger.error(f"Embedding generation failed: {e}")
-                # Generate temporary embeddings as fallback
-                new_embeddings = [await self._generate_temp_embedding(text) for text in texts_to_embed]
+                logger.error(f"Local embedding generation failed: {e}")
+                raise EmbeddingException(f"Failed to generate embeddings: {e}")
         
         # Assign embeddings to chunks
         embedding_idx = 0
@@ -201,10 +168,20 @@ class EmbeddingService:
                 embedding = new_embeddings[embedding_idx]
                 embedding_idx += 1
             
-            # Add embedding to chunk
+            # Add embedding to chunk (compatible with VectorStore expectations)
             if isinstance(chunk, DocumentChunk):
                 chunk.embedding = embedding
+                # Also add to metadata for VectorStore compatibility
+                if not hasattr(chunk, 'metadata'):
+                    chunk.metadata = {}
+                chunk.metadata['embedding'] = embedding
             elif isinstance(chunk, dict):
+                # Ensure metadata exists
+                if 'metadata' not in chunk:
+                    chunk['metadata'] = {}
+                # Store embedding in metadata for VectorStore
+                chunk['metadata']['embedding'] = embedding
+                # Also store directly for backward compatibility
                 chunk['embedding'] = embedding
             
             self.stats["total_embeddings"] += 1
@@ -229,49 +206,7 @@ class EmbeddingService:
         self.stats["local_embeddings"] += len(embeddings)
         return embeddings
     
-    async def _embed_with_openai(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings using OpenAI"""
-        if not self.openai_embedder:
-            raise EmbeddingException("OpenAI embedder not configured")
-        
-        # Use retry logic for rate limiting
-        embeddings = await self.openai_embedder.embed_texts_with_retry(texts)
-        self.stats["openai_embeddings"] += len(embeddings)
-        return embeddings
     
-    async def _generate_temp_embedding(self, text: str) -> List[float]:
-        """
-        Generate temporary embedding as fallback
-        Uses simple hashing for consistent results
-        """
-        import hashlib
-        
-        # Create deterministic embedding from text hash
-        text_hash = hashlib.sha256(text.encode()).hexdigest()
-        
-        # Generate 1536-dimensional embedding (OpenAI dimension)
-        embedding = []
-        for i in range(0, len(text_hash), 2):
-            hex_pair = text_hash[i:i+2]
-            value = int(hex_pair, 16) / 255.0 - 0.5  # Normalize to [-0.5, 0.5]
-            embedding.append(value)
-        
-        # Pad or truncate to correct dimension
-        target_dim = 1536
-        if len(embedding) < target_dim:
-            # Repeat pattern to fill
-            while len(embedding) < target_dim:
-                embedding.extend(embedding[:min(len(embedding), target_dim - len(embedding))])
-        else:
-            embedding = embedding[:target_dim]
-        
-        # Normalize
-        norm = np.linalg.norm(embedding)
-        if norm > 0:
-            embedding = (np.array(embedding) / norm).tolist()
-        
-        logger.warning("Generated temporary embedding as fallback")
-        return embedding
     
     async def embed_query(self, query: str) -> List[float]:
         """
@@ -290,65 +225,25 @@ class EmbeddingService:
             return cached
         
         try:
-            embedding = None
+            if not self.local_embedder:
+                raise EmbeddingException("Local embedder not initialized")
             
-            if self.provider == EmbeddingProvider.GAMMA:
-                if self.local_embedder:
-                    loop = asyncio.get_event_loop()
-                    embedding = await loop.run_in_executor(
-                        None, 
-                        self.local_embedder.embed_query_sync, 
-                        query
-                    )
-                    self.stats["local_embeddings"] += 1
-                elif self.enable_fallback and self.openai_embedder:
-                    embedding = await self.openai_embedder.embed_query(query)
-                    self.stats["openai_embeddings"] += 1
-                    self.stats["fallback_count"] += 1
-                    
-            elif self.provider == EmbeddingProvider.OPENAI:
-                if self.openai_embedder:
-                    embedding = await self.openai_embedder.embed_query(query)
-                    self.stats["openai_embeddings"] += 1
-                    
-            else:  # HYBRID
-                # Try local first
-                if self.local_embedder:
-                    try:
-                        loop = asyncio.get_event_loop()
-                        embedding = await loop.run_in_executor(
-                            None,
-                            self.local_embedder.embed_query_sync,
-                            query
-                        )
-                        self.stats["local_embeddings"] += 1
-                    except Exception as e:
-                        logger.warning(f"Local query embedding failed: {e}")
-                        if self.openai_embedder:
-                            embedding = await self.openai_embedder.embed_query(query)
-                            self.stats["openai_embeddings"] += 1
-                            self.stats["fallback_count"] += 1
-                elif self.openai_embedder:
-                    embedding = await self.openai_embedder.embed_query(query)
-                    self.stats["openai_embeddings"] += 1
+            loop = asyncio.get_event_loop()
+            embedding = await loop.run_in_executor(
+                None, 
+                self.local_embedder.embed_query_sync, 
+                query
+            )
+            self.stats["local_embeddings"] += 1
             
-            if embedding:
-                # Cache the embedding
-                self.cache_manager.cache_embedding(query, embedding)
-                self.stats["total_embeddings"] += 1
-                return embedding
-            else:
-                # Fallback to temporary embedding
-                embedding = await self._generate_temp_embedding(query)
-                self.stats["total_embeddings"] += 1
-                return embedding
-                
-        except Exception as e:
-            logger.error(f"Query embedding failed: {e}")
-            # Generate temporary embedding as last resort
-            embedding = await self._generate_temp_embedding(query)
+            # Cache the embedding
+            self.cache_manager.cache_embedding(query, embedding)
             self.stats["total_embeddings"] += 1
             return embedding
+                
+        except Exception as e:
+            logger.error(f"Local query embedding failed: {e}")
+            raise EmbeddingException(f"Failed to generate query embedding: {e}")
     
     def get_embedding(self, query: str) -> List[float]:
         """
@@ -373,11 +268,8 @@ class EmbeddingService:
         return {
             "service": {
                 "provider": self.provider.value,
-                "fallback_enabled": self.enable_fallback,
                 "total_embeddings": self.stats["total_embeddings"],
-                "local_embeddings": self.stats["local_embeddings"],
-                "openai_embeddings": self.stats["openai_embeddings"],
-                "fallback_count": self.stats["fallback_count"]
+                "local_embeddings": self.stats["local_embeddings"]
             },
             "cache": cache_stats
         }

@@ -35,23 +35,24 @@ class ChunkingConfig:
     """Konfiguration für intelligentes Chunking - 2024 RAG Best Practices"""
     
     # Base settings - RAG-optimierte Größen für bessere Retrieval-Performance
-    min_chunk_size: int = 200      # ~50 tokens minimum für meaningful content
+    min_chunk_size: int = 50       # Reduziert von 200 - akzeptiert kleinere Dokumente
     max_chunk_size: int = 1000     # ~250 tokens maximum (RAG sweet spot)
     target_chunk_size: int = 600   # ~150 tokens target (optimal für RAG)
     overlap_ratio: float = 0.15    # 15% overlap für bessere context continuity
     
-    # Content-type specific - RAG-optimiert für bessere Retrieval-Performance
-    pdf_chunk_size: int = 700      # RAG-optimal für PDF-Inhalte
-    text_chunk_size: int = 600     # RAG-optimal für Text-Retrieval
-    html_chunk_size: int = 650     # RAG-optimal für HTML-Inhalte
-    code_chunk_size: int = 500     # Kompakter für bessere Code-Verständlichkeit
-    markdown_chunk_size: int = 600 # RAG-optimal für Markdown
+    # Content-type specific - RAG-optimiert basierend auf Performance-Tests
+    pdf_chunk_size: int = 650      # Optimiert für strukturierte PDF-Inhalte
+    text_chunk_size: int = 600     # Perfect RAG sweet spot für plain text
+    html_chunk_size: int = 800     # Erhöht von 550 - weniger Fragmentierung
+    code_chunk_size: int = 450     # Kompakt für bessere Code-Lesbarkeit
+    markdown_chunk_size: int = 600 # Standard RAG-optimal für Markdown
+    table_chunk_size: int = 800    # Erhöht von 500 - bessere Tabellen-Chunks
     
     # Quality gates - 2024 optimiert für semantic coherence
-    min_word_count: int = 25       # ~6-7 tokens minimum
-    min_sentence_count: int = 1    # Ein vollständiger Satz minimum
+    min_word_count: int = 10       # Reduziert von 25 - akzeptiert Mini-Dokumente
+    min_sentence_count: int = 0    # Reduziert von 1 - erlaubt Fragmente
     max_repetition_ratio: float = 0.3  # Weniger Redundanz
-    min_alpha_ratio: float = 0.6   # Realistischer threshold für diverse content
+    min_alpha_ratio: float = 0.5   # Reduziert von 0.6 - flexibler für diverse content
     
     # 2024 RAG-spezifische Quality Gates
     target_word_count: int = 200   # ~50 tokens target (sweet spot für retrieval)
@@ -260,10 +261,37 @@ class IntelligentChunker:
             quality_chunks = self._enhance_mini_documents(quality_chunks, content)
         
         # Phase 3.6: Ultra-Fallback für extrem kurze Texte - GARANTIE für jeden Text!
-        if not quality_chunks and content.strip() and len(content.strip()) >= 5:
+        if not quality_chunks and content.strip() and len(content.strip()) >= 1:
             logger.warning(f"Ultra-Fallback: Creating chunk for very short content ({len(content.strip())} chars)")
             ultra_fallback = self._create_ultra_fallback_chunk(content, metadata or {})
             quality_chunks = [ultra_fallback]
+        
+        # Phase 3.8: Absolute Fallback - JEDES Dokument bekommt mindestens 1 Chunk!
+        if not quality_chunks:
+            logger.warning(f"Absolute Fallback: Creating chunk for document with no content or failed processing")
+            absolute_fallback = {
+                'content': content.strip() if content.strip() else "[Empty Document]",
+                'start_char': 0,
+                'end_char': len(content) if content else 0,
+                'metadata': {
+                    **(metadata or {}),
+                    'chunk_type': 'absolute_fallback',
+                    'fallback_reason': 'no_content_or_processing_failed',
+                    'processing_timestamp': self._get_timestamp()
+                },
+                'quality_score': 0.1,
+                'quality_metrics': ChunkQuality(
+                    word_count=len(content.split()) if content else 0,
+                    sentence_count=0,
+                    alpha_ratio=0.0,
+                    repetition_ratio=0.0,
+                    semantic_completeness=0.1,
+                    content_density=0.1,
+                    semantic_coherence=0.1,
+                    contextual_completeness=0.1
+                )
+            }
+            quality_chunks = [absolute_fallback]
         
         # Phase 4: Overlap optimization
         final_chunks = self._optimize_overlap(quality_chunks, target_chunk_size)
@@ -303,7 +331,7 @@ class IntelligentChunker:
             ContentType.HTML: self.config.html_chunk_size,
             ContentType.CODE: self.config.code_chunk_size,
             ContentType.MARKDOWN: self.config.markdown_chunk_size,
-            ContentType.TABLE: self.config.text_chunk_size
+            ContentType.TABLE: self.config.table_chunk_size
         }
         return size_map.get(content_type, self.config.target_chunk_size)
     

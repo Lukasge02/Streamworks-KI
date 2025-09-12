@@ -79,16 +79,20 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
           <div key={chapter.id} className="space-y-1">
             {/* Chapter Header */}
             <div
-              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+              className={`flex items-center justify-between p-3 rounded-lg transition-all duration-200 border ${
                 isCurrentChapter
                   ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700'
                   : chapter.isCompleted
                   ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700'
                   : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
               }`}
-              onClick={() => onToggleChapter(chapter.id)}
             >
-              <div className="flex items-center space-x-3">
+              {/* Clickable area for chapter navigation */}
+              <div 
+                className="flex items-center space-x-3 flex-1 cursor-pointer"
+                onClick={() => onChapterClick(chapter.id)}
+                title={`Zu ${chapter.title} Übersicht`}
+              >
                 {/* Chapter Icon */}
                 <div className={`flex-shrink-0 p-1 rounded ${
                   isCurrentChapter
@@ -121,7 +125,14 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
               </div>
 
               {/* Expand/Collapse Icon */}
-              <div className="flex items-center space-x-2">
+              <div 
+                className="flex items-center space-x-2 cursor-pointer p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                onClick={(e) => {
+                  e.stopPropagation() // Prevent chapter navigation
+                  onToggleChapter(chapter.id)
+                }}
+                title={isExpanded ? "Kapitel zuklappen" : "Kapitel aufklappen"}
+              >
                 {/* Completion Status */}
                 {chapter.isCompleted && (
                   <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />

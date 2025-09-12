@@ -404,4 +404,40 @@ class DocumentChunkService:
         except Exception as e:
             logger.error(f"Failed to cleanup orphaned chunks: {str(e)}")
             await db.rollback()
+            raise    
+    async def delete_document_chunks(
+        self,
+        db: AsyncSession,
+        document_id: UUID
+    ) -> int:
+        """
+        Delete all chunks for a specific document
+        
+        Args:
+            db: Database session
+            document_id: Document UUID
+            
+        Returns:
+            Number of chunks deleted
+        """
+        try:
+            # Count chunks before deletion for logging
+            count_query = select(func.count()).select_from(DocumentChunk).where(
+                DocumentChunk.document_id == document_id
+            )
+            result = await db.execute(count_query)
+            chunk_count = result.scalar()
+            
+            # Delete all chunks for the document
+            delete_query = delete(DocumentChunk).where(
+                DocumentChunk.document_id == document_id
+            )
+            await db.execute(delete_query)
+            await db.flush()
+            
+            logger.info(f"Deleted {chunk_count} chunks for document {document_id}")
+            return chunk_count
+            
+        except Exception as e:
+            logger.error(f"Failed to delete chunks for document {document_id}: {str(e)}")
             raise

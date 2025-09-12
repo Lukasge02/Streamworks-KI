@@ -24,6 +24,11 @@ import SchedulingStep from './steps/SchedulingStep'
 import ReviewStep from './steps/ReviewStep'
 import ChapterNavigation from './ChapterNavigation'
 
+// Import overview components
+import StreamPropertiesOverview from './steps/StreamPropertiesOverview'
+import JobConfigurationOverview from './steps/JobConfigurationOverview'
+import SchedulingOverview from './steps/SchedulingOverview'
+
 interface WizardFormProps {
   onXMLGenerated?: (xmlContent: string, validationResults?: any) => void
   className?: string
@@ -35,16 +40,19 @@ interface WizardFormProps {
 const getStepComponent = (chapterId: string, subChapterId: string) => {
   switch (chapterId) {
     case 'stream-properties':
+      if (!subChapterId || subChapterId === '') return StreamPropertiesOverview
       return StreamPropertiesStep
     case 'job-configuration':
+      if (!subChapterId || subChapterId === '') return JobConfigurationOverview
       if (subChapterId === 'job-type') return JobTypeStep
       return JobConfigurationStep
     case 'scheduling':
+      if (!subChapterId || subChapterId === '') return SchedulingOverview
       return SchedulingStep
     case 'review':
       return ReviewStep
     default:
-      return StreamPropertiesStep
+      return StreamPropertiesOverview
   }
 }
 
@@ -78,15 +86,8 @@ export const WizardForm: React.FC<WizardFormProps> = ({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             XML Generator
           </h2>
-          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             <span>Kapitel: {wizard.state.chapters.find(c => c.id === wizard.state.currentChapter)?.title}</span>
-            <span>{wizard.getProgress()}%</span>
-          </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
-            <div 
-              className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${wizard.getProgress()}%` }}
-            />
           </div>
         </div>
 

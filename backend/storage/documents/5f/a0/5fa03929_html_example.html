@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produktübersicht - E-Commerce Platform</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .header { background: #f4f4f4; padding: 20px; margin-bottom: 30px; }
+        .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .product-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+        .price { color: #e74c3c; font-weight: bold; font-size: 1.2em; }
+        .footer { margin-top: 50px; text-align: center; color: #666; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Willkommen zu unserem Online-Shop</h1>
+        <p>Entdecken Sie unsere neuesten Produkte und Angebote für das Jahr 2024.</p>
+        <nav>
+            <a href="#elektronik">Elektronik</a> | 
+            <a href="#haushalt">Haushalt</a> | 
+            <a href="#sport">Sport</a>
+        </nav>
+    </header>
+
+    <main>
+        <section id="elektronik">
+            <h2>Elektronik-Highlights</h2>
+            <div class="product-grid">
+                <div class="product-card">
+                    <h3>Premium Laptop Pro</h3>
+                    <p>Hochleistungslaptop mit 16GB RAM und 512GB SSD. Ideal für professionelle Anwendungen und Gaming.</p>
+                    <div class="price">€ 1.299,99</div>
+                    <button onclick="addToCart('laptop-pro')">In den Warenkorb</button>
+                </div>
+                
+                <div class="product-card">
+                    <h3>Smartphone Ultra X</h3>
+                    <p>Das neueste Smartphone mit 108MP Kamera, 5G-Unterstützung und wasserdichtem Design.</p>
+                    <div class="price">€ 899,99</div>
+                    <button onclick="addToCart('smartphone-ultra')">In den Warenkorb</button>
+                </div>
+                
+                <div class="product-card">
+                    <h3>Gaming Monitor 4K</h3>
+                    <p>27 Zoll 4K Monitor mit 144Hz Bildwiederholrate und HDR-Unterstützung für Gamer.</p>
+                    <div class="price">€ 549,99</div>
+                    <button onclick="addToCart('gaming-monitor')">In den Warenkorb</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="haushalt">
+            <h2>Haushalt & Wohnen</h2>
+            <p>Machen Sie Ihr Zuhause noch komfortabler mit unseren praktischen Haushaltsprodukten.</p>
+            
+            <div class="product-grid">
+                <div class="product-card">
+                    <h3>Kaffeemaschine Deluxe</h3>
+                    <p>Vollautomatische Kaffeemaschine mit integriertem Mahlwerk und Milchschäumer.</p>
+                    <div class="price">€ 399,99</div>
+                </div>
+                
+                <div class="product-card">
+                    <h3>Staubsauger Roboter</h3>
+                    <p>Intelligenter Saugroboter mit App-Steuerung und automatischer Rückkehr zur Ladestation.</p>
+                    <div class="price">€ 299,99</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sport">
+            <h2>Sport & Fitness</h2>
+            <p>Bleiben Sie fit und gesund mit unserer Auswahl an Sportartikeln und Fitnessgeräten.</p>
+            
+            <ul>
+                <li>Laufbänder ab € 499,99</li>
+                <li>Hanteln und Gewichte ab € 29,99</li>
+                <li>Yoga-Matten ab € 19,99</li>
+                <li>Fitness-Tracker ab € 89,99</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 E-Commerce Platform. Alle Rechte vorbehalten.</p>
+        <p>
+            <a href="/impressum">Impressum</a> | 
+            <a href="/datenschutz">Datenschutz</a> | 
+            <a href="/agb">AGB</a>
+        </p>
+    </footer>
+
+    <script>
+        function addToCart(productId) {
+            console.log('Produkt zum Warenkorb hinzugefügt:', productId);
+            alert('Produkt wurde zum Warenkorb hinzugefügt!');
+            
+            // Hier würde normalerweise eine API-Anfrage an den Server gesendet
+            // fetch('/api/cart/add', { method: 'POST', body: JSON.stringify({productId}) })
+        }
+
+        // Scroll-Animation für smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>

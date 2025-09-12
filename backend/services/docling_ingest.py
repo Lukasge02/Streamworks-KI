@@ -558,19 +558,96 @@ class DoclingIngestService:
         return table_chunks
     
     def _table_to_text(self, table) -> str:
-        """Convert table object to readable text"""
+        """Convert table object to readable text - Enhanced for Docling tables"""
         try:
-            # Basic table to text conversion
-            if hasattr(table, 'data') and table.data:
+            # Handle Docling table format
+            if hasattr(table, 'table_cells') and table.table_cells:
+                # Docling tables have table_cells list with TableCell objects
+                num_rows = getattr(table, 'num_rows', 0)
+                num_cols = getattr(table, 'num_cols', 0)
+                
+                if num_rows == 0 or num_cols == 0:
+                    # Fallback to string representation
+                    return str(table)
+                
+                # Create 2D array to organize cells
+                grid = [['' for _ in range(num_cols)] for _ in range(num_rows)]
+                
+                # Fill grid with cell text
+                for cell in table.table_cells:
+                    try:
+                        # Extract cell position and text
+                        row_idx = getattr(cell, 'start_row_offset_idx', None)
+                        col_idx = getattr(cell, 'start_col_offset_idx', None)
+                        cell_text = getattr(cell, 'text', '')
+                        
+                        if row_idx is not None and col_idx is not None:
+                            if 0 <= row_idx < num_rows and 0 <= col_idx < num_cols:
+                                grid[row_idx][col_idx] = str(cell_text).strip()
+                    except Exception as e:
+                        logger.debug(f"Error processing table cell: {str(e)}")
+                        continue
+                
+                # Convert grid to readable text format
+                table_lines = []
+                
+                # Add each row
+                for row_idx, row in enumerate(grid):
+                    # Clean up empty cells
+                    cleaned_row = [cell if cell else '-' for cell in row]
+                    row_text = " | ".join(cleaned_row)
+                    table_lines.append(row_text)
+                    
+                    # Add separator after header row (first row)
+                    if row_idx == 0 and len(table_lines) > 0:
+                        separator = "-+-".join(['-' * max(10, len(cell)) for cell in cleaned_row])
+                        table_lines.append(separator)
+                
+                # Join all lines
+                result = "\n".join(table_lines)
+                
+                # Validate result is reasonable size
+                if len(result) > 5000:
+                    # Too large - create summary instead
+                    logger.warning(f"Table too large ({len(result)} chars), creating summary")
+                    summary_lines = []
+                    summary_lines.append(f"[Large Table: {num_rows} rows x {num_cols} columns]")
+                    
+                    # Include first 3 rows as preview
+                    for i in range(min(3, len(grid))):
+                        row_text = " | ".join([str(cell)[:20] + ('...' if len(str(cell)) > 20 else '') for cell in grid[i]])
+                        summary_lines.append(row_text)
+                    
+                    if num_rows > 3:
+                        summary_lines.append(f"... and {num_rows - 3} more rows")
+                    
+                    return "\n".join(summary_lines)
+                
+                return result
+            
+            # Handle traditional table.data format (fallback)
+            elif hasattr(table, 'data') and table.data:
                 rows = []
                 for row in table.data:
                     row_text = " | ".join(str(cell) for cell in row)
                     rows.append(row_text)
                 return "\n".join(rows)
+            
             else:
-                return str(table)
-        except:
-            return str(table)
+                # Last resort - string representation
+                table_str = str(table)
+                # But limit size
+                if len(table_str) > 5000:
+                    return table_str[:5000] + "\n[Table truncated...]"
+                return table_str
+                
+        except Exception as e:
+            logger.warning(f"Error converting table to text: {str(e)}")
+            # Return truncated string representation
+            table_str = str(table)
+            if len(table_str) > 2000:
+                return table_str[:2000] + "\n[Table data truncated due to conversion error]"
+            return table_str
     
     def _parse_markdown_sections(self, content: str) -> List[Dict[str, str]]:
         """Parse markdown content into sections by headers"""

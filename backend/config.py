@@ -18,16 +18,15 @@ class Settings(BaseSettings):
     # Project Paths
     PROJECT_ROOT: Path = Path(__file__).parent.parent  # Points to project root
     
-    # OpenAI Configuration
+    # OpenAI Configuration (kept for other services that still use it)
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")  # Unused but kept for compatibility
     
-    # Local Embedding Configuration (Gamma)
-    EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "gamma")  # gamma|openai|hybrid
+    # Local Embedding Configuration (Gamma only) - No OpenAI dependencies
+    EMBEDDING_PROVIDER: str = "gamma"  # Fixed to gamma only
     GAMMA_MODEL_NAME: str = os.getenv("GAMMA_MODEL_NAME", "google/embeddinggemma-300m")
     LOCAL_EMBEDDING_DEVICE: str = os.getenv("LOCAL_EMBEDDING_DEVICE", "auto")  # auto|cpu|cuda|mps
     BATCH_SIZE_LOCAL: int = int(os.getenv("BATCH_SIZE_LOCAL", "32"))
-    ENABLE_EMBEDDING_FALLBACK: bool = os.getenv("ENABLE_EMBEDDING_FALLBACK", "true").lower() == "true"
     
     # Enhanced Embedding Cache Configuration - Optimized for better performance
     EMBEDDING_CACHE_SIZE: int = int(os.getenv("EMBEDDING_CACHE_SIZE", "1500"))  # Optimized size
@@ -128,13 +127,14 @@ class Settings(BaseSettings):
     MAX_CHUNK_SIZE: int = int(os.getenv("MAX_CHUNK_SIZE", "3000"))  # Maximum chunk size
     MIN_WORD_COUNT: int = int(os.getenv("MIN_WORD_COUNT", "20"))  # Minimum words per chunk
     
-    # RAG Pipeline Settings - Optimized for better quality
+    # RAG Pipeline Settings - Calibrated for Gamma Embeddings (2025-01-13)
+    # Based on empirical testing: similarity range 0.001-0.252, optimal around 0.05-0.08
     TOP_K_RETRIEVAL: int = int(os.getenv("TOP_K_RETRIEVAL", "10"))
-    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.3"))  # Improved from 0.1
+    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.08"))  # Balanced threshold for Gamma
     
-    # Advanced RAG Thresholds
-    HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.7"))  # For high-confidence answers
-    FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.15"))  # Minimum for any answer
+    # Advanced RAG Thresholds - Calibrated for Gamma Embeddings  
+    HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.18"))  # High quality for Gamma
+    FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.02"))  # Very permissive fallback
     
     # Model Settings
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")

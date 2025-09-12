@@ -260,19 +260,29 @@ export const useWizardState = ({
   const nextStep = useCallback(() => {
     setState(prev => {
       const nextStep = Math.min(prev.currentStep + 1, totalSteps)
+      const { chapterId, subChapterId } = getChapterFromStep(nextStep)
       return {
         ...prev,
         currentStep: nextStep,
+        currentChapter: chapterId,
+        currentSubChapter: subChapterId,
         canProceed: validateFormData(prev.formData, nextStep)
       }
     })
   }, [totalSteps])
 
   const previousStep = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      currentStep: Math.max(prev.currentStep - 1, 1)
-    }))
+    setState(prev => {
+      const prevStep = Math.max(prev.currentStep - 1, 1)
+      const { chapterId, subChapterId } = getChapterFromStep(prevStep)
+      return {
+        ...prev,
+        currentStep: prevStep,
+        currentChapter: chapterId,
+        currentSubChapter: subChapterId,
+        canProceed: validateFormData(prev.formData, prevStep)
+      }
+    })
   }, [])
 
   const canGoNext = useCallback(() => {
@@ -377,20 +387,59 @@ export const useWizardState = ({
     return validateFormData(state.formData, 5) && !!state.generatedXML
   }, [state.formData, state.generatedXML])
 
+  // Chapter/Step mapping utility functions
+  const getStepFromChapter = (chapterId: string, subChapterId: string): number => {
+    // Map chapter/subChapter combinations to step numbers
+    const mapping: Record<string, number> = {
+      'stream-properties:': 1, // Overview
+      'stream-properties:basic-info': 1,
+      'stream-properties:contact-person': 1,
+      'job-configuration:': 2, // Overview
+      'job-configuration:job-type': 2,
+      'job-configuration:job-parameters': 3,
+      'job-configuration:advanced-options': 3,
+      'scheduling:': 4, // Overview
+      'scheduling:simple': 4,
+      'scheduling:advanced': 4,
+      'review:': 5 // Overview
+    }
+    
+    const key = `${chapterId}:${subChapterId}`
+    return mapping[key] || mapping[`${chapterId}:`] || 1
+  }
+
+  const getChapterFromStep = (step: number): { chapterId: string; subChapterId: string } => {
+    const mapping: Record<number, { chapterId: string; subChapterId: string }> = {
+      1: { chapterId: 'stream-properties', subChapterId: 'basic-info' },
+      2: { chapterId: 'job-configuration', subChapterId: 'job-type' },
+      3: { chapterId: 'job-configuration', subChapterId: 'job-parameters' },
+      4: { chapterId: 'scheduling', subChapterId: '' },
+      5: { chapterId: 'review', subChapterId: '' }
+    }
+    
+    return mapping[step] || { chapterId: 'stream-properties', subChapterId: 'basic-info' }
+  }
+
   // Chapter navigation functions
   const navigateToChapter = useCallback((chapterId: string) => {
+    const step = getStepFromChapter(chapterId, '')
     setState(prev => ({
       ...prev,
       currentChapter: chapterId,
-      currentSubChapter: prev.chapters.find(c => c.id === chapterId)?.subChapters[0]?.id || ''
+      currentSubChapter: '', // Empty for overview
+      currentStep: step,
+      canProceed: validateFormData(prev.formData, step)
     }))
   }, [])
 
   const navigateToSubChapter = useCallback((chapterId: string, subChapterId: string) => {
+    const step = getStepFromChapter(chapterId, subChapterId)
     setState(prev => ({
       ...prev,
       currentChapter: chapterId,
-      currentSubChapter: subChapterId
+      currentSubChapter: subChapterId,
+      currentStep: step,
+      canProceed: validateFormData(prev.formData, step)
     }))
   }, [])
 
