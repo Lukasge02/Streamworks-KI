@@ -166,12 +166,17 @@ SUPABASE_DB_URL=postgresql://streamworks:password@localhost:5432/streamworks
 # backend/config.py Beispiel-Konfiguration
 
 # Embedding Model (lokal oder API)
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # Lokales Model
-# EMBEDDING_MODEL = "text-embedding-ada-002"  # OpenAI API
+EMBEDDING_PROVIDER = "gamma"  # gamma, openai, hybrid
+GAMMA_MODEL_NAME = "google/embeddinggemma-300m"  # Lokales Gamma Model
+# EMBEDDING_MODEL = "text-embedding-3-large"  # OpenAI API
 
 # Chat Model Configuration
 CHAT_MODEL = "ollama/llama2"  # Lokales Ollama Model
 # CHAT_MODEL = "gpt-3.5-turbo"  # OpenAI API
+
+# XML Generation (NEW)
+OLLAMA_BASE_URL = "http://localhost:11434"  # Ollama API URL
+XML_GENERATION_MODEL = "llama2"  # Modell für XML-Generierung
 
 # Reranker Configuration  
 RERANKER_TYPE = "local"  # local, cohere
@@ -190,6 +195,43 @@ CHROMA_CONFIG = {
 # Upload Processing
 CONCURRENT_UPLOADS = 3  # Parallel document processing
 BATCH_SIZE = 50  # Batch size for embeddings
+```
+
+---
+
+## 🤖 **Ollama Setup für XML-Generierung**
+
+### **Ollama Installation**
+```bash
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Windows
+# Download von https://ollama.ai/download
+```
+
+### **Modelle herunterladen**
+```bash
+# Llama2 für XML-Generierung
+ollama pull llama2
+
+# CodeLlama für bessere Code-Generierung (optional)
+ollama pull codellama
+
+# Ollama starten (läuft standardmäßig auf Port 11434)
+ollama serve
+```
+
+### **Test der Ollama Integration**
+```bash
+# Test ob Ollama läuft
+curl http://localhost:11434/api/tags
+
+# XML-Generator API testen
+curl -X POST http://localhost:8000/api/xml-generator/job-types
 ```
 
 ---
@@ -215,6 +257,15 @@ services:
     ports:
       - "5432:5432"
 
+  # Ollama (für XML-Generierung)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    command: ["ollama", "serve"]
+
   # Backend
   backend:
     build: ./backend
@@ -223,10 +274,12 @@ services:
     environment:
       - SUPABASE_DB_URL=postgresql://streamworks:password@postgres:5432/streamworks
       - STORAGE_PATH=/app/storage
+      - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - ./storage:/app/storage
     depends_on:
       - postgres
+      - ollama
 
   # Frontend  
   frontend:
@@ -240,6 +293,7 @@ services:
 
 volumes:
   postgres_data:
+  ollama_data:
 ```
 
 #### **2. Backend Dockerfile**

@@ -168,6 +168,8 @@ export interface WizardStepProps {
   onPrevious: () => void
   canProceed: boolean
   isLastStep: boolean
+  // Chapter navigation functions
+  navigateToSubChapter?: (chapterId: string, subChapterId: string) => void
 }
 
 // API Types - mirroring backend schemas

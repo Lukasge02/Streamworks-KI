@@ -143,6 +143,7 @@ export const WizardForm: React.FC<WizardFormProps> = ({
               onPrevious={wizard.previousStep}
               canProceed={wizard.canGoNext}
               isLastStep={wizard.state.currentStep === wizard.state.totalSteps}
+              navigateToSubChapter={wizard.navigateToSubChapter}
             />
           )}
         </div>

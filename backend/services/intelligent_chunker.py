@@ -34,18 +34,18 @@ class ContentType(str, Enum):
 class ChunkingConfig:
     """Konfiguration für intelligentes Chunking - 2024 RAG Best Practices"""
     
-    # Base settings - 2024 optimierte Größen (~250 tokens ≈ 1000 chars)
-    min_chunk_size: int = 150      # ~37 tokens minimum für meaningful content
-    max_chunk_size: int = 1200     # ~300 tokens maximum (2024 sweet spot)
-    target_chunk_size: int = 1000  # ~250 tokens target (2024 recommendation)
-    overlap_ratio: float = 0.15    # 15% overlap für context continuity
+    # Base settings - RAG-optimierte Größen für bessere Retrieval-Performance
+    min_chunk_size: int = 200      # ~50 tokens minimum für meaningful content
+    max_chunk_size: int = 1000     # ~250 tokens maximum (RAG sweet spot)
+    target_chunk_size: int = 600   # ~150 tokens target (optimal für RAG)
+    overlap_ratio: float = 0.15    # 15% overlap für bessere context continuity
     
-    # Content-type specific - 2024 standards für bessere semantic coherence
-    pdf_chunk_size: int = 1000     # Standard target für PDF (bessere balance)
-    text_chunk_size: int = 1000    # Unified target für consistency
-    html_chunk_size: int = 1000    # Unified target
-    code_chunk_size: int = 800     # Etwas kleiner für code readability
-    markdown_chunk_size: int = 1000 # Standard target für markdown
+    # Content-type specific - RAG-optimiert für bessere Retrieval-Performance
+    pdf_chunk_size: int = 700      # RAG-optimal für PDF-Inhalte
+    text_chunk_size: int = 600     # RAG-optimal für Text-Retrieval
+    html_chunk_size: int = 650     # RAG-optimal für HTML-Inhalte
+    code_chunk_size: int = 500     # Kompakter für bessere Code-Verständlichkeit
+    markdown_chunk_size: int = 600 # RAG-optimal für Markdown
     
     # Quality gates - 2024 optimiert für semantic coherence
     min_word_count: int = 25       # ~6-7 tokens minimum
@@ -255,6 +255,10 @@ class IntelligentChunker:
             fallback_chunk = self._create_single_chunk_fallback(content, metadata or {})
             quality_chunks = [fallback_chunk]
         
+        # Phase 3.7: Mini-Document Enhancement für bessere RAG-Performance
+        if len(content) < 200 and quality_chunks:
+            quality_chunks = self._enhance_mini_documents(quality_chunks, content)
+        
         # Phase 3.6: Ultra-Fallback für extrem kurze Texte - GARANTIE für jeden Text!
         if not quality_chunks and content.strip() and len(content.strip()) >= 5:
             logger.warning(f"Ultra-Fallback: Creating chunk for very short content ({len(content.strip())} chars)")
@@ -316,18 +320,150 @@ class IntelligentChunker:
             return self._split_text_structure(content)
     
     def _split_text_structure(self, content: str) -> List[Tuple[str, Dict]]:
-        """Split text by paragraphs and sections"""
+        """Split text by paragraphs and sections - RAG-optimized with table support"""
+        # Check if content contains tables
+        if self._contains_tables(content):
+            return self._split_table_content(content)
+        
+        # For small documents (< 2 * target_size), don't split by paragraphs
+        # This prevents over-fragmentation of small documents
+        if len(content) < 2 * self.config.target_chunk_size:
+            return [(content, {'section_type': 'full_document', 'section_index': 0})]
+        
         sections = []
         
         # Split by double newlines (paragraphs)
         paragraphs = re.split(r'\n\s*\n', content)
         
+        # Group small paragraphs together to avoid tiny sections
+        current_section = []
+        current_length = 0
+        min_section_size = self.config.min_chunk_size  # Don't create sections smaller than min chunk
+        
         for i, paragraph in enumerate(paragraphs):
             if paragraph.strip():
+                para_length = len(paragraph.strip())
+                
+                # If adding this paragraph would exceed target or we have enough content
+                if (current_length + para_length > self.config.target_chunk_size and 
+                    current_section and current_length >= min_section_size):
+                    # Finalize current section
+                    section_content = '\n\n'.join(current_section)
+                    sections.append((
+                        section_content,
+                        {'section_type': 'paragraph_group', 'section_index': len(sections)}
+                    ))
+                    
+                    # Start new section
+                    current_section = [paragraph.strip()]
+                    current_length = para_length
+                else:
+                    current_section.append(paragraph.strip())
+                    current_length += para_length
+        
+        # Add final section
+        if current_section:
+            section_content = '\n\n'.join(current_section)
+            sections.append((
+                section_content,
+                {'section_type': 'paragraph_group', 'section_index': len(sections)}
+            ))
+        
+        # If no sections created, use full document
+        if not sections:
+            return [(content, {'section_type': 'full_document', 'section_index': 0})]
+        
+        return sections
+    
+    def _contains_tables(self, content: str) -> bool:
+        """Detect if content contains table-like structures"""
+        # Look for common table indicators
+        table_indicators = [
+            r'-{3,}',  # Horizontal lines (---)
+            r'={3,}',  # Horizontal lines (===)
+            r'\|.*\|', # Pipe-separated columns
+            r'\s{3,}\w+\s{3,}\w+',  # Multiple columns with spacing
+        ]
+        
+        for indicator in table_indicators:
+            if re.search(indicator, content):
+                return True
+        
+        # Check for tabular data patterns (numbers in columns)
+        lines = content.split('\n')
+        numeric_columns = 0
+        for line in lines:
+            # Count lines with multiple numbers separated by spaces
+            numbers = re.findall(r'\b\d[\d.,]*\b', line)
+            if len(numbers) >= 3:  # At least 3 numbers in a line suggests tabular data
+                numeric_columns += 1
+        
+        return numeric_columns >= 3  # At least 3 lines with numeric columns
+    
+    def _split_table_content(self, content: str) -> List[Tuple[str, Dict]]:
+        """Split table content into logical chunks while preserving table structure"""
+        sections = []
+        lines = content.split('\n')
+        
+        # If table document is small enough, keep as single chunk
+        if len(content) <= self.config.max_chunk_size:
+            return [(content, {'section_type': 'table_document', 'section_index': 0})]
+        
+        # Find table boundaries and headers
+        current_section = []
+        current_length = 0
+        header_lines = []
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            line_length = len(line) + 1  # +1 for newline
+            
+            # Detect table headers and separators
+            is_separator = bool(re.match(r'^[-=]{3,}', line))
+            is_header = (i < 5 and not is_separator and 
+                        (any(keyword in line.lower() for keyword in ['region', 'produkt', 'monat', 'kategorie']) or
+                         re.search(r'\b\w+\s{2,}\w+', line)))  # Multiple columns
+            
+            # If we hit a separator or this would make chunk too large
+            # But ensure minimum viable chunk size for tables (300 chars minimum)
+            if (is_separator and current_section and current_length >= 300) or \
+               (current_length + line_length > self.config.target_chunk_size and current_section and current_length >= 300):
+                
+                # Include headers in new section
+                section_content = '\n'.join(header_lines + current_section)
+                if section_content.strip():
+                    sections.append((
+                        section_content.strip(),
+                        {'section_type': 'table_section', 'section_index': len(sections)}
+                    ))
+                
+                current_section = []
+                current_length = sum(len(h) + 1 for h in header_lines)
+            
+            # Collect headers for reuse
+            if is_header or is_separator:
+                if is_header:
+                    header_lines.append(line)
+                elif is_separator and header_lines:
+                    header_lines.append(line)
+            
+            current_section.append(line)
+            current_length += line_length
+            i += 1
+        
+        # Add final section
+        if current_section:
+            section_content = '\n'.join(header_lines + current_section)
+            if section_content.strip():
                 sections.append((
-                    paragraph.strip(),
-                    {'section_type': 'paragraph', 'section_index': i}
+                    section_content.strip(),
+                    {'section_type': 'table_section', 'section_index': len(sections)}
                 ))
+        
+        # If no proper sections created, treat as single table
+        if not sections:
+            return [(content, {'section_type': 'table_document', 'section_index': 0})]
         
         return sections
     
@@ -450,15 +586,21 @@ class IntelligentChunker:
             
             # If adding this sentence would exceed target size
             if current_length + sentence_length > target_size and current_chunk:
-                # Finalize current chunk
-                chunk_content = ' '.join(current_chunk).strip()
-                if chunk_content:
-                    chunks.append((chunk_content, start_pos, start_pos + current_length))
-                
-                # Start new chunk
-                current_chunk = [sentence]
-                current_length = sentence_length
-                start_pos = start_pos + current_length
+                # Only split if current chunk is above minimum size
+                if current_length >= self.config.min_chunk_size:
+                    # Finalize current chunk
+                    chunk_content = ' '.join(current_chunk).strip()
+                    if chunk_content:
+                        chunks.append((chunk_content, start_pos, start_pos + current_length))
+                    
+                    # Start new chunk
+                    current_chunk = [sentence]
+                    current_length = sentence_length
+                    start_pos = start_pos + current_length
+                else:
+                    # Current chunk too small, keep adding to reach min size
+                    current_chunk.append(sentence)
+                    current_length += sentence_length
             else:
                 current_chunk.append(sentence)
                 current_length += sentence_length
@@ -510,12 +652,14 @@ class IntelligentChunker:
         return chunks
     
     def _apply_quality_gates(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply quality filters to chunks with flexible gates for small documents"""
+        """Apply quality filters to chunks with flexible gates for small documents and tables"""
         quality_chunks = []
         
-        # Detect if this is likely a small document
+        # Detect document characteristics
         total_content_length = sum(len(chunk['content']) for chunk in chunks)
         is_small_document = total_content_length < 1000  # Less than 1KB of text
+        is_mini_document = total_content_length < 200    # Less than 200 chars - ultra small
+        is_table_content = any(chunk.get('metadata', {}).get('section_type', '').startswith('table') for chunk in chunks)
         
         for chunk in chunks:
             quality = self._assess_chunk_quality(chunk['content'])
@@ -525,15 +669,33 @@ class IntelligentChunker:
             
             # Relaxed quality check for small documents
             passes_relaxed = False
-            if is_small_document:
+            if is_small_document and not is_mini_document:
                 passes_relaxed = self._is_acceptable_for_small_document(quality)
             
-            if passes_standard or passes_relaxed:
+            # Ultra-relaxed quality check for mini documents
+            passes_mini_check = False
+            if is_mini_document:
+                passes_mini_check = self._is_acceptable_for_mini_document(quality, chunk['content'])
+            
+            # Table-specific quality check
+            passes_table_check = False
+            if is_table_content or self._contains_tables(chunk['content']):
+                passes_table_check = self._is_acceptable_for_table_content(quality, chunk['content'])
+            
+            if passes_standard or passes_relaxed or passes_mini_check or passes_table_check:
                 chunk['quality_score'] = self._calculate_quality_score(quality)
                 chunk['quality_metrics'] = quality
-                if passes_relaxed and not passes_standard:
+                
+                if passes_table_check and not passes_standard:
+                    chunk['metadata'] = {**chunk.get('metadata', {}), 'quality_tier': 'table_content'}
+                    logger.debug(f"Accepted table chunk: {quality.word_count} words, {len(chunk['content'])} chars")
+                elif passes_mini_check and not passes_standard:
+                    chunk['metadata'] = {**chunk.get('metadata', {}), 'quality_tier': 'mini_document'}
+                    logger.debug(f"Accepted mini document: {quality.word_count} words, {len(chunk['content'])} chars")
+                elif passes_relaxed and not passes_standard:
                     chunk['metadata'] = {**chunk.get('metadata', {}), 'quality_tier': 'small_document_relaxed'}
                     logger.debug(f"Accepted chunk with relaxed gates (small doc): {quality.word_count} words, {len(chunk['content'])} chars")
+                    
                 quality_chunks.append(chunk)
             else:
                 logger.debug(f"Filtered low-quality chunk: {len(chunk['content'])} chars, {quality.word_count} words, tier: {quality.quality_tier}")
@@ -550,6 +712,64 @@ class IntelligentChunker:
             quality.sentence_count >= 0 and       # Auch Fragmente erlaubt (statt 1)
             quality.alpha_ratio >= 0.2 and        # Niedrigere Textqualität OK (statt 0.5)
             quality.repetition_ratio <= 0.9       # Mehr Wiederholung erlaubt (statt 0.5)
+        )
+    
+    def _is_acceptable_for_mini_document(self, quality: ChunkQuality, content: str) -> bool:
+        """
+        Ultra-relaxed criteria for very small documents (<200 chars)
+        Ensures even tiny documents get processed for RAG
+        """
+        return (
+            len(content.strip()) >= 20 and        # Mindestens 20 Zeichen
+            quality.word_count >= 3 and           # Mindestens 3 Wörter
+            quality.alpha_ratio >= 0.1            # Irgendwelcher Text-Content
+        )
+    
+    def _enhance_mini_documents(self, chunks: List[Dict[str, Any]], original_content: str) -> List[Dict[str, Any]]:
+        """Enhance mini documents for better RAG performance"""
+        enhanced_chunks = []
+        
+        for chunk in chunks:
+            if len(chunk['content']) < 200:
+                # Add document type hints to improve RAG context
+                content = chunk['content']
+                enhanced_metadata = {**chunk.get('metadata', {})}
+                
+                # Detect document type for better RAG context
+                doc_type = 'snippet'
+                if any(word in content.lower() for word in ['meeting', 'termin', 'agenda']):
+                    doc_type = 'meeting_note'
+                elif any(word in content.lower() for word in ['kündigung', 'vertrag', 'frist']):
+                    doc_type = 'contract_notice'
+                elif any(word in content.lower() for word in ['betreff', 'sehr geehrte']):
+                    doc_type = 'formal_letter'
+                
+                enhanced_metadata.update({
+                    'document_type': doc_type,
+                    'content_length': len(content),
+                    'rag_hint': f'This is a {doc_type} with {len(content.split())} words'
+                })
+                
+                enhanced_chunk = {**chunk, 'metadata': enhanced_metadata}
+                enhanced_chunks.append(enhanced_chunk)
+            else:
+                enhanced_chunks.append(chunk)
+        
+        return enhanced_chunks
+    
+    def _is_acceptable_for_table_content(self, quality: ChunkQuality, content: str) -> bool:
+        """Special quality criteria for table content"""
+        # Tables often have different quality characteristics
+        has_numbers = len(re.findall(r'\b\d[\d.,]*\b', content)) >= 5  # At least 5 numbers
+        has_table_structure = bool(re.search(r'-{3,}|={3,}|\|.*\|', content))  # Table separators
+        has_headers = any(keyword in content.lower() for keyword in 
+                         ['region', 'produkt', 'monat', 'kategorie', 'quartal', 'umsatz', 'verkauf'])
+        
+        return (
+            quality.word_count >= 10 and          # Mindestens 10 Wörter für Tabellen
+            (has_numbers or has_table_structure or has_headers) and  # Muss tabellen-ähnlich sein
+            quality.alpha_ratio >= 0.3 and        # Etwas Text erforderlich
+            len(content) >= 100                    # Mindestgröße für sinnvolle Tabellen
         )
     
     def _assess_chunk_quality(self, content: str) -> ChunkQuality:

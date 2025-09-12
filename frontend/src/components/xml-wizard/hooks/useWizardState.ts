@@ -321,48 +321,38 @@ export const useWizardState = ({
     clearPersistedData()
   }, [totalSteps, clearPersistedData])
 
-  // Validation logic
+  // Validation logic - lockerer für bessere UX
   const validateFormData = (formData: Partial<WizardFormData>, step: number): boolean => {
     switch (step) {
-      case 1: // Stream Properties (now first!)
-        return !!(formData.streamProperties?.streamName && 
-                 formData.streamProperties?.description &&
-                 formData.streamProperties?.contactPerson?.firstName &&
-                 formData.streamProperties?.contactPerson?.lastName)
+      case 1: // Stream Properties - nur Stream-Name erforderlich
+        return !!(formData.streamProperties?.streamName)
         
-      case 2: // Job Type Selection  
+      case 2: // Job Type Selection - immer valid nach Auswahl
         return !!formData.jobType
         
-      case 3: // Job Form
-        if (!formData.jobForm) return false
+      case 3: // Job Form - minimale Validierung
+        if (!formData.jobForm) return true // Erlaube weiter ohne Job Form
         
-        // Basic validation based on job type
+        // Sehr entspannte Validierung für bessere UX
         if (formData.jobType === JobType.STANDARD) {
-          const standardForm = formData.jobForm as any
-          return !!(standardForm.jobName && standardForm.agent && standardForm.os && standardForm.script)
+          return true // Immer erlauben
         }
         
         if (formData.jobType === JobType.SAP) {
-          const sapForm = formData.jobForm as any
-          return !!(sapForm.jobName && sapForm.system && sapForm.report && sapForm.batchUser)
+          return true // Immer erlauben
         }
         
         if (formData.jobType === JobType.FILE_TRANSFER) {
-          const ftForm = formData.jobForm as any
-          return !!(ftForm.jobName && ftForm.sourceAgent && ftForm.sourcePath && 
-                   ftForm.targetAgent && ftForm.targetPath)
+          return true // Immer erlauben
         }
         
         return true
         
-      case 4: // Scheduling
-        return !!formData.scheduling?.mode
+      case 4: // Scheduling - optional
+        return true // Scheduling ist jetzt optional
         
-      case 5: // Review
-        return validateFormData(formData, 1) && 
-               validateFormData(formData, 2) && 
-               validateFormData(formData, 3) && 
-               validateFormData(formData, 4)
+      case 5: // Review - nur Job-Typ erforderlich
+        return !!formData.jobType
                
       default:
         return true

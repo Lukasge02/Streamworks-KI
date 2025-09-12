@@ -13,7 +13,6 @@ import {
   Database, 
   FolderSync, 
   Settings,
-  Clock,
   ChevronRight 
 } from 'lucide-react'
 
@@ -23,8 +22,6 @@ const JOB_TYPE_OPTIONS = [
     title: 'Standard Job',
     description: 'Windows oder Unix Script ausführen',
     icon: Terminal,
-    complexity: 'Einfach',
-    estimatedTime: '2-3 Minuten',
     examples: ['Batch-Scripts', 'Shell-Commands', 'PowerShell'],
     color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
   },
@@ -33,8 +30,6 @@ const JOB_TYPE_OPTIONS = [
     title: 'SAP Job',
     description: 'SAP Report oder Programm ausführen',
     icon: Database,
-    complexity: 'Mittel',
-    estimatedTime: '4-5 Minuten',
     examples: ['SAP Reports', 'ABAP Programme', 'Batch Jobs'],
     color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
   },
@@ -43,8 +38,6 @@ const JOB_TYPE_OPTIONS = [
     title: 'File Transfer',
     description: 'Dateien zwischen Systemen übertragen',
     icon: FolderSync,
-    complexity: 'Einfach',
-    estimatedTime: '3-4 Minuten',
     examples: ['FTP Transfer', 'Lokale Kopie', 'Netzwerk-Copy'],
     color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
   },
@@ -53,8 +46,6 @@ const JOB_TYPE_OPTIONS = [
     title: 'Benutzerdefiniert',
     description: 'Eigene Job-Konfiguration erstellen',
     icon: Settings,
-    complexity: 'Komplex',
-    estimatedTime: '8-10 Minuten',
     examples: ['REST API Calls', 'Complex Workflows', 'Custom Scripts'],
     color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
   }
@@ -65,19 +56,24 @@ export const JobTypeStep: React.FC<WizardStepProps> = ({
   onUpdateData,
   onNext,
   canProceed,
-  isLastStep
+  isLastStep,
+  navigateToSubChapter
 }) => {
   const selectedJobType = formData.jobType
 
   const handleJobTypeSelect = (jobType: JobType) => {
     onUpdateData({ jobType })
     
-    // Auto-advance after selection
+    // Direkt zu Job-Parametern navigieren
     setTimeout(() => {
-      if (onNext) {
+      if (navigateToSubChapter) {
+        // Direkt zu job-parameters Sub-Chapter springen
+        navigateToSubChapter('job-configuration', 'job-parameters')
+      } else if (onNext) {
+        // Fallback: normaler next step
         onNext()
       }
-    }, 500)
+    }, 300) // Kürzere Verzögerung für schnellere UX
   }
 
   return (
@@ -138,46 +134,20 @@ export const JobTypeStep: React.FC<WizardStepProps> = ({
                   )}
                 </div>
 
-                {/* Metadata */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Komplexität:</span>
-                    <span className={`font-medium ${
-                      option.complexity === 'Einfach' 
-                        ? 'text-green-600 dark:text-green-400'
-                        : option.complexity === 'Mittel'
-                        ? 'text-yellow-600 dark:text-yellow-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {option.complexity}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">
-                      <Clock className="w-4 h-4 inline mr-1" />
-                      Geschätzte Zeit:
-                    </span>
-                    <span className="text-gray-700 dark:text-gray-300 font-medium">
-                      {option.estimatedTime}
-                    </span>
-                  </div>
-
-                  {/* Examples */}
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      Beispiele:
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {option.examples.map((example, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                        >
-                          {example}
-                        </span>
-                      ))}
-                    </div>
+                {/* Examples */}
+                <div className="mt-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Beispiele:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {option.examples.map((example, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                      >
+                        {example}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
