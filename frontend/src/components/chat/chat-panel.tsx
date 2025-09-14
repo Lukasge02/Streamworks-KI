@@ -123,13 +123,8 @@ export function ChatPanel() {
 
       setMessages(prev => [...prev, assistantMessage])
 
-      if (window.toast) {
-        window.toast({
-          type: 'success',
-          title: 'Antwort erhalten',
-          description: `${result.processing_time}s, ${result.chunk_count} sources${result.reranked ? ' (reranked)' : ''}`
-        })
-      }
+      // Toast notification (replace with actual toast implementation)
+      console.log('Success:', `Antwort erhalten - ${result.processing_time}s, ${result.chunk_count} sources${result.reranked ? ' (reranked)' : ''}`)
 
     } catch (error) {
       const errorMessage: ChatMessage = {
@@ -141,13 +136,8 @@ export function ChatPanel() {
 
       setMessages(prev => [...prev, errorMessage])
 
-      if (window.toast) {
-        window.toast({
-          type: 'error',
-          title: 'Chat Fehler',
-          description: error instanceof Error ? error.message : 'Unknown error'
-        })
-      }
+      // Toast notification (replace with actual toast implementation)
+      console.error('Chat Fehler:', error instanceof Error ? error.message : 'Unknown error')
     } finally {
       setIsLoading(false)
     }

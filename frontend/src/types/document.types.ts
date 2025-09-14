@@ -84,7 +84,7 @@ export interface DocumentUploadRequest {
 }
 
 // Alias for backward compatibility
-export interface DocumentUpload extends DocumentUploadRequest {
+export interface DocumentUpload extends Omit<DocumentUploadRequest, 'visibility'> {
   language: string
   visibility: VisibilityOptions
 }

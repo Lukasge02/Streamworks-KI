@@ -18,6 +18,7 @@ import {
   Circle,
   Play
 } from 'lucide-react'
+import InfoTooltip from '../../../ui/InfoTooltip'
 
 const JOB_TYPE_INFO = [
   {
@@ -100,9 +101,15 @@ export const JobConfigurationOverview: React.FC<WizardStepProps> = ({
             <Play className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Job-Konfiguration
-        </h2>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Job-Konfiguration
+          </h2>
+          <InfoTooltip 
+            content="Bestimmen Sie welche Aktion ausgeführt werden soll - Standard-Script, SAP-Job oder File-Transfer"
+            position="bottom"
+          />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">
           Konfigurieren Sie den Job-Typ und dessen Parameter für Ihren Stream
         </p>
@@ -129,7 +136,13 @@ export const JobConfigurationOverview: React.FC<WizardStepProps> = ({
                 )}
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">Job-Typ auswählen</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Job-Typ auswählen</h3>
+                  <InfoTooltip 
+                    content="Wählen Sie den passenden Job-Typ basierend auf der gewünschten Aktion"
+                    position="right"
+                  />
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {isJobTypeSelected ? selectedJobInfo?.title : 'Standard, SAP, File Transfer oder Custom'}
                 </p>
@@ -152,7 +165,13 @@ export const JobConfigurationOverview: React.FC<WizardStepProps> = ({
                 <Settings className="w-5 h-5 text-gray-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">Job-Parameter</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Job-Parameter</h3>
+                  <InfoTooltip 
+                    content="Konfigurieren Sie die spezifischen Einstellungen für den gewählten Job-Typ"
+                    position="right"
+                  />
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {isJobTypeSelected ? 'Parameter konfigurieren' : 'Erst Job-Typ auswählen'}
                 </p>

@@ -11,8 +11,11 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 # Import database and routers
 from database import init_database, close_database, check_database_health
-from routers import folders, documents, websockets, upload_progress_websocket, chat, xml_generator, feature_flags, health
+from routers import folders, documents, websockets, upload_progress_websocket, xml_streams, feature_flags, health
+from routers.xml_generator import router as xml_generator
+from routers.chat import router as chat
 from middleware.performance import PerformanceMiddleware
+from middleware.cors_error_handler import CORSErrorHandlerMiddleware
 
 # Setup logging
 logging.basicConfig(
@@ -88,6 +91,9 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Add CORS error handling middleware (must be first)
+app.add_middleware(CORSErrorHandlerMiddleware)
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -107,13 +113,14 @@ app.add_middleware(
     compresslevel=6      # Balance between speed and compression
 )
 
-# Include routers
+# Include routers (minimal set)
 app.include_router(folders)
 app.include_router(documents)
 app.include_router(websockets)
 app.include_router(chat)
 app.include_router(upload_progress_websocket)
 app.include_router(xml_generator)
+app.include_router(xml_streams)
 app.include_router(feature_flags)
 app.include_router(health)
 

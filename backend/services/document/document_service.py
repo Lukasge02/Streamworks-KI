@@ -20,7 +20,7 @@ from schemas.core import (
 from .storage_handler import DocumentStorageHandler
 from .crud_operations import DocumentCrudOperations
 from .processing_pipeline import DocumentProcessingPipeline
-from services.document_chunk_service import DocumentChunkService
+# DocumentChunkService removed - using direct Docling chunking
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class DocumentService:
         self.storage = DocumentStorageHandler()
         self.crud = DocumentCrudOperations()
         self.processor = DocumentProcessingPipeline()
-        self.chunk_service = DocumentChunkService()
+        # DocumentChunkService removed - chunking handled by Docling in processor
     
     async def upload_document(
         self,
@@ -96,9 +96,9 @@ class DocumentService:
                 description=description
             )
             
-            # Process document with Docling
+            # Process document with LlamaIndex RAG pipeline
             try:
-                await self.processor.process_document_with_docling(
+                await self.processor.process_document_with_llamaindex(
                     db, document, file_path, job_id
                 )
             except Exception as processing_error:
@@ -160,24 +160,38 @@ class DocumentService:
             
             logger.info(f"Starting comprehensive deletion for document: {document_id}")
             
-            # Step 1: Delete document chunks from database
+            # Step 1: Delete document chunks - handled by vector database cleanup
+            # DocumentChunkService removed - chunks are managed by vector database
             chunk_count = 0
-            try:
-                chunk_count = await self.chunk_service.delete_chunks_by_document(db, document_id)
-                logger.info(f"Deleted {chunk_count} chunks from database for document: {document_id}")
-            except Exception as chunk_error:
-                logger.error(f"Failed to delete chunks from database: {str(chunk_error)}")
-                # Continue with deletion even if chunks fail - we'll clean up orphans later
+            logger.info("Chunk deletion handled by vector database cleanup")
             
-            # Step 2: Delete from vector database
+            # Step 2: Delete from vector database (LlamaIndex RAG Service)
             try:
-                from services.di_container import get_service
-                vectorstore = await get_service("vectorstore")
-                await vectorstore.delete_document(str(document_id))
+                from services.llamaindex_rag_service import get_rag_service
+                rag_service = await get_rag_service()
+                await rag_service.delete_document(str(document_id))
                 logger.info(f"Deleted vectors from ChromaDB for document: {document_id}")
             except Exception as vector_error:
                 logger.error(f"Failed to delete from vector store: {str(vector_error)}")
                 # Continue with deletion - orphaned vectors can be cleaned up later
+
+            # Step 2.5: Delete from Supabase mirror (for UI debugging)
+            try:
+                from services.supabase_mirror_service import get_supabase_mirror_service
+                mirror_service = get_supabase_mirror_service()
+
+                if mirror_service.is_enabled():
+                    mirror_success = await mirror_service.mirror_document_deletion(str(document_id))
+                    if mirror_success:
+                        logger.info(f"✅ Supabase mirror cleanup completed for document: {document_id}")
+                    else:
+                        logger.warning(f"⚠️ Supabase mirror cleanup failed for document: {document_id}")
+                else:
+                    logger.info(f"📊 Supabase mirror disabled - skipping deletion cleanup")
+
+            except Exception as mirror_error:
+                logger.warning(f"⚠️ Supabase mirror deletion failed (non-critical): {str(mirror_error)}")
+                # Continue - mirror failures shouldn't block document deletion
             
             # Step 3: Delete document from database
             success = await self.crud.delete_document(db, document_id)

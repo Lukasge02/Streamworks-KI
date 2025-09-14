@@ -9,8 +9,8 @@ from typing import List, Optional
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project root
+load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
 class Settings(BaseSettings):
     """Application settings from environment variables"""
@@ -113,19 +113,35 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD", None)
     CACHE_ENABLED: bool = os.getenv("CACHE_ENABLED", "true").lower() == "true"
     
-    # Chunking Settings - Optimized for better context retention
-    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "1500"))
-    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "300"))
+    # Chunking Settings - Phase 3 Optimized for Gamma Embeddings and Semantic Coherence
+    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "2000"))  # Increased from 1500 for better context
+    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "500"))  # Increased from 300 for better continuity
     
-    # Document Type Specific Chunk Sizes
-    PDF_CHUNK_SIZE: int = int(os.getenv("PDF_CHUNK_SIZE", "2000"))  # Larger for PDFs
-    IMAGE_CHUNK_SIZE: int = int(os.getenv("IMAGE_CHUNK_SIZE", "1000"))  # Smaller for OCR text
-    TEXT_CHUNK_SIZE: int = int(os.getenv("TEXT_CHUNK_SIZE", "1500"))  # Standard for text files
+    # Advanced Chunking Configuration - Phase 3 Enhancements
+    ENABLE_SEMANTIC_CHUNKING: bool = os.getenv("ENABLE_SEMANTIC_CHUNKING", "true").lower() == "true"
+    SEMANTIC_BOUNDARY_DETECTION: bool = os.getenv("SEMANTIC_BOUNDARY_DETECTION", "true").lower() == "true"
+    ADAPTIVE_CHUNK_SIZING: bool = os.getenv("ADAPTIVE_CHUNK_SIZING", "true").lower() == "true"
     
-    # Chunk Quality Settings
-    MIN_CHUNK_SIZE: int = int(os.getenv("MIN_CHUNK_SIZE", "100"))  # Minimum viable chunk
-    MAX_CHUNK_SIZE: int = int(os.getenv("MAX_CHUNK_SIZE", "3000"))  # Maximum chunk size
-    MIN_WORD_COUNT: int = int(os.getenv("MIN_WORD_COUNT", "20"))  # Minimum words per chunk
+    # Document Type Specific Chunk Sizes - Optimized for Gamma Embeddings
+    PDF_CHUNK_SIZE: int = int(os.getenv("PDF_CHUNK_SIZE", "2500"))  # Increased for better PDF context
+    IMAGE_CHUNK_SIZE: int = int(os.getenv("IMAGE_CHUNK_SIZE", "1200"))  # Slightly increased for OCR
+    TEXT_CHUNK_SIZE: int = int(os.getenv("TEXT_CHUNK_SIZE", "2000"))  # Increased for better text context
+    TECHNICAL_DOC_CHUNK_SIZE: int = int(os.getenv("TECHNICAL_DOC_CHUNK_SIZE", "2800"))  # New: for technical docs
+    
+    # Chunk Quality Settings - Enhanced for Phase 3
+    MIN_CHUNK_SIZE: int = int(os.getenv("MIN_CHUNK_SIZE", "200"))  # Increased from 100 for better quality
+    MAX_CHUNK_SIZE: int = int(os.getenv("MAX_CHUNK_SIZE", "4000"))  # Increased from 3000 for complex content
+    MIN_WORD_COUNT: int = int(os.getenv("MIN_WORD_COUNT", "30"))  # Increased from 20 for better semantic density
+    OPTIMAL_CHUNK_WORDS: int = int(os.getenv("OPTIMAL_CHUNK_WORDS", "300"))  # New: target word count
+    
+    # Semantic Chunking Settings - New Phase 3 Features
+    SENTENCE_BOUNDARY_WEIGHT: float = float(os.getenv("SENTENCE_BOUNDARY_WEIGHT", "0.8"))  # Prefer sentence boundaries
+    PARAGRAPH_BOUNDARY_WEIGHT: float = float(os.getenv("PARAGRAPH_BOUNDARY_WEIGHT", "0.9"))  # Strong preference for paragraphs
+    SECTION_BOUNDARY_WEIGHT: float = float(os.getenv("SECTION_BOUNDARY_WEIGHT", "1.0"))  # Highest preference for sections
+    
+    # Context Preservation Settings
+    CONTEXT_PRESERVATION_RATIO: float = float(os.getenv("CONTEXT_PRESERVATION_RATIO", "0.25"))  # 25% overlap for context
+    SEMANTIC_COHERENCE_THRESHOLD: float = float(os.getenv("SEMANTIC_COHERENCE_THRESHOLD", "0.7"))  # Coherence scoring
     
     # RAG Pipeline Settings - Calibrated for Gamma Embeddings (2025-01-13)
     # Based on empirical testing: similarity range 0.001-0.252, optimal around 0.05-0.08
@@ -140,6 +156,21 @@ class Settings(BaseSettings):
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
     LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.1"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "2000"))
+    
+    # Phase 2: Query Enhancement Settings
+    ENABLE_QUERY_ENHANCEMENT: bool = os.getenv("ENABLE_QUERY_ENHANCEMENT", "true").lower() == "true"
+    ENABLE_MULTI_QUERY: bool = os.getenv("ENABLE_MULTI_QUERY", "true").lower() == "true"
+    MAX_QUERY_VARIATIONS: int = int(os.getenv("MAX_QUERY_VARIATIONS", "3"))
+    
+    # NLP Libraries Settings
+    SPACY_MODEL_DE: str = os.getenv("SPACY_MODEL_DE", "de_core_news_sm")
+    SPACY_MODEL_EN: str = os.getenv("SPACY_MODEL_EN", "en_core_web_sm")
+    NLTK_DOWNLOAD_PATH: str = os.getenv("NLTK_DOWNLOAD_PATH", "")
+    
+    # Query Enhancement Confidence Thresholds
+    MIN_ENHANCEMENT_CONFIDENCE: float = float(os.getenv("MIN_ENHANCEMENT_CONFIDENCE", "0.5"))
+    SYNONYM_EXPANSION_ENABLED: bool = os.getenv("SYNONYM_EXPANSION_ENABLED", "true").lower() == "true"
+    MULTI_QUERY_TIMEOUT: int = int(os.getenv("MULTI_QUERY_TIMEOUT", "30"))
     
     class Config:
         env_file = ".env"

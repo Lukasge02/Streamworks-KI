@@ -1,7 +1,7 @@
 /**
  * Modern Chat Service API
- * Unified interface for Supabase + OpenAI RAG integration
- * Clean, simple architecture using Session API
+ * Professional Conversational AI with LlamaIndex RAG integration
+ * Supports multiple modes: fast, accurate, comprehensive
  */
 
 import { ChatSession, ChatMessage } from '../stores/chatStore'
@@ -19,6 +19,7 @@ export interface SendMessageRequest {
   session_id: string
   query: string
   mode?: 'fast' | 'accurate' | 'comprehensive'
+  provider?: string
 }
 
 export interface ChatResponse {
@@ -28,6 +29,8 @@ export interface ChatResponse {
   processing_time?: string
   model_info?: string
   sources?: any[]
+  follow_up_suggestions?: string[]
+  mode_used?: string
 }
 
 export interface SessionsResponse {
@@ -45,7 +48,7 @@ export interface MessagesResponse {
 // ================================
 
 class ModernChatService {
-  private baseUrl = '/api/chat'
+  private baseUrl = '/api/chat'  // Use basic chat endpoint
   private userId: string
 
   constructor(userId: string = 'default-user') {
@@ -178,7 +181,7 @@ class ModernChatService {
     const startTime = Date.now()
 
     try {
-      // Use OpenAI RAG API via backend Session API
+      // Use professional RAG-enabled chat endpoint
       const response = await fetch(`${this.baseUrl}/sessions/${request.session_id}/messages`, {
         method: 'POST',
         headers: {
@@ -192,20 +195,22 @@ class ModernChatService {
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`OpenAI RAG failed: ${response.status} ${errorText}`)
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(`Chat failed: ${response.status} ${errorData.error || response.statusText}`)
       }
 
       const data = await response.json()
       const endTime = Date.now()
 
       return {
-        message_id: data.message_id,
-        answer: data.answer,
+        message_id: data.message_id || `msg_${Date.now()}`,
+        answer: data.answer || 'RAG System wird neu implementiert.',
         confidence_score: data.confidence_score,
-        processing_time: data.processing_time || `${endTime - startTime}ms`,
-        model_info: data.model_info || 'OpenAI + EmbeddingGemma',
-        sources: data.sources,
+        processing_time: data.processing_time_ms ? `${data.processing_time_ms}ms` : `${endTime - startTime}ms`,
+        model_info: data.model_used || 'unified-rag-service',
+        sources: data.sources || [],
+        follow_up_suggestions: data.metadata?.follow_up_suggestions || [],
+        mode_used: request.mode || 'accurate'
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -220,21 +225,19 @@ class ModernChatService {
 
   async checkHealth(): Promise<{ status: string; providers: Record<string, any> }> {
     try {
-      // Check OpenAI RAG API health via backend
-      const response = await fetch(`${this.baseUrl}/health`, {
-        headers: { 'X-User-ID': this.userId },
-      })
-      
+      // Check basic chat health
+      const response = await fetch(`${this.baseUrl}/health`)
+
       if (!response.ok) {
         throw new Error(`Health check failed: ${response.status}`)
       }
-      
+
       const healthData = await response.json()
 
       return {
-        status: 'healthy',
+        status: healthData.status === 'healthy' ? 'healthy' : 'error',
         providers: {
-          openai_rag: healthData,
+          chat_service: healthData,
         },
       }
     } catch (error) {

@@ -183,58 +183,40 @@ def get_container() -> DIContainer:
 
 
 async def initialize_container():
-    """Initialize the global container"""
+    """Initialize the global container (LlamaIndex-only)"""
     container = get_container()
-    
-    # Register core services
-    from .upload_job_manager_refactored import create_upload_job_manager
-    from .unified_rag_service import create_unified_rag_service
-    from .rag.rag_coordinator import create_openai_rag_service
-    from .vectorstore import VectorStoreService
-    from .embeddings import EmbeddingService
-    
-    # Register upload job manager
+
+    # Import available services (LlamaIndex-only architecture)
+    from .ollama_service import OllamaService
+    from .llamaindex_rag_service import get_rag_service
+
+    # Core infrastructure services that remain
     container.register(
-        name="upload_job_manager",
-        service_class=None,  # Using factory
-        factory=create_upload_job_manager,
+        name="ollama_service",
+        service_class=OllamaService,
         singleton=True
     )
-    
-    # Register vector store
+
+    # LlamaIndex RAG Service (main pipeline)
     container.register(
-        name="vectorstore",
-        service_class=VectorStoreService,
+        name="rag_service",
+        service_class=None,
+        factory=get_rag_service,
         singleton=True
     )
-    
-    # Register embeddings
-    container.register(
-        name="embeddings",
-        service_class=EmbeddingService,
-        singleton=True
-    )
-    
-    # Register OpenAI RAG service
-    container.register(
-        name="openai_rag_service",
-        service_class=None,  # Using factory with dependencies
-        factory=lambda vectorstore, embeddings: create_openai_rag_service(
-            vectorstore_service=vectorstore,
-            embeddings_service=embeddings
-        ),
-        singleton=True,
-        dependencies=["vectorstore", "embeddings"]
-    )
-    
-    # Register unified RAG service
-    container.register(
-        name="unified_rag_service",
-        service_class=None,  # Using factory
-        factory=create_unified_rag_service,
-        singleton=True
-    )
-    
+
+    # Legacy services (keep for backward compatibility during transition)
+    try:
+        from .upload_job_manager_refactored import create_upload_job_manager
+        container.register(
+            name="upload_job_manager",
+            service_class=None,
+            factory=create_upload_job_manager,
+            singleton=True
+        )
+    except ImportError:
+        logger.warning("Upload job manager not available")
+
     await container._initialize_all()
 
 

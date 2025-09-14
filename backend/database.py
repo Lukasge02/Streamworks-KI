@@ -71,15 +71,28 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     Dependency for getting async database sessions
     Used in FastAPI endpoints
     """
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
+    session = None
+    try:
+        session = AsyncSessionLocal()
+        yield session
+        # Commit only if session is still active and has changes
+        if session and hasattr(session, '_transaction') and session._transaction:
             await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+    except Exception as e:
+        logger.error(f"Session error: {str(e)}")
+        if session:
+            try:
+                await session.rollback()
+            except Exception as rollback_error:
+                logger.warning(f"Session rollback failed (non-critical): {str(rollback_error)}")
+        raise
+    finally:
+        if session:
+            try:
+                # Ensure session is properly closed
+                await session.close()
+            except Exception as close_error:
+                logger.warning(f"Session close error (non-critical): {str(close_error)}")
 
 
 async def init_database():

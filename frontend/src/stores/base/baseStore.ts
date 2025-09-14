@@ -301,32 +301,40 @@ export function createFilterActions(
   return {
     setQuery: (query: string) => set((state) => {
       state.query = query
+      return state
     }),
     
     setCategory: (category: string | undefined) => set((state) => {
       state.category = category
+      return state
     }),
     
     setStatus: (status: string | undefined) => set((state) => {
       state.status = status
+      return state
     }),
     
     setDateRange: (range: { start: string | null; end: string | null }) => set((state) => {
       state.dateRange = range
+      return state
     }),
     
     setTags: (tags: string[]) => set((state) => {
       state.tags = tags
+      return state
     }),
     
     addTag: (tag: string) => set((state) => {
-      if (!state.tags.includes(tag)) {
+      if (!state.tags?.includes(tag)) {
+        state.tags = state.tags || []
         state.tags.push(tag)
       }
+      return state
     }),
     
     removeTag: (tag: string) => set((state) => {
-      state.tags = state.tags.filter(t => t !== tag)
+      state.tags = state.tags?.filter(t => t !== tag) || []
+      return state
     }),
     
     clearFilters: () => set((state) => {
@@ -335,6 +343,7 @@ export function createFilterActions(
       state.status = undefined
       state.dateRange = { start: null, end: null }
       state.tags = []
+      return state
     })
   }
 }

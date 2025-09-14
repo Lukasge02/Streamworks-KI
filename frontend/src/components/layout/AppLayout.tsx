@@ -31,7 +31,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
     checkSystemHealth()
-    const interval = setInterval(checkSystemHealth, 30000)
+    const interval = setInterval(checkSystemHealth, 15000)
     return () => clearInterval(interval)
   }, [])
 
@@ -143,13 +143,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
           
-          <main className="flex-1 overflow-hidden">
+          <main className={`flex-1 ${pathname.startsWith('/xml') ? 'overflow-y-auto' : 'overflow-hidden'}`}>
             <motion.div
               key={pathname}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="h-full"
+              className={pathname.startsWith('/xml') ? 'min-h-full' : 'h-full'}
             >
               {children}
             </motion.div>

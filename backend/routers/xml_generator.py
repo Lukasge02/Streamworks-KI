@@ -16,7 +16,7 @@ from schemas.xml_generation import (
     ValidationResponse, ValidationResult,
     ScheduleParsingResponse, ScheduleRule
 )
-from services.xml_rag_service import get_rag_service, XMLTemplateRAG
+from services.llamaindex_rag_service import get_rag_service
 from services.xml_validator import get_validator, XSDValidator
 from services.xml_template_engine import get_template_engine, XMLTemplateEngine
 
@@ -26,8 +26,8 @@ router = APIRouter(prefix="/api/xml-generator", tags=["XML Generator"])
 
 
 # Dependency injection
-def get_rag_service_dep() -> XMLTemplateRAG:
-    return get_rag_service()
+async def get_rag_service_dep():
+    return await get_rag_service()
 
 def get_validator_dep() -> XSDValidator:
     return get_validator()
@@ -111,7 +111,7 @@ async def get_available_job_types() -> JobTypesResponse:
 @router.post("/templates/search", response_model=TemplateSearchResponse)
 async def search_similar_templates(
     query: TemplateSearchQuery,
-    rag_service: XMLTemplateRAG = Depends(get_rag_service_dep)
+    rag_service = Depends(get_rag_service_dep)
 ) -> TemplateSearchResponse:
     """
     Search for similar XML templates using RAG
@@ -145,7 +145,7 @@ async def search_similar_templates(
 async def generate_xml_from_wizard(
     wizard_data: WizardFormData,
     use_template_engine: bool = True,
-    rag_service: XMLTemplateRAG = Depends(get_rag_service_dep),
+    rag_service = Depends(get_rag_service_dep),
     template_engine: XMLTemplateEngine = Depends(get_template_engine_dep)
 ) -> XMLGenerationResult:
     """
@@ -405,7 +405,7 @@ async def validate_xml_content(
 @router.post("/natural-language/schedule", response_model=ScheduleParsingResponse)
 async def parse_natural_schedule(
     description: str,
-    rag_service: XMLTemplateRAG = Depends(get_rag_service_dep)
+    rag_service = Depends(get_rag_service_dep)
 ) -> ScheduleParsingResponse:
     """
     Convert natural language description to StreamWorks ScheduleRuleXml
@@ -468,7 +468,7 @@ async def parse_natural_schedule(
 async def index_xml_templates(
     background_tasks: BackgroundTasks,
     xml_directory: str = "Export-Streams",
-    rag_service: XMLTemplateRAG = Depends(get_rag_service_dep)
+    rag_service = Depends(get_rag_service_dep)
 ):
     """
     Index XML templates from directory (admin endpoint)
@@ -491,7 +491,7 @@ async def index_xml_templates(
 
 @router.get("/status")
 async def get_service_status(
-    rag_service: XMLTemplateRAG = Depends(get_rag_service_dep),
+    rag_service = Depends(get_rag_service_dep),
     validator: XSDValidator = Depends(get_validator_dep)
 ):
     """
@@ -543,7 +543,7 @@ async def get_service_status(
 
 
 @router.get("/templates/{template_id}/download")
-async def download_template(template_id: str, rag_service: XMLTemplateRAG = Depends(get_rag_service_dep)):
+async def download_template(template_id: str, rag_service = Depends(get_rag_service_dep)):
     """
     Download a specific XML template by ID
     """

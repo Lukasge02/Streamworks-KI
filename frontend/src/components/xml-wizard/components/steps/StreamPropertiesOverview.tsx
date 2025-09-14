@@ -17,6 +17,7 @@ import {
   Circle,
   ChevronRight
 } from 'lucide-react'
+import InfoTooltip from '../../../ui/InfoTooltip'
 
 export const StreamPropertiesOverview: React.FC<WizardStepProps> = ({
   formData,
@@ -50,9 +51,15 @@ export const StreamPropertiesOverview: React.FC<WizardStepProps> = ({
             <Settings className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Stream-Eigenschaften
-        </h2>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Stream-Eigenschaften
+          </h2>
+          <InfoTooltip 
+            content="Grundlegende Konfiguration - definieren Sie Name, Beschreibung und Ansprechpartner für Ihren Stream"
+            position="bottom"
+          />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">
           Grundlegende Konfiguration und Metadaten für Ihren Stream
         </p>
@@ -84,7 +91,13 @@ export const StreamPropertiesOverview: React.FC<WizardStepProps> = ({
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Grunddaten</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Grunddaten</h3>
+                  <InfoTooltip 
+                    content="Stream-Name und Beschreibung zur Identifikation und besseren Übersicht"
+                    position="right"
+                  />
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {hasStreamName 
                     ? `Stream: "${streamProps?.streamName}"` 
@@ -125,7 +138,13 @@ export const StreamPropertiesOverview: React.FC<WizardStepProps> = ({
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Kontaktperson</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Kontaktperson</h3>
+                  <InfoTooltip 
+                    content="Ansprechpartner für Rückfragen zum Stream - hilft bei Support und Wartung"
+                    position="right"
+                  />
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {hasContactPerson 
                     ? `${streamProps?.contactPerson?.firstName} ${streamProps?.contactPerson?.lastName}` 

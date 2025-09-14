@@ -515,10 +515,71 @@ function reportError(error: AppError, context?: any) {
 // ================================
 
 function setupGlobalErrorHandlers() {
+  // Handle Chrome extension runtime errors (suppress noise)
+  const originalConsoleError = console.error
+  console.error = (...args: any[]) => {
+    const message = args[0]?.toString() || ''
+
+    // Comprehensive Chrome extension error patterns
+    const extensionErrorPatterns = [
+      'runtime.lastError',
+      'message channel closed',
+      'Extension context invalidated',
+      'chrome-extension://',
+      'extensions::',
+      'Attempting to use a disconnected port object',
+      'Could not establish connection',
+      'Receiving end does not exist',
+      'chrome.runtime.sendMessage',
+      'chrome.runtime.onMessage',
+      'Port is not defined',
+      'Extension manifest',
+      'MessageBridge: could not connect to extension',
+      'chrome.tabs is not available'
+    ]
+
+    // Check if any pattern matches
+    const isExtensionError = extensionErrorPatterns.some(pattern =>
+      message.includes(pattern)
+    )
+
+    if (isExtensionError) {
+      return // Silently ignore extension errors
+    }
+
+    originalConsoleError.apply(console, args)
+  }
+
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason?.message || event.reason?.toString() || 'Unknown error'
+
+    // Comprehensive Chrome extension error patterns for promises
+    const extensionErrorPatterns = [
+      'runtime.lastError',
+      'Extension context',
+      'message channel closed',
+      'chrome-extension://',
+      'extensions::',
+      'Attempting to use a disconnected port object',
+      'Could not establish connection',
+      'Receiving end does not exist',
+      'chrome.runtime.sendMessage',
+      'MessageBridge: could not connect to extension'
+    ]
+
+    // Check if any pattern matches
+    const isExtensionError = extensionErrorPatterns.some(pattern =>
+      reason.includes(pattern)
+    )
+
+    if (isExtensionError) {
+      event.preventDefault() // Prevent console spam
+      return
+    }
+
     console.error('Unhandled promise rejection:', event.reason)
-    
+
     const error: AppError = {
       type: ErrorType.UNKNOWN,
       message: event.reason?.message || 'Unhandled promise rejection',
@@ -531,6 +592,33 @@ function setupGlobalErrorHandlers() {
 
   // Handle uncaught errors
   window.addEventListener('error', (event) => {
+    const errorMessage = event.error?.message || event.message || ''
+    const filename = event.filename || ''
+
+    // Comprehensive Chrome extension error patterns for uncaught errors
+    const extensionErrorPatterns = [
+      'runtime.lastError',
+      'Extension context',
+      'message channel closed',
+      'chrome-extension://',
+      'extensions::',
+      'Attempting to use a disconnected port object',
+      'Could not establish connection',
+      'Receiving end does not exist',
+      'chrome.runtime.sendMessage',
+      'MessageBridge: could not connect to extension'
+    ]
+
+    // Check if any pattern matches or file is from extension
+    const isExtensionError = extensionErrorPatterns.some(pattern =>
+      errorMessage.includes(pattern) || filename.includes(pattern)
+    ) || filename.includes('chrome-extension://')
+
+    if (isExtensionError) {
+      event.preventDefault()
+      return
+    }
+
     console.error('Uncaught error:', event.error)
     
     const error: AppError = {

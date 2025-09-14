@@ -19,6 +19,7 @@ import {
   Settings,
   FileText
 } from 'lucide-react'
+import InfoTooltip from '../../../ui/InfoTooltip'
 
 export const StreamPropertiesStep: React.FC<WizardStepProps> = ({
   formData,
@@ -78,9 +79,15 @@ export const StreamPropertiesStep: React.FC<WizardStepProps> = ({
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              Stammdaten
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                Stammdaten
+              </h3>
+              <InfoTooltip 
+                content="Grundlegende Identifikationsdaten für den Stream - Name sollte eindeutig und aussagekräftig sein"
+                position="right"
+              />
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -138,9 +145,15 @@ export const StreamPropertiesStep: React.FC<WizardStepProps> = ({
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <User className="w-5 h-5 text-green-600 dark:text-green-400" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              Kontaktperson
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                Kontaktperson
+              </h3>
+              <InfoTooltip 
+                content="Ansprechpartner für Support und Rückfragen zum Stream - erleichtert Wartung und Fehlerbehebung"
+                position="right"
+              />
+            </div>
           </div>
 
           <div className="space-y-4">

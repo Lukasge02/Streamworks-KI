@@ -64,7 +64,7 @@ class OllamaService:
             return []
     
     async def generate_completion(
-        self, 
+        self,
         prompt: str,
         model: str = "qwen2.5:7b",
         max_tokens: int = 2000,
@@ -121,7 +121,28 @@ class OllamaService:
         except Exception as e:
             logger.error(f"Ollama completion failed: {str(e)}")
             raise Exception(f"Local LLM error: {str(e)}")
-    
+
+    async def generate(
+        self,
+        prompt: str,
+        model: str = "qwen2.5:7b",
+        temperature: float = 0.1
+    ) -> str:
+        """
+        Simple generate method that returns only the response text
+        Compatible with DocumentSummarizer usage
+        """
+        try:
+            result = await self.generate_completion(
+                prompt=prompt,
+                model=model,
+                temperature=temperature
+            )
+            return result.get("response", "")
+        except Exception as e:
+            logger.error(f"Ollama generate failed: {str(e)}")
+            return ""
+
     async def chat_completion(
         self,
         messages: List[Dict[str, str]],

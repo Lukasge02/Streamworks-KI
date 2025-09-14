@@ -1,19 +1,22 @@
 /**
  * Wizard State Management Hook
  * Manages form data, navigation, and validation across all wizard steps
+ * Now includes integrated auto-save functionality
  */
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { 
-  WizardState, 
-  WizardFormData, 
-  JobType, 
+import { useState, useCallback, useEffect, useRef } from 'react'
+import {
+  WizardState,
+  WizardFormData,
+  JobType,
   WizardError,
   WizardPersistence,
   WizardChapter,
   SubChapter
 } from '../types/wizard.types'
+import { useFormChangeTracking } from '../../../hooks/useDeepCompare'
+import { useAutoSaveStream } from '../../../hooks/useXMLStreams'
 
 const WIZARD_STORAGE_KEY = 'streamworks_xml_wizard'
 const SESSION_DURATION = 60 * 60 * 1000 // 1 hour
@@ -137,11 +140,24 @@ const createDefaultChapters = (): WizardChapter[] => [
 interface UseWizardStateProps {
   totalSteps?: number
   enablePersistence?: boolean
+  streamId?: string
+  enableAutoSave?: boolean
+  autoSaveDelay?: number
 }
 
-export const useWizardState = ({ 
-  totalSteps = 5, 
-  enablePersistence = true 
+interface WizardAutoSaveState {
+  isAutoSaving: boolean
+  lastAutoSaved: Date | null
+  hasUnsavedChanges: boolean
+  autoSaveError: string | null
+}
+
+export const useWizardState = ({
+  totalSteps = 5,
+  enablePersistence = true,
+  streamId,
+  enableAutoSave = false,
+  autoSaveDelay = 2000
 }: UseWizardStateProps = {}) => {
   
   // Initialize state
@@ -160,6 +176,22 @@ export const useWizardState = ({
 
   const [error, setError] = useState<WizardError | null>(null)
 
+  // Auto-save state management
+  const [autoSaveState, setAutoSaveState] = useState<WizardAutoSaveState>({
+    isAutoSaving: false,
+    lastAutoSaved: null,
+    hasUnsavedChanges: false,
+    autoSaveError: null
+  })
+
+  // Auto-save hook and refs
+  const autoSaveStream = useAutoSaveStream()
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>()
+  const lastSavedDataRef = useRef<Partial<WizardFormData>>({})
+
+  // Track form changes with deep comparison
+  const formChangeTracking = useFormChangeTracking(state.formData || {})
+
   // Load persisted data on mount
   useEffect(() => {
     if (enablePersistence) {
@@ -167,12 +199,119 @@ export const useWizardState = ({
     }
   }, [enablePersistence])
 
-  // Save data when state changes
+  // Save data when state changes (localStorage persistence)
   useEffect(() => {
-    if (enablePersistence && (state.formData || state.currentStep > 1)) {
+    if (enablePersistence && !enableAutoSave && (state.formData || state.currentStep > 1)) {
       savePersistedData()
     }
-  }, [state.formData, state.currentStep, enablePersistence])
+  }, [state.formData, state.currentStep, enablePersistence, enableAutoSave])
+
+  // Enhanced Change Tracking - Always track changes, not just for auto-save
+  useEffect(() => {
+    if (formChangeTracking.hasChanged) {
+      console.log('📝 Form changes detected:', {
+        changedFields: formChangeTracking.changedFields,
+        hasFormData: !!state.formData && Object.keys(state.formData).length > 0,
+        enableAutoSave,
+        streamId
+      })
+
+      // Always mark as having unsaved changes when form data changes
+      setAutoSaveState(prev => ({
+        ...prev,
+        hasUnsavedChanges: true,
+        autoSaveError: null
+      }))
+    }
+  }, [formChangeTracking.hasChanged, formChangeTracking.changedFields, state.formData, enableAutoSave, streamId])
+
+  // Auto-save functionality (separate from change tracking)
+  useEffect(() => {
+    if (!enableAutoSave || !streamId || !formChangeTracking.hasChanged) {
+      return
+    }
+
+    const formData = state.formData || {}
+    const hasContentToSave = Object.keys(formData).length > 0
+
+    if (!hasContentToSave) {
+      return
+    }
+
+    console.log('💾 Auto-Save: Preparing to save...', {
+      streamId,
+      changedFields: formChangeTracking.changedFields,
+      autoSaveDelay
+    })
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+
+    // Set new auto-save timeout
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      // Double-check that we still need to save
+      const currentFormData = state.formData || {}
+      const hasRealChanges = formChangeTracking.changedFields.length > 0
+
+      if (!hasRealChanges) {
+        console.log('🔍 Auto-Save: No real changes detected, skipping save')
+        setAutoSaveState(prev => ({ ...prev, hasUnsavedChanges: false }))
+        return
+      }
+
+      console.log('💾 Auto-Save: Triggered', {
+        streamId,
+        changedFields: formChangeTracking.changedFields,
+        formDataKeys: Object.keys(currentFormData)
+      })
+
+      setAutoSaveState(prev => ({ ...prev, isAutoSaving: true }))
+
+      autoSaveStream.mutate({
+        streamId,
+        data: {
+          wizard_data: currentFormData,
+          xml_content: state.generatedXML || undefined
+        }
+      }, {
+        onSuccess: (updatedStream) => {
+          console.log('✅ Auto-Save: Success', {
+            streamId,
+            savedFields: formChangeTracking.changedFields
+          })
+
+          lastSavedDataRef.current = currentFormData
+          setAutoSaveState({
+            isAutoSaving: false,
+            lastAutoSaved: new Date(),
+            hasUnsavedChanges: false,
+            autoSaveError: null
+          })
+        },
+        onError: (error) => {
+          console.error('❌ Auto-Save: Error', {
+            streamId,
+            error: error.message,
+            changedFields: formChangeTracking.changedFields
+          })
+
+          setAutoSaveState(prev => ({
+            ...prev,
+            isAutoSaving: false,
+            autoSaveError: error.message
+          }))
+        }
+      })
+    }, autoSaveDelay)
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+    }
+  }, [formChangeTracking.hasChanged, streamId, enableAutoSave, autoSaveDelay, state.formData, state.generatedXML])
 
   // Persistence functions
   const loadPersistedData = useCallback(() => {
@@ -321,6 +460,9 @@ export const useWizardState = ({
     setState({
       currentStep: 1,
       totalSteps,
+      currentChapter: 'stream-properties',
+      currentSubChapter: 'basic-info',
+      chapters: createDefaultChapters(),
       jobType: null,
       formData: {},
       isValid: false,
@@ -529,38 +671,47 @@ export const useWizardState = ({
     // State
     state,
     error,
-    
+
     // Form data
     updateFormData,
     setJobType,
-    
-    // Navigation  
+
+    // Navigation
     goToStep,
     nextStep,
     previousStep,
     canGoNext: canGoNext(),
     canGoPrevious: canGoPrevious(),
-    
+
     // Chapter Navigation
     navigateToChapter,
     navigateToSubChapter,
     toggleChapterExpansion,
-    
+
     // XML Generation
     setGenerating,
     setGeneratedXML,
-    
+
     // Error handling
     setWizardError,
     clearError,
-    
+
     // Utility
     resetWizard,
     getProgress,
     isComplete: isComplete(),
-    
+
     // Persistence
-    clearPersistedData
+    clearPersistedData,
+
+    // Auto-Save functionality
+    autoSave: {
+      isAutoSaving: autoSaveState.isAutoSaving,
+      lastAutoSaved: autoSaveState.lastAutoSaved,
+      hasUnsavedChanges: autoSaveState.hasUnsavedChanges,
+      autoSaveError: autoSaveState.autoSaveError,
+      changedFields: formChangeTracking.changedFields
+    }
   }
 }
 
@@ -616,11 +767,7 @@ export const createDefaultStreamProperties = (): Partial<WizardFormData> => ({
       lastName: 'Geck',
       company: 'Arvato Systems',
       department: ''
-    },
-    maxRuns: 5,
-    retentionDays: 30,
-    severityGroup: '',
-    streamPath: '/'
+    }
   }
 })
 

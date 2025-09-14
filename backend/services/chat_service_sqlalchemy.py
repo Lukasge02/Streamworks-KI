@@ -13,7 +13,13 @@ from sqlalchemy import text, select, insert, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import AsyncSessionLocal
-from .unified_rag_service import RAGMode
+from enum import Enum
+
+class RAGMode(Enum):
+    """RAG operation modes"""
+    FAST = "fast"
+    ACCURATE = "accurate"
+    COMPREHENSIVE = "comprehensive"
 from .di_container import get_service
 from .chat_title_generator import chat_title_generator
 
@@ -27,20 +33,51 @@ class ChatServiceSQLAlchemy:
         self._initialized = False
     
     async def _initialize(self):
-        """Initialize RAG service using DI container"""
+        """Initialize chat service with timeout protection"""
         if self._initialized:
             return
-            
+
         try:
-            # Get RAG service from DI container
-            self.rag_service = await get_service("openai_rag_service")
-            
+            # Initialize Unified RAG service with timeout protection
+            import asyncio
+            from .rag.unified_rag_service import get_unified_rag_service
+
+            logger.info("Initializing UnifiedRAGService with 30s timeout...")
+
+            # Use asyncio.wait_for to add timeout protection
+            rag_service_task = asyncio.create_task(self._initialize_rag_service())
+            self.rag_service = await asyncio.wait_for(rag_service_task, timeout=30.0)
+
             self._initialized = True
-            logger.info("ChatServiceSQLAlchemy initialized successfully with DI container")
-            
+            logger.info("ChatServiceSQLAlchemy initialized successfully with UnifiedRAGService")
+
+        except asyncio.TimeoutError:
+            logger.error("RAG service initialization timed out after 30 seconds")
+            self.rag_service = None
+            self._initialized = True
+            logger.warning("ChatServiceSQLAlchemy initialized without RAG service (timeout)")
+
         except Exception as e:
             logger.error(f"Failed to initialize ChatServiceSQLAlchemy: {str(e)}")
-            raise
+            # Fallback to no RAG service
+            self.rag_service = None
+            self._initialized = True
+            logger.warning("ChatServiceSQLAlchemy initialized without RAG service")
+
+    async def _initialize_rag_service(self):
+        """Helper method to initialize RAG service with proper error handling"""
+        from .rag.unified_rag_service import get_unified_rag_service
+
+        rag_service = await get_unified_rag_service()
+
+        # Try to initialize, but allow graceful fallback if it fails
+        try:
+            await rag_service.initialize()
+            return rag_service
+        except Exception as e:
+            logger.error(f"RAG service initialization failed: {str(e)}")
+            # Return None to indicate failure
+            return None
     
     # ================================
     # SESSION MANAGEMENT
@@ -409,20 +446,48 @@ class ChatServiceSQLAlchemy:
                 row = result.fetchone()
                 context_filters = json.loads(row[0]) if row and isinstance(row[0], str) and row[0] else (row[0] if row and row[0] else {})
             
-            # 6. Process with OpenAI RAG
-            # Convert string mode to RAGMode enum
-            rag_mode = RAGMode.ACCURATE
-            if processing_mode.upper() == "FAST":
-                rag_mode = RAGMode.FAST
-            elif processing_mode.upper() == "COMPREHENSIVE":
-                rag_mode = RAGMode.COMPREHENSIVE
-            
-            rag_response = await self.rag_service.query(
-                query=enhanced_query,
-                filters=context_filters,
-                mode=rag_mode,
-                include_sources=include_sources
-            )
+            # 6. Process with UnifiedRAGService
+            if self.rag_service:
+                # Convert string mode to RAGMode enum
+                from .rag import RAGMode
+                rag_mode = RAGMode.ACCURATE
+                if processing_mode.upper() == "FAST":
+                    rag_mode = RAGMode.FAST
+                elif processing_mode.upper() == "COMPREHENSIVE":
+                    rag_mode = RAGMode.COMPREHENSIVE
+
+                # Convert recent messages to conversation context
+                conversation_context = []
+                if len(recent_messages) > 1:
+                    conversation_context = [
+                        {"role": msg["role"], "content": msg["content"]}
+                        for msg in recent_messages[-6:-1]  # Last 5 messages before current
+                    ]
+
+                rag_response = await self.rag_service.query(
+                    query=query,  # Use original query, service handles enhancement
+                    mode=rag_mode,
+                    filters=context_filters,
+                    conversation_context=conversation_context,
+                    session_id=session_id,
+                    user_id=user_id
+                )
+
+                # Convert RAGResponse to dict format
+                rag_response_dict = {
+                    "answer": rag_response.answer,
+                    "confidence": rag_response.confidence_score,
+                    "sources": rag_response.sources,
+                    "metadata": rag_response.metadata
+                }
+            else:
+                # Fallback when RAG service is not available
+                rag_response_dict = {
+                    "answer": "Entschuldigung, der RAG-Service ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.",
+                    "confidence": 0.0,
+                    "sources": [],
+                    "metadata": {"error": "RAG service unavailable"}
+                }
             
             processing_time_ms = int((time.time() - start_time) * 1000)
             
@@ -431,21 +496,21 @@ class ChatServiceSQLAlchemy:
                 session_id=session_id,
                 user_id=user_id,
                 role="assistant",
-                content=rag_response["answer"],
-                confidence_score=rag_response.get("confidence"),
+                content=rag_response_dict["answer"],
+                confidence_score=rag_response_dict.get("confidence"),
                 processing_time_ms=processing_time_ms,
-                sources=rag_response.get("sources", []),
-                model_used=rag_response.get("metadata", {}).get("model_used")
+                sources=rag_response_dict.get("sources", []),
+                model_used=rag_response_dict.get("metadata", {}).get("model_used")
             )
             
             # Title is now auto-generated in add_message when first user message is added
             return {
                 "message_id": assistant_message_id,
-                "answer": rag_response["answer"],
-                "confidence_score": rag_response.get("confidence"),
-                "sources": rag_response.get("sources", []),
+                "answer": rag_response_dict["answer"],
+                "confidence_score": rag_response_dict.get("confidence"),
+                "sources": rag_response_dict.get("sources", []),
                 "processing_time_ms": processing_time_ms,
-                "model_used": rag_response.get("metadata", {}).get("model_used")
+                "model_used": rag_response_dict.get("metadata", {}).get("model_used")
             }
             
         except Exception as e:
@@ -583,12 +648,17 @@ class ChatServiceSQLAlchemy:
             except Exception as e:
                 logger.error(f"Database health check failed: {str(e)}")
             
-            # Test OpenAI RAG service
+            # Test RAG service with timeout protection
             rag_healthy = False
             try:
                 if self.rag_service:
-                    rag_health_result = await self.rag_service.health_check()
+                    import asyncio
+                    # Add 10 second timeout for RAG health check
+                    health_task = asyncio.create_task(self.rag_service.health_check())
+                    rag_health_result = await asyncio.wait_for(health_task, timeout=10.0)
                     rag_healthy = rag_health_result.get("status") == "healthy"
+            except asyncio.TimeoutError:
+                logger.error("RAG health check timed out after 10 seconds")
             except Exception as e:
                 logger.error(f"RAG health check failed: {str(e)}")
             

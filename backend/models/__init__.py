@@ -11,6 +11,7 @@ from .core import (
     Document,
     DocumentChunk
 )
+from .xml_streams import XMLStream, StreamVersion
 
 __all__ = [
     "Base",
@@ -18,5 +19,7 @@ __all__ = [
     "ChunkType",
     "Folder",
     "Document",
-    "DocumentChunk"
+    "DocumentChunk",
+    "XMLStream",
+    "StreamVersion"
 ]

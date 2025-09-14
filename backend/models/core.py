@@ -18,22 +18,24 @@ Base = declarative_base()
 
 class DocumentStatus(str, Enum):
     """Document processing status with German labels"""
+    UPLOADED = "uploaded"        # Hochgeladen
     UPLOADING = "uploading"      # Wird hochgeladen
-    ANALYZING = "analyzing"      # Wird analysiert  
+    ANALYZING = "analyzing"      # Wird analysiert
     PROCESSING = "processing"    # Wird verarbeitet
     READY = "ready"             # Bereit
     SKIPPED = "skipped"         # Übersprungen
     ERROR = "error"             # Fehler
-    
+
     @property
     def german_label(self) -> str:
         """German label for UI display"""
         labels = {
+            "uploaded": "Hochgeladen",
             "uploading": "Wird hochgeladen",
-            "analyzing": "Wird analysiert", 
+            "analyzing": "Wird analysiert",
             "processing": "Wird verarbeitet",
             "ready": "Bereit",
-            "skipped": "Übersprungen", 
+            "skipped": "Übersprungen",
             "error": "Fehler"
         }
         return labels.get(self.value, self.value)
@@ -97,7 +99,7 @@ class Document(Base):
     storage_path = Column(String(500), nullable=False)  # Physical file path
     
     # Processing status
-    status = Column(ENUM('uploading', 'analyzing', 'processing', 'ready', 'skipped', 'error', name='documentstatus'), default=DocumentStatus.UPLOADING.value, nullable=False)
+    status = Column(ENUM('uploaded', 'uploading', 'analyzing', 'processing', 'ready', 'skipped', 'error', name='documentstatus'), default=DocumentStatus.UPLOADING.value, nullable=False)
     error_message = Column(Text, nullable=True)
     
     # AI Summary Caching

@@ -352,37 +352,20 @@ export const ModernChatInterface: React.FC = () => {
               <div>
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                   StreamWorks Assistant
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded">
+                    LlamaIndex RAG
+                  </span>
                   <span className="ml-2 w-2 h-2 bg-green-500 rounded-full"></span>
                 </h1>
               </div>
             </div>
 
-            {/* AI Provider Toggle */}
-            <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-              <button
-                onClick={() => setAiProvider('local')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  aiProvider === 'local'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-                title="Lokale KI verwenden (Ollama + ChromaDB)"
-              >
-                <Zap className="w-4 h-4" />
-                <span>Lokal</span>
-              </button>
-              <button
-                onClick={() => setAiProvider('cloud')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  aiProvider === 'cloud'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-                title="Cloud KI verwenden (OpenAI)"
-              >
-                <Cloud className="w-4 h-4" />
-                <span>Cloud</span>
-              </button>
+            {/* Mode Display */}
+            <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2">
+              <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="ml-2 text-sm font-medium text-gray-900 dark:text-white">
+                Modern RAG
+              </span>
             </div>
           </div>
         </div>

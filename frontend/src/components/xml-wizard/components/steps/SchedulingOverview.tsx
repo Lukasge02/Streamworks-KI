@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Info
 } from 'lucide-react'
+import InfoTooltip from '../../../ui/InfoTooltip'
 
 const SCHEDULE_MODE_INFO = {
   [ScheduleMode.SIMPLE]: {
@@ -83,9 +84,15 @@ export const SchedulingOverview: React.FC<WizardStepProps> = ({
             <Clock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Stream-Planung
-        </h2>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Stream-Planung
+          </h2>
+          <InfoTooltip 
+            content="Optional: Legen Sie fest wann der Stream automatisch ausgeführt wird. Kann auch manuell gestartet werden. Zeitpläne können jederzeit geändert werden."
+            position="bottom"
+          />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">
           Definieren Sie, wann und wie oft Ihr Stream ausgeführt werden soll
         </p>
@@ -193,25 +200,6 @@ export const SchedulingOverview: React.FC<WizardStepProps> = ({
         </Card>
       )}
 
-      {/* Info Card */}
-      <Card className="p-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-        <div className="flex items-start space-x-4">
-          <div className="p-3 bg-blue-100 dark:bg-blue-800 rounded-lg">
-            <Info className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Scheduling ist optional
-            </h3>
-            <p className="text-gray-700 dark:text-gray-300 mb-2">
-              Sie können Ihren Stream auch ohne Zeitplan erstellen und ihn manuell ausführen.
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Ein Zeitplan kann jederzeit später hinzugefügt oder geändert werden.
-            </p>
-          </div>
-        </div>
-      </Card>
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3">

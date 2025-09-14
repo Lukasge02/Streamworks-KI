@@ -155,6 +155,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       addMessage(currentSessionId, {
         type: 'user',
         content: query,
+        session_id: currentSessionId,
       })
 
       // Send to AI service
@@ -169,6 +170,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       addMessage(currentSessionId, {
         type: 'assistant',
         content: response.answer,
+        session_id: currentSessionId,
         sources: response.sources,
         confidence_score: response.confidence_score,
         processing_time: response.processing_time,
@@ -183,6 +185,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         addMessage(currentSessionId, {
           type: 'assistant',
           content: `Es tut mir leid, es gab einen Fehler: ${errorMessage}`,
+          session_id: currentSessionId,
         })
       }
       

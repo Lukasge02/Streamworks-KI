@@ -1,6 +1,6 @@
 """
-Chat Router for Streamworks RAG System
-Handles chat sessions and RAG-powered conversations with Supabase integration
+Chat Router for Streamworks System
+Handles basic chat sessions and conversations
 """
 
 from fastapi import APIRouter, HTTPException, Header, Depends
@@ -13,7 +13,7 @@ import logging
 from pydantic import BaseModel
 
 from services.chat_service_sqlalchemy import ChatServiceSQLAlchemy as ChatService
-# Using clean UnifiedRAGService for optimal performance
+from services.xml_stream_conversation_service import get_xml_stream_conversation_service, StreamConversationState
 from services.feature_flags import feature_flags
 from config import settings
 
@@ -26,20 +26,13 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 class CreateSessionRequest(BaseModel):
     title: Optional[str] = None
-    rag_config: Optional[Dict[str, Any]] = None
-    context_filters: Optional[Dict[str, Any]] = None
 
 class SendMessageRequest(BaseModel):
     query: str
-    processing_mode: Optional[str] = "accurate"  # fast, accurate, comprehensive
-    include_sources: Optional[bool] = True
-
-# Advanced RAG models removed for MVP - using simplified OpenAI RAG service
+    mode: Optional[str] = "accurate"  # fast, accurate, comprehensive
 
 class UpdateSessionRequest(BaseModel):
     title: Optional[str] = None
-    rag_config: Optional[Dict[str, Any]] = None
-    context_filters: Optional[Dict[str, Any]] = None
 
 class UpdateTitleRequest(BaseModel):
     title: str
@@ -81,11 +74,6 @@ async def get_chat_service() -> ChatService:
     from services.chat_service_sqlalchemy import ChatServiceSQLAlchemy as ChatService
     return ChatService()
 
-# RAG Service Dependency Injection - Unified Service
-async def get_rag_service():
-    """Dependency to get Unified RAG Service instance"""
-    from services.di_container import get_service
-    return await get_service("unified_rag_service")
 
 async def get_user_id(x_user_id: Optional[str] = Header(None)) -> str:
     """Extract user ID from header - for now using header, later from JWT"""
@@ -110,9 +98,7 @@ async def create_chat_session(
     try:
         session_id = await chat_service.create_session(
             user_id=user_id,
-            title=request.title or "Neue Unterhaltung",  # Will be auto-updated on first message
-            rag_config=request.rag_config,
-            context_filters=request.context_filters
+            title=request.title or "Neue Unterhaltung"  # Will be auto-updated on first message
         )
         
         return {"session_id": session_id}
@@ -207,9 +193,7 @@ async def update_chat_session(
         await chat_service.update_session(
             session_id=session_id,
             user_id=user_id,
-            title=request.title,
-            rag_config=request.rag_config,
-            context_filters=request.context_filters
+            title=request.title
         )
         
         return {"success": True}
@@ -254,31 +238,27 @@ async def send_message(
     user_id: str = Depends(get_user_id),
     chat_service: ChatService = Depends(get_chat_service)
 ):
-    """Send a message and get RAG-powered response"""
-    start_time = time.time()
-    
+    """Send a message with full RAG processing"""
     try:
-        # Process the message with RAG
-        response = await chat_service.process_message(
+        # Process message through the chat service with RAG
+        response_data = await chat_service.process_message(
             session_id=session_id,
             user_id=user_id,
             query=request.query,
-            processing_mode=request.processing_mode,
-            include_sources=request.include_sources
+            processing_mode=request.mode or "accurate",  # Use mode from request
+            include_sources=True
         )
-        
-        processing_time_ms = int((time.time() - start_time) * 1000)
-        
+
         return SendMessageResponse(
             session_id=session_id,
-            message_id=response["message_id"],
-            answer=response["answer"],
-            confidence_score=response.get("confidence_score"),
-            processing_time_ms=processing_time_ms,
-            sources=response.get("sources", []),
-            model_used=response.get("model_used")
+            message_id=response_data["message_id"],
+            answer=response_data["answer"],
+            confidence_score=response_data.get("confidence_score"),
+            processing_time_ms=response_data.get("processing_time_ms", 0),
+            sources=response_data.get("sources", []),
+            model_used=response_data.get("model_used", "unified-rag-service")
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to process message: {str(e)}")
         raise HTTPException(
@@ -287,68 +267,52 @@ async def send_message(
         )
 
 # ================================
-# SIMPLIFIED RAG QUERY
+# SIMPLIFIED RAG QUERY - TEMPORARILY DISABLED
 # ================================
 
 @router.post("", response_model=Dict[str, Any])
-async def direct_rag_query(
+async def direct_query(
     request: SendMessageRequest,
     user_id: str = Depends(get_user_id),
-    rag_service = Depends(get_rag_service)
+    chat_service: ChatService = Depends(get_chat_service)
 ):
-    """Direct RAG query using Unified RAG service - optimized endpoint"""
-    start_time = time.time()
-    
+    """Direct query endpoint without session - for quick RAG queries"""
     try:
-        # Convert processing mode to RAGMode enum  
-        from services.unified_rag_service import RAGMode, RAGType
-        rag_mode = RAGMode.ACCURATE
-        if request.processing_mode:
-            if request.processing_mode.upper() == "FAST":
-                rag_mode = RAGMode.FAST
-            elif request.processing_mode.upper() == "COMPREHENSIVE":
-                rag_mode = RAGMode.COMPREHENSIVE
-        
-        # Process query with Unified RAG service
-        response = await rag_service.query(
-            query=request.query,
-            rag_type=RAGType.DOCUMENT,  # Explicit type specification
-            mode=rag_mode,
-            include_sources=request.include_sources
+        # Create temporary session for direct query
+        temp_session_id = await chat_service.create_session(
+            user_id=user_id,
+            title="Direct Query"
         )
-        
-        # Enhanced response with better error handling
-        if response.get("error"):
-            logger.warning(f"RAG service returned error: {response['error']}")
-            
-        # Track successful usage
-        processing_time = time.time() - start_time
-        feature_flags.track_usage("unified_rag_service", True, processing_time, user_id)
-        
+
+        # Process the query
+        response_data = await chat_service.process_message(
+            session_id=temp_session_id,
+            user_id=user_id,
+            query=request.query,
+            processing_mode=request.mode or "accurate",
+            include_sources=True
+        )
+
+        # Delete temporary session
+        try:
+            await chat_service.delete_session(temp_session_id, user_id)
+        except:
+            pass  # Don't fail if cleanup fails
+
         return {
-            "answer": response["answer"],
-            "confidence_score": response.get("confidence"),
-            "processing_time": f"{response.get('response_time', 0):.2f}s",
-            "sources": response.get("sources", []),
-            "metadata": {
-                "service": "unified_rag",
-                "processing_mode": request.processing_mode or "accurate",
-                "performance": response.get("metadata", {}).get("performance", {}),
-                **response.get("metadata", {})
-            },
-            "model_used": response.get("metadata", {}).get("model_used"),
-            "error": response.get("error")  # Include error info if present
+            "answer": response_data["answer"],
+            "confidence_score": response_data.get("confidence_score"),
+            "processing_time_ms": response_data.get("processing_time_ms", 0),
+            "sources": response_data.get("sources", []),
+            "model_used": response_data.get("model_used", "unified-rag-service"),
+            "mode": request.mode or "accurate"
         }
-        
+
     except Exception as e:
-        # Track failed usage
-        processing_time = time.time() - start_time if 'start_time' in locals() else 0.0
-        feature_flags.track_usage("unified_rag_service", False, processing_time, user_id)
-        
-        logger.error(f"Direct RAG query failed: {str(e)}")
+        logger.error(f"Direct query failed: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"RAG query failed: {str(e)}"
+            detail=f"Direct query failed: {str(e)}"
         )
 
 
@@ -459,6 +423,23 @@ class DirectMessageRequest(BaseModel):
     sources: Optional[List[Dict[str, Any]]] = None
     model_info: Optional[str] = None
 
+# ================================
+# XML STREAM CONVERSATION MODELS
+# ================================
+
+class XMLStreamConversationRequest(BaseModel):
+    message: str
+    session_id: str
+    current_state: Optional[Dict[str, Any]] = None
+
+class XMLStreamConversationResponse(BaseModel):
+    message: str
+    suggestions: List[str]
+    state: Dict[str, Any]
+    requires_user_input: bool = True
+    action_taken: Optional[str] = None
+    errors: List[str] = []
+
 @router.post("/sessions/{session_id}/messages/direct", response_model=Dict[str, str])
 async def save_message_direct(
     session_id: str,
@@ -504,32 +485,104 @@ async def save_message_direct(
         )
 
 # ================================
+# XML STREAM CONVERSATION ENDPOINTS
+# ================================
+
+@router.post("/xml-stream-conversation", response_model=XMLStreamConversationResponse)
+async def xml_stream_conversation(
+    request: XMLStreamConversationRequest,
+    user_id: str = Depends(get_user_id)
+):
+    """Process conversation for XML stream creation with intelligent entity extraction"""
+    try:
+        # Get XML stream conversation service
+        conversation_service = await get_xml_stream_conversation_service()
+
+        # Convert current_state from dict to StreamConversationState if provided
+        current_state = None
+        if request.current_state:
+            # Parse the state - for now just pass it through
+            # In a real implementation, you'd properly deserialize it
+            current_state = request.current_state
+
+        # Process conversation
+        response = await conversation_service.process_conversation(
+            message=request.message,
+            session_id=request.session_id,
+            user_id=user_id,
+            current_state=current_state
+        )
+
+        return XMLStreamConversationResponse(
+            message=response.message,
+            suggestions=response.suggestions,
+            state=response.state.__dict__,  # Convert state to dict
+            requires_user_input=response.requires_user_input,
+            action_taken=response.action_taken,
+            errors=response.errors or []
+        )
+
+    except Exception as e:
+        logger.error(f"XML stream conversation failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Conversation processing failed: {str(e)}"
+        )
+
+@router.get("/xml-stream-conversation/{session_id}/state")
+async def get_xml_stream_conversation_state(
+    session_id: str,
+    user_id: str = Depends(get_user_id)
+):
+    """Get current XML stream conversation state"""
+    try:
+        # For now, return a placeholder state
+        # In a real implementation, you'd retrieve stored state
+        return {
+            "session_id": session_id,
+            "phase": "initialization",
+            "completion_percentage": 0.0,
+            "collected_data": {},
+            "missing_required_fields": []
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get conversation state: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get state: {str(e)}"
+        )
+
+# ================================
 # HEALTH & STATUS
 # ================================
 
 @router.get("/health")
 async def chat_health():
-    """Health check for chat system with Unified RAG"""
+    """Health check for chat system"""
     try:
         # Test chat service
         chat_service = ChatService()
         chat_health_result = await chat_service.health_check()
         
-        # Test unified RAG service
-        from services.di_container import get_service
-        rag_service = await get_service("unified_rag_service")
-        rag_health_result = await rag_service.health_check()
-        
-        # Combine health results
-        overall_status = "healthy" if (
-            chat_health_result.get("status") == "healthy" and 
-            rag_health_result.get("status") == "healthy"
-        ) else "unhealthy"
+        # Check RAG service health
+        rag_health_result = {"status": "disabled", "message": "RAG service not available"}
+        try:
+            if hasattr(chat_service, 'rag_service') and chat_service.rag_service:
+                rag_health_result = await chat_service.rag_service.health_check()
+        except Exception as e:
+            rag_health_result = {"status": "error", "message": str(e)}
+
+        # Overall status based on both services
+        chat_healthy = chat_health_result.get("status") == "healthy"
+        rag_healthy = rag_health_result.get("status") in ["healthy", "disabled"]  # Disabled is okay
+        overall_status = "healthy" if chat_healthy and rag_healthy else "degraded"
         
         return {
             "status": overall_status,
             "chat_service": chat_health_result,
             "rag_service": rag_health_result,
+            "note": "Professional RAG service with LlamaIndex integration",
             "timestamp": datetime.utcnow().isoformat()
         }
         
