@@ -7,7 +7,6 @@ import asyncio
 import logging
 from typing import Dict, Any
 import httpx
-import chromadb
 from ollama import AsyncClient
 
 logger = logging.getLogger(__name__)
@@ -41,9 +40,7 @@ class DependencyValidator:
             ollama_result = await self._validate_ollama()
             results["ollama"] = ollama_result
 
-            # 2. Validate ChromaDB (CRITICAL)
-            chroma_result = await self._validate_chromadb()
-            results["chromadb"] = chroma_result
+            # 2. ChromaDB ELIMINATED - Pure Qdrant system
 
             # 3. Validate Supabase (OPTIONAL - for mirror only)
             try:
@@ -111,55 +108,7 @@ class DependencyValidator:
         except Exception as e:
             raise DependencyValidationError(f"Ollama validation failed: {str(e)}")
 
-    async def _validate_chromadb(self) -> Dict[str, Any]:
-        """Validate ChromaDB functionality"""
-        logger.info("🗄️ Validating ChromaDB...")
-
-        try:
-            # Test ChromaDB connection
-            client = chromadb.PersistentClient(
-                path=str(self.settings.CHROMA_PATH)
-            )
-
-            # Test basic operations
-            test_collection_name = "dependency_test"
-
-            # Clean up any existing test collection
-            try:
-                client.delete_collection(test_collection_name)
-            except:
-                pass
-
-            # Create test collection
-            collection = client.create_collection(test_collection_name)
-
-            # Test add/query
-            collection.add(
-                embeddings=[[1.0, 2.0, 3.0]],
-                documents=["test document"],
-                ids=["test_id"]
-            )
-
-            results = collection.query(
-                query_embeddings=[[1.0, 2.0, 3.0]],
-                n_results=1
-            )
-
-            if not results or not results['documents']:
-                raise DependencyValidationError("ChromaDB query test failed")
-
-            # Clean up test collection
-            client.delete_collection(test_collection_name)
-
-            logger.info("✅ ChromaDB validated")
-            return {
-                "status": "ok",
-                "path": str(self.settings.CHROMA_PATH),
-                "collections": len(client.list_collections())
-            }
-
-        except Exception as e:
-            raise DependencyValidationError(f"ChromaDB validation failed: {str(e)}")
+    # ChromaDB validation ELIMINATED - Pure Qdrant system
 
     async def _validate_supabase(self) -> Dict[str, Any]:
         """Validate Supabase connection and required tables"""

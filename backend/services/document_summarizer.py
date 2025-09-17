@@ -1,6 +1,6 @@
 """
-Document Summarization Service using Ollama - Supabase PostgreSQL Integration
-Provides intelligent document summarization using local AI models with PostgreSQL content
+Document Summarization Service using Ollama - Qdrant Integration
+Provides intelligent document summarization using local AI models with Qdrant vector store
 """
 
 import asyncio
@@ -9,8 +9,9 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from services.ollama_service import ollama_service
+from services.qdrant_vectorstore import get_qdrant_service
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import select
 from models.core import Document
 
 logger = logging.getLogger(__name__)
@@ -65,13 +66,13 @@ class DocumentSummarizer:
                 # Fallback if schema is not updated yet
                 logger.warning("AI summary fields not available, proceeding without caching")
 
-            # Get document chunks from PostgreSQL (primary source)
+            # Get document chunks from Qdrant vector store
             try:
-                chunks_data = await self._get_chunks_from_postgresql(db, document_id)
-
-                if not chunks_data:
-                    # Fallback: Try Supabase mirror for chunk content
-                    chunks_data = await self._get_chunks_from_mirror(db, document_id)
+                qdrant_service = await get_qdrant_service()
+                chunks_data = await qdrant_service.get_document_chunks(
+                    doc_id=document_id,
+                    limit=20  # Limit to first 20 chunks for performance
+                )
 
                 if not chunks_data:
                     summary = "Keine Textinhalte verfügbar - Dokument wird möglicherweise noch verarbeitet."
@@ -86,17 +87,17 @@ class DocumentSummarizer:
 
                 # Combine chunk contents for summary generation
                 content_parts = []
-                for chunk_data in chunks_data[:20]:  # Limit to first 20 chunks for performance
+                for chunk_data in chunks_data:
                     content = chunk_data.get('content', '')
                     if content:
                         content_parts.append(content)
 
                 combined_content = "\n\n".join(content_parts)
 
-                logger.info(f"✅ Retrieved {len(chunks_data)} chunks from PostgreSQL for summary generation")
+                logger.info(f"✅ Retrieved {len(chunks_data)} chunks from Qdrant for summary generation")
 
             except Exception as e:
-                logger.error(f"Failed to retrieve chunks from PostgreSQL: {str(e)}")
+                logger.error(f"Failed to retrieve chunks from Qdrant: {str(e)}")
                 summary = "Zusammenfassung nicht verfügbar - Fehler beim Laden der Dokumentinhalte."
                 key_points = []
                 await self._save_summary_to_db(db, document, summary, key_points)
@@ -125,7 +126,7 @@ class DocumentSummarizer:
                 "summary": summary,
                 "key_points": key_points,
                 "status": "generated",
-                "source": "postgresql",
+                "source": "qdrant",
                 "chunks_processed": len(chunks_data),
                 "generated_at": datetime.utcnow().isoformat(),
                 "cached": False
@@ -135,64 +136,6 @@ class DocumentSummarizer:
             logger.error(f"Summary generation failed: {str(e)}")
             raise
 
-    async def _get_chunks_from_postgresql(self, db: AsyncSession, document_id: str) -> List[Dict[str, Any]]:
-        """Get document chunks from PostgreSQL document_chunks table"""
-        try:
-            from models.core import DocumentChunk
-
-            # Query document_chunks table
-            chunks_query = select(DocumentChunk).where(
-                DocumentChunk.document_id == document_id
-            ).order_by(DocumentChunk.chunk_index)
-
-            chunks_result = await db.execute(chunks_query)
-            chunks = chunks_result.scalars().all()
-
-            chunks_data = []
-            for chunk in chunks:
-                chunks_data.append({
-                    "content": chunk.content,
-                    "chunk_index": chunk.chunk_index,
-                    "heading": chunk.heading,
-                    "section_name": chunk.section_name
-                })
-
-            logger.info(f"✅ Retrieved {len(chunks_data)} chunks from PostgreSQL document_chunks")
-            return chunks_data
-
-        except Exception as e:
-            logger.warning(f"Failed to get chunks from PostgreSQL document_chunks: {str(e)}")
-            return []
-
-    async def _get_chunks_from_mirror(self, db: AsyncSession, document_id: str) -> List[Dict[str, Any]]:
-        """Fallback: Get chunk preview content from Supabase mirror"""
-        try:
-            # Query chunk metadata mirror
-            mirror_query = text("""
-                SELECT chunk_id, document_id, content_preview, word_count, chunk_index
-                FROM chunk_metadata_mirror
-                WHERE document_id = :doc_id
-                ORDER BY chunk_index
-            """)
-
-            mirror_result = await db.execute(mirror_query, {"doc_id": document_id})
-            mirror_rows = mirror_result.fetchall()
-
-            chunks_data = []
-            for row in mirror_rows:
-                chunks_data.append({
-                    "content": row.content_preview or "",  # Use preview content
-                    "chunk_index": row.chunk_index or 0,
-                    "heading": None,
-                    "section_name": None
-                })
-
-            logger.info(f"✅ Retrieved {len(chunks_data)} chunk previews from Supabase mirror")
-            return chunks_data
-
-        except Exception as e:
-            logger.warning(f"Failed to get chunks from Supabase mirror: {str(e)}")
-            return []
 
     async def _generate_summary_with_ollama(
         self, content: str, filename: str

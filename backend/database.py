@@ -69,30 +69,39 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency for getting async database sessions
-    Used in FastAPI endpoints
+    Used in FastAPI endpoints with proper state management
     """
-    session = None
+    session = AsyncSessionLocal()
     try:
-        session = AsyncSessionLocal()
         yield session
-        # Commit only if session is still active and has changes
-        if session and hasattr(session, '_transaction') and session._transaction:
-            await session.commit()
+
+        # Check if session is still active before committing
+        if not session.is_active:
+            logger.warning("Session is not active, skipping commit")
+            return
+
+        # Always attempt commit - SQLAlchemy handles if no transaction
+        await session.commit()
+
     except Exception as e:
         logger.error(f"Session error: {str(e)}")
-        if session:
-            try:
+
+        # Only rollback if session is still active
+        try:
+            if session.is_active:
                 await session.rollback()
-            except Exception as rollback_error:
-                logger.warning(f"Session rollback failed (non-critical): {str(rollback_error)}")
+        except Exception as rollback_error:
+            logger.error(f"Rollback failed: {str(rollback_error)}")
         raise
+
     finally:
-        if session:
-            try:
-                # Ensure session is properly closed
+        # Ensure session is safely closed
+        try:
+            if session.is_active:
                 await session.close()
-            except Exception as close_error:
-                logger.warning(f"Session close error (non-critical): {str(close_error)}")
+        except Exception as close_error:
+            logger.error(f"Session close failed: {str(close_error)}")
+            # Don't re-raise close errors to avoid masking original exceptions
 
 
 async def init_database():
@@ -136,24 +145,20 @@ async def check_database_health() -> dict:
     Used for health endpoints
     """
     try:
+        start_time = datetime.utcnow()
         async with AsyncSessionLocal() as session:
             from sqlalchemy import text
             result = await session.execute(text("SELECT 1"))
-            
-            # Get connection pool stats
-            pool = async_engine.pool
-            pool_stats = {
-                "pool_size": pool.size(),
-                "pool_overflow": pool.overflow(),
-                "pool_checked_in": pool.checkedin(),
-                "pool_checked_out": pool.checkedout()
-            }
-            
+            end_time = datetime.utcnow()
+            response_time = (end_time - start_time).total_seconds() * 1000  # in milliseconds
+
             return {
                 "status": "healthy",
-                "connection_test": "successful",
-                "pool_stats": pool_stats,
-                "timestamp": datetime.utcnow().isoformat()
+                "response_time_ms": round(response_time, 2),
+                "pool_size": async_engine.pool.size(),
+                "pool_checked_in": async_engine.pool.checkedin(),
+                "pool_checked_out": async_engine.pool.checkedout(),
+                "timestamp": end_time.isoformat()
             }
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")

@@ -82,11 +82,26 @@ export function DocumentSyncProvider({
       
       ws.onmessage = (event) => {
         try {
+          // Handle empty or invalid messages
+          if (!event.data || typeof event.data !== 'string') {
+            console.warn('Received empty or invalid WebSocket message')
+            return
+          }
+
           const message = JSON.parse(event.data)
+
+          // Validate message structure
+          if (!message || typeof message !== 'object') {
+            console.warn('Received invalid WebSocket message structure')
+            return
+          }
+
           handleWebSocketMessage(message)
           setLastSyncTime(new Date().toISOString())
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error)
+          // Don't break the connection on parse errors, just log and continue
+          // This prevents browser extension conflicts from breaking the connection
         }
       }
       
@@ -171,74 +186,104 @@ export function DocumentSyncProvider({
   }
   
   const handleWebSocketMessage = (message: any) => {
-    switch (message.type) {
-      case 'documents_list':
-        // Initial document list
-        documentStore.setDocuments(message.data)
-        break
-        
-      case 'document_added':
-        documentStore.handleWebSocketEvent({
-          type: 'document_added',
-          data: message.data,
-          timestamp: message.timestamp,
-          source: 'websocket'
-        } as DocumentEvent)
-        break
-        
-      case 'document_updated':
-        documentStore.handleWebSocketEvent({
-          type: 'document_updated',
-          data: message.data,
-          timestamp: message.timestamp,
-          source: 'websocket'
-        } as DocumentEvent)
-        break
-        
-      case 'document_deleted':
-        documentStore.handleWebSocketEvent({
-          type: 'document_deleted',
-          data: message.data,
-          timestamp: message.timestamp,
-          source: 'websocket'
-        } as DocumentEvent)
-        break
-        
-      case 'upload_progress':
-        // LEGACY: Upload progress now handled by SimpleUploadDropzone + useUploadProgress
-        // This case is kept for backward compatibility but is not actively used
-        console.log('Upload progress via DocumentSync (legacy):', message.data)
-        break
-        
-      case 'operation_confirmed':
-        // Remove optimistic operation when confirmed
-        if (message.operation_id) {
-          documentStore.removeOptimisticOperation(message.operation_id)
-        }
-        break
-        
-      case 'operation_failed':
-        // Rollback failed operation
-        if (message.operation_id) {
-          documentStore.rollbackOperation(message.operation_id)
-        }
-        break
-        
-      case 'connection_established':
-        // Connection established confirmation
-        console.log('Document sync connection confirmed:', message.message)
-        break
-        
-      case 'pong':
-        // Heartbeat response
-        break
-        
-      case 'error':
-        console.error('WebSocket error message:', message.error)
-        break
-        
-      default:
-        console.warn('Unknown WebSocket message type:', message.type)
+    // Validate message type exists
+    if (!message.type) {
+      console.warn('Received WebSocket message without type:', message)
+      return
+    }
+
+    try {
+      switch (message.type) {
+        case 'documents_list':
+          // Initial document list
+          if (Array.isArray(message.data)) {
+            documentStore.setDocuments(message.data)
+          } else {
+            console.warn('Received invalid documents_list data:', message.data)
+          }
+          break
+
+        case 'document_added':
+          if (message.data && typeof message.data === 'object') {
+            documentStore.handleWebSocketEvent({
+              type: 'document_added',
+              data: message.data,
+              timestamp: message.timestamp || new Date().toISOString(),
+              source: 'websocket'
+            } as DocumentEvent)
+          } else {
+            console.warn('Received invalid document_added data:', message.data)
+          }
+          break
+
+        case 'document_updated':
+          if (message.data && typeof message.data === 'object') {
+            documentStore.handleWebSocketEvent({
+              type: 'document_updated',
+              data: message.data,
+              timestamp: message.timestamp || new Date().toISOString(),
+              source: 'websocket'
+            } as DocumentEvent)
+          } else {
+            console.warn('Received invalid document_updated data:', message.data)
+          }
+          break
+
+        case 'document_deleted':
+          if (message.data && typeof message.data === 'object') {
+            documentStore.handleWebSocketEvent({
+              type: 'document_deleted',
+              data: message.data,
+              timestamp: message.timestamp || new Date().toISOString(),
+              source: 'websocket'
+            } as DocumentEvent)
+          } else {
+            console.warn('Received invalid document_deleted data:', message.data)
+          }
+          break
+  
+        case 'upload_progress':
+          // LEGACY: Upload progress now handled by SimpleUploadDropzone + useUploadProgress
+          // This case is kept for backward compatibility but is not actively used
+          console.log('Upload progress via DocumentSync (legacy):', message.data)
+          break
+
+        case 'operation_confirmed':
+          // Remove optimistic operation when confirmed
+          if (message.operation_id && typeof message.operation_id === 'string') {
+            documentStore.removeOptimisticOperation(message.operation_id)
+          }
+          break
+
+        case 'operation_failed':
+          // Rollback failed operation
+          if (message.operation_id && typeof message.operation_id === 'string') {
+            documentStore.rollbackOperation(message.operation_id)
+          }
+          break
+
+        case 'connection_established':
+          // Connection established confirmation
+          if (message.message) {
+            console.log('Document sync connection confirmed:', message.message)
+          }
+          break
+
+        case 'pong':
+          // Heartbeat response
+          break
+
+        case 'error':
+          if (message.error) {
+            console.error('WebSocket error message:', message.error)
+          }
+          break
+
+        default:
+          console.warn('Unknown WebSocket message type:', message.type)
+      }
+    } catch (error) {
+      console.error('Error handling WebSocket message:', error, 'Message:', message)
     }
   }
   

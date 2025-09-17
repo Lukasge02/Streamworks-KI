@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.core import Document, DocumentStatus
-from services.llamaindex_rag_service import get_rag_service
+from services.qdrant_rag_service import get_rag_service
 
 logger = logging.getLogger(__name__)
 

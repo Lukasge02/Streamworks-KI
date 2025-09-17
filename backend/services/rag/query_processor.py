@@ -167,11 +167,13 @@ Hypothetisches Dokument:"""
         """
         try:
             # Basic analysis using heuristics
+            question_marks = query.count("?")
+
             analysis = {
                 "length": len(query),
                 "word_count": len(query.split()),
                 "has_technical_terms": self._contains_technical_terms(query),
-                "is_complex": len(query.split()) > 10 or "?" in query.count("?") > 1,
+                "is_complex": len(query.split()) > 10 or question_marks > 1,
                 "query_type": self._classify_query_type(query),
                 "confidence": 0.8  # Base confidence
             }

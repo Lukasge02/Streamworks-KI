@@ -8,8 +8,9 @@ import time
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+import json
 
 from database import get_async_session
 from schemas.core import (
@@ -136,7 +137,7 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
-@router.get("/", response_model=List[DocumentWithFolder])
+@router.get("/")
 async def get_documents(
     folder_id: Optional[UUID] = Query(None, description="Filter by folder ID"),
     status: Optional[str] = Query(None, description="Filter by status"),
@@ -150,7 +151,7 @@ async def get_documents(
 ):
     """
     Get list of documents with filtering and sorting
-    
+
     - **folder_id**: Filter by folder UUID
     - **status**: Filter by document status
     - **search**: Search query for filename and description
@@ -170,7 +171,7 @@ async def get_documents(
             filters.search_query = search
         if tags:
             filters.tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
-        
+
         documents = await doc_service.get_documents_list(
             db=db,
             folder_id=folder_id,
@@ -179,9 +180,49 @@ async def get_documents(
             page=page,
             per_page=per_page
         )
-        
-        return documents
-        
+
+        # Serialize documents completely before sending
+        response_data = []
+        for doc in documents:
+            document_data = {
+                "id": str(doc.id),
+                "filename": doc.filename,
+                "original_filename": doc.original_filename,
+                "folder_id": str(doc.folder_id),
+                "file_hash": doc.file_hash,
+                "file_size": doc.file_size,
+                "mime_type": doc.mime_type,
+                "status": doc.status.value if hasattr(doc.status, 'value') else str(doc.status),
+                "error_message": doc.error_message,
+                "created_at": doc.created_at.isoformat(),
+                "updated_at": doc.updated_at.isoformat(),
+                "processed_at": doc.processed_at.isoformat() if doc.processed_at else None,
+                "tags": doc.tags or [],
+                "description": doc.description,
+                "chunk_count": getattr(doc, 'chunk_count', 0),
+                "processing_metadata": getattr(doc, 'processing_metadata', {})
+            }
+
+            # Add folder information if available
+            if hasattr(doc, 'folder') and doc.folder:
+                document_data["folder"] = {
+                    "id": str(doc.folder.id),
+                    "name": doc.folder.name,
+                    "path": doc.folder.path
+                }
+
+            response_data.append(document_data)
+
+        # Return as explicit JSONResponse with proper headers
+        response_json = json.dumps(response_data, ensure_ascii=False)
+        return JSONResponse(
+            content=json.loads(response_json),
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(response_json.encode('utf-8')))
+            }
+        )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}")
 

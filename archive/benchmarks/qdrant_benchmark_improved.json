@@ -1,0 +1,225 @@
+{
+  "summary": {
+    "benchmark_timestamp": "2025-09-14T22:56:31.248745",
+    "total_test_categories": 6,
+    "backend_url": "http://localhost:8000",
+    "main_health_status": "degraded",
+    "main_health_response_time_ms": 170.72,
+    "chat_health_status": "healthy",
+    "chat_health_response_time_ms": 135.52,
+    "qdrant_status": "not_initialized",
+    "rag_initialized": false,
+    "vector_store": "qdrant/chroma",
+    "avg_health_response_time_ms": 162.79,
+    "health_success_rate": 100.0,
+    "concurrent_10_throughput_rps": 19.34,
+    "concurrent_10_success_rate": 100.0
+  },
+  "detailed_results": {
+    "system_health": {
+      "main_health": {
+        "status_code": 200,
+        "response_time_ms": 170.72,
+        "status": "degraded",
+        "services": {
+          "ollama_service": {
+            "status": "healthy"
+          },
+          "qdrant_service": {
+            "status": "healthy"
+          },
+          "rag_service": {
+            "status": "healthy"
+          },
+          "upload_job_manager": {
+            "status": "healthy",
+            "active_jobs": 0,
+            "initialized": true,
+            "cleanup_task_running": true
+          }
+        }
+      },
+      "chat_health": {
+        "status_code": 200,
+        "response_time_ms": 135.52,
+        "status": "healthy",
+        "rag_service": {
+          "status": "healthy",
+          "message": "RAG service not available",
+          "components": {
+            "unified_rag": {
+              "status": "uninitialized",
+              "initialized": false
+            },
+            "query_processor": {
+              "status": "disabled",
+              "phase": "1"
+            },
+            "adaptive_retriever": {
+              "status": "disabled",
+              "phase": "1"
+            }
+          },
+          "performance": {},
+          "available_modes": [
+            "fast",
+            "accurate",
+            "comprehensive"
+          ],
+          "service": "QdrantRAGService",
+          "initialized": false,
+          "qdrant": {
+            "status": "not_initialized"
+          }
+        },
+        "system_info": {
+          "architecture": "unified_rag_service",
+          "supported_modes": [
+            "fast",
+            "accurate",
+            "comprehensive"
+          ],
+          "backend": "llamaindex_ollama",
+          "vector_store": "qdrant/chroma",
+          "features": {
+            "query_processing": true,
+            "adaptive_retrieval": true,
+            "context_management": true,
+            "session_persistence": true
+          }
+        }
+      }
+    },
+    "qdrant_metrics": {
+      "qdrant_status": "not_initialized",
+      "rag_initialized": false,
+      "vector_store": "qdrant/chroma",
+      "available_modes": [
+        "fast",
+        "accurate",
+        "comprehensive"
+      ],
+      "backend_type": "llamaindex_ollama"
+    },
+    "health_endpoint_performance": {
+      "/api/health": {
+        "avg_response_time_ms": 162.79,
+        "median_response_time_ms": 166.85,
+        "min_response_time_ms": 127.07,
+        "max_response_time_ms": 190.62,
+        "success_rate": 100.0,
+        "total_requests": 10,
+        "successful_requests": 10
+      },
+      "/api/chat/health": {
+        "avg_response_time_ms": 153.29,
+        "median_response_time_ms": 156.0,
+        "min_response_time_ms": 129.49,
+        "max_response_time_ms": 172.5,
+        "success_rate": 100.0,
+        "total_requests": 10,
+        "successful_requests": 10
+      },
+      "/health": {
+        "avg_response_time_ms": 4.47,
+        "median_response_time_ms": 3.78,
+        "min_response_time_ms": 2.51,
+        "max_response_time_ms": 8.54,
+        "success_rate": 100.0,
+        "total_requests": 10,
+        "successful_requests": 10
+      }
+    },
+    "api_response_times": {
+      "/docs": {
+        "status_code": 200,
+        "response_time_ms": 3.02,
+        "success": true,
+        "content_length": 963
+      },
+      "/api/v1/folders/": {
+        "status_code": 200,
+        "response_time_ms": 332.6,
+        "success": true,
+        "content_length": 933
+      },
+      "/api/v1/documents/?sort=created_desc&page=1&per_page=10": {
+        "status_code": 200,
+        "response_time_ms": 275.89,
+        "success": true,
+        "content_length": 5310
+      },
+      "/api/xml-streams/": {
+        "status_code": 200,
+        "response_time_ms": 293.57,
+        "success": true,
+        "content_length": 1090
+      }
+    },
+    "backend_load_capacity": {
+      "level_1": {
+        "concurrent_requests": 1,
+        "successful_requests": 1,
+        "success_rate": 100.0,
+        "total_time_ms": 515.5,
+        "avg_response_time_ms": 462.62,
+        "throughput_rps": 1.94
+      },
+      "level_5": {
+        "concurrent_requests": 5,
+        "successful_requests": 5,
+        "success_rate": 100.0,
+        "total_time_ms": 511.54,
+        "avg_response_time_ms": 445.73,
+        "throughput_rps": 9.77
+      },
+      "level_10": {
+        "concurrent_requests": 10,
+        "successful_requests": 10,
+        "success_rate": 100.0,
+        "total_time_ms": 517.04,
+        "avg_response_time_ms": 379.5,
+        "throughput_rps": 19.34
+      },
+      "level_20": {
+        "concurrent_requests": 20,
+        "successful_requests": 20,
+        "success_rate": 100.0,
+        "total_time_ms": 569.67,
+        "avg_response_time_ms": 424.7,
+        "throughput_rps": 35.11
+      }
+    },
+    "document_management_performance": {
+      "GET /api/v1/folders/": {
+        "avg_response_time_ms": 559.13,
+        "success_rate": 100.0,
+        "requests_tested": 5
+      },
+      "GET /api/v1/documents/?sort=created_desc&page=1&per_page=50": {
+        "avg_response_time_ms": 356.12,
+        "success_rate": 100.0,
+        "requests_tested": 5
+      },
+      "GET /health": {
+        "avg_response_time_ms": 5.2,
+        "success_rate": 100.0,
+        "requests_tested": 5
+      }
+    }
+  },
+  "recommendations": [
+    "Qdrant service not initialized - consider lazy loading optimization",
+    "RAG service not initialized - may impact first query performance",
+    "✅ Excellent main health endpoint performance",
+    "✅ High reliability - excellent success rate"
+  ],
+  "performance_score": {
+    "health_endpoint": 82.9,
+    "reliability": 100.0,
+    "concurrent_performance": 100.0,
+    "system_readiness": 0,
+    "overall": 74.9
+  },
+  "generated_at": "2025-09-14T22:56:42.524714"
+}

@@ -1,0 +1,441 @@
+{
+  "generated_at": "2025-09-16T23:28:54.127925",
+  "version": "1.0",
+  "description": "Auto-generated job type schemas from XML analysis",
+  "schemas": {
+    "STANDARD": {
+      "job_type": "STANDARD",
+      "display_name": "Standard Job",
+      "description": "Ein einfacher Job-Typ für die Ausführung von Streams.",
+      "complexity": "simple",
+      "estimated_time": "5-10 Minuten",
+      "icon": "standard-job-icon",
+      "parameters": [
+        {
+          "name": "StreamName",
+          "data_type": "string",
+          "required": true,
+          "default_value": null,
+          "description": "Der Name des Streams.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Wie möchten Sie den Namen des Streams festlegen?",
+          "examples": [
+            "geck003_ft",
+            "Export-Import-Utility-Beispiel"
+          ]
+        },
+        {
+          "name": "StreamDocumentation",
+          "data_type": "string",
+          "required": false,
+          "default_value": "Keine Dokumentation vorhanden.",
+          "description": "Dokumentation für den Stream.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Möchten Sie eine Dokumentation für den Stream hinzufügen?",
+          "examples": [
+            "Meine Dokumentation",
+            "Export und Import des Streams"
+          ]
+        },
+        {
+          "name": "MaxStreamRuns",
+          "data_type": "integer",
+          "required": true,
+          "default_value": 5,
+          "description": "Maximale Anzahl der Ausführungen des Streams.",
+          "validation_pattern": "^[0-9]+$",
+          "enum_values": null,
+          "chat_prompt": "Wie viele maximale Ausführungen möchten Sie für den Stream festlegen?",
+          "examples": [
+            5,
+            10
+          ]
+        },
+        {
+          "name": "ShortDescription",
+          "data_type": "string",
+          "required": true,
+          "default_value": null,
+          "description": "Kurze Beschreibung des Streams.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Wie lautet die kurze Beschreibung für den Stream?",
+          "examples": [
+            "Erster Stream",
+            "Beispiel Export-Import Utility"
+          ]
+        },
+        {
+          "name": "SchedulingRequiredFlag",
+          "data_type": "boolean",
+          "required": false,
+          "default_value": false,
+          "description": "Gibt an, ob eine Planung erforderlich ist.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Benötigt der Stream eine Planung?",
+          "examples": [
+            true,
+            false
+          ]
+        },
+        {
+          "name": "StreamRunDeletionType",
+          "data_type": "enum",
+          "required": false,
+          "default_value": "None",
+          "description": "Typ der Löschung für Stream-Ausführungen.",
+          "validation_pattern": null,
+          "enum_values": [
+            "None",
+            "Immediate",
+            "Scheduled"
+          ],
+          "chat_prompt": "Welchen Löschtyp möchten Sie für die Stream-Ausführungen festlegen?",
+          "examples": [
+            "None",
+            "Immediate"
+          ]
+        },
+        {
+          "name": "JobName",
+          "data_type": "string",
+          "required": true,
+          "default_value": null,
+          "description": "Der Name des Jobs.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Wie möchten Sie den Namen des Jobs festlegen?",
+          "examples": [
+            "StartPoint",
+            "RecoveryJobNetStartPoint"
+          ]
+        },
+        {
+          "name": "JobCategory",
+          "data_type": "string",
+          "required": true,
+          "default_value": null,
+          "description": "Kategorie des Jobs.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Welche Kategorie möchten Sie für den Job festlegen?",
+          "examples": [
+            "StartPoint",
+            "RecoveryJobNetStartPoint"
+          ]
+        },
+        {
+          "name": "IsNotificationRequired",
+          "data_type": "boolean",
+          "required": false,
+          "default_value": false,
+          "description": "Gibt an, ob eine Benachrichtigung erforderlich ist.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Soll eine Benachrichtigung für diesen Job erforderlich sein?",
+          "examples": [
+            true,
+            false
+          ]
+        }
+      ],
+      "template_examples": [
+        "geck003_ft.xml",
+        "geck003_003.xml",
+        "Export-Import-Utility-Beispiel.xml",
+        "Export-Import-Beispiel-Stream.xml",
+        "StrD_Demo.xml",
+        "Teststream-Demo.xml",
+        "IFS-P-HIS-INDEXERST-PBAX.xml",
+        "StrA_BSR_001.xml",
+        "testkeite01123.xml",
+        "StrA_AVD_001.xml",
+        "StrRVC_111_001.xml",
+        "StrJ_Jexa4S_AC_Execute.xml",
+        "StrI_CreateIncident_001.xml",
+        "StrJ_JobScript_001.xml",
+        "ExportReorg.xml",
+        "StrR_12345_Real.xml",
+        "StrI_CreateIncident_002.xml",
+        "Str_JSO_001.xml",
+        "StrJ_JobScript_002.xml",
+        "StrP_JobLogParser_01.xml",
+        "StrESD_VV1.xml",
+        "StrRVC_222_001.xml"
+      ]
+    },
+    "SAP": {
+      "job_type": "SAP",
+      "display_name": "SAP Job",
+      "description": "SAP Report oder Programm mit Parametern",
+      "complexity": "medium",
+      "estimated_time": "4-6 Minuten",
+      "icon": "database",
+      "parameters": [
+        {
+          "name": "system",
+          "data_type": "enum",
+          "required": true,
+          "default_value": null,
+          "description": "SAP System",
+          "validation_pattern": null,
+          "enum_values": [
+            "PA1_100",
+            "PA1_200",
+            "PT1_100",
+            "PD1_100"
+          ],
+          "chat_prompt": "In welchem SAP-System soll der Report ausgeführt werden?",
+          "examples": [
+            "PA1_100",
+            "PT1_100"
+          ]
+        },
+        {
+          "name": "report",
+          "data_type": "string",
+          "required": true,
+          "default_value": null,
+          "description": "SAP Report Name",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Welchen SAP-Report möchten Sie ausführen?",
+          "examples": [
+            "RBDAGAIN",
+            "RSUSR003",
+            "SE16"
+          ]
+        },
+        {
+          "name": "variant",
+          "data_type": "string",
+          "required": false,
+          "default_value": null,
+          "description": "Report-Variante",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Soll eine bestimmte Variante verwendet werden? (optional)",
+          "examples": [
+            "VAR01",
+            "PROD_VARIANT"
+          ]
+        },
+        {
+          "name": "batch_user",
+          "data_type": "string",
+          "required": false,
+          "default_value": "Batch_PUR",
+          "description": "Batch-Benutzer",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Welcher Batch-User soll verwendet werden?",
+          "examples": [
+            "Batch_PUR",
+            "SAP_BATCH"
+          ]
+        }
+      ],
+      "template_examples": []
+    },
+    "FILE_TRANSFER": {
+      "job_type": "FILE_TRANSFER",
+      "display_name": "File Transfer",
+      "description": "Dateiübertragung zwischen Systemen",
+      "complexity": "medium",
+      "estimated_time": "3-4 Minuten",
+      "icon": "file-transfer",
+      "parameters": [
+        {
+          "name": "source_agent",
+          "data_type": "agent",
+          "required": true,
+          "default_value": null,
+          "description": "Quell-Agent",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Von welchem System sollen die Dateien übertragen werden?",
+          "examples": [
+            "gtasswvv15778",
+            "ProdServer01"
+          ]
+        },
+        {
+          "name": "target_agent",
+          "data_type": "agent",
+          "required": true,
+          "default_value": null,
+          "description": "Ziel-Agent",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Zu welchem System sollen die Dateien übertragen werden?",
+          "examples": [
+            "gtasswvw15779",
+            "BackupServer01"
+          ]
+        },
+        {
+          "name": "source_path",
+          "data_type": "file_path",
+          "required": true,
+          "default_value": null,
+          "description": "Quell-Dateipfad",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Welche Datei oder welches Verzeichnis soll übertragen werden?",
+          "examples": [
+            "E:\\data\\export.txt",
+            "/home/user/files/*"
+          ]
+        },
+        {
+          "name": "target_path",
+          "data_type": "file_path",
+          "required": true,
+          "default_value": null,
+          "description": "Ziel-Dateipfad",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Wohin sollen die Dateien übertragen werden?",
+          "examples": [
+            "E:\\backup\\",
+            "/mnt/storage/incoming/"
+          ]
+        }
+      ],
+      "template_examples": []
+    },
+    "CUSTOM": {
+      "job_type": "CUSTOM",
+      "display_name": "Benutzerdefinierter Job",
+      "description": "Ein Job, der benutzerdefinierte Parameter verwendet.",
+      "complexity": "simple",
+      "estimated_time": "5-10 Minuten",
+      "icon": "custom-job-icon",
+      "parameters": [
+        {
+          "name": "ResourceName",
+          "data_type": "string",
+          "required": true,
+          "default_value": null,
+          "description": "Der Name der Ressource.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Wie möchten Sie die Ressource nennen?",
+          "examples": [
+            "DEMOST01"
+          ]
+        },
+        {
+          "name": "ShortDescription",
+          "data_type": "string",
+          "required": true,
+          "default_value": null,
+          "description": "Eine kurze Beschreibung der Ressource.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Könnten Sie eine kurze Beschreibung für die Ressource angeben?",
+          "examples": [
+            "RESOURCE FUER STREAM DEMOST01"
+          ]
+        },
+        {
+          "name": "Status",
+          "data_type": "enum",
+          "required": true,
+          "default_value": "Active",
+          "description": "Der Status der Ressource.",
+          "validation_pattern": null,
+          "enum_values": [
+            "Active",
+            "Inactive"
+          ],
+          "chat_prompt": "Welchen Status möchten Sie für die Ressource festlegen?",
+          "examples": [
+            "Active",
+            "Inactive"
+          ]
+        },
+        {
+          "name": "MaxParallelAllocations",
+          "data_type": "integer",
+          "required": true,
+          "default_value": "1",
+          "description": "Die maximale Anzahl paralleler Zuweisungen.",
+          "validation_pattern": "^[1-9][0-9]*$",
+          "enum_values": null,
+          "chat_prompt": "Wie viele parallele Zuweisungen möchten Sie zulassen?",
+          "examples": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "name": "AutoReleaseFlag",
+          "data_type": "boolean",
+          "required": false,
+          "default_value": "True",
+          "description": "Ob die Ressource automatisch freigegeben werden soll.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Soll die Ressource automatisch freigegeben werden?",
+          "examples": [
+            "True",
+            "False"
+          ]
+        },
+        {
+          "name": "LogicalResourceType",
+          "data_type": "string",
+          "required": true,
+          "default_value": "Normal",
+          "description": "Der Typ der logischen Ressource.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Welchen Typ soll die logische Ressource haben?",
+          "examples": [
+            "Normal"
+          ]
+        },
+        {
+          "name": "MasterLogicalResourceId",
+          "data_type": "string",
+          "required": false,
+          "default_value": null,
+          "description": "Die ID der Master-logischen Ressource.",
+          "validation_pattern": null,
+          "enum_values": null,
+          "chat_prompt": "Gibt es eine Master-logische Ressource, die Sie angeben möchten?",
+          "examples": [
+            "12345678"
+          ]
+        },
+        {
+          "name": "DefaultMaxParallelAllocations",
+          "data_type": "integer",
+          "required": false,
+          "default_value": "1",
+          "description": "Der Standardwert für maximale parallele Zuweisungen.",
+          "validation_pattern": "^[1-9][0-9]*$",
+          "enum_values": null,
+          "chat_prompt": "Was soll der Standardwert für maximale parallele Zuweisungen sein?",
+          "examples": [
+            "1",
+            "2"
+          ]
+        }
+      ],
+      "template_examples": [
+        "DEMOST01.xml",
+        "DEMOST01.xml",
+        "69624847.xml",
+        "StrLR_LogiRes_001.xml",
+        "StrLR_LogiRes_002.xml",
+        "00052009.xml"
+      ]
+    }
+  }
+}

@@ -15,16 +15,10 @@ import time
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 
-import chromadb
-from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.postprocessor import (
     SimilarityPostprocessor,
-    MetadataReplacementPostProcessor,
     LongContextReorder
 )
-from llama_index.core.node_parser import SentenceWindowNodeParser
-from llama_index.core.schema import QueryBundle
-from llama_index.core.schema import NodeWithScore, TextNode
 
 from . import RAGMode, DocumentSource
 
@@ -42,8 +36,8 @@ class AdaptiveRetriever:
     4. Similarity-basierte Filterung und Diversity-Enhancement
     """
 
-    def __init__(self, chroma_client=None, embed_model=None):
-        self.chroma_client = chroma_client
+    def __init__(self, qdrant_service=None, embed_model=None):
+        self.qdrant_service = qdrant_service
         self.embed_model = embed_model
         self._initialized = False
 
@@ -84,8 +78,11 @@ class AdaptiveRetriever:
             logger.info("🚀 Initializing Adaptive Retriever...")
 
             # Validation
-            if not self.chroma_client:
-                raise ValueError("ChromaDB client required for retrieval")
+            if not self.qdrant_service:
+                raise ValueError("Qdrant vector service required for retrieval")
+
+            # Ensure the underlying vector service is ready
+            await self.qdrant_service.initialize()
 
             if not self.embed_model:
                 raise ValueError("Embedding model required for retrieval")
@@ -210,51 +207,41 @@ class AdaptiveRetriever:
         filters: Optional[Dict[str, Any]] = None
     ) -> List[DocumentSource]:
         """
-        Retrieve chunks for a single query from ChromaDB
+        Retrieve chunks for a single query from Qdrant
         """
         try:
-            # Generate query embedding
-            query_embedding = self.embed_model.get_text_embedding(query)
+            # Generate query embedding off the event loop to avoid blocking
+            query_embedding = await asyncio.to_thread(
+                self.embed_model.get_text_embedding,
+                query
+            )
 
-            # Query ChromaDB
-            collection = self.chroma_client.get_collection("rag_documents")
+            search_results = await self.qdrant_service.similarity_search(
+                query_embedding=query_embedding,
+                top_k=top_k,
+                doc_filters=filters
+            )
 
-            # Build query parameters
-            query_params = {
-                "query_embeddings": [query_embedding],
-                "n_results": top_k
-            }
+            chunks: List[DocumentSource] = []
+            for index, result in enumerate(search_results):
+                metadata = result.get("metadata", {}) or {}
+                point_id = result.get("point_id")
 
-            if filters:
-                query_params["where"] = filters
+                # Preserve point identifier for downstream consumers
+                if point_id and "point_id" not in metadata:
+                    metadata["point_id"] = point_id
 
-            result = collection.query(**query_params)
+                chunk_id = metadata.get("chunk_id") or point_id or f"chunk_{index}"
 
-            # Convert to DocumentSource objects
-            chunks = []
-            if result and result.get('documents'):
-                documents = result['documents'][0] if result['documents'] else []
-                metadatas = result.get('metadatas', [[]])[0] if result.get('metadatas') else []
-                distances = result.get('distances', [[]])[0] if result.get('distances') else []
-                ids = result.get('ids', [[]])[0] if result.get('ids') else []
-
-                for i, content in enumerate(documents):
-                    metadata = metadatas[i] if i < len(metadatas) else {}
-                    distance = distances[i] if i < len(distances) else 1.0
-                    chunk_id = ids[i] if i < len(ids) else f"unknown_{i}"
-
-                    # Convert distance to similarity score (1 - distance)
-                    similarity_score = max(0.0, 1.0 - distance)
-
-                    doc_source = DocumentSource(
-                        content=content,
-                        document_id=metadata.get('doc_id', 'unknown'),
-                        chunk_id=chunk_id,
-                        page_number=metadata.get('page_number'),
-                        score=similarity_score,
-                        metadata=metadata
-                    )
-                    chunks.append(doc_source)
+                doc_source = DocumentSource(
+                    content=result.get("content", ""),
+                    document_id=metadata.get("doc_id", "unknown"),
+                    chunk_id=chunk_id,
+                    page_number=metadata.get("page_number"),
+                    score=float(result.get("score", 0.0)),
+                    metadata=metadata
+                )
+                chunks.append(doc_source)
 
             return chunks
 
@@ -385,9 +372,17 @@ class AdaptiveRetriever:
 # Global instance
 _adaptive_retriever = None
 
-async def get_adaptive_retriever(chroma_client=None, embed_model=None) -> AdaptiveRetriever:
+async def get_adaptive_retriever(qdrant_service=None, embed_model=None) -> AdaptiveRetriever:
     """Get global Adaptive Retriever instance"""
     global _adaptive_retriever
     if _adaptive_retriever is None:
-        _adaptive_retriever = AdaptiveRetriever(chroma_client, embed_model)
+        _adaptive_retriever = AdaptiveRetriever(qdrant_service, embed_model)
+    else:
+        # Update dependencies when reusing the singleton
+        if qdrant_service is not None:
+            _adaptive_retriever.qdrant_service = qdrant_service
+            _adaptive_retriever._initialized = False
+        if embed_model is not None:
+            _adaptive_retriever.embed_model = embed_model
+            _adaptive_retriever._initialized = False
     return _adaptive_retriever

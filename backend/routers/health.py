@@ -29,10 +29,21 @@ async def comprehensive_health_check() -> Dict[str, Any]:
         
         # Check service health
         services_health = await get_service_health()
-        
+
         # Determine overall system status
         db_healthy = db_health.get("status") == "healthy"
-        services_healthy = services_health.get("status") == "healthy"
+
+        # Services health is a dict with service names as keys, determine overall health
+        if isinstance(services_health, dict) and "status" in services_health:
+            # If services_health has a status key (error case)
+            services_healthy = services_health.get("status") == "healthy"
+        else:
+            # Normal case: services_health is dict of {service_name: health_data}
+            services_healthy = all(
+                service_health.get("status", "unhealthy") == "healthy"
+                for service_health in services_health.values()
+                if isinstance(service_health, dict)
+            )
         
         overall_status = "healthy" if (db_healthy and services_healthy) else "degraded"
         
@@ -48,9 +59,9 @@ async def comprehensive_health_check() -> Dict[str, Any]:
             "timestamp": timestamp
         }
         
-        # Add service-specific details
-        if services_health.get("services"):
-            components["service_details"] = services_health["services"]
+        # Add service-specific details - services_health is the service details
+        if isinstance(services_health, dict) and services_health:
+            components["service_details"] = services_health
         
         return components
         
@@ -107,7 +118,18 @@ async def readiness_check() -> Dict[str, Any]:
         
         # Check services
         services_health = await get_service_health()
-        services_ready = services_health.get("status") == "healthy"
+
+        # Services health is a dict with service names as keys, determine overall health
+        if isinstance(services_health, dict) and "status" in services_health:
+            # If services_health has a status key (error case)
+            services_ready = services_health.get("status") == "healthy"
+        else:
+            # Normal case: services_health is dict of {service_name: health_data}
+            services_ready = all(
+                service_health.get("status", "unhealthy") == "healthy"
+                for service_health in services_health.values()
+                if isinstance(service_health, dict)
+            )
         
         # Additional readiness checks
         ready_checks = {
@@ -217,7 +239,7 @@ async def slow_endpoints(threshold: float = 1.0) -> Dict[str, Any]:
         # Get slow endpoints from middleware
         from core.app_state import app_state
         slow_endpoints_data = app_state.get_slow_endpoints(threshold)
-        
+
         # Format the response properly
         if isinstance(slow_endpoints_data, dict) and "status" in slow_endpoints_data:
             slow_endpoints = slow_endpoints_data
@@ -227,23 +249,22 @@ async def slow_endpoints(threshold: float = 1.0) -> Dict[str, Any]:
                 "slow_endpoints": slow_endpoints_data,
                 "count": len(slow_endpoints_data) if isinstance(slow_endpoints_data, dict) else 0
             }
-            
+
+        return {
+            "threshold_seconds": threshold,
+            "slow_endpoints": slow_endpoints,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
     except Exception as e:
         logger.warning(f"Could not get slow endpoints: {e}")
         slow_endpoints = {
             "status": "middleware_not_accessible",
             "message": f"Could not access middleware: {str(e)}"
         }
-        
+
         return {
             "threshold_seconds": threshold,
             "slow_endpoints": slow_endpoints,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"Slow endpoints check failed: {str(e)}")
-        return {
-            "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
         }

@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 
 from . import RAGMode, RAGResponse, DocumentSource
-from ..llamaindex_rag_service import get_rag_service
+from ..qdrant_rag_service import get_rag_service
 from .context_manager import get_context_manager
 from .query_processor import get_query_processor
 from .adaptive_retrieval import get_adaptive_retriever
@@ -73,7 +73,7 @@ class UnifiedRAGService:
 
                 # Adaptive Retriever (Phase 2)
                 self._adaptive_retriever = await get_adaptive_retriever(
-                    chroma_client=self._llamaindex_service.chroma_client,
+                    qdrant_service=self._llamaindex_service.qdrant_service,
                     embed_model=self._llamaindex_service.embed_model
                 )
                 await self._adaptive_retriever.initialize()

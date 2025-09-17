@@ -42,7 +42,7 @@ import {
   useRejectStream,
   usePublishStream
 } from '@/hooks/useXMLStreams'
-import { StatusBadge } from '@/components/xml-streams/StatusBadge'
+import { WorkflowStatusBadge } from '@/components/xml-streams/WorkflowStatusBadge'
 import { WizardDataRenderer } from '@/components/xml-streams/WizardDataRenderer'
 import { cn } from '@/lib/utils'
 import { getJobTypeConfig } from '@/utils/streamHelpers'
@@ -263,7 +263,7 @@ export default function ViewStreamPage() {
           </DropdownMenu>
 
           {/* Status Badge with Workflow Actions */}
-          <StatusBadge
+          <WorkflowStatusBadge
             stream={stream}
             userRole={userRole}
             onSubmitForReview={handleSubmitForReview}

@@ -46,18 +46,38 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
     
-    # Local LLM Configuration (Ollama)
+    # Central LLM Provider Configuration - Single Switch Point
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")  # openai|ollama
+
+    # OpenAI Configuration
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    OPENAI_STREAMING: bool = os.getenv("OPENAI_STREAMING", "true").lower() == "true"
+    OPENAI_MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "4000"))
+    OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.1"))
+
+    # Ollama Configuration (fallback)
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
-    LOCAL_LLM_PROVIDER: str = os.getenv("LOCAL_LLM_PROVIDER", "ollama")  # ollama|openai|hybrid
-    LLM_FALLBACK_ENABLED: bool = os.getenv("LLM_FALLBACK_ENABLED", "true").lower() == "true"
+
+    # Legacy settings (deprecated)
+    LOCAL_LLM_PROVIDER: str = os.getenv("LOCAL_LLM_PROVIDER", "openai")  # ollama|openai|hybrid
+    LLM_FALLBACK_ENABLED: bool = os.getenv("LLM_FALLBACK_ENABLED", "false").lower() == "true"
     
     # Unified Document Storage (New Clean Structure)
     DOCUMENTS_BASE_PATH: Path = Path(os.getenv("DOCUMENTS_BASE_PATH", "./Dokumente"))
     SYSTEM_PATH: Path = DOCUMENTS_BASE_PATH / ".system"
     
     # Vector Database (New Location)
-    VECTOR_DB: str = os.getenv("VECTOR_DB", "chroma")  # chroma|qdrant|weaviate
+    VECTOR_DB: str = os.getenv("VECTOR_DB", "qdrant")  # qdrant|chroma|weaviate
+
+    # Qdrant Configuration (Local Setup)
+    QDRANT_URL: str = os.getenv("QDRANT_URL", "http://localhost:6333")
+    QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
+    QDRANT_COLLECTION_NAME: str = os.getenv("QDRANT_COLLECTION_NAME", "streamworks_documents")
+    QDRANT_VECTOR_SIZE: int = int(os.getenv("QDRANT_VECTOR_SIZE", "768"))  # BGE embedding size
+    QDRANT_USE_GRPC: bool = os.getenv("QDRANT_USE_GRPC", "false").lower() == "true"
+
+    # Legacy ChromaDB path (kept for cleanup)
     CHROMA_PATH: Path = SYSTEM_PATH / "chroma"
     
     # Document Storage (New Clean Structure)
@@ -143,14 +163,14 @@ class Settings(BaseSettings):
     CONTEXT_PRESERVATION_RATIO: float = float(os.getenv("CONTEXT_PRESERVATION_RATIO", "0.25"))  # 25% overlap for context
     SEMANTIC_COHERENCE_THRESHOLD: float = float(os.getenv("SEMANTIC_COHERENCE_THRESHOLD", "0.7"))  # Coherence scoring
     
-    # RAG Pipeline Settings - Calibrated for Gamma Embeddings (2025-01-13)
-    # Based on empirical testing: similarity range 0.001-0.252, optimal around 0.05-0.08
+    # RAG Pipeline Settings - OPTIMIZED Based on Similarity Threshold Analysis (2025-09-15)
+    # Analysis Results: avg_similarity_score: 0.5647, optimal_threshold: 0.01, balance_score: 0.82
     TOP_K_RETRIEVAL: int = int(os.getenv("TOP_K_RETRIEVAL", "10"))
-    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.08"))  # Balanced threshold for Gamma
-    
-    # Advanced RAG Thresholds - Calibrated for Gamma Embeddings  
-    HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.18"))  # High quality for Gamma
-    FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.02"))  # Very permissive fallback
+    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.01"))  # Optimized from analysis (was 0.25)
+
+    # Advanced RAG Thresholds - Based on Qdrant Performance Analysis
+    HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.025"))  # Optimized from analysis (was 0.18)
+    FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.01"))  # Optimized from analysis (was 0.02)
     
     # Model Settings
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")

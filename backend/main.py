@@ -11,9 +11,12 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 # Import database and routers
 from database import init_database, close_database, check_database_health
-from routers import folders, documents, websockets, upload_progress_websocket, xml_streams, feature_flags, health
+from routers import folders, documents, websockets, upload_progress_websocket, feature_flags, health
 from routers.xml_generator import router as xml_generator
-from routers.chat import router as chat
+from routers.xml_streams import router as xml_streams
+from routers.chat_rag_test import router as chat
+from routers.chat_xml import router as chat_xml
+from routers.debug import router as debug
 from middleware.performance import PerformanceMiddleware
 from middleware.cors_error_handler import CORSErrorHandlerMiddleware
 
@@ -118,11 +121,13 @@ app.include_router(folders)
 app.include_router(documents)
 app.include_router(websockets)
 app.include_router(chat)
+app.include_router(chat_xml)
 app.include_router(upload_progress_websocket)
 app.include_router(xml_generator)
 app.include_router(xml_streams)
 app.include_router(feature_flags)
 app.include_router(health)
+app.include_router(debug, prefix="/debug", tags=["debug"])
 
 
 # Health check endpoints

@@ -31,54 +31,125 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 class ApiService {
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount: number = 0
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
-    
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    })
+    const maxRetries = 3
 
-    if (!response.ok) {
-      const errorData: ApiError = await response.json().catch(() => ({
-        error: `HTTP ${response.status}`,
-        detail: response.statusText
-      }))
-      throw new Error(errorData.error || errorData.detail || 'Request failed')
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      })
+
+      if (!response.ok) {
+        const errorData: ApiError = await response.json().catch(() => ({
+          error: `HTTP ${response.status}`,
+          detail: response.statusText
+        }))
+        throw new Error(errorData.error || errorData.detail || 'Request failed')
+      }
+
+      // Handle responses with no content (204 No Content)
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return null as T
+      }
+
+      // Validate response completeness before parsing
+      const responseText = await response.text()
+      if (!responseText || responseText.trim().length === 0) {
+        throw new Error('Empty response received')
+      }
+
+      try {
+        return JSON.parse(responseText)
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError, 'Response:', responseText)
+        throw new Error('Invalid JSON response')
+      }
+
+    } catch (error: any) {
+      // Check for chunked encoding errors or network issues
+      const isRetryableError =
+        error.message?.includes('ERR_INCOMPLETE_CHUNKED_ENCODING') ||
+        error.message?.includes('Empty response received') ||
+        error.message?.includes('Invalid JSON response') ||
+        error.name === 'TypeError' || // Network errors
+        error.name === 'AbortError'
+
+      if (isRetryableError && retryCount < maxRetries) {
+        console.warn(`Request failed, retrying (${retryCount + 1}/${maxRetries}):`, error.message)
+
+        // Exponential backoff: 500ms, 1s, 2s
+        const delay = Math.pow(2, retryCount) * 500
+        await new Promise(resolve => setTimeout(resolve, delay))
+
+        return this.request<T>(endpoint, options, retryCount + 1)
+      }
+
+      throw error
     }
-
-    // Handle responses with no content (204 No Content)
-    if (response.status === 204 || response.headers.get('content-length') === '0') {
-      return null as T
-    }
-
-    return response.json()
   }
 
   private async uploadRequest<T>(
     endpoint: string,
-    formData: FormData
+    formData: FormData,
+    retryCount: number = 0
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-    })
+    const maxRetries = 2 // Fewer retries for uploads
 
-    if (!response.ok) {
-      const errorData: ApiError = await response.json().catch(() => ({
-        error: `HTTP ${response.status}`,
-        detail: response.statusText
-      }))
-      throw new Error(errorData.error || errorData.detail || 'Upload failed')
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData: ApiError = await response.json().catch(() => ({
+          error: `HTTP ${response.status}`,
+          detail: response.statusText
+        }))
+        throw new Error(errorData.error || errorData.detail || 'Upload failed')
+      }
+
+      // Validate response completeness before parsing
+      const responseText = await response.text()
+      if (!responseText || responseText.trim().length === 0) {
+        throw new Error('Empty upload response received')
+      }
+
+      try {
+        return JSON.parse(responseText)
+      } catch (parseError) {
+        console.error('Upload JSON parse error:', parseError, 'Response:', responseText)
+        throw new Error('Invalid JSON upload response')
+      }
+
+    } catch (error: any) {
+      // Check for retryable upload errors
+      const isRetryableError =
+        error.message?.includes('ERR_INCOMPLETE_CHUNKED_ENCODING') ||
+        error.message?.includes('Empty upload response received') ||
+        error.message?.includes('Invalid JSON upload response') ||
+        (error.name === 'TypeError' && !error.message?.includes('Failed to fetch')) // Network errors but not auth issues
+
+      if (isRetryableError && retryCount < maxRetries) {
+        console.warn(`Upload failed, retrying (${retryCount + 1}/${maxRetries}):`, error.message)
+
+        // Shorter delay for uploads: 1s, 2s
+        const delay = (retryCount + 1) * 1000
+        await new Promise(resolve => setTimeout(resolve, delay))
+
+        return this.uploadRequest<T>(endpoint, formData, retryCount + 1)
+      }
+
+      throw error
     }
-
-    return response.json()
   }
 
   // Folder Methods

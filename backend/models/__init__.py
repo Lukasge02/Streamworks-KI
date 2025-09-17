@@ -6,20 +6,13 @@ Exports all database models
 from .core import (
     Base,
     DocumentStatus,
-    ChunkType,
     Folder,
-    Document,
-    DocumentChunk
+    Document
 )
-from .xml_streams import XMLStream, StreamVersion
 
 __all__ = [
     "Base",
-    "DocumentStatus", 
-    "ChunkType",
+    "DocumentStatus",
     "Folder",
     "Document",
-    "DocumentChunk",
-    "XMLStream",
-    "StreamVersion"
 ]

@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { CheckCircle, AlertTriangle, Info, Copy, ExternalLink } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ConfidenceIndicator } from '../ui/StatusIndicator'
+import { RAGMetrics } from './RAGMetrics'
 
 interface EnterpriseResponseProps {
   content: string
@@ -22,6 +23,12 @@ interface EnterpriseResponseProps {
   }>
   processing_time?: string
   model_info?: string
+  retrieval_context?: {
+    total_chunks?: number
+    relevant_chunks?: number
+    query_type?: string
+    mode?: string
+  }
   onCopyResponse?: (content: string) => void
   onSourceClick?: (source: any) => void
 }
@@ -32,9 +39,11 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
   sources = [],
   processing_time,
   model_info,
+  retrieval_context,
   onCopyResponse,
   onSourceClick
 }) => {
+  const [showMetrics, setShowMetrics] = useState(false)
   const getConfidenceColor = (score?: number) => {
     if (!score) return 'text-gray-500'
     if (score >= 0.8) return 'text-emerald-600'
@@ -71,6 +80,19 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
           )}
         </div>
       </div>
+
+      {/* Enhanced RAG Metrics Panel */}
+      {(confidence_score || processing_time || sources.length > 0) && (
+        <RAGMetrics
+          confidence_score={confidence_score}
+          processing_time={processing_time}
+          model_info={model_info}
+          sources={sources}
+          retrieval_context={retrieval_context}
+          expanded={showMetrics}
+          onToggleExpand={() => setShowMetrics(!showMetrics)}
+        />
+      )}
 
       {/* Formatted Response Content */}
       <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -118,23 +140,87 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
               </p>
             ),
             
-            // Code blocks
+            // Code blocks with enhanced chart/visualization support
             code: ({ children, className }) => {
               const isBlock = className?.includes('language-')
+              const content = String(children).trim()
+
+              // Detect chart/visualization content
+              const isChartContent =
+                content.includes('█') || // Block characters
+                content.includes('▄') || // Half block characters
+                content.includes('▀') || // Upper half block
+                content.includes('│') || // Box drawing characters
+                content.includes('┌') || content.includes('└') ||
+                content.includes('├') || content.includes('┤') ||
+                /^\s*[▁▂▃▄▅▆▇█]{2,}/.test(content) || // Bar chart pattern
+                /^\s*\|[\s\-=│█▄▀]*\|/.test(content) // Table/chart with bars
+
               if (isBlock) {
+                if (isChartContent) {
+                  return (
+                    <div className="my-4 chart-visualization-container">
+                      <code className="block bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-800 rounded-lg p-6 text-sm font-mono leading-relaxed overflow-x-auto border-2 border-blue-200 dark:border-blue-300 shadow-sm">
+                        {children}
+                      </code>
+                    </div>
+                  )
+                }
                 return (
                   <code className="block bg-gray-100 dark:bg-gray-800 rounded-lg p-4 text-sm overflow-x-auto border border-gray-200 dark:border-gray-700">
                     {children}
                   </code>
                 )
               }
+
+              // Inline code - check for small chart elements
+              if (isChartContent) {
+                return (
+                  <code className="bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-800 px-2 py-1 rounded text-sm border border-blue-200 dark:border-blue-300 font-mono">
+                    {children}
+                  </code>
+                )
+              }
+
               return (
                 <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-700">
                   {children}
                 </code>
               )
             },
-            
+
+            // Pre elements with chart detection
+            pre: ({ children }) => {
+              const content = String(children).trim()
+
+              // Detect chart/visualization content in pre blocks
+              const isChartContent =
+                content.includes('█') || // Block characters
+                content.includes('▄') || // Half block characters
+                content.includes('▀') || // Upper half block
+                content.includes('│') || // Box drawing characters
+                content.includes('┌') || content.includes('└') ||
+                content.includes('├') || content.includes('┤') ||
+                /^\s*[▁▂▃▄▅▆▇█]{2,}/.test(content) || // Bar chart pattern
+                /^\s*\|[\s\-=│█▄▀]*\|/.test(content) // Table/chart with bars
+
+              if (isChartContent) {
+                return (
+                  <div className="my-4 chart-visualization-container">
+                    <pre className="bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-800 rounded-lg p-6 text-sm font-mono leading-relaxed overflow-x-auto border-2 border-blue-200 dark:border-blue-300 shadow-sm whitespace-pre">
+                      {children}
+                    </pre>
+                  </div>
+                )
+              }
+
+              return (
+                <pre className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-4 text-sm overflow-x-auto border border-gray-200 dark:border-gray-700 whitespace-pre">
+                  {children}
+                </pre>
+              )
+            },
+
             // Blockquotes
             blockquote: ({ children }) => (
               <blockquote className="border-l-4 border-primary-500 pl-4 py-2 my-4 bg-primary-50 dark:bg-primary-900/20 rounded-r-lg">
@@ -173,7 +259,7 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
         </ReactMarkdown>
       </div>
 
-      {/* Enhanced Source References */}
+      {/* Enhanced Source References - DISABLED
       {sources.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -214,7 +300,7 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
                       </h5>
                       <ExternalLink className="w-3 h-3 text-gray-400 ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                     </div>
-                    
+
                     <div className="source-card-meta">
                       {source.metadata.page_number && (
                         <span className="flex items-center">
@@ -227,14 +313,14 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
                         </span>
                       )}
                     </div>
-                    
+
                     {source.metadata.section && (
                       <p className="source-card-preview mt-2">
                         "{source.metadata.section}"
                       </p>
                     )}
                   </div>
-                  
+
                   {source.relevance_score !== undefined && (
                     <div className="ml-4 flex-shrink-0">
                       <span className="source-card-score">
@@ -245,7 +331,7 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
                 </div>
               </motion.div>
             ))}
-            
+
             {sources.length > 5 && (
               <div className="text-center pt-2">
                 <button className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
@@ -256,6 +342,7 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
           </div>
         </motion.div>
       )}
+      */}
     </div>
   )
 }

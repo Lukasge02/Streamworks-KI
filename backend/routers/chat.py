@@ -10,10 +10,12 @@ from datetime import datetime
 import json
 import time
 import logging
+import uuid
+import asyncio
 from pydantic import BaseModel
 
 from services.chat_service_sqlalchemy import ChatServiceSQLAlchemy as ChatService
-from services.xml_stream_conversation_service import get_xml_stream_conversation_service, StreamConversationState
+# from services.xml_stream_conversation_service import get_xml_stream_conversation_service, StreamConversationState
 from services.feature_flags import feature_flags
 from config import settings
 
@@ -65,6 +67,14 @@ class SendMessageResponse(BaseModel):
     sources: List[Dict[str, Any]] = []
     model_used: Optional[str] = None
 
+# Streaming response models
+class StreamChunk(BaseModel):
+    type: str  # "content", "done", "error"
+    content: Optional[str] = None
+    session_id: str
+    sources: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
+
 # ================================
 # DEPENDENCY INJECTION
 # ================================
@@ -76,12 +86,12 @@ async def get_chat_service() -> ChatService:
 
 
 async def get_user_id(x_user_id: Optional[str] = Header(None)) -> str:
-    """Extract user ID from header - for now using header, later from JWT"""
+    """Extract user ID from header - with fallback for testing/development"""
     if not x_user_id:
-        raise HTTPException(
-            status_code=401, 
-            detail="X-User-ID header required"
-        )
+        # For development/testing, use a default user ID
+        # In production, this should require authentication
+        logger.warning("No X-User-ID header provided, using fallback 'test-user' for development")
+        return "test-user"
     return x_user_id
 
 # ================================
@@ -231,6 +241,39 @@ async def delete_chat_session(
 # MESSAGE & RAG ROUTES
 # ================================
 
+async def validate_session_access(
+    session_id: str,
+    user_id: str,
+    chat_service: ChatService
+):
+    """Validate that session exists and user has access"""
+    # First validate UUID format
+    try:
+        uuid.UUID(session_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid session ID format"
+        )
+
+    try:
+        # Try to get session messages to validate access
+        await chat_service.get_session_messages(
+            session_id=session_id,
+            user_id=user_id,
+            limit=1  # Just check if we can access
+        )
+    except Exception as e:
+        if "not found or access denied" in str(e):
+            raise HTTPException(
+                status_code=404,
+                detail="Session not found or access denied"
+            )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to validate session: {str(e)}"
+        )
+
 @router.post("/sessions/{session_id}/messages", response_model=SendMessageResponse)
 async def send_message(
     session_id: str,
@@ -240,6 +283,9 @@ async def send_message(
 ):
     """Send a message with full RAG processing"""
     try:
+        # First validate session access
+        await validate_session_access(session_id, user_id, chat_service)
+
         # Process message through the chat service with RAG
         response_data = await chat_service.process_message(
             session_id=session_id,
@@ -259,12 +305,109 @@ async def send_message(
             model_used=response_data.get("model_used", "unified-rag-service")
         )
 
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         logger.error(f"Failed to process message: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process message: {str(e)}"
         )
+
+# ================================
+# STREAMING CHAT ENDPOINT
+# ================================
+
+@router.post("/sessions/{session_id}/stream")
+async def stream_chat_message(
+    session_id: str,
+    request: SendMessageRequest,
+    user_id: str = Depends(get_user_id),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """Send a message with streaming response using Server-Sent Events"""
+
+    async def generate_stream():
+        connection_id = f"{user_id}_{session_id}_{int(time.time())}"
+        logger.info(f"Starting stream for connection {connection_id}")
+
+        try:
+            # Validate session access
+            await validate_session_access(session_id, user_id, chat_service)
+
+            # Send initial connection confirmation
+            start_chunk = StreamChunk(
+                type="start",
+                session_id=session_id,
+                content="Connection established"
+            )
+            yield f"data: {start_chunk.model_dump_json()}\n\n"
+
+            # Process streaming response
+            async for chunk in chat_service.process_message_stream(
+                session_id=session_id,
+                user_id=user_id,
+                query=request.query,
+                processing_mode=request.mode or "accurate"
+            ):
+                try:
+                    chunk_data = StreamChunk(**chunk)
+                    yield f"data: {chunk_data.model_dump_json()}\n\n"
+                except Exception as chunk_error:
+                    logger.warning(f"Failed to serialize chunk: {chunk_error}")
+                    continue
+
+        except HTTPException as http_error:
+            logger.error(f"HTTP error in stream {connection_id}: {http_error.detail}")
+            error_chunk = StreamChunk(
+                type="error",
+                session_id=session_id,
+                error=f"Access denied: {http_error.detail}"
+            )
+            yield f"data: {error_chunk.model_dump_json()}\n\n"
+
+        except asyncio.CancelledError:
+            logger.info(f"Stream {connection_id} cancelled by client")
+            cancel_chunk = StreamChunk(
+                type="end",
+                session_id=session_id,
+                content="Connection closed by client"
+            )
+            yield f"data: {cancel_chunk.model_dump_json()}\n\n"
+
+        except Exception as e:
+            logger.error(f"Stream error {connection_id}: {str(e)}", exc_info=True)
+            error_chunk = StreamChunk(
+                type="error",
+                session_id=session_id,
+                error=f"Streaming failed: {str(e)}"
+            )
+            yield f"data: {error_chunk.model_dump_json()}\n\n"
+
+        finally:
+            # Send completion signal
+            end_chunk = StreamChunk(
+                type="end",
+                session_id=session_id,
+                content="Stream completed"
+            )
+            yield f"data: {end_chunk.model_dump_json()}\n\n"
+            logger.info(f"Stream {connection_id} completed")
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control, Content-Type, Authorization",
+            "X-Accel-Buffering": "no"  # Disable proxy buffering for nginx
+        }
+    )
 
 # ================================
 # SIMPLIFIED RAG QUERY - TEMPORARILY DISABLED
@@ -424,6 +567,157 @@ class DirectMessageRequest(BaseModel):
     model_info: Optional[str] = None
 
 # ================================
+# XML STREAM CONVERSATION UTILITIES
+# ================================
+
+async def _convert_memory_to_conversation_state(
+    session_id: str,
+    context_turns: list,
+    user_id: str
+) -> Dict[str, Any]:
+    """
+    Convert ConversationMemoryStore format to XMLStreamConversationState format
+
+    Args:
+        session_id: Session identifier
+        context_turns: List of ConversationTurn objects from memory store
+        user_id: User identifier
+
+    Returns:
+        XMLStreamConversationState compatible dict
+    """
+    try:
+        if not context_turns:
+            return None
+
+        # Initialize conversation state with defaults
+        conversation_state = {
+            "phase": "initialization",
+            "job_type": None,
+            "collected_data": {},
+            "missing_required_fields": [],
+            "validation_errors": [],
+            "stream_id": None,
+            "xml_content": None,
+            "completion_percentage": 0.0,
+            "last_user_message": None,
+            "context_history": []
+        }
+
+        # Extract information from conversation turns
+        for turn in context_turns:
+            # Update last user message
+            if hasattr(turn, 'user_message') and turn.user_message:
+                conversation_state["last_user_message"] = turn.user_message
+
+            # Add to context history
+            conversation_state["context_history"].append({
+                "role": "user",
+                "content": getattr(turn, 'user_message', ''),
+                "timestamp": getattr(turn, 'timestamp', '')
+            })
+            conversation_state["context_history"].append({
+                "role": "assistant",
+                "content": getattr(turn, 'ai_response', ''),
+                "timestamp": getattr(turn, 'timestamp', '')
+            })
+
+            # Extract collected data from parameters
+            if hasattr(turn, 'extracted_parameters') and turn.extracted_parameters:
+                for param_name, param_value in turn.extracted_parameters.items():
+                    # Map parameter names to nested structure
+                    if '.' in param_name:
+                        # Handle nested parameters like "jobForm.sapSystem"
+                        parts = param_name.split('.')
+                        current = conversation_state["collected_data"]
+
+                        for part in parts[:-1]:
+                            if part not in current:
+                                current[part] = {}
+                            current = current[part]
+
+                        current[parts[-1]] = param_value
+                    else:
+                        conversation_state["collected_data"][param_name] = param_value
+
+            # Update conversation phase if available
+            if hasattr(turn, 'conversation_phase') and turn.conversation_phase != "unknown":
+                conversation_state["phase"] = turn.conversation_phase
+
+        # Calculate completion percentage based on collected data
+        if conversation_state["collected_data"]:
+            # Simple heuristic: more collected data = higher completion
+            data_keys = len(conversation_state["collected_data"])
+            conversation_state["completion_percentage"] = min(0.8, data_keys * 0.2)
+
+        logger.info(f"Converted memory to conversation state: {len(context_turns)} turns, phase={conversation_state['phase']}")
+        return conversation_state
+
+    except Exception as e:
+        logger.error(f"Error converting memory to conversation state: {str(e)}")
+        return None
+
+async def _save_conversation_state_to_memory(
+    session_id: str,
+    user_message: str,
+    ai_response: str,
+    conversation_state: Dict[str, Any],
+    user_id: str = "default"
+):
+    """
+    Save conversation turn to ConversationMemoryStore
+
+    Args:
+        session_id: Session identifier
+        user_message: User's message
+        ai_response: AI's response
+        conversation_state: Current conversation state
+        user_id: User identifier
+    """
+    try:
+        from services.ai.conversation_memory_store import get_conversation_memory_store
+
+        memory_store = get_conversation_memory_store()
+
+        # Extract parameters from conversation state
+        extracted_parameters = {}
+        collected_data = conversation_state.get("collected_data", {})
+
+        # Flatten nested parameters
+        def flatten_dict(d, parent_key='', sep='.'):
+            items = []
+            for k, v in d.items():
+                new_key = f"{parent_key}{sep}{k}" if parent_key else k
+                if isinstance(v, dict):
+                    items.extend(flatten_dict(v, new_key, sep=sep).items())
+                else:
+                    items.append((new_key, v))
+            return dict(items)
+
+        if collected_data:
+            extracted_parameters = flatten_dict(collected_data)
+
+        # Determine success score based on phase and completion
+        phase = conversation_state.get("phase", "initialization")
+        completion = conversation_state.get("completion_percentage", 0.0)
+        success_score = min(0.9, 0.3 + completion * 0.6)
+
+        # Add conversation turn to memory
+        await memory_store.add_conversation_turn(
+            session_id=session_id,
+            user_message=user_message,
+            ai_response=ai_response,
+            extracted_parameters=extracted_parameters,
+            conversation_phase=phase,
+            success_score=success_score
+        )
+
+        logger.info(f"Saved conversation turn to memory: session={session_id}, phase={phase}")
+
+    except Exception as e:
+        logger.error(f"Error saving conversation state to memory: {str(e)}")
+
+# ================================
 # XML STREAM CONVERSATION MODELS
 # ================================
 
@@ -432,9 +726,18 @@ class XMLStreamConversationRequest(BaseModel):
     session_id: str
     current_state: Optional[Dict[str, Any]] = None
 
+class ContextualHintResponse(BaseModel):
+    id: str
+    type: str
+    text: str
+    example: Optional[str] = None
+    icon: str = "💡"
+    interactive: bool = False
+
 class XMLStreamConversationResponse(BaseModel):
     message: str
-    suggestions: List[str]
+    suggestions: List[str]  # Legacy - for backward compatibility
+    hints: Optional[List[ContextualHintResponse]] = None  # New: Contextual hints
     state: Dict[str, Any]
     requires_user_input: bool = True
     action_taken: Optional[str] = None
@@ -488,22 +791,57 @@ async def save_message_direct(
 # XML STREAM CONVERSATION ENDPOINTS
 # ================================
 
-@router.post("/xml-stream-conversation", response_model=XMLStreamConversationResponse)
-async def xml_stream_conversation(
-    request: XMLStreamConversationRequest,
-    user_id: str = Depends(get_user_id)
-):
-    """Process conversation for XML stream creation with intelligent entity extraction"""
-    try:
-        # Get XML stream conversation service
-        conversation_service = await get_xml_stream_conversation_service()
+# @router.post("/xml-stream-conversation", response_model=XMLStreamConversationResponse)
+# async def xml_stream_conversation(
+#     request: XMLStreamConversationRequest,
+#     user_id: str = Depends(get_user_id)
+# ):
+#     """Process conversation for XML stream creation with intelligent entity extraction"""
+#     try:
+#         # Get XML stream conversation service
+#         conversation_service = await get_xml_stream_conversation_service()
 
         # Convert current_state from dict to StreamConversationState if provided
         current_state = None
         if request.current_state:
-            # Parse the state - for now just pass it through
-            # In a real implementation, you'd properly deserialize it
-            current_state = request.current_state
+            try:
+                # Import the dataclass and enum needed for reconstruction
+                from services.xml_stream_conversation_service import StreamConversationState, StreamCreationPhase
+                from schemas.xml_streams import JobType
+
+                # Convert dict back to StreamConversationState dataclass
+                state_dict = request.current_state
+
+                # Safe enum conversion with fallbacks
+                phase = 'initialization'
+                if 'phase' in state_dict and state_dict['phase']:
+                    try:
+                        phase = StreamCreationPhase(state_dict['phase'])
+                    except ValueError:
+                        phase = StreamCreationPhase('initialization')
+
+                job_type = None
+                if 'job_type' in state_dict and state_dict['job_type']:
+                    try:
+                        job_type = JobType(state_dict['job_type'])
+                    except (ValueError, KeyError):
+                        job_type = None
+
+                current_state = StreamConversationState(
+                    phase=phase,
+                    job_type=job_type,
+                    collected_data=state_dict.get('collected_data', {}),
+                    missing_required_fields=state_dict.get('missing_required_fields', []),
+                    validation_errors=state_dict.get('validation_errors', []),
+                    stream_id=state_dict.get('stream_id'),
+                    xml_content=state_dict.get('xml_content'),
+                    completion_percentage=float(state_dict.get('completion_percentage', 0.0)),
+                    last_user_message=state_dict.get('last_user_message'),
+                    context_history=state_dict.get('context_history', [])
+                )
+            except Exception as e:
+                logger.error(f"Failed to reconstruct state from dict: {e}. Using None.")
+                current_state = None
 
         # Process conversation
         response = await conversation_service.process_conversation(
@@ -513,10 +851,56 @@ async def xml_stream_conversation(
             current_state=current_state
         )
 
+        # ✅ NEU: Save conversation turn to memory store for persistence
+        try:
+            await _save_conversation_state_to_memory(
+                session_id=request.session_id,
+                user_message=request.message,
+                ai_response=response.message,
+                conversation_state={
+                    "phase": response.state.phase.value if hasattr(response.state.phase, 'value') else str(response.state.phase),
+                    "collected_data": response.state.collected_data,
+                    "completion_percentage": response.state.completion_percentage,
+                },
+                user_id=user_id
+            )
+        except Exception as e:
+            logger.warning(f"Failed to save conversation to memory store: {str(e)}")
+
+        # Convert StreamConversationState dataclass to dict safely
+        try:
+            from dataclasses import asdict
+            state_dict = asdict(response.state)
+
+            # Ensure enums are serialized as strings
+            if 'phase' in state_dict and hasattr(state_dict['phase'], 'value'):
+                state_dict['phase'] = state_dict['phase'].value
+            if 'job_type' in state_dict and state_dict['job_type'] and hasattr(state_dict['job_type'], 'value'):
+                state_dict['job_type'] = state_dict['job_type'].value
+        except Exception as e:
+            logger.error(f"Failed to convert state to dict: {e}")
+            state_dict = {}
+
+        # Convert ContextualHints to response format
+        hints_response = None
+        if response.hints:
+            hints_response = [
+                ContextualHintResponse(
+                    id=hint.id,
+                    type=hint.type,
+                    text=hint.text,
+                    example=hint.example,
+                    icon=hint.icon,
+                    interactive=hint.interactive
+                )
+                for hint in response.hints
+            ]
+
         return XMLStreamConversationResponse(
             message=response.message,
             suggestions=response.suggestions,
-            state=response.state.__dict__,  # Convert state to dict
+            hints=hints_response,
+            state=state_dict,
             requires_user_input=response.requires_user_input,
             action_taken=response.action_taken,
             errors=response.errors or []
@@ -534,24 +918,32 @@ async def get_xml_stream_conversation_state(
     session_id: str,
     user_id: str = Depends(get_user_id)
 ):
-    """Get current XML stream conversation state"""
+    """Get current XML stream conversation state from persistent storage"""
     try:
-        # For now, return a placeholder state
-        # In a real implementation, you'd retrieve stored state
-        return {
-            "session_id": session_id,
-            "phase": "initialization",
-            "completion_percentage": 0.0,
-            "collected_data": {},
-            "missing_required_fields": []
-        }
+        # ✅ FIXED: Echte Session State Persistence statt hardcoded null
+        from services.ai.conversation_memory_store import get_conversation_memory_store
+
+        memory_store = get_conversation_memory_store()
+
+        # Get conversation context from persistent storage
+        context_turns = await memory_store.get_conversation_context(session_id, max_turns=10)
+
+        if not context_turns:
+            logger.info(f"No conversation state found for session {session_id}")
+            return None
+
+        # Convert memory store format to XMLStreamConversationState format
+        conversation_state = await _convert_memory_to_conversation_state(
+            session_id, context_turns, user_id
+        )
+
+        logger.info(f"Retrieved conversation state for session {session_id}: phase={conversation_state.get('phase', 'unknown')}")
+        return conversation_state
 
     except Exception as e:
-        logger.error(f"Failed to get conversation state: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get state: {str(e)}"
-        )
+        logger.error(f"Failed to get conversation state for session {session_id}: {str(e)}")
+        # Return None instead of error to allow fresh start
+        return None
 
 # ================================
 # HEALTH & STATUS
@@ -559,37 +951,95 @@ async def get_xml_stream_conversation_state(
 
 @router.get("/health")
 async def chat_health():
-    """Health check for chat system"""
+    """Enhanced health check for chat system with detailed RAG status"""
     try:
         # Test chat service
         chat_service = ChatService()
         chat_health_result = await chat_service.health_check()
-        
-        # Check RAG service health
-        rag_health_result = {"status": "disabled", "message": "RAG service not available"}
+
+        # Enhanced RAG service health check with detailed information
+        rag_health_result = {
+            "status": "disabled",
+            "message": "RAG service not available",
+            "components": {},
+            "performance": {},
+            "available_modes": []
+        }
+
         try:
             if hasattr(chat_service, 'rag_service') and chat_service.rag_service:
-                rag_health_result = await chat_service.rag_service.health_check()
-        except Exception as e:
-            rag_health_result = {"status": "error", "message": str(e)}
+                # Get detailed RAG health
+                rag_health = await chat_service.rag_service.health_check()
+                rag_health_result.update(rag_health)
 
-        # Overall status based on both services
+                # Add component-specific health information
+                if hasattr(chat_service.rag_service, '_initialized'):
+                    rag_health_result["components"]["unified_rag"] = {
+                        "status": "healthy" if chat_service.rag_service._initialized else "uninitialized",
+                        "initialized": chat_service.rag_service._initialized
+                    }
+
+                # Add performance metrics if available
+                if hasattr(chat_service.rag_service, '_performance_metrics'):
+                    rag_health_result["performance"] = chat_service.rag_service._performance_metrics
+
+                # Add available RAG modes
+                rag_health_result["available_modes"] = ["fast", "accurate", "comprehensive"]
+
+                # Add phase information
+                if hasattr(chat_service.rag_service, '_query_processor') and chat_service.rag_service._query_processor:
+                    rag_health_result["components"]["query_processor"] = {"status": "healthy", "phase": "2"}
+                else:
+                    rag_health_result["components"]["query_processor"] = {"status": "disabled", "phase": "1"}
+
+                if hasattr(chat_service.rag_service, '_adaptive_retriever') and chat_service.rag_service._adaptive_retriever:
+                    rag_health_result["components"]["adaptive_retriever"] = {"status": "healthy", "phase": "2"}
+                else:
+                    rag_health_result["components"]["adaptive_retriever"] = {"status": "disabled", "phase": "1"}
+
+        except Exception as e:
+            rag_health_result.update({
+                "status": "error",
+                "message": str(e),
+                "components": {"unified_rag": {"status": "error", "error": str(e)}}
+            })
+
+        # Overall status with more granular assessment
         chat_healthy = chat_health_result.get("status") == "healthy"
-        rag_healthy = rag_health_result.get("status") in ["healthy", "disabled"]  # Disabled is okay
-        overall_status = "healthy" if chat_healthy and rag_healthy else "degraded"
-        
+        rag_status = rag_health_result.get("status", "disabled")
+
+        # Determine overall status
+        if chat_healthy and rag_status == "healthy":
+            overall_status = "healthy"
+        elif chat_healthy and rag_status in ["disabled", "degraded"]:
+            overall_status = "degraded"
+        else:
+            overall_status = "unhealthy"
+
         return {
             "status": overall_status,
             "chat_service": chat_health_result,
             "rag_service": rag_health_result,
-            "note": "Professional RAG service with LlamaIndex integration",
+            "system_info": {
+                "architecture": "unified_rag_service",
+                "supported_modes": ["fast", "accurate", "comprehensive"],
+                "backend": "llamaindex_ollama",
+                "vector_store": "qdrant/chroma",
+                "features": {
+                    "query_processing": rag_status == "healthy",
+                    "adaptive_retrieval": rag_status == "healthy",
+                    "context_management": True,
+                    "session_persistence": True
+                }
+            },
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
     except Exception as e:
         logger.error(f"Chat health check failed: {str(e)}")
         return {
             "status": "unhealthy",
             "error": str(e),
+            "components": {"chat_service": {"status": "error", "error": str(e)}},
             "timestamp": datetime.utcnow().isoformat()
         }

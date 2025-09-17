@@ -1,0 +1,453 @@
+{
+  "summary": {
+    "optimization_timestamp": "2025-09-14T22:58:46.929528",
+    "services_tested": [
+      "qdrant",
+      "rag_service"
+    ],
+    "queries_analyzed": 12,
+    "thresholds_tested": 9,
+    "current_performance": {
+      "avg_results_per_query": 7.0,
+      "total_score_samples": 42,
+      "avg_similarity_score": 0.5647,
+      "score_range": {
+        "min": 0.4298,
+        "max": 0.7277
+      }
+    },
+    "optimization_recommendations": {
+      "current_threshold": 0.25,
+      "optimal_threshold": 0.01,
+      "balance_score": 0.82,
+      "reasoning": "Decrease threshold by 0.240 to increase result coverage"
+    },
+    "proposed_configuration": {
+      "similarity_threshold": 0.01,
+      "high_quality_threshold": 0.025,
+      "fallback_threshold": 0.01,
+      "confidence_level": "high"
+    }
+  },
+  "detailed_analysis": {
+    "current_threshold_performance": {
+      "Kündigung Mietvertrag": {
+        "results_count": 7,
+        "scores": [
+          0.72770566,
+          0.5852647,
+          0.5746887,
+          0.52626026,
+          0.49304593,
+          0.47962943,
+          0.4297657
+        ],
+        "avg_score": 0.54519434,
+        "max_score": 0.72770566,
+        "min_score": 0.4297657,
+        "threshold_used": 0.25
+      },
+      "Projektplan Termine": {
+        "results_count": 7,
+        "scores": [
+          0.71176386,
+          0.62766826,
+          0.6227756,
+          0.598915,
+          0.58614117,
+          0.5646981,
+          0.5599588
+        ],
+        "avg_score": 0.6102743985714285,
+        "max_score": 0.71176386,
+        "min_score": 0.5599588,
+        "threshold_used": 0.25
+      },
+      "Verkaufsbericht Tabelle": {
+        "results_count": 7,
+        "scores": [
+          0.62696266,
+          0.5735181,
+          0.56313133,
+          0.55673647,
+          0.46425825,
+          0.45805305,
+          0.43698832
+        ],
+        "avg_score": 0.5256640257142857,
+        "max_score": 0.62696266,
+        "min_score": 0.43698832,
+        "threshold_used": 0.25
+      },
+      "Wie funktioniert Projektmanagement?": {
+        "results_count": 7,
+        "scores": [
+          0.6527933,
+          0.6517434,
+          0.6255692,
+          0.59102964,
+          0.56809735,
+          0.5304554,
+          0.5277628
+        ],
+        "avg_score": 0.5924930128571428,
+        "max_score": 0.6527933,
+        "min_score": 0.5277628,
+        "threshold_used": 0.25
+      },
+      "Was steht im Kündigungsschreiben?": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "max_score": 0.6720293,
+        "min_score": 0.4591064,
+        "threshold_used": 0.25
+      },
+      "Welche Verkaufsdaten sind verfügbar?": {
+        "results_count": 7,
+        "scores": [
+          0.65103364,
+          0.6396215,
+          0.62041163,
+          0.58776844,
+          0.48711365,
+          0.47454005,
+          0.46451625
+        ],
+        "avg_score": 0.5607150228571428,
+        "max_score": 0.65103364,
+        "min_score": 0.46451625,
+        "threshold_used": 0.25
+      }
+    },
+    "threshold_range_analysis": {
+      "0.01": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.02": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.05": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.08": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.1": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.15": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.2": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.25": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "0.3": {
+        "results_count": 7,
+        "scores": [
+          0.6720293,
+          0.64762896,
+          0.58309305,
+          0.54880977,
+          0.4854448,
+          0.4822083,
+          0.4591064
+        ],
+        "avg_score": 0.5540457971428572,
+        "score_range": 0.21292290000000003,
+        "quality_distribution": {
+          "high": 7,
+          "medium": 0,
+          "low": 0
+        }
+      }
+    },
+    "query_type_analysis": {
+      "specific": {
+        "queries_tested": 3,
+        "successful_queries": 3,
+        "avg_results_per_query": 5.0,
+        "avg_score_across_queries": 0.58925573,
+        "detailed_results": [
+          {
+            "query": "Kündigung Mietvertrag",
+            "results_count": 5,
+            "avg_score": 0.5813930500000001,
+            "max_score": 0.72770566
+          },
+          {
+            "query": "Projektplan Termine",
+            "results_count": 5,
+            "avg_score": 0.629452778,
+            "max_score": 0.71176386
+          },
+          {
+            "query": "Verkaufsbericht Tabelle",
+            "results_count": 5,
+            "avg_score": 0.556921362,
+            "max_score": 0.62696266
+          }
+        ]
+      },
+      "moderate": {
+        "queries_tested": 3,
+        "successful_queries": 3,
+        "avg_results_per_query": 5.0,
+        "avg_score_across_queries": 0.6008125086666666,
+        "detailed_results": [
+          {
+            "query": "Wie funktioniert Projektmanagement?",
+            "results_count": 5,
+            "avg_score": 0.617846578,
+            "max_score": 0.6527933
+          },
+          {
+            "query": "Was steht im Kündigungsschreiben?",
+            "results_count": 5,
+            "avg_score": 0.587401176,
+            "max_score": 0.6720293
+          },
+          {
+            "query": "Welche Verkaufsdaten sind verfügbar?",
+            "results_count": 5,
+            "avg_score": 0.5971897719999999,
+            "max_score": 0.65103364
+          }
+        ]
+      },
+      "broad": {
+        "queries_tested": 3,
+        "successful_queries": 3,
+        "avg_results_per_query": 5.0,
+        "avg_score_across_queries": 0.5680306660000001,
+        "detailed_results": [
+          {
+            "query": "Allgemeine Geschäftsinformationen",
+            "results_count": 5,
+            "avg_score": 0.6455288360000001,
+            "max_score": 0.71234775
+          },
+          {
+            "query": "Management Prinzipien",
+            "results_count": 5,
+            "avg_score": 0.435416662,
+            "max_score": 0.4721824
+          },
+          {
+            "query": "Dokumentenverwaltung Grundlagen",
+            "results_count": 5,
+            "avg_score": 0.6231465,
+            "max_score": 0.6933708
+          }
+        ]
+      },
+      "edge_cases": {
+        "queries_tested": 3,
+        "successful_queries": 3,
+        "avg_results_per_query": 5.0,
+        "avg_score_across_queries": 0.561941798,
+        "detailed_results": [
+          {
+            "query": "xyz123 unbekannt",
+            "results_count": 5,
+            "avg_score": 0.537332288,
+            "max_score": 0.58188945
+          },
+          {
+            "query": "sehr spezielle technische Details",
+            "results_count": 5,
+            "avg_score": 0.6457891040000001,
+            "max_score": 0.7093915
+          },
+          {
+            "query": "irrelevante Abfrage",
+            "results_count": 5,
+            "avg_score": 0.502704002,
+            "max_score": 0.54421836
+          }
+        ]
+      }
+    }
+  },
+  "recommendations": {
+    "current_assessment": {
+      "avg_results_per_query": 7.0,
+      "total_score_samples": 42,
+      "avg_similarity_score": 0.5647,
+      "score_range": {
+        "min": 0.4298,
+        "max": 0.7277
+      }
+    },
+    "optimization_suggestions": {
+      "current_threshold": 0.25,
+      "optimal_threshold": 0.01,
+      "balance_score": 0.82,
+      "reasoning": "Decrease threshold by 0.240 to increase result coverage"
+    },
+    "proposed_thresholds": {
+      "similarity_threshold": 0.01,
+      "high_quality_threshold": 0.025,
+      "fallback_threshold": 0.01,
+      "confidence_level": "high"
+    }
+  },
+  "implementation_guide": {
+    "config_changes": {
+      "SIMILARITY_THRESHOLD": 0.01,
+      "HIGH_QUALITY_THRESHOLD": 0.025,
+      "FALLBACK_THRESHOLD": 0.01
+    },
+    "expected_improvements": [
+      "Better balance between precision and recall",
+      "More relevant search results",
+      "Improved user satisfaction with query responses"
+    ],
+    "monitoring_suggestions": [
+      "Monitor query response times after threshold changes",
+      "Track user satisfaction scores",
+      "Measure result relevancy through feedback",
+      "Regular re-optimization (monthly)"
+    ]
+  },
+  "generated_at": "2025-09-14T22:58:46.929536"
+}

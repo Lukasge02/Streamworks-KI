@@ -1,6 +1,6 @@
 """
 Maintenance Service for StreamWorks
-Simplified for LlamaIndex-only architecture
+Qdrant Vector Store architecture
 Handles cleanup operations, consistency checks, and system maintenance tasks
 """
 
@@ -10,18 +10,18 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from models.core import Document, DocumentChunk
-from services.llamaindex_rag_service import get_rag_service
+from models.core import Document
+from services.qdrant_vectorstore import get_qdrant_service
 
 logger = logging.getLogger(__name__)
 
 
 class MaintenanceService:
-    """Service for system maintenance and cleanup operations (LlamaIndex-only)"""
+    """Service for system maintenance and cleanup operations (Qdrant architecture)"""
 
     def __init__(self):
-        # Use LlamaIndex RAG Service instead of legacy services
-        logger.info("MaintenanceService initialized for LlamaIndex-only architecture")
+        # Use Qdrant Vector Store Service
+        logger.info("MaintenanceService initialized for Qdrant architecture")
 
     async def check_vector_consistency(
         self,
@@ -29,7 +29,7 @@ class MaintenanceService:
         fix_issues: bool = False
     ) -> Dict[str, Any]:
         """
-        Check consistency between database and ChromaDB (LlamaIndex-only)
+        Check consistency between database and Qdrant vector store
 
         Args:
             db: Database session
@@ -38,11 +38,12 @@ class MaintenanceService:
         Returns:
             Dictionary with consistency report
         """
-        logger.info("Starting vector consistency check (LlamaIndex)...")
+        logger.info("Starting vector consistency check (Qdrant)...")
 
         try:
-            # Get LlamaIndex RAG service
-            rag_service = await get_rag_service()
+            # Get Qdrant vector store service
+            qdrant_service = await get_qdrant_service()
+            await qdrant_service.initialize()
 
             # Get all document IDs from database
             db_doc_query = select(Document.id).distinct()
@@ -51,37 +52,48 @@ class MaintenanceService:
 
             logger.info(f"Found {len(db_document_ids)} documents in database")
 
-            # Initialize ChromaDB client to check vector store
-            await rag_service.initialize()
-            collection = rag_service.chroma_client.get_collection("rag_documents")
-
-            # Get all chunks from ChromaDB
+            # Get collection info from Qdrant
             try:
-                vector_results = collection.get(include=['metadatas'])
-                vector_chunk_ids = set(vector_results['ids']) if vector_results['ids'] else set()
-                vector_doc_ids = {meta.get('doc_id', '') for meta in (vector_results.get('metadatas', []) or [])}
-                vector_doc_ids.discard('')  # Remove empty strings
+                collection_info = await qdrant_service.get_collection_info()
+                total_chunks = collection_info.get("vectors_count", 0)
 
-                logger.info(f"Found {len(vector_chunk_ids)} chunks in ChromaDB representing {len(vector_doc_ids)} documents")
-            except Exception as e:
-                logger.error(f"Failed to get vector chunks: {str(e)}")
-                vector_chunk_ids = set()
+                # Get unique document IDs from Qdrant by scrolling through all points
+                import asyncio
+                scroll_results = await asyncio.to_thread(
+                    qdrant_service.client.scroll,
+                    collection_name=qdrant_service.collection_name,
+                    limit=10000,  # Get all points
+                    with_payload=True,
+                    with_vectors=False
+                )
+
                 vector_doc_ids = set()
+                vector_chunk_count = 0
+                for point in scroll_results[0]:  # scroll returns (points, next_page_offset)
+                    if point.payload and 'doc_id' in point.payload:
+                        vector_doc_ids.add(point.payload['doc_id'])
+                        vector_chunk_count += 1
+
+                logger.info(f"Found {vector_chunk_count} chunks in Qdrant representing {len(vector_doc_ids)} documents")
+            except Exception as e:
+                logger.error(f"Failed to get vector chunks from Qdrant: {str(e)}")
+                vector_doc_ids = set()
+                vector_chunk_count = 0
 
             # Find basic inconsistencies
             orphaned_vector_docs = vector_doc_ids - db_document_ids
             missing_vector_docs = db_document_ids - vector_doc_ids
 
-            # Count stats (simplified for LlamaIndex-only)
+            # Count stats
             stats = {
                 "check_timestamp": datetime.utcnow().isoformat(),
                 "database_documents": len(db_document_ids),
                 "vector_documents": len(vector_doc_ids),
-                "vector_chunks": len(vector_chunk_ids),
+                "vector_chunks": vector_chunk_count,
                 "orphaned_vector_documents": len(orphaned_vector_docs),
                 "missing_vector_documents": len(missing_vector_docs),
                 "consistency_issues": len(orphaned_vector_docs) + len(missing_vector_docs) > 0,
-                "architecture": "llamaindex_only"
+                "architecture": "qdrant"
             }
 
             # Detailed issues
@@ -107,7 +119,7 @@ class MaintenanceService:
 
     async def cleanup_orphaned_vectors(self, db: AsyncSession) -> Dict[str, Any]:
         """
-        Clean up orphaned vector entries (simplified for LlamaIndex)
+        Clean up orphaned vector entries in Qdrant
 
         Args:
             db: Database session
@@ -129,10 +141,9 @@ class MaintenanceService:
                     "deleted_chunks": 0
                 }
 
-            # Get RAG service and initialize
-            rag_service = await get_rag_service()
-            await rag_service.initialize()
-            collection = rag_service.chroma_client.get_collection("rag_documents")
+            # Get Qdrant service and initialize
+            qdrant_service = await get_qdrant_service()
+            await qdrant_service.initialize()
 
             # Clean up orphaned documents
             orphaned_docs = consistency_report["issues"]["orphaned_vector_documents"]
@@ -140,16 +151,19 @@ class MaintenanceService:
 
             for doc_id in orphaned_docs:
                 try:
-                    # Find and delete all chunks for this document
-                    chunk_results = collection.get(where={"doc_id": doc_id})
-                    if chunk_results['ids']:
-                        collection.delete(ids=chunk_results['ids'])
-                        deleted_chunks += len(chunk_results['ids'])
-                        logger.info(f"Deleted {len(chunk_results['ids'])} chunks for orphaned document {doc_id}")
+                    # Delete all chunks for this document using Qdrant service
+                    success = await qdrant_service.delete_documents(doc_id)
+                    if success:
+                        # Count deleted chunks by checking before/after
+                        chunks_before = len(await qdrant_service.get_document_chunks(doc_id, limit=1000))
+                        deleted_chunks += chunks_before
+                        logger.info(f"Deleted chunks for orphaned document {doc_id}")
+                    else:
+                        logger.warning(f"Failed to delete document {doc_id} from Qdrant")
                 except Exception as e:
                     logger.error(f"Failed to delete chunks for document {doc_id}: {str(e)}")
 
-            logger.info(f"Cleanup completed: {deleted_chunks} chunks deleted for {len(orphaned_docs)} orphaned documents")
+            logger.info(f"Cleanup completed: estimated {deleted_chunks} chunks deleted for {len(orphaned_docs)} orphaned documents")
 
             return {
                 "status": "completed",
@@ -164,7 +178,7 @@ class MaintenanceService:
 
     async def get_system_health(self, db: AsyncSession) -> Dict[str, Any]:
         """
-        Get overall system health report (simplified for LlamaIndex)
+        Get overall system health report for Qdrant architecture
 
         Args:
             db: Database session
@@ -209,7 +223,7 @@ class MaintenanceService:
                 "timestamp": datetime.utcnow().isoformat(),
                 "status": status,
                 "health_score": health_score,
-                "architecture": "llamaindex_only",
+                "architecture": "qdrant",
                 "total_documents": total_documents,
                 "vector_consistency": consistency_report["stats"],
                 "recommendations": recommendations

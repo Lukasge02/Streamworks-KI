@@ -18,7 +18,7 @@ import {
   InformationCircleIcon
 } from '@heroicons/react/24/outline'
 import { DocumentWithFolder, DocumentGridProps } from '@/types/api.types'
-import { StatusBadge } from '@/components/ui/StatusBadge'
+import { DocumentStatusBadge } from '@/components/ui/DocumentStatusBadge'
 import { t, formatUploadDate, formatProcessingDate } from '@/lib/translations'
 
 interface DocumentCardProps {
@@ -179,7 +179,7 @@ function DocumentInfoModal({ isOpen, onClose, document: doc }: DocumentInfoModal
                   <div>
                     <dt className="text-sm text-gray-500 dark:text-gray-400">{t('metadata.status')}:</dt>
                     <dd className="text-sm">
-                      <StatusBadge status={doc.status} size="sm" />
+                      <DocumentStatusBadge status={doc.status} size="sm" />
                     </dd>
                   </div>
                 </div>
@@ -295,7 +295,7 @@ function formatFileSize(bytes: number): string {
 }
 
 function getStatusColor(status: string) {
-  // Deprecated - use StatusBadge component instead
+  // Deprecated - use DocumentStatusBadge component instead
   switch (status) {
     case 'ready': return 'bg-green-100 text-green-800'
     case 'processing': return 'bg-yellow-100 text-yellow-800'
@@ -369,7 +369,7 @@ function DocumentCard({ document, isSelected, onSelect, onOpen, onDelete, onShow
 
         {/* Status Badge */}
         <div className="flex-shrink-0 mr-3">
-          <StatusBadge status={document.status} size="sm" />
+          <DocumentStatusBadge status={document.status} size="sm" />
         </div>
 
         {/* Actions */}
@@ -594,7 +594,7 @@ function DocumentCard({ document, isSelected, onSelect, onOpen, onDelete, onShow
                     <span className="truncate">📁 {document.folder.name}</span>
                   </div>
                 )}
-                <StatusBadge status={document.status} size="sm" />
+                <DocumentStatusBadge status={document.status} size="sm" />
               </div>
             </div>
           </div>

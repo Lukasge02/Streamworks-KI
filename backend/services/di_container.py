@@ -183,27 +183,59 @@ def get_container() -> DIContainer:
 
 
 async def initialize_container():
-    """Initialize the global container (LlamaIndex-only)"""
+    """Initialize the global container (Qdrant + LlamaIndex) with service pre-warming"""
+    logger.info("🚀 Starting DI container initialization...")
     container = get_container()
 
-    # Import available services (LlamaIndex-only architecture)
-    from .ollama_service import OllamaService
-    from .llamaindex_rag_service import get_rag_service
+    # Import available services (Qdrant + LlamaIndex architecture)
+    logger.info("📦 Importing service modules...")
+    try:
+        from .ollama_service import OllamaService
+        logger.info("✅ Successfully imported OllamaService")
+    except ImportError as e:
+        logger.error(f"❌ Failed to import OllamaService: {e}")
+        raise
+
+    try:
+        from .qdrant_rag_service import get_rag_service
+        logger.info("✅ Successfully imported get_rag_service")
+    except ImportError as e:
+        logger.error(f"❌ Failed to import get_rag_service: {e}")
+        raise
+
+    try:
+        from .qdrant_vectorstore import get_qdrant_service
+        logger.info("✅ Successfully imported get_qdrant_service")
+    except ImportError as e:
+        logger.error(f"❌ Failed to import get_qdrant_service: {e}")
+        raise
 
     # Core infrastructure services that remain
+    logger.info("🔧 Registering core services...")
     container.register(
         name="ollama_service",
         service_class=OllamaService,
         singleton=True
     )
+    logger.info("✅ Registered ollama_service")
 
-    # LlamaIndex RAG Service (main pipeline)
+    # Qdrant Vector Store Service
+    container.register(
+        name="qdrant_service",
+        service_class=None,
+        factory=get_qdrant_service,
+        singleton=True
+    )
+    logger.info("✅ Registered qdrant_service")
+
+    # Qdrant RAG Service (main pipeline)
     container.register(
         name="rag_service",
         service_class=None,
         factory=get_rag_service,
         singleton=True
     )
+    logger.info("✅ Registered rag_service")
 
     # Legacy services (keep for backward compatibility during transition)
     try:
@@ -214,10 +246,45 @@ async def initialize_container():
             factory=create_upload_job_manager,
             singleton=True
         )
+        logger.info("✅ Registered upload_job_manager")
     except ImportError:
-        logger.warning("Upload job manager not available")
+        logger.warning("⚠️ Upload job manager not available")
 
-    await container._initialize_all()
+    # Initialize all services
+    logger.info("🔄 Initializing all registered services...")
+    try:
+        await container._initialize_all()
+        logger.info("✅ All services initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize services: {e}", exc_info=True)
+        raise
+
+    # PRE-WARMING: Initialize critical services to reduce first query latency
+    logger.info("🔥 Pre-warming critical services for improved performance...")
+    try:
+        # Pre-warm Qdrant vector store
+        qdrant_service = await container.get("qdrant_service")
+        await qdrant_service.initialize()
+        logger.info("✅ Qdrant service pre-warmed successfully")
+
+        # Pre-warm RAG service
+        rag_service = await container.get("rag_service")
+        await rag_service.initialize()
+        logger.info("✅ RAG service pre-warmed successfully")
+
+        # Pre-warm Unified RAG service (if available)
+        try:
+            from .rag.unified_rag_service import get_unified_rag_service
+            unified_rag = await get_unified_rag_service()
+            await unified_rag.initialize()
+            logger.info("✅ Unified RAG service pre-warmed successfully")
+        except Exception as e:
+            logger.warning(f"⚠️ Unified RAG service pre-warming failed: {str(e)}")
+
+        logger.info("🚀 Service pre-warming completed - first queries will be faster!")
+
+    except Exception as e:
+        logger.warning(f"⚠️ Service pre-warming partially failed: {str(e)} - Services will initialize on first use")
 
 
 async def get_service(name: str) -> Any:

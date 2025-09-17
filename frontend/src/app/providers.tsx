@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeEnhancer } from '@/components/ThemeEnhancer'
 import { DocumentSyncProvider } from '@/providers/DocumentSyncProvider'
-import { Toaster } from 'sonner'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 import { enableMapSet } from 'immer'
 import { 
   StreamWorksErrorBoundary, 
@@ -59,7 +59,7 @@ function AppProviders({ children }: ProvidersProps) {
               size="lg"
             />
             {children}
-            <Toaster position="top-right" />
+            <ToastContainer />
           </DocumentSyncProvider>
         </ThemeProvider>
       </QueryClientProvider>

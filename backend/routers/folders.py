@@ -6,7 +6,9 @@ Enterprise-grade REST API for folder operations
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+import json
 
 from database import get_async_session
 from schemas.core import (
@@ -50,7 +52,7 @@ async def create_folder(
         raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
 
 
-@router.get("/", response_model=List[FolderResponse])
+@router.get("/")
 async def get_folders(
     parent_id: Optional[UUID] = Query(None, description="Filter by parent folder ID"),
     include_counts: bool = Query(True, description="Include document and children counts"),
@@ -58,22 +60,46 @@ async def get_folders(
 ):
     """
     Get list of folders
-    
+
     - **parent_id**: Filter by parent folder (null for root folders)
     - **include_counts**: Include document and children counts
     """
     try:
         folders = await FolderService.get_folders_list(
-            db, 
+            db,
             parent_id=parent_id,
             include_document_count=include_counts
         )
-        return folders
+
+        # Serialize response completely before sending
+        response_data = []
+        for folder in folders:
+            response_data.append({
+                "id": str(folder.id),
+                "name": folder.name,
+                "description": folder.description,
+                "parent_id": str(folder.parent_id) if folder.parent_id else None,
+                "path": folder.path,
+                "created_at": folder.created_at.isoformat(),
+                "updated_at": folder.updated_at.isoformat(),
+                "document_count": folder.document_count if hasattr(folder, 'document_count') else 0,
+                "children_count": folder.children_count if hasattr(folder, 'children_count') else 0
+            })
+
+        # Return as explicit JSONResponse with proper headers
+        response_json = json.dumps(response_data, ensure_ascii=False)
+        return JSONResponse(
+            content=json.loads(response_json),
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(response_json.encode('utf-8')))
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get folders: {str(e)}")
 
 
-@router.get("/tree", response_model=List[FolderTree])
+@router.get("/tree")
 async def get_folder_tree(
     root_id: Optional[UUID] = Query(None, description="Root folder ID (null for all roots)"),
     max_depth: int = Query(10, ge=1, le=20, description="Maximum tree depth"),
@@ -81,13 +107,42 @@ async def get_folder_tree(
 ):
     """
     Get hierarchical folder tree
-    
+
     - **root_id**: Root folder ID (null for all root folders)
     - **max_depth**: Maximum depth to traverse (1-20)
     """
     try:
         tree = await FolderService.get_folder_tree(db, root_id, max_depth)
-        return tree
+
+        # Convert tree to serializable format
+        def serialize_folder_tree(folder_node):
+            return {
+                "id": str(folder_node.id),
+                "name": folder_node.name,
+                "description": folder_node.description,
+                "parent_id": str(folder_node.parent_id) if folder_node.parent_id else None,
+                "path": folder_node.path,
+                "created_at": folder_node.created_at.isoformat(),
+                "updated_at": folder_node.updated_at.isoformat(),
+                "document_count": folder_node.document_count if hasattr(folder_node, 'document_count') else 0,
+                "children_count": folder_node.children_count if hasattr(folder_node, 'children_count') else 0,
+                "children": [serialize_folder_tree(child) for child in (folder_node.children or [])]
+            }
+
+        # Serialize complete tree
+        response_data = []
+        for root_folder in tree:
+            response_data.append(serialize_folder_tree(root_folder))
+
+        # Return as explicit JSONResponse with proper headers
+        response_json = json.dumps(response_data, ensure_ascii=False)
+        return JSONResponse(
+            content=json.loads(response_json),
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(response_json.encode('utf-8')))
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get folder tree: {str(e)}")
 

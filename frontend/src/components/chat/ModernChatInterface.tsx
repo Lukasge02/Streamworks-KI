@@ -32,6 +32,7 @@ export const ModernChatInterface: React.FC = () => {
   const [selectedSource, setSelectedSource] = useState<any>(null)
   const [sourcePreviewOpen, setSourcePreviewOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [isDeletingAllChats, setIsDeletingAllChats] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Store state
@@ -132,16 +133,34 @@ export const ModernChatInterface: React.FC = () => {
   }
 
   const handleClearAllChats = async () => {
-    if (confirm('⚠️ Möchtest du wirklich alle Chat-Verläufe löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    if (!sessions.length) return
+
+    const chatCount = sessions.length
+    if (confirm(`⚠️ Möchtest du wirklich alle ${chatCount} Chat-Verläufe löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+      setIsDeletingAllChats(true)
+
       try {
-        // Delete all sessions one by one
-        for (const session of sessions) {
-          await deleteSessionById(session.id)
-        }
-        alert('Alle Chat-Verläufe wurden gelöscht')
+        // Create array of all delete promises for parallel execution
+        const deletePromises = sessions.map(session =>
+          deleteSessionById(session.id)
+        )
+
+        // Execute all deletions in parallel
+        await Promise.all(deletePromises)
+
+        alert(`✅ Alle ${chatCount} Chat-Verläufe wurden erfolgreich gelöscht`)
       } catch (error) {
         console.error('Failed to delete all sessions:', error)
-        alert('Fehler beim Löschen der Chat-Verläufe')
+
+        // Better error handling - check if some deletions succeeded
+        const remainingSessions = sessions.length
+        if (remainingSessions < chatCount) {
+          alert(`⚠️ Teilweise erfolgreich: ${chatCount - remainingSessions} von ${chatCount} Chats gelöscht. Bitte versuche es erneut.`)
+        } else {
+          alert('❌ Fehler beim Löschen der Chat-Verläufe. Bitte versuche es erneut.')
+        }
+      } finally {
+        setIsDeletingAllChats(false)
       }
     }
   }
@@ -166,6 +185,11 @@ export const ModernChatInterface: React.FC = () => {
     created_at: new Date().toISOString(),
     session_id: currentSessionId || '',
     sequence_number: 0,
+    confidence_score: undefined,
+    sources: undefined,
+    processing_time: undefined,
+    model_info: undefined,
+    retrieval_context: undefined,
   }
 
   const displayMessages = currentMessages.length > 0 ? currentMessages : [welcomeMessage]
@@ -285,11 +309,19 @@ export const ModernChatInterface: React.FC = () => {
                   )}
                   
                   {filteredSessions.map((session) => (
-                    <motion.button
+                    <motion.div
                       key={session.id}
                       layout
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleSessionSelect(session.id)}
-                      className={`w-full text-left p-3 rounded-lg transition-colors group ${
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleSessionSelect(session.id)
+                        }
+                      }}
+                      className={`w-full text-left p-3 rounded-lg transition-colors group cursor-pointer ${
                         session.id === currentSessionId
                           ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
                           : 'hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -305,6 +337,7 @@ export const ModernChatInterface: React.FC = () => {
                             handleDeleteSession(session.id)
                           }}
                           className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+                          aria-label={`Chat "${session.title}" löschen`}
                         >
                           <Trash2 className="w-3 h-3 text-red-500" />
                         </button>
@@ -313,7 +346,7 @@ export const ModernChatInterface: React.FC = () => {
                         <span>{formatTimeForDisplay(session.updated_at, isClient)}</span>
                         <span>{session.message_count} Nachrichten</span>
                       </div>
-                    </motion.button>
+                    </motion.div>
                   ))}
                 </div>
               )}
@@ -323,11 +356,21 @@ export const ModernChatInterface: React.FC = () => {
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
               <button
                 onClick={handleClearAllChats}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                title="Alle Chats löschen"
+                disabled={isDeletingAllChats || !sessions.length}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                title={isDeletingAllChats ? `Lösche ${sessions.length} Chats...` : "Alle Chats löschen"}
               >
-                <Trash2 className="w-3 h-3" />
-                <span>Alle Chats löschen</span>
+                {isDeletingAllChats ? (
+                  <>
+                    <Loader className="w-3 h-3 animate-spin" />
+                    <span>Lösche {sessions.length} Chats...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3 h-3" />
+                    <span>Alle Chats löschen</span>
+                  </>
+                )}
               </button>
             </div>
           </motion.div>
@@ -411,6 +454,7 @@ export const ModernChatInterface: React.FC = () => {
                             sources={message.sources}
                             processing_time={message.processing_time}
                             model_info={message.model_info}
+                            retrieval_context={message.retrieval_context}
                             onCopyResponse={() => navigator.clipboard.writeText(message.content)}
                             onSourceClick={handleSourceClick}
                           />

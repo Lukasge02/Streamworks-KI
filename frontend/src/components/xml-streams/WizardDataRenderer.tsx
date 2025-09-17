@@ -187,12 +187,20 @@ export const WizardDataRenderer: React.FC<WizardDataRendererProps> = ({
         // Standard Job Fields - erweitert mit verschiedenen möglichen Strukturen
         jobName: getFieldValue([
           'jobForm.jobName', 'jobName', 'job.name', 'name',
-          'basic.jobName', 'configuration.jobName'
+          'basic.jobName', 'configuration.jobName',
+          // Entity-basierte Pfade vom Backend
+          'entities.job_name', 'entities.jobName', 'entities.name',
+          'collected_data.job_name', 'collected_data.jobName',
+          'extracted_entities.job_name', 'extracted_entities.jobName'
         ], null, 'jobName'),
 
         script: getFieldValue([
           'jobForm.script', 'script', 'job.script', 'command',
-          'execution.script', 'configuration.script'
+          'execution.script', 'configuration.script',
+          // Entity-basierte Pfade vom Backend
+          'entities.script', 'entities.command', 'entities.report_name',
+          'collected_data.script', 'collected_data.command', 'collected_data.report_name',
+          'extracted_entities.script', 'extracted_entities.report_name'
         ], null, 'script'),
 
         parameters: getFieldValue([
@@ -202,7 +210,11 @@ export const WizardDataRenderer: React.FC<WizardDataRendererProps> = ({
 
         agent: getFieldValue([
           'jobForm.agent', 'agent', 'job.agent', 'executor',
-          'execution.agent', 'configuration.agent'
+          'execution.agent', 'configuration.agent',
+          // Entity-basierte Pfade vom Backend
+          'entities.agent', 'entities.server', 'entities.target_server',
+          'collected_data.agent', 'collected_data.target_server', 'collected_data.server_name',
+          'extracted_entities.agent', 'extracted_entities.target_server'
         ], null, 'agent'),
 
         os: getFieldValue([
