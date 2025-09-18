@@ -43,7 +43,6 @@ export const ModernChatInterface: React.FC = () => {
     currentSessionId,
     aiProvider,
     error,
-    isSendingMessage,
     setAiProvider,
     setError,
   } = useChatStore()
@@ -58,6 +57,7 @@ export const ModernChatInterface: React.FC = () => {
     shouldShowEmptyState,
     sessionCount,
     totalMessages,
+    isSendingMessage,
   } = useChatSelectors()
 
   // Business logic

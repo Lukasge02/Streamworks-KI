@@ -1,0 +1,297 @@
+{
+  "streamworks_standard_schema": {
+    "version": "1.0",
+    "description": "Standard-Elemente für StreamWorks Streams (SAP, Transfer, Basic Jobs)",
+    "focus_areas": ["SAP Integration", "File Transfer", "Basic Job Processing"],
+
+    "stream_metadata": {
+      "required_fields": {
+        "StreamName": {
+          "type": "string",
+          "description": "Eindeutiger Stream-Name",
+          "examples": ["StrJ_AC_SAP_Fabric_Calendar_Export_Import", "ZSW-T-WIN-FILE-TRANSFER"],
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "StreamDocumentation": {
+          "type": "string",
+          "description": "Detaillierte Beschreibung des Stream-Zwecks",
+          "examples": ["Beispielstream für den Export eines SAP Fabrikkalenders", "Automatisierter Agenten Test - Filetransfer"]
+        },
+        "AgentDetail": {
+          "type": "string",
+          "description": "Haupt-Agent für Stream-Ausführung",
+          "examples": ["gtlnmiwvm1636", "gtasswvv15778"],
+          "pattern": "^[a-zA-Z0-9]+$"
+        },
+        "CalendarId": {
+          "type": "string",
+          "description": "Kalender-Referenz für Scheduling",
+          "default": "UATDefaultCalendar",
+          "examples": ["UATDefaultCalendar", "ProductionCalendar"]
+        },
+        "StreamType": {
+          "type": "string",
+          "enum": ["Normal", "Recovery", "Test"],
+          "default": "Normal"
+        },
+        "MaxStreamRuns": {
+          "type": "integer",
+          "description": "Maximale Anzahl paralleler Stream-Läufe",
+          "default": 10,
+          "range": [1, 1000]
+        },
+        "ShortDescription": {
+          "type": "string",
+          "description": "Kurze Zusammenfassung des Stream-Zwecks",
+          "max_length": 200
+        },
+        "SchedulingRequiredFlag": {
+          "type": "boolean",
+          "description": "Ob Stream-Scheduling erforderlich ist",
+          "default": true
+        }
+      },
+
+      "optional_fields": {
+        "AccountNoId": "string",
+        "RuntimeDataStorageDays": "integer",
+        "StreamRunDeletionType": "enum[None, AfterDays, AfterRuns]",
+        "AvgRunTimeCalcInDays": "integer",
+        "SeverityId": "string",
+        "InteractivePslFlag": "boolean",
+        "ConcurrentPlanDatesEnabled": "boolean",
+        "StreamPath": "string"
+      }
+    },
+
+    "job_categories": {
+      "StartPoint": {
+        "description": "Stream-Startpunkt",
+        "required": true,
+        "properties": {
+          "JobName": "StartPoint",
+          "JobCategory": "StartPoint",
+          "JobType": "None",
+          "DisplayOrder": 1,
+          "ShortDescription": "Start Point for the Stream"
+        }
+      },
+
+      "SAP_Job": {
+        "description": "SAP-Integration Jobs",
+        "job_types": ["Windows", "Linux", "Unix"],
+        "common_scripts": {
+          "sap_export": "jexa4s ZTV 300 EXE_CAL_EXPORT",
+          "sap_import": "ExportImportStreamDesignData.exe -func=import",
+          "sap_data_transfer": "sapgui /TRANSACTION_CODE"
+        },
+        "properties": {
+          "JobCategory": "Job",
+          "MainScript": "required",
+          "typical_coordinates": {"x": 0, "y": "incremental"}
+        }
+      },
+
+      "FileTransfer_Job": {
+        "description": "Datei-Transfer Jobs",
+        "job_types": ["Windows", "Linux", "Unix", "AIX"],
+        "common_scripts": {
+          "copy_files": "copy source_path destination_path",
+          "move_files": "move source_path destination_path",
+          "sftp_transfer": "sftp user@host:/remote/path",
+          "rsync_transfer": "rsync -av source/ destination/"
+        },
+        "properties": {
+          "JobCategory": "Job",
+          "MainScript": "required"
+        }
+      },
+
+      "EndPoint": {
+        "description": "Stream-Endpunkt",
+        "required": true,
+        "properties": {
+          "JobName": "EndPoint",
+          "JobCategory": "Endpoint",
+          "JobType": "None",
+          "ShortDescription": "End Point for the Stream"
+        }
+      },
+
+      "Recovery_Jobs": {
+        "description": "Fehlerbehandlung und Recovery",
+        "jobs": [
+          {
+            "JobName": "RecoveryJobNetStartPoint",
+            "JobCategory": "RecoveryJobNetStartPoint",
+            "NormalJobFlag": false
+          },
+          {
+            "JobName": "RecoveryJobNetEndPoint",
+            "JobCategory": "RecoveryJobNetEndPoint",
+            "NormalJobFlag": false
+          }
+        ]
+      }
+    },
+
+    "job_properties_template": {
+      "basic_properties": {
+        "JobName": {
+          "type": "string",
+          "required": true,
+          "description": "Eindeutiger Job-Name innerhalb des Streams"
+        },
+        "ShortDescription": {
+          "type": "string",
+          "required": true,
+          "description": "Kurze Beschreibung der Job-Funktion"
+        },
+        "StatusFlag": {
+          "type": "boolean",
+          "default": true,
+          "description": "Job ist aktiv"
+        },
+        "JobType": {
+          "type": "enum",
+          "values": ["None", "Windows", "Linux", "Unix", "AIX", "SLES12", "SLES15", "RH8", "DEB11"],
+          "description": "Betriebssystem/Plattform für Job-Ausführung"
+        },
+        "MainScript": {
+          "type": "string",
+          "description": "Hauptausführungsskript",
+          "required_for": ["Job category jobs"]
+        },
+        "DisplayOrder": {
+          "type": "integer",
+          "description": "Reihenfolge in der GUI-Darstellung"
+        },
+        "CoordinateX": {
+          "type": "integer",
+          "description": "X-Position in der grafischen Darstellung"
+        },
+        "CoordinateY": {
+          "type": "integer",
+          "description": "Y-Position in der grafischen Darstellung"
+        }
+      },
+
+      "execution_control": {
+        "JobInternalSuccessors": {
+          "type": "array",
+          "description": "Liste der Nachfolger-Jobs",
+          "items": {
+            "JobName": "string",
+            "EdgeEndPosition": "integer",
+            "EdgeStartPosition": "integer"
+          }
+        },
+        "StreamRunJobProperties": {
+          "type": "array",
+          "description": "Run-spezifische Eigenschaften",
+          "items": {
+            "RunNumber": "integer",
+            "StartTimeType": "enum[RelativeToPredecessorEndTime, FixedTime, None]",
+            "RelativeStartTime": "integer (seconds)",
+            "JobHoldFlag": "boolean",
+            "AgentDetail": "string",
+            "AccountDetail": "string"
+          }
+        }
+      },
+
+      "advanced_features": {
+        "JobCompletionCodeRules": {
+          "description": "Validierung von Exit-Codes",
+          "example": {
+            "CodeCompletionRulesType": "ValidationDefinition",
+            "CodeRuleExpression": "RC=2"
+          }
+        },
+        "ExternalDependencies": "array",
+        "FileDependency": "array",
+        "LogicalResourceDependencies": "array",
+        "JobNotificationRules": "array"
+      }
+    },
+
+    "common_patterns": {
+      "sap_workflow": {
+        "description": "Typischer SAP Integration Workflow",
+        "jobs": [
+          "StartPoint",
+          "SAP_Export_Job (jexa4s)",
+          "File_Copy_Job",
+          "SAP_Import_Job (ExportImportStreamDesignData)",
+          "EndPoint"
+        ]
+      },
+
+      "file_transfer_workflow": {
+        "description": "Typischer File Transfer Workflow",
+        "jobs": [
+          "StartPoint",
+          "Source_File_Preparation",
+          "File_Transfer_Job",
+          "Target_File_Validation",
+          "EndPoint"
+        ]
+      },
+
+      "basic_processing_workflow": {
+        "description": "Basis-Verarbeitungsworkflow",
+        "jobs": [
+          "StartPoint",
+          "Data_Preparation_Job",
+          "Processing_Job",
+          "Result_Validation_Job",
+          "EndPoint"
+        ]
+      }
+    },
+
+    "scheduling_elements": {
+      "ScheduleRule": {
+        "description": "XML-basierte Scheduling-Regeln",
+        "structure": {
+          "ScheduleRuleXml": "CDATA containing SchedulingRules XML",
+          "common_elements": [
+            "ShiftRule",
+            "ScheduleMonths",
+            "FixedDates",
+            "Include/Exclude dates"
+          ]
+        }
+      }
+    },
+
+    "validation_rules": {
+      "required_jobs": ["StartPoint", "EndPoint"],
+      "job_naming": "Alphanumeric, underscore, hyphen allowed",
+      "coordinate_system": "Positive integers, Y increases downward",
+      "script_validation": "Platform-specific script syntax",
+      "dependency_validation": "All referenced jobs must exist"
+    },
+
+    "generation_templates": {
+      "sap_integration_template": {
+        "stream_name_pattern": "{prefix}_SAP_{function}_{type}",
+        "required_parameters": ["sap_system", "function", "user", "file_paths"],
+        "script_templates": {
+          "export": "jexa4s {system} {transaction} {parameters}",
+          "import": "ExportImportStreamDesignData.exe -func=import -mandatorcode={code} -sourcedir={path}"
+        }
+      },
+
+      "file_transfer_template": {
+        "stream_name_pattern": "{environment}-{type}-{platform}-FILE-TRANSFER",
+        "required_parameters": ["source_path", "target_path", "platform", "transfer_method"],
+        "script_templates": {
+          "windows_copy": "copy {source} {target}",
+          "linux_copy": "cp {source} {target}",
+          "sftp": "sftp {user}@{host}:{remote_path}"
+        }
+      }
+    }
+  }
+}

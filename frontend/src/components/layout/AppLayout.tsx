@@ -24,8 +24,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       try {
         const response = await fetch('http://localhost:8000/api/health', {
           method: 'GET',
-          headers: { 'Accept': 'application/json' },
-          mode: 'cors'
+          headers: { 'Accept': 'application/json' }
         })
         const data = await response.json()
         setSystemStatus({ status: 'healthy', backend_online: response.ok })

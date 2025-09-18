@@ -20,7 +20,9 @@ from qdrant_client.models import (
     Filter,
     FieldCondition,
     MatchValue,
-    MatchAny
+    MatchAny,
+    SparseVectorParams,
+    SparseVector
 )
 from qdrant_client.http.exceptions import ResponseHandlingException
 
@@ -45,6 +47,10 @@ class QdrantVectorStoreService:
         self.client: Optional[QdrantClient] = None
         self.vector_store: Optional[QdrantVectorStore] = None
         self.collection_name = None
+
+        # Hybrid search components
+        self.hybrid_collection_name = None
+        self.hybrid_vector_store: Optional[QdrantVectorStore] = None
 
         # Configuration from settings
         from config import settings
@@ -98,6 +104,10 @@ class QdrantVectorStoreService:
             )
 
             logger.info(f"✅ Qdrant vector store initialized with collection: {self.collection_name}")
+
+            # 5. Initialize Hybrid Search if enabled
+            if self.settings.ENABLE_HYBRID_SEARCH:
+                await self._setup_hybrid_collection()
 
             self._initialized = True
             logger.info("🎯 Qdrant Vector Store Service fully initialized!")
@@ -158,6 +168,77 @@ class QdrantVectorStoreService:
 
         except Exception as e:
             logger.error(f"❌ Failed to ensure collection exists: {str(e)}")
+            raise
+
+    async def _setup_hybrid_collection(self):
+        """Setup hybrid collection with sparse + dense vector support"""
+        try:
+            logger.info("🚀 Setting up Hybrid Search collection...")
+
+            self.hybrid_collection_name = self.settings.HYBRID_COLLECTION_NAME
+            await self._ensure_hybrid_collection_exists()
+
+            # Initialize hybrid vector store - use raw client instead of LlamaIndex wrapper to avoid FastEmbed dependency
+            # We'll use the raw Qdrant client for hybrid operations since we're implementing our own hybrid logic
+            self.hybrid_vector_store = True  # Flag to indicate hybrid collection is available
+
+            logger.info(f"✅ Hybrid search collection initialized: {self.hybrid_collection_name}")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to setup hybrid collection: {str(e)}")
+            # Don't raise - fall back to regular collection
+            logger.warning("⚠️ Hybrid search disabled - falling back to dense vector search only")
+
+    async def _ensure_hybrid_collection_exists(self):
+        """Ensure the hybrid collection exists with sparse + dense vector configuration"""
+        try:
+            # Check if hybrid collection exists
+            collections = await asyncio.to_thread(self.client.get_collections)
+            collection_exists = any(
+                col.name == self.hybrid_collection_name
+                for col in collections.collections
+            )
+
+            if not collection_exists:
+                logger.info(f"📝 Creating new Qdrant hybrid collection: {self.hybrid_collection_name}")
+
+                # Create hybrid collection with both dense and sparse vectors
+                # Use the correct API: separate vectors_config and sparse_vectors_config
+                await asyncio.to_thread(
+                    self.client.create_collection,
+                    collection_name=self.hybrid_collection_name,
+                    vectors_config={
+                        # Dense vectors for semantic similarity (BGE embeddings)
+                        "dense": VectorParams(
+                            size=self.settings.QDRANT_VECTOR_SIZE,  # BGE embeddings size (768)
+                            distance=Distance.COSINE,  # Best for semantic similarity
+                            hnsw_config={
+                                "m": 16,  # Number of bi-directional links
+                                "ef_construct": 200,  # Higher for better quality
+                            }
+                        )
+                    },
+                    sparse_vectors_config={
+                        # Sparse vectors for keyword matching (BM25-style)
+                        "sparse": SparseVectorParams()  # Use default sparse vector configuration
+                    },
+                    optimizers_config={
+                        "deleted_threshold": 0.2,
+                        "vacuum_min_vector_number": 1000,
+                        "default_segment_number": 0,
+                        "max_segment_size": 20000,
+                        "memmap_threshold": 50000,
+                        "indexing_threshold": 10000,
+                        "flush_interval_sec": 5,
+                        "max_optimization_threads": 1
+                    }
+                )
+                logger.info(f"✅ Hybrid collection '{self.hybrid_collection_name}' created successfully")
+            else:
+                logger.info(f"✅ Hybrid collection '{self.hybrid_collection_name}' already exists")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to ensure hybrid collection exists: {str(e)}")
             raise
 
     async def add_documents(
@@ -225,6 +306,88 @@ class QdrantVectorStoreService:
 
         except Exception as e:
             logger.error(f"❌ Failed to add documents to Qdrant: {str(e)}")
+            raise
+
+    async def add_hybrid_documents(
+        self,
+        texts: List[str],
+        dense_embeddings: List[List[float]],
+        sparse_vectors: List[Dict[int, float]],
+        metadatas: List[Dict[str, Any]]
+    ) -> List[str]:
+        """
+        Add documents to hybrid collection with both dense and sparse vectors
+
+        Args:
+            texts: List of text content
+            dense_embeddings: List of dense embedding vectors (BGE)
+            sparse_vectors: List of sparse vectors (BM25-style)
+            metadatas: List of metadata dictionaries
+
+        Returns:
+            List of point IDs
+        """
+        if not self.hybrid_vector_store:
+            raise Exception("Hybrid search not initialized - check configuration")
+
+        try:
+            logger.info(f"📝 Adding {len(texts)} documents to hybrid collection")
+
+            from qdrant_client.models import SparseVector
+            points = []
+            point_ids = []
+
+            for i, (text, dense_emb, sparse_vec, metadata) in enumerate(zip(texts, dense_embeddings, sparse_vectors, metadatas)):
+                # Generate unique point ID
+                point_id = str(uuid.uuid4())
+                point_ids.append(point_id)
+
+                # Prepare payload with enhanced metadata
+                payload = {
+                    "text": text,
+                    "doc_id": metadata.get("doc_id", "unknown"),
+                    "chunk_id": metadata.get("chunk_id", f"chunk_{i}"),
+                    "doctype": metadata.get("doctype", "general"),
+                    "chunk_type": metadata.get("chunk_type", "text"),
+                    "file_name": metadata.get("file_name", ""),
+                    "processing_engine": metadata.get("processing_engine", "hybrid_qdrant"),
+                    "created_at": datetime.now().isoformat(),
+                    "chunk_index": metadata.get("chunk_index", i),
+                    "word_count": metadata.get("word_count", len(text.split())),
+                    "char_count": metadata.get("char_count", len(text)),
+                    "hybrid_enabled": True,  # Mark as hybrid document
+                    **metadata  # Include all original metadata
+                }
+
+                # Convert sparse vector format for Qdrant
+                # Create sparse vector in the correct format
+                sparse_indices = list(sparse_vec.keys())
+                sparse_values = list(sparse_vec.values())
+
+                points.append(PointStruct(
+                    id=point_id,
+                    vector={
+                        "dense": dense_emb,
+                        "sparse": SparseVector(
+                            indices=sparse_indices,
+                            values=sparse_values
+                        )
+                    },
+                    payload=payload
+                ))
+
+            # Batch upsert to Qdrant
+            await asyncio.to_thread(
+                self.client.upsert,
+                collection_name=self.hybrid_collection_name,
+                points=points
+            )
+
+            logger.info(f"✅ Successfully added {len(points)} hybrid documents to Qdrant")
+            return point_ids
+
+        except Exception as e:
+            logger.error(f"❌ Failed to add hybrid documents to Qdrant: {str(e)}")
             raise
 
     async def similarity_search(

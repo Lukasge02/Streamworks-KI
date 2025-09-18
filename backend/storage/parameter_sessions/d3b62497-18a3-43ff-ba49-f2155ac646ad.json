@@ -1,0 +1,35 @@
+{
+  "session_id": "d3b62497-18a3-43ff-ba49-f2155ac646ad",
+  "user_id": "test-user",
+  "job_type": "STANDARD",
+  "status": "active",
+  "created_at": "2025-09-18T23:36:12.826607",
+  "updated_at": "2025-09-18T23:47:05.271335",
+  "expires_at": "2025-09-19T00:47:05.271348",
+  "collected_parameters": {
+    "STANDARD": "extracted_from_I need to create a d"
+  },
+  "parameter_history": [
+    {
+      "timestamp": "2025-09-18T23:46:03.738917",
+      "source_message": "I need to create a data processing job that reads CSV files",
+      "updated_parameters": {
+        "STANDARD": "extracted_from_I need to create a d"
+      },
+      "confidence": null,
+      "total_parameters": 1
+    }
+  ],
+  "validation_results": [],
+  "dialog_state": "parameter_collection",
+  "last_message": "Yes, I need a custom job. The input files are in /data/input/*.csv and output should go to PostgreSQL database.",
+  "suggested_questions": [],
+  "completion_percentage": 0.1111111111111111,
+  "metadata": {
+    "suggested_job_type": "STANDARD",
+    "confidence": 0.0,
+    "job_type": "STANDARD",
+    "total_parameters": 9,
+    "required_parameters": 5
+  }
+}

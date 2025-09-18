@@ -41,6 +41,10 @@ class AdaptiveRetriever:
         self.embed_model = embed_model
         self._initialized = False
 
+        # Hybrid search components
+        self.hybrid_query_service = None
+        self.hybrid_enabled = False
+
         # Retrieval Configuration basierend auf Modi
         self.mode_configs = {
             RAGMode.FAST: {
@@ -91,6 +95,24 @@ class AdaptiveRetriever:
             self.similarity_processor = SimilarityPostprocessor(similarity_cutoff=0.6)
             self.context_reorderer = LongContextReorder()
 
+            # Initialize Hybrid Search if enabled
+            try:
+                from config import settings
+                if settings.ENABLE_HYBRID_SEARCH:
+                    from ..hybrid_query_service import get_hybrid_query_service
+                    self.hybrid_query_service = await get_hybrid_query_service()
+                    self.hybrid_enabled = await self.hybrid_query_service.initialize()
+
+                    if self.hybrid_enabled:
+                        logger.info("✅ Hybrid search enabled in Adaptive Retriever")
+                    else:
+                        logger.warning("⚠️ Hybrid search initialization failed - using dense search only")
+                else:
+                    logger.info("ℹ️ Hybrid search disabled in configuration")
+            except Exception as hybrid_error:
+                logger.warning(f"⚠️ Hybrid search setup failed: {str(hybrid_error)} - using dense search only")
+                self.hybrid_enabled = False
+
             self._initialized = True
             logger.info("✅ Adaptive Retriever initialized successfully")
             return True
@@ -136,7 +158,8 @@ class AdaptiveRetriever:
             primary_chunks = await self._retrieve_for_query(
                 enhanced_query,
                 top_k=config["initial_top_k"],
-                filters=filters
+                filters=filters,
+                mode=mode
             )
             all_chunks.extend(primary_chunks)
 
@@ -146,7 +169,8 @@ class AdaptiveRetriever:
                     sub_chunks = await self._retrieve_for_query(
                         sub_query,
                         top_k=max(5, config["initial_top_k"] // 3),
-                        filters=filters
+                        filters=filters,
+                        mode=mode
                     )
                     all_chunks.extend(sub_chunks)
 
@@ -193,7 +217,7 @@ class AdaptiveRetriever:
             logger.error(f"❌ Adaptive retrieval failed: {str(e)}")
             # Fallback to simple retrieval
             try:
-                fallback_chunks = await self._retrieve_for_query(query, top_k=5, filters=filters)
+                fallback_chunks = await self._retrieve_for_query(query, top_k=5, filters=filters, mode=mode)
                 logger.warning(f"⚠️ Using fallback retrieval with {len(fallback_chunks)} chunks")
                 return fallback_chunks
             except Exception as fallback_error:
@@ -204,23 +228,29 @@ class AdaptiveRetriever:
         self,
         query: str,
         top_k: int = 10,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
+        mode: RAGMode = RAGMode.ACCURATE
     ) -> List[DocumentSource]:
         """
-        Retrieve chunks for a single query from Qdrant
+        Retrieve chunks for a single query using hybrid search if available, dense search as fallback
         """
         try:
-            # Generate query embedding off the event loop to avoid blocking
-            query_embedding = await asyncio.to_thread(
-                self.embed_model.get_text_embedding,
-                query
-            )
-
-            search_results = await self.qdrant_service.similarity_search(
-                query_embedding=query_embedding,
-                top_k=top_k,
-                doc_filters=filters
-            )
+            # Try hybrid search first if enabled
+            if self.hybrid_enabled and self.hybrid_query_service:
+                try:
+                    search_results = await self.hybrid_query_service.search_with_mode_optimization(
+                        query=query,
+                        mode=mode.value,
+                        top_k=top_k,
+                        doc_filters=filters
+                    )
+                    logger.debug(f"🔍 Used hybrid search for query: {query[:50]}...")
+                except Exception as hybrid_error:
+                    logger.warning(f"⚠️ Hybrid search failed, falling back to dense: {str(hybrid_error)}")
+                    search_results = await self._fallback_dense_search(query, top_k, filters)
+            else:
+                # Use dense search only
+                search_results = await self._fallback_dense_search(query, top_k, filters)
 
             chunks: List[DocumentSource] = []
             for index, result in enumerate(search_results):
@@ -247,6 +277,37 @@ class AdaptiveRetriever:
 
         except Exception as e:
             logger.error(f"❌ Single query retrieval failed: {str(e)}")
+            return []
+
+    async def _fallback_dense_search(
+        self,
+        query: str,
+        top_k: int,
+        filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """Fallback to pure dense vector search"""
+        try:
+            # Generate query embedding off the event loop to avoid blocking
+            query_embedding = await asyncio.to_thread(
+                self.embed_model.get_text_embedding,
+                query
+            )
+
+            search_results = await self.qdrant_service.similarity_search(
+                query_embedding=query_embedding,
+                top_k=top_k,
+                doc_filters=filters
+            )
+
+            # Ensure consistent format with hybrid search results
+            for result in search_results:
+                if "search_type" not in result:
+                    result["search_type"] = "dense"
+
+            return search_results
+
+        except Exception as e:
+            logger.error(f"❌ Dense search fallback failed: {str(e)}")
             return []
 
     def _deduplicate_chunks(self, chunks: List[DocumentSource]) -> List[DocumentSource]:

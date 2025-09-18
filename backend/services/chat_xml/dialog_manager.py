@@ -19,6 +19,10 @@ from services.xml_template_engine import get_template_engine
 from services.ai.parameter_extraction_ai import get_parameter_extraction_ai, ExtractionContext, ParameterExtractionMode
 from services.ai.chat_xml_database_service import get_chat_xml_database_service
 from services.enterprise_cache import get_cache_service
+from schemas.streamworks_schemas import (
+    get_schema_for_type, StreamType, get_missing_parameters,
+    generate_prompt_for_parameter, get_parameter_examples
+)
 
 logger = logging.getLogger(__name__)
 
@@ -760,34 +764,52 @@ Antworte nur mit JSON: {{"intent": "INTENT_NAME", "confidence": 0.8, "reasoning"
                 requires_user_input=False
             )
 
-        # Process multiple extracted parameters if available
+        # Enhanced StreamWorks parameter collection with smart missing detection
+        job_type = getattr(session, 'job_type', 'STANDARD')
+        try:
+            stream_type = StreamType(job_type)
+        except ValueError:
+            stream_type = StreamType.STANDARD
+
+        # Process extracted parameters and store in session
+        collected_params = getattr(session, 'collected_parameters', {})
         if extracted_params:
+            collected_params.update(extracted_params)
+            # Update session with new parameters
             for param_name, param_value in extracted_params.items():
                 success, message, _ = self.session_service.collect_parameter(
                     session_id, param_name, param_value
                 )
                 if success:
-                    logger.info(f"Successfully collected parameter {param_name}: {param_value}")
+                    logger.info(f"✅ Collected: {param_name} = {param_value}")
 
-        # Check current state after processing
-        current_parameter = session.parameter_checklist.next_parameter
-        if not current_parameter:
-            # All parameters collected
+        # Check for missing required parameters using StreamWorks schemas
+        missing_params = get_missing_parameters(collected_params, stream_type)
+
+        if not missing_params:
+            # All required parameters collected
             return await self._initiate_xml_generation(session_id)
 
-        # Generate intelligent next question
-        next_question = await self._generate_intelligent_question(
-            current_parameter, session, memory
+        # Get next missing parameter to ask for
+        next_param = missing_params[0]
+
+        # Generate smart question using StreamWorks schema
+        next_question = await self._generate_streamworks_question(
+            next_param, stream_type, collected_params, memory
         )
+
+        # Get examples for the parameter
+        examples = get_parameter_examples(next_param, stream_type)
 
         return DialogResponse(
             content=next_question,
             intent=DialogIntent.PARAMETER_REQUEST,
             context=DialogContext.ACTIVE_COLLECTION,
-            next_parameter=current_parameter,
+            next_parameter=next_param,
             show_progress=True,
             enable_suggestions=True,
-            parameter_predictions=await self._predict_parameter_values(current_parameter, memory)
+            suggested_values=examples[:3] if examples else [],  # Top 3 examples
+            parameter_predictions={next_param: examples[:5]} if examples else {}
         )
 
     async def _handle_validation_issues_enhanced(
@@ -1251,47 +1273,68 @@ Fokussiere auf realistische StreamWorks-Werte für {job_type}."""
             logger.warning(f"Parameter prediction failed: {e}")
             return {}
 
-    async def _generate_intelligent_question(
-        self, parameter_name: str, session, memory: ConversationMemory
+    async def _generate_streamworks_question(
+        self, parameter_name: str, stream_type: StreamType, collected_params: Dict[str, Any],
+        memory: ConversationMemory
     ) -> str:
-        """Generate intelligent, context-aware question for parameter"""
+        """Generate StreamWorks-specific intelligent question for parameter"""
 
         try:
             llm_service = await self._get_llm_service()
+
+            # Get parameter info from StreamWorks schema
+            schema_prompt = generate_prompt_for_parameter(parameter_name, stream_type)
+            examples = get_parameter_examples(parameter_name, stream_type)
             conversation_context = memory.get_conversation_context()
-            job_type = getattr(session, 'job_type', 'UNKNOWN')
 
-            # Find parameter definition
-            param_def = None
-            for param in session.parameter_checklist.parameters:
-                if param.name == parameter_name:
-                    param_def = param
-                    break
+            # Build context-aware question prompt
+            question_prompt = f"""Du bist ein StreamWorks-Experte. Erstelle eine präzise, hilfreiche Frage für Parameter '{parameter_name}':
 
-            param_description = param_def.description if param_def else "Kein Beschreibung verfügbar"
-            param_type = param_def.data_type if param_def else "string"
+STREAM-TYP: {stream_type.value}
+SCHEMA-PROMPT: {schema_prompt}
+BEISPIELE: {', '.join(examples[:3]) if examples else 'Keine verfügbar'}
 
-            question_prompt = f"""Erstelle eine intelligente, kontextbewusste Frage für Parameter '{parameter_name}':
+BEREITS GESAMMELTE PARAMETER:
+{json.dumps(collected_params, indent=2)}
 
-Job-Type: {job_type}
-Parameter-Beschreibung: {param_description}
-Parameter-Typ: {param_type}
-Konversationsverlauf: {conversation_context}
+KONVERSATIONSKONTEXT:
+{conversation_context}
 
-Erstelle eine natürliche, hilfreiche Frage auf Deutsch, die:
-1. Den Parameter klar erklärt
-2. Den Kontext berücksichtigt
-3. Beispiele oder Hinweise gibt (falls sinnvoll)
-4. Freundlich und verständlich ist
+ERSTELLE EINE FRAGE DIE:
+1. StreamWorks-spezifisch und technisch korrekt ist
+2. Passende Beispiele für {stream_type.value} enthält
+3. Den Kontext der bereits gesammelten Parameter berücksichtigt
+4. Kurz und präzise ist (1-2 Sätze)
+5. Freundlich und hilfreich formuliert ist
 
-Halte die Frage kurz (1-2 Sätze)."""
+Beispiele für gute Fragen:
+- SAP: "Welches SAP-System verwenden Sie? (z.B. ZTV, PA1, PRD)"
+- Transfer: "Von welchem Agent sollen die Dateien übertragen werden? (z.B. gtlnmiwvm1636)"
+- Standard: "Welches Skript soll ausgeführt werden? (z.B. python process.py)"
+
+ANTWORTE NUR mit der Frage, keine weiteren Erklärungen."""
 
             response = await llm_service.generate(question_prompt)
             return response.strip()
 
         except Exception as e:
-            logger.warning(f"Failed to generate intelligent question: {e}")
-            return f"Bitte geben Sie einen Wert für '{parameter_name}' an."
+            logger.warning(f"Failed to generate StreamWorks question: {e}")
+            # Fallback to schema-based prompt
+            return generate_prompt_for_parameter(parameter_name, stream_type)
+
+    async def _generate_intelligent_question(
+        self, parameter_name: str, session, memory: ConversationMemory
+    ) -> str:
+        """Legacy method - redirects to StreamWorks-specific version"""
+
+        job_type = getattr(session, 'job_type', 'STANDARD')
+        try:
+            stream_type = StreamType(job_type)
+        except ValueError:
+            stream_type = StreamType.STANDARD
+
+        collected_params = getattr(session, 'collected_parameters', {})
+        return await self._generate_streamworks_question(parameter_name, stream_type, collected_params, memory)
 
     async def _predict_parameter_values(self, parameter_name: str, memory: ConversationMemory) -> Dict[str, List[str]]:
         """Predict likely values for specific parameter"""

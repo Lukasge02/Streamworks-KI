@@ -309,12 +309,72 @@ class QdrantRAGService:
                 # Continue processing - allow Supabase mirroring to work
                 logger.warning("⚠️ Continuing without Qdrant storage")
 
+            # 8. Store in Hybrid Collection if enabled
+            if self.settings.ENABLE_HYBRID_SEARCH:
+                try:
+                    await self._process_hybrid_documents(
+                        texts_for_qdrant,
+                        embeddings,
+                        metadata_for_qdrant
+                    )
+                except Exception as hybrid_error:
+                    logger.warning(f"⚠️ Hybrid processing failed: {str(hybrid_error)}")
+
             logger.info(f"🎯 Document processing completed: {file_path} → {len(chunks)} chunks processed")
             return chunks
 
         except Exception as e:
             logger.error(f"❌ Failed to process document {file_path}: {str(e)}")
             return []
+
+    async def _process_hybrid_documents(
+        self,
+        texts: List[str],
+        dense_embeddings: List[List[float]],
+        metadatas: List[Dict[str, Any]]
+    ):
+        """
+        Process documents for hybrid search - generate sparse vectors and store in hybrid collection
+
+        Args:
+            texts: List of text content
+            dense_embeddings: List of dense embedding vectors
+            metadatas: List of metadata dictionaries
+        """
+        try:
+            logger.info(f"🔍 Processing {len(texts)} documents for hybrid search...")
+
+            # Import hybrid text processor
+            from .hybrid_text_processor import get_hybrid_text_processor
+            text_processor = get_hybrid_text_processor()
+
+            # Generate sparse vectors for all texts
+            sparse_vectors = []
+            for text in texts:
+                sparse_vector = text_processor.process_document(text)
+                sparse_vectors.append(sparse_vector)
+
+            logger.info(f"✅ Generated {len(sparse_vectors)} sparse vectors")
+
+            # Store in hybrid collection
+            if self.qdrant_service.hybrid_vector_store:
+                hybrid_point_ids = await self.qdrant_service.add_hybrid_documents(
+                    texts=texts,
+                    dense_embeddings=dense_embeddings,
+                    sparse_vectors=sparse_vectors,
+                    metadatas=metadatas
+                )
+                logger.info(f"✅ Stored {len(hybrid_point_ids)} documents in hybrid collection")
+
+                # Save vocabulary state after processing
+                from .hybrid_text_processor import save_hybrid_vocabulary
+                save_hybrid_vocabulary()
+            else:
+                logger.warning("⚠️ Hybrid collection not available - skipping hybrid storage")
+
+        except Exception as e:
+            logger.error(f"❌ Hybrid document processing failed: {str(e)}")
+            raise
 
     async def query_documents(
         self,

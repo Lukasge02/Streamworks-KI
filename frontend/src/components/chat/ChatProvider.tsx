@@ -143,34 +143,36 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   }
 
   const sendMessage = async (query: string): Promise<void> => {
-    if (!currentSessionId) {
-      throw new Error('No active session')
-    }
-
     try {
       setSendingMessage(true)
       setError(null)
 
+      // Auto-create session if none exists
+      let sessionId = currentSessionId
+      if (!sessionId) {
+        sessionId = await createNewSession()
+      }
+
       // Add user message immediately to UI
-      addMessage(currentSessionId, {
+      addMessage(sessionId, {
         type: 'user',
         content: query,
-        session_id: currentSessionId,
+        session_id: sessionId,
       })
 
       // Send to AI service
       const response = await modernChatService.sendMessage({
-        session_id: currentSessionId,
+        session_id: sessionId,
         query,
         provider: aiProvider,
         mode: 'accurate',
       })
 
       // Add AI response to UI
-      addMessage(currentSessionId, {
+      addMessage(sessionId, {
         type: 'assistant',
         content: response.answer,
-        session_id: currentSessionId,
+        session_id: sessionId,
         sources: response.sources,
         confidence_score: response.confidence_score,
         processing_time: response.processing_time,
@@ -179,16 +181,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to send message'
       setError(errorMessage)
-      
+
       // Add error message to UI
-      if (currentSessionId) {
-        addMessage(currentSessionId, {
+      const sessionId = currentSessionId
+      if (sessionId) {
+        addMessage(sessionId, {
           type: 'assistant',
           content: `Es tut mir leid, es gab einen Fehler: ${errorMessage}`,
-          session_id: currentSessionId,
+          session_id: sessionId,
         })
       }
-      
+
       console.error('Failed to send message:', error)
     } finally {
       setSendingMessage(false)
@@ -198,10 +201,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const switchSession = async (sessionId: string): Promise<void> => {
     try {
       setCurrentSession(sessionId)
-      
+
       // Load messages if not already loaded
       const store = useChatStore.getState()
-      if (!store.messages[sessionId]) {
+      if (!store.messages || !store.messages[sessionId]) {
         await loadMessages(sessionId)
       }
     } catch (error) {
@@ -265,7 +268,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   useEffect(() => {
     if (currentSessionId) {
       const store = useChatStore.getState()
-      if (!store.messages[currentSessionId]) {
+      if (!store.messages || !store.messages[currentSessionId]) {
         loadMessages(currentSessionId)
       }
     }

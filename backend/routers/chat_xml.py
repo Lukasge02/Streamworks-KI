@@ -641,10 +641,23 @@ async def send_smart_chat_message(
         }
 
         # Verarbeite Message mit Intelligent Dialog Manager
-        dialog_response = await dialog_manager.process_user_message(
-            user_message=request.message,
-            session_state=session_state
-        )
+        try:
+            logger.info(f"Processing message with dialog manager: '{request.message[:50]}...'")
+            logger.debug(f"Session state: {session_state}")
+
+            dialog_response = await dialog_manager.process_user_message(
+                user_message=request.message,
+                session_state=session_state
+            )
+
+            logger.info(f"Dialog manager response: state={dialog_response.state}, priority={dialog_response.priority}")
+        except Exception as e:
+            logger.error(f"Error in dialog_manager.process_user_message: {type(e).__name__}: {str(e)}")
+            logger.error(f"Traceback: ", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Dialog processing failed: {str(e)}"
+            )
 
         # Aktualisiere Session mit extrahierten Parametern
         if dialog_response.extracted_parameters:

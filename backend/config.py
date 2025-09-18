@@ -77,6 +77,24 @@ class Settings(BaseSettings):
     QDRANT_VECTOR_SIZE: int = int(os.getenv("QDRANT_VECTOR_SIZE", "768"))  # BGE embedding size
     QDRANT_USE_GRPC: bool = os.getenv("QDRANT_USE_GRPC", "false").lower() == "true"
 
+    # Hybrid Search Configuration
+    ENABLE_HYBRID_SEARCH: bool = os.getenv("ENABLE_HYBRID_SEARCH", "true").lower() == "true"
+    HYBRID_COLLECTION_NAME: str = os.getenv("HYBRID_COLLECTION_NAME", "streamworks_hybrid")
+    HYBRID_DENSE_WEIGHT: float = float(os.getenv("HYBRID_DENSE_WEIGHT", "0.7"))  # Semantic similarity weight
+    HYBRID_SPARSE_WEIGHT: float = float(os.getenv("HYBRID_SPARSE_WEIGHT", "0.3"))  # Keyword matching weight
+
+    # BM25-style Text Processing Configuration
+    BM25_LIKE_PROCESSING: bool = os.getenv("BM25_LIKE_PROCESSING", "true").lower() == "true"
+    TEXT_PREPROCESSING_LANGUAGE: str = os.getenv("TEXT_PREPROCESSING_LANGUAGE", "auto")  # auto|de|en
+    REMOVE_STOPWORDS: bool = os.getenv("REMOVE_STOPWORDS", "true").lower() == "true"
+    MIN_TERM_FREQUENCY: int = int(os.getenv("MIN_TERM_FREQUENCY", "1"))  # Minimum term frequency for sparse vectors (lowered for better coverage)
+    MAX_SPARSE_VECTOR_SIZE: int = int(os.getenv("MAX_SPARSE_VECTOR_SIZE", "10000"))  # Limit sparse vector dimensions
+
+    # Hybrid Search Mode-Specific Weights
+    HYBRID_FAST_DENSE_WEIGHT: float = float(os.getenv("HYBRID_FAST_DENSE_WEIGHT", "0.8"))  # More semantic for fast mode
+    HYBRID_ACCURATE_DENSE_WEIGHT: float = float(os.getenv("HYBRID_ACCURATE_DENSE_WEIGHT", "0.6"))  # Balanced for accurate mode
+    HYBRID_COMPREHENSIVE_DENSE_WEIGHT: float = float(os.getenv("HYBRID_COMPREHENSIVE_DENSE_WEIGHT", "0.5"))  # More keywords for comprehensive
+
     # Legacy ChromaDB path (kept for cleanup)
     CHROMA_PATH: Path = SYSTEM_PATH / "chroma"
     

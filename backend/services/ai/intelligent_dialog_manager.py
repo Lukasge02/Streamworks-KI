@@ -701,9 +701,8 @@ def get_intelligent_dialog_manager(
             parameter_extractor = get_smart_parameter_extractor()
 
         if not openai_api_key:
-            from backend.config import get_settings
-            settings = get_settings()
-            openai_api_key = settings.openai_api_key
+            from config import settings
+            openai_api_key = settings.OPENAI_API_KEY
 
         _dialog_manager_instance = IntelligentDialogManager(
             parameter_extractor=parameter_extractor,

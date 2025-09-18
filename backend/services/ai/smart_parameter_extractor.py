@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 from pathlib import Path
 
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
@@ -402,9 +402,8 @@ def get_smart_parameter_extractor(openai_api_key: Optional[str] = None) -> Smart
 
     if _extractor_instance is None:
         if not openai_api_key:
-            from backend.config import get_settings
-            settings = get_settings()
-            openai_api_key = settings.openai_api_key
+            from config import settings
+            openai_api_key = settings.OPENAI_API_KEY
 
         _extractor_instance = SmartParameterExtractor(openai_api_key)
 

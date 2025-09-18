@@ -12,6 +12,7 @@ from datetime import datetime
 from enum import Enum
 
 from services.openai_llm_service import OpenAILLMService
+from schemas.streamworks_schemas import get_schema_for_type, StreamType, get_missing_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -83,36 +84,28 @@ class ParameterExtractionAI:
             }
         }
 
-        # Parameter Templates für verschiedene Job-Types
-        self.parameter_templates = {
-            "STANDARD": {
-                "required": ["stream_name", "description"],
-                "optional": ["priority", "schedule"],
-                "patterns": {
-                    "stream_name": r"^[A-Za-z0-9_-]+$",
-                    "priority": ["low", "medium", "high", "critical"]
-                }
-            },
-            "SAP": {
-                "required": ["sap_system", "table_name", "stream_name"],
-                "optional": ["filter_conditions", "schedule"],
-                "patterns": {
-                    "sap_system": r"^[A-Z]{3}$",
-                    "table_name": r"^[A-Z][A-Z0-9_]*$"
-                }
-            },
-            "FILE_TRANSFER": {
-                "required": ["source_path", "destination_path", "stream_name"],
-                "optional": ["file_pattern", "schedule", "compression"],
-                "patterns": {
-                    "file_pattern": r".*\.(txt|csv|xml|json)$"
-                }
-            },
-            "CUSTOM": {
-                "required": ["stream_name", "custom_logic"],
-                "optional": ["parameters", "schedule"],
-                "patterns": {}
+        # StreamWorks-spezifische Parameter Recognition Patterns
+        self.streamworks_patterns = {
+            "agents": [
+                "gtlnmiwvm1636", "gtasswvv15778", "prodagent001", "testagent",
+                "localhost", "nowindows", "fileserver"
+            ],
+            "sap_systems": ["ZTV", "PA1", "PRD", "QAS", "DEV"],
+            "sap_mandants": ["100", "300", "500", "800"],
+            "job_types": ["Windows", "Linux", "Unix", "AIX", "SLES12", "SLES15", "RH8", "DEB11"],
+            "transfer_methods": ["COPY", "FTP", "SFTP", "RSYNC", "SCP"],
+            "calendars": ["UATDefaultCalendar", "ProductionCalendar", "TestCalendar"],
+            "common_paths": {
+                "windows": ["C:\\", "D:\\", "\\\\server\\", "c:\\temp", "c:\\work"],
+                "linux": ["/var/", "/opt/", "/home/", "/tmp/", "/data/"]
             }
+        }
+
+        # StreamWorks Content Keywords für bessere Erkennung
+        self.content_keywords = {
+            "sap_indicators": ["sap", "jexa4s", "mandant", "client", "report", "variant", "transaction"],
+            "transfer_indicators": ["copy", "transfer", "file", "ftp", "sftp", "source", "target", "agent"],
+            "standard_indicators": ["script", "batch", "exe", "run", "process", "command"]
         }
 
         logger.info("Parameter Extraction AI Service initialized")
@@ -193,24 +186,47 @@ class ParameterExtractionAI:
             )
 
     async def _analyze_extraction_context(self, context: ExtractionContext) -> Dict[str, Any]:
-        """Analysiert den Kontext für optimale Extraktion"""
+        """Analysiert den Kontext für optimale StreamWorks-Extraktion"""
 
-        job_template = self.parameter_templates.get(context.job_type, {})
+        # Use new StreamWorks schemas
+        try:
+            stream_type = StreamType(context.job_type)
+            schema = get_schema_for_type(stream_type)
+        except ValueError:
+            # Fallback for unknown job types
+            stream_type = StreamType.STANDARD
+            schema = get_schema_for_type(stream_type)
+
+        # Extract required and optional parameters from schema
+        required_params = []
+        optional_params = []
+
+        # Base parameters
+        if "required" in schema:
+            required_params.extend(schema["required"].keys())
+        if "optional" in schema:
+            optional_params.extend(schema["optional"].keys())
+
+        # Type-specific parameters
+        specific_key = f"{stream_type.value.lower()}_specific"
+        if specific_key in schema:
+            if "required" in schema[specific_key]:
+                required_params.extend(schema[specific_key]["required"].keys())
+            if "optional" in schema[specific_key]:
+                optional_params.extend(schema[specific_key]["optional"].keys())
 
         analysis = {
             "job_type": context.job_type,
-            "required_parameters": job_template.get("required", []),
-            "optional_parameters": job_template.get("optional", []),
-            "parameter_patterns": job_template.get("patterns", {}),
+            "stream_type": stream_type,
+            "required_parameters": required_params,
+            "optional_parameters": optional_params,
+            "schema": schema,
             "conversation_length": len(context.conversation_history),
             "existing_parameters": list(context.extracted_parameters.keys()),
-            "missing_required": []
+            "missing_required": get_missing_parameters(context.extracted_parameters, stream_type),
+            "streamworks_patterns": self.streamworks_patterns,
+            "content_keywords": self.content_keywords
         }
-
-        # Fehlende erforderliche Parameter identifizieren
-        for param in analysis["required_parameters"]:
-            if param not in context.extracted_parameters:
-                analysis["missing_required"].append(param)
 
         return analysis
 
@@ -272,14 +288,14 @@ class ParameterExtractionAI:
             return self._fallback_extraction(user_message, context)
 
     def _build_extraction_prompt(self, context: ExtractionContext, analysis: Dict[str, Any]) -> str:
-        """Baut hochpräzisen Prompt für Stream-Namen-Extraktion"""
+        """Baut hochpräzisen StreamWorks-spezifischen Prompt"""
 
-        prompt = f"""Du bist ein Experte für PRÄZISE Parameter-Extraktion aus StreamWorks Job-Konfigurationen.
+        stream_type = analysis.get("stream_type", StreamType.STANDARD)
+        streamworks_patterns = analysis.get("streamworks_patterns", {})
 
-JOB TYPE: {context.job_type}
+        base_prompt = f"""Du bist ein StreamWorks-Experte für PRÄZISE Parameter-Extraktion aus natürlichen User-Nachrichten.
 
-KRITISCHE AUFGABE: STREAM-NAMEN KORREKT EXTRAHIEREN
-Stream-Namen sind oft im Format: "streamname:WERT" oder "stream WERT" oder "stream_name WERT"
+STREAM-TYP: {stream_type.value}
 
 ERFORDERLICHE PARAMETER:
 {json.dumps(analysis["required_parameters"], indent=2)}
@@ -290,82 +306,109 @@ OPTIONALE PARAMETER:
 BEREITS EXTRAHIERTE PARAMETER:
 {json.dumps(context.extracted_parameters, indent=2)}
 
-KRITISCHE BEISPIELE FÜR STREAM-NAMEN-EXTRAKTION:
+STREAMWORKS-SPEZIFISCHE ERKENNUNGSPATTERNS:
+- Bekannte Agents: {', '.join(streamworks_patterns.get('agents', []))}
+- SAP-Systeme: {', '.join(streamworks_patterns.get('sap_systems', []))}
+- Job-Types: {', '.join(streamworks_patterns.get('job_types', []))}
+- Kalender: {', '.join(streamworks_patterns.get('calendars', []))}
 """
 
-        # Verbesserte, präzise Beispiele für Stream-Namen
-        if context.job_type == "FILE_TRANSFER":
-            prompt += """
-BEISPIELE:
-"streamname:cjudpdd, der stream ist ein daten transfer"
-→ {"stream_name": "cjudpdd", "job_type": "FILE_TRANSFER"}
+        # Stream-Type-spezifische Beispiele und Patterns
+        if stream_type == StreamType.SAP:
+            base_prompt += self._build_sap_extraction_examples()
+        elif stream_type == StreamType.FILE_TRANSFER:
+            base_prompt += self._build_transfer_extraction_examples()
+        else:
+            base_prompt += self._build_standard_extraction_examples()
 
-"der stream 123cool soll ein daten transfer sein"
-→ {"stream_name": "123cool", "job_type": "FILE_TRANSFER"}
+        base_prompt += f"""
 
-"stream name: mystream456 für file transfer"
-→ {"stream_name": "mystream456", "job_type": "FILE_TRANSFER"}
+WICHTIGE EXTRAKTIONSREGELN:
+1. Erkenne ALLE Parameter in einer Nachricht (Multi-Parameter-Extraktion)
+2. Stream-Namen: Häufig nach "streamname:", "stream:", "heißt", "name"
+3. Agents: Erkenne bekannte Agent-Namen oder Hostnames
+4. Pfade: Windows (C:\\) und Linux (/var/) unterscheiden
+5. SAP-Spezifisch: System (3 Zeichen), Mandant (3 Zahlen), Transaktionen
+6. Confidence: 0.9+ für exakte Matches, 0.7+ für Pattern-Matches, 0.5+ für Interpretationen
 
-"transfer stream abc123 von /source nach /dest"
-→ {"stream_name": "abc123", "source_path": "/source", "destination_path": "/dest"}
+ANTWORTE NUR mit diesem JSON-Format:
+{{
+  "parameters": {{
+    "parameter_name": "extracted_value"
+  }},
+  "confidence_scores": {{
+    "parameter_name": 0.95
+  }},
+  "suggestions": ["Hilfreiche Hinweise falls Parameter unklar"],
+  "warnings": ["Warnungen bei unsicheren Extraktionen"],
+  "extraction_reasoning": "Kurze Erklärung der Extraktion"
+}}"""
 
-"stream:teststream, daten transfer job"
-→ {"stream_name": "teststream", "job_type": "FILE_TRANSFER"}
+        return base_prompt
 
-WICHTIG: Bei "streamname:WERT" oder "stream name:WERT" → NUR den WERT nach dem Doppelpunkt extrahieren!
-"""
-        elif context.job_type == "SAP":
-            prompt += """
-"SAP System P01 Tabelle BKPF für stream sap_accounting"
-→ {"sap_system": "P01", "table_name": "BKPF", "stream_name": "sap_accounting"}
+    def _build_sap_extraction_examples(self) -> str:
+        """SAP-spezifische Extraktionsbeispiele"""
+        return """
 
-"streamname:sap_reports, SAP extraktion"
-→ {"stream_name": "sap_reports", "job_type": "SAP"}
-"""
-        elif context.job_type == "STANDARD":
-            prompt += """
-"standard stream daily_reports mit hoher priorität"
-→ {"stream_name": "daily_reports", "priority": "high"}
+SAP-STREAM EXTRAKTIONS-BEISPIELE:
 
-"streamname:weekly_batch, standard job"
-→ {"stream_name": "weekly_batch", "job_type": "STANDARD"}
-"""
+Beispiel 1: "Ich brauche einen SAP Export von PA1_100 mit jexa4S für Kalender"
+→ Extrahiert: sap_system="PA1", sap_mandant="100", sap_job_type="EXPORT", calendar_export=true
 
-        prompt += """
+Beispiel 2: "streamname:PROD_SAP_Daily, läuft auf gtlnmiwvm1636, ZTV System"
+→ Extrahiert: stream_name="PROD_SAP_Daily", agent_detail="gtlnmiwvm1636", sap_system="ZTV"
 
-STREAM-NAMEN EXTRAKTION REGELN:
-1. "streamname:WERT" → stream_name = "WERT" (nur das nach dem Doppelpunkt)
-2. "stream name WERT" → stream_name = "WERT" (nur das nach "stream name")
-3. "stream WERT" → stream_name = "WERT" (nur das nach "stream")
-4. Entferne alle führenden/nachfolgenden Leerzeichen und Satzzeichen
-5. Stream-Namen enthalten KEINE Leerzeichen oder Kommas
+Beispiel 3: "Fabrikkalender aus SAP exportieren, System PRD Mandant 300"
+→ Extrahiert: sap_system="PRD", sap_mandant="300", calendar_export=true, sap_job_type="EXPORT"
 
-⚠️ CRITICAL: RESPOND ONLY WITH VALID JSON. NO ADDITIONAL TEXT OR EXPLANATIONS.
+SAP-PATTERN-ERKENNUNG:
+- SAP-Systeme: ZTV, PA1, PRD, QAS (meist 3 Zeichen)
+- Mandanten: 100, 300, 500 (meist 3 Zahlen)
+- jexa4S Keywords: jexa, export, import, calendar
+- Transaktionen: EXE_CAL_EXPORT, SE16, SM37"""
 
-ANTWORT FORMAT (IMMER VALID JSON):
-{
-  "parameters": {
-    "stream_name": "NUR_DER_STREAM_NAME_OHNE_ZUSATZ",
-    "andere_parameter": "wert"
-  },
-  "confidence_scores": {
-    "stream_name": 0.95,
-    "andere_parameter": 0.80
-  },
-  "suggestions": [],
-  "warnings": []
-}
+    def _build_transfer_extraction_examples(self) -> str:
+        """File Transfer-spezifische Extraktionsbeispiele"""
+        return """
 
-KRITISCHE REGELN:
-1. NIEMALS den gesamten Satz als stream_name verwenden
-2. NIEMALS Wörter wie "der", "ist", "ein", "soll" als stream_name
-3. Stream-Namen sind alphanumerisch + Unterstriche/Bindestriche
-4. Bei "streamname:abc123" → stream_name = "abc123" (NUR "abc123")
-5. IMMER valid JSON zurückgeben
-6. Confidence Score für stream_name sollte 0.9+ sein wenn klar erkennbar
-"""
+FILE-TRANSFER EXTRAKTIONS-BEISPIELE:
 
-        return prompt
+Beispiel 1: "streamname:WIN_TRANSFER, kopiere von C:\\temp zu \\\\backup\\archive"
+→ Extrahiert: stream_name="WIN_TRANSFER", source_path="C:\\temp", target_path="\\\\backup\\archive", platform="Windows"
+
+Beispiel 2: "Datei Transfer von gtlnmiwvm1636 zu gtasswvv15778, SFTP verwenden"
+→ Extrahiert: source_agent="gtlnmiwvm1636", target_agent="gtasswvv15778", transfer_method="SFTP"
+
+Beispiel 3: "XML Dateien kopieren, Quelle /var/export, Ziel /backup/data"
+→ Extrahiert: source_path="/var/export", target_path="/backup/data", file_pattern="*.xml", platform="Linux"
+
+TRANSFER-PATTERN-ERKENNUNG:
+- Pfade Windows: C:\\, D:\\, \\\\server\\
+- Pfade Linux: /var/, /opt/, /home/, /tmp/
+- Transfer-Methoden: COPY, FTP, SFTP, RSYNC, SCP
+- Agents: gtlnmiwvm1636, gtasswvv15778, localhost"""
+
+    def _build_standard_extraction_examples(self) -> str:
+        """Standard-Stream Extraktionsbeispiele"""
+        return """
+
+STANDARD-STREAM EXTRAKTIONS-BEISPIELE:
+
+Beispiel 1: "streamname:BATCH_PROCESS, führe python process.py aus"
+→ Extrahiert: stream_name="BATCH_PROCESS", main_script="python process.py", job_type="Linux"
+
+Beispiel 2: "Windows Batch Job, batch_report.bat in C:\\scripts ausführen"
+→ Extrahiert: main_script="batch_report.bat", working_directory="C:\\scripts", job_type="Windows"
+
+Beispiel 3: "Shell Script /opt/daily_report.sh mit Parametern --verbose"
+→ Extrahiert: main_script="/opt/daily_report.sh", parameters="--verbose", job_type="Linux"
+
+STANDARD-PATTERN-ERKENNUNG:
+- Scripts: .py, .bat, .sh, .exe
+- Commands: python, java, powershell, bash
+- Platforms: Windows (C:\\, .bat), Linux (/opt/, .sh)"""
+
+        return base_prompt
 
     async def _validate_and_score(
         self,
@@ -381,9 +424,26 @@ KRITISCHE REGELN:
 
         for param_name, param_value in result.extracted_parameters.items():
 
-            # Pattern Validation
-            if param_name in analysis["parameter_patterns"]:
-                pattern = analysis["parameter_patterns"][param_name]
+            # Pattern Validation using StreamWorks patterns
+            pattern = None
+
+            # Check for StreamWorks-specific validation patterns
+            streamworks_patterns = analysis.get("streamworks_patterns", {})
+
+            if param_name == "agent_detail" and streamworks_patterns.get("agents"):
+                pattern = streamworks_patterns["agents"]
+            elif param_name == "sap_system" and streamworks_patterns.get("sap_systems"):
+                pattern = streamworks_patterns["sap_systems"]
+            elif param_name == "sap_mandant" and streamworks_patterns.get("sap_mandants"):
+                pattern = streamworks_patterns["sap_mandants"]
+            elif param_name == "job_type" and streamworks_patterns.get("job_types"):
+                pattern = streamworks_patterns["job_types"]
+            elif param_name == "transfer_method" and streamworks_patterns.get("transfer_methods"):
+                pattern = streamworks_patterns["transfer_methods"]
+            elif param_name == "calendar_id" and streamworks_patterns.get("calendars"):
+                pattern = streamworks_patterns["calendars"]
+
+            if pattern:
                 if isinstance(pattern, list):
                     # Enum validation
                     if param_value in pattern:
@@ -579,13 +639,15 @@ Antworte nur mit JSON im gleichen Format.
         elif context.job_type == "SAP":
             result = self._postprocess_sap(result)
 
-        # Generate suggestions for missing required parameters
-        job_template = self.parameter_templates.get(context.job_type, {})
-        required_params = job_template.get("required", [])
+        # Generate suggestions for missing required parameters using StreamWorks schemas
+        try:
+            stream_type = StreamType(context.job_type)
+            missing_params = get_missing_parameters(result.extracted_parameters, stream_type)
 
-        for param in required_params:
-            if param not in result.extracted_parameters:
+            for param in missing_params:
                 result.suggestions.append(f"Erforderlicher Parameter '{param}' fehlt noch")
+        except (ValueError, ImportError) as e:
+            logger.warning(f"Could not generate missing parameter suggestions: {e}")
 
         return result
 
