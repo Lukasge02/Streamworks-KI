@@ -23,26 +23,26 @@ const icons = {
 }
 
 const colors = {
-  success: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300',
-  error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300',
-  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300',
-  info: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300',
-  loading: 'bg-gray-50 border-gray-200 text-gray-800 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-300',
+  success: 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200/70 text-green-800 dark:from-green-900/20 dark:to-emerald-900/20 dark:border-green-800/70 dark:text-green-300 shadow-green-100/50',
+  error: 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200/70 text-red-800 dark:from-red-900/20 dark:to-rose-900/20 dark:border-red-800/70 dark:text-red-300 shadow-red-100/50',
+  warning: 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200/70 text-yellow-800 dark:from-yellow-900/20 dark:to-amber-900/20 dark:border-yellow-800/70 dark:text-yellow-300 shadow-yellow-100/50',
+  info: 'bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200/70 text-primary-800 dark:from-primary-900/20 dark:to-blue-900/20 dark:border-primary-800/70 dark:text-primary-300 shadow-primary-100/50',
+  loading: 'bg-gradient-to-r from-arvato-gray-light to-gray-50 border-gray-200/70 text-gray-800 dark:from-gray-800/50 dark:to-gray-700/50 dark:border-gray-600/70 dark:text-gray-300 shadow-gray-100/50',
 }
 
 const iconColors = {
-  success: 'text-green-600 dark:text-green-400',
-  error: 'text-red-600 dark:text-red-400',
-  warning: 'text-yellow-600 dark:text-yellow-400',
-  info: 'text-blue-600 dark:text-blue-400',
-  loading: 'text-gray-600 dark:text-gray-400',
+  success: 'text-green-600 dark:text-green-400 drop-shadow-sm',
+  error: 'text-arvato-accent-red dark:text-red-400 drop-shadow-sm',
+  warning: 'text-arvato-accent-yellow dark:text-yellow-400 drop-shadow-sm',
+  info: 'text-primary-600 dark:text-primary-400 drop-shadow-sm',
+  loading: 'text-arvato-gray-medium dark:text-gray-400 drop-shadow-sm',
 }
 
 export function ToastContainer() {
   const { toasts, remove } = useToasts()
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full">
+    <div className="fixed top-4 right-4 z-50 space-y-3 max-w-sm w-full pointer-events-none">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <ToastItem
@@ -98,25 +98,50 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -50, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 300, scale: 0.9 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      initial={{ opacity: 0, y: -50, scale: 0.9, rotateX: -15 }}
+      animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+      exit={{ opacity: 0, x: 300, scale: 0.9, rotateX: 15 }}
+      transition={{
+        duration: 0.4,
+        ease: [0.25, 0.46, 0.45, 0.94],
+        type: "spring",
+        damping: 25,
+        stiffness: 300
+      }}
+      whileHover={{
+        scale: 1.02,
+        rotateY: 1,
+        transition: { duration: 0.2 }
+      }}
       className={cn(
-        "relative overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm",
+        "relative overflow-hidden rounded-xl border-2 shadow-xl backdrop-blur-md pointer-events-auto",
+        "transform-gpu will-change-transform",
+        "shadow-2xl dark:shadow-black/20",
         colors[toast.type]
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      style={{
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)'
+      }}
     >
-      {/* Progress bar */}
+      {/* Enhanced Progress bar */}
       {progressPercentage !== null && (
-        <motion.div
-          className="absolute top-0 left-0 h-1 bg-current opacity-30"
-          initial={{ width: "0%" }}
-          animate={{ width: `${progressPercentage}%` }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        />
+        <>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-black/10 dark:bg-white/10" />
+          <motion.div
+            className="absolute top-0 left-0 h-1 bg-gradient-to-r from-current to-current/80 shadow-sm"
+            initial={{ width: "0%" }}
+            animate={{ width: `${progressPercentage}%` }}
+            transition={{
+              duration: 0.3,
+              ease: "easeOut",
+              type: "spring",
+              damping: 20
+            }}
+          />
+        </>
       )}
 
       <div className="p-4">

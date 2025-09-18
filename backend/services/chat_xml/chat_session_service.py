@@ -458,12 +458,6 @@ def get_chat_session_service() -> ChatSessionService:
     global _chat_session_service
     if _chat_session_service is None:
         _chat_session_service = ChatSessionService()
-        # Initialize the service synchronously
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(_chat_session_service.initialize())
-        except RuntimeError:
-            # If no loop is running, create one
-            asyncio.run(_chat_session_service.initialize())
+        # Initialize the service - let the dependency handle async initialization
+        # Don't initialize here, let the async dependency wrapper handle it
     return _chat_session_service

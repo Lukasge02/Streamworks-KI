@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { useToasts } from '@/services/toast.service'
 import { apiService } from '@/services/api.service'
 import { 
   DocumentWithFolder, 
@@ -32,6 +32,7 @@ interface UseDocumentsOptions {
 export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsReturn {
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const toast = useToasts()
   
   const {
     folderId,
@@ -100,18 +101,24 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
     onSuccess: (documents) => {
       // Invalidate queries to get fresh data with folder info
       queryClient.invalidateQueries({ queryKey: ['documents'] })
-      
-      toast.success(
-        documents.length === 1 
-          ? `Document "${documents[0].filename}" uploaded successfully`
-          : `${documents.length} documents uploaded successfully`
-      )
+
+      if (documents.length === 1) {
+        toast.success(
+          'Upload erfolgreich',
+          `${documents[0].filename} wurde erfolgreich hochgeladen`
+        )
+      } else {
+        toast.success(
+          'Upload erfolgreich',
+          `${documents.length} Dokumente wurden erfolgreich hochgeladen`
+        )
+      }
       setError(null)
     },
     onError: (error: Error) => {
-      const message = error.message || 'Failed to upload documents'
+      const message = error.message || 'Unbekannter Upload-Fehler'
       setError(message)
-      toast.error(message)
+      toast.systemError('upload-failed', message)
     }
   })
 
@@ -141,13 +148,13 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
           queryClient.setQueryData(queryKey, data)
         })
       }
-      
-      const message = error.message || 'Failed to delete document'
+
+      const message = error.message || 'Fehler beim Löschen des Dokuments'
       setError(message)
-      toast.error(message)
+      toast.systemError('delete-failed', message)
     },
     onSuccess: () => {
-      toast.success('Document deleted successfully')
+      toast.success('Dokument gelöscht', 'Das Dokument wurde erfolgreich gelöscht')
       setError(null)
     },
     onSettled: () => {
@@ -162,22 +169,26 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
       apiService.bulkDeleteDocuments({ document_ids: documentIds }),
     onSuccess: (result) => {
       const { total_deleted, total_failed } = result
-      
+
       queryClient.invalidateQueries({ queryKey: ['documents'] })
-      
+
       if (total_failed > 0) {
         toast.warning(
-          `${total_deleted} documents deleted, ${total_failed} failed`
+          'Bulk-Löschung teilweise erfolgreich',
+          `${total_deleted} Dokumente gelöscht, ${total_failed} fehlgeschlagen`
         )
       } else {
-        toast.success(`${total_deleted} documents deleted successfully`)
+        toast.success(
+          'Bulk-Löschung erfolgreich',
+          `${total_deleted} Dokumente wurden erfolgreich gelöscht`
+        )
       }
       setError(null)
     },
     onError: (error: Error) => {
-      const message = error.message || 'Failed to delete documents'
+      const message = error.message || 'Fehler beim Bulk-Löschen der Dokumente'
       setError(message)
-      toast.error(message)
+      toast.systemError('bulk-delete-failed', message)
     }
   })
 
@@ -187,23 +198,27 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
       apiService.bulkMoveDocuments({ document_ids: documentIds, target_folder_id: folderId }),
     onSuccess: (result) => {
       const { total_moved, total_failed } = result
-      
+
       // Invalidate immediately for move operations since folder changes
       queryClient.invalidateQueries({ queryKey: ['documents'] })
-      
+
       if (total_failed > 0) {
         toast.warning(
-          `${total_moved} documents moved, ${total_failed} failed`
+          'Bulk-Verschiebung teilweise erfolgreich',
+          `${total_moved} Dokumente verschoben, ${total_failed} fehlgeschlagen`
         )
       } else {
-        toast.success(`${total_moved} documents moved successfully`)
+        toast.success(
+          'Bulk-Verschiebung erfolgreich',
+          `${total_moved} Dokumente wurden erfolgreich verschoben`
+        )
       }
       setError(null)
     },
     onError: (error: Error) => {
-      const message = error.message || 'Failed to move documents'
+      const message = error.message || 'Fehler beim Verschieben der Dokumente'
       setError(message)
-      toast.error(message)
+      toast.systemError('bulk-move-failed', message)
     }
   })
 
@@ -233,16 +248,20 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
     },
     onSuccess: (result) => {
       const { total_reprocessed, total_failed } = result
-      
+
       if (total_failed > 0) {
         toast.warning(
-          `${total_reprocessed} documents reprocessed, ${total_failed} failed`
+          'Neu-Verarbeitung teilweise erfolgreich',
+          `${total_reprocessed} Dokumente neu verarbeitet, ${total_failed} fehlgeschlagen`
         )
       } else {
-        toast.success(`${total_reprocessed} documents reprocessed successfully`)
+        toast.success(
+          'Neu-Verarbeitung erfolgreich',
+          `${total_reprocessed} Dokumente wurden erfolgreich neu verarbeitet`
+        )
       }
       setError(null)
-      
+
       // Invalidate and refetch to get updated status
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['documents'] })
@@ -255,10 +274,10 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
           queryClient.setQueryData(queryKey, data)
         })
       }
-      
-      const message = error.message || 'Failed to reprocess documents'
+
+      const message = error.message || 'Fehler bei der Neu-Verarbeitung der Dokumente'
       setError(message)
-      toast.error(message)
+      toast.systemError('bulk-reprocess-failed', message)
     }
   })
 

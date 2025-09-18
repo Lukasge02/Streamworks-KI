@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from database_supabase import Document
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, ForeignKey, Text, Index
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -54,7 +55,7 @@ class Folder(Base):
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    created_by = Column(String, ForeignKey("users.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     # Status
     is_active = Column(Boolean, default=True, nullable=False)

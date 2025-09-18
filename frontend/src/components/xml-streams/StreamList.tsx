@@ -179,11 +179,13 @@ export const StreamList: React.FC<StreamListProps> = ({ className }) => {
   }
 
   const handleEditStream = (stream: XMLStream) => {
-    router.push(`/xml/edit/${stream.id}`)
+    // Redirect to new XML Chat Generator instead of legacy editor
+    router.push('/xml/chat')
   }
 
   const handleViewStream = (stream: XMLStream) => {
-    router.push(`/xml/view/${stream.id}`)
+    // Redirect to new XML Chat Generator instead of legacy viewer
+    router.push('/xml/chat')
   }
 
   const handleDeleteStream = async (stream: XMLStream) => {

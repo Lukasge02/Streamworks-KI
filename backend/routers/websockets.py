@@ -8,7 +8,7 @@ import uuid
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import HTMLResponse
 from services.websocket_manager import ConnectionManager
-from services.upload_job_manager import upload_job_manager
+from services.di_container import get_service
 
 router = APIRouter(prefix="/ws", tags=["websockets"])
 logger = logging.getLogger(__name__)

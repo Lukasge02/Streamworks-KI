@@ -7,13 +7,14 @@ import { ThemeEnhancer } from '@/components/ThemeEnhancer'
 import { DocumentSyncProvider } from '@/providers/DocumentSyncProvider'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { enableMapSet } from 'immer'
-import { 
-  StreamWorksErrorBoundary, 
+import {
+  StreamWorksErrorBoundary,
   setupGlobalErrorHandlers
 } from '@/components/shared/errorBoundaries'
 import { LoadingOverlay } from '@/components/shared/loadingStates'
 import { createOptimizedQueryClient } from '@/stores/base/reactQueryConfig'
 import { useLoadingState } from '@/components/shared/loadingStates'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 // Enable Immer MapSet plugin for Zustand stores
 enableMapSet()
@@ -45,23 +46,25 @@ function AppProviders({ children }: ProvidersProps) {
   return (
     <StreamWorksErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={true}
-          disableTransitionOnChange={false}
-        >
-          <DocumentSyncProvider>
-            <ThemeEnhancer />
-            <LoadingOverlay 
-              isLoading={isLoading}
-              text="Initializing StreamWorks..."
-              size="lg"
-            />
-            {children}
-            <ToastContainer />
-          </DocumentSyncProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem={true}
+            disableTransitionOnChange={false}
+          >
+            <DocumentSyncProvider>
+              <ThemeEnhancer />
+              <LoadingOverlay
+                isLoading={isLoading}
+                text="Initializing StreamWorks..."
+                size="lg"
+              />
+              {children}
+              <ToastContainer />
+            </DocumentSyncProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </StreamWorksErrorBoundary>
   )

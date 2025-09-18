@@ -1,9 +1,13 @@
 /**
  * Enhanced Toast Notification Service
  * Provides rich notifications with actions, persistence, and real-time integration
+ * Now with German localization and Enterprise features
  */
 
+import { useState, useEffect } from 'react'
 import { NotificationEvent } from './realtime.service'
+import { toastMessages, getToastMessage, getErrorMessage } from './toast-localization'
+import { soundNotificationService } from './sound-notification.service'
 
 export interface Toast {
   id: string
@@ -48,6 +52,9 @@ class ToastService {
 
     this.toasts.push(toast)
     this.notifyListeners()
+
+    // Play sound notification (async, don't wait)
+    this.playNotificationSound(toast.type)
 
     // Auto-remove non-persistent toasts
     if (!toast.persistent && toast.duration && toast.duration > 0) {
@@ -128,6 +135,33 @@ class ToastService {
         console.error('Error in toast listener:', error)
       }
     })
+  }
+
+  /**
+   * Play sound notification for toast type
+   */
+  private async playNotificationSound(type: Toast['type']): Promise<void> {
+    try {
+      switch (type) {
+        case 'success':
+          await soundNotificationService.playSuccess()
+          break
+        case 'error':
+          await soundNotificationService.playError()
+          break
+        case 'warning':
+          await soundNotificationService.playWarning()
+          break
+        case 'info':
+          await soundNotificationService.playInfo()
+          break
+        case 'loading':
+          await soundNotificationService.playLoading()
+          break
+      }
+    } catch (error) {
+      // Silently ignore sound errors - don't let them break toast functionality
+    }
   }
 
   // Convenience methods
@@ -247,6 +281,8 @@ class ToastService {
       actions,
     })
   }
+
+
 }
 
 // Export singleton
@@ -255,8 +291,6 @@ export const toastService = new ToastService()
 /**
  * React Hook for using toasts
  */
-import { useState, useEffect } from 'react'
-
 export function useToasts() {
   const [toasts, setToasts] = useState<Toast[]>([])
 

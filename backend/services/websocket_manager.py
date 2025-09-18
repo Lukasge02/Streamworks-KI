@@ -9,7 +9,7 @@ import logging
 from typing import Dict, List, Set, Optional, Any
 from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
-from services.upload_job_manager import UploadJobProgress
+from services.upload_job_manager_refactored import UploadJobProgress
 
 logger = logging.getLogger(__name__)
 

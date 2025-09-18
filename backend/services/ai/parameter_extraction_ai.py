@@ -64,19 +64,19 @@ class ParameterExtractionAI:
         # Extraction Configuration
         self.extraction_config = {
             "precise": {
-                "model": "gpt-4",
+                "model": "gpt-4o",
                 "temperature": 0.1,
                 "max_tokens": 1000,
                 "retry_attempts": 3
             },
             "balanced": {
-                "model": "gpt-3.5-turbo",
+                "model": "gpt-4o",
                 "temperature": 0.2,
                 "max_tokens": 800,
                 "retry_attempts": 2
             },
             "fast": {
-                "model": "gpt-3.5-turbo",
+                "model": "gpt-4o",
                 "temperature": 0.3,
                 "max_tokens": 500,
                 "retry_attempts": 1
@@ -121,7 +121,11 @@ class ParameterExtractionAI:
         """Initialisiert den Parameter Extraction AI Service"""
         try:
             self.openai_service = OpenAILLMService()
-            await self.openai_service.initialize()
+            # OpenAI service doesn't need explicit initialization - test with health check
+            health_status = await self.openai_service.health_check()
+            if health_status.get("status") != "healthy":
+                raise Exception(f"OpenAI service unhealthy: {health_status.get('error', 'Unknown error')}")
+
             self.is_initialized = True
             logger.info("Parameter Extraction AI Service fully initialized")
         except Exception as e:
@@ -230,15 +234,23 @@ class ParameterExtractionAI:
         ]
 
         try:
-            response = await self.openai_service.generate_completion(
+            # Use chat_completion method with JSON mode for structured output
+            response_data = await self.openai_service.chat_completion(
                 messages=messages,
                 model=config["model"],
                 temperature=config["temperature"],
-                max_tokens=config["max_tokens"]
+                max_tokens=config["max_tokens"],
+                json_mode=True
             )
 
-            # Parse JSON Response
-            extracted_data = json.loads(response)
+            # Extract the content from the response (chat_completion format)
+            if "choices" in response_data and response_data["choices"]:
+                response = response_data["choices"][0]["message"]["content"]
+            else:
+                response = response_data.get("response", "")
+
+            # Parse JSON Response with robust extraction
+            extracted_data = self._parse_json_response(response)
 
             # Build Result
             result = ParameterExtractionResult(
@@ -260,11 +272,14 @@ class ParameterExtractionAI:
             return self._fallback_extraction(user_message, context)
 
     def _build_extraction_prompt(self, context: ExtractionContext, analysis: Dict[str, Any]) -> str:
-        """Baut spezialisierten Prompt für Parameter-Extraktion"""
+        """Baut hochpräzisen Prompt für Stream-Namen-Extraktion"""
 
-        prompt = f"""Du bist ein Experte für Parameter-Extraktion aus StreamWorks Job-Konfigurationen.
+        prompt = f"""Du bist ein Experte für PRÄZISE Parameter-Extraktion aus StreamWorks Job-Konfigurationen.
 
 JOB TYPE: {context.job_type}
+
+KRITISCHE AUFGABE: STREAM-NAMEN KORREKT EXTRAHIEREN
+Stream-Namen sind oft im Format: "streamname:WERT" oder "stream WERT" oder "stream_name WERT"
 
 ERFORDERLICHE PARAMETER:
 {json.dumps(analysis["required_parameters"], indent=2)}
@@ -272,65 +287,82 @@ ERFORDERLICHE PARAMETER:
 OPTIONALE PARAMETER:
 {json.dumps(analysis["optional_parameters"], indent=2)}
 
-PARAMETER PATTERNS:
-{json.dumps(analysis["parameter_patterns"], indent=2)}
-
 BEREITS EXTRAHIERTE PARAMETER:
 {json.dumps(context.extracted_parameters, indent=2)}
 
-AUFGABE:
-Analysiere die User-Nachricht und extrahiere alle relevanten Parameter mit maximaler Präzision.
-
-BEISPIELE FÜR {context.job_type}:
+KRITISCHE BEISPIELE FÜR STREAM-NAMEN-EXTRAKTION:
 """
 
-        # Job-Type spezifische Beispiele
+        # Verbesserte, präzise Beispiele für Stream-Namen
         if context.job_type == "FILE_TRANSFER":
             prompt += """
+BEISPIELE:
+"streamname:cjudpdd, der stream ist ein daten transfer"
+→ {"stream_name": "cjudpdd", "job_type": "FILE_TRANSFER"}
+
 "der stream 123cool soll ein daten transfer sein"
 → {"stream_name": "123cool", "job_type": "FILE_TRANSFER"}
 
-"transfer von /source/data.csv nach /dest/ mit kompression"
-→ {"source_path": "/source/data.csv", "destination_path": "/dest/", "compression": true}
+"stream name: mystream456 für file transfer"
+→ {"stream_name": "mystream456", "job_type": "FILE_TRANSFER"}
+
+"transfer stream abc123 von /source nach /dest"
+→ {"stream_name": "abc123", "source_path": "/source", "destination_path": "/dest"}
+
+"stream:teststream, daten transfer job"
+→ {"stream_name": "teststream", "job_type": "FILE_TRANSFER"}
+
+WICHTIG: Bei "streamname:WERT" oder "stream name:WERT" → NUR den WERT nach dem Doppelpunkt extrahieren!
 """
         elif context.job_type == "SAP":
             prompt += """
 "SAP System P01 Tabelle BKPF für stream sap_accounting"
 → {"sap_system": "P01", "table_name": "BKPF", "stream_name": "sap_accounting"}
+
+"streamname:sap_reports, SAP extraktion"
+→ {"stream_name": "sap_reports", "job_type": "SAP"}
 """
         elif context.job_type == "STANDARD":
             prompt += """
 "standard stream daily_reports mit hoher priorität"
 → {"stream_name": "daily_reports", "priority": "high"}
+
+"streamname:weekly_batch, standard job"
+→ {"stream_name": "weekly_batch", "job_type": "STANDARD"}
 """
 
         prompt += """
 
+STREAM-NAMEN EXTRAKTION REGELN:
+1. "streamname:WERT" → stream_name = "WERT" (nur das nach dem Doppelpunkt)
+2. "stream name WERT" → stream_name = "WERT" (nur das nach "stream name")
+3. "stream WERT" → stream_name = "WERT" (nur das nach "stream")
+4. Entferne alle führenden/nachfolgenden Leerzeichen und Satzzeichen
+5. Stream-Namen enthalten KEINE Leerzeichen oder Kommas
+
+⚠️ CRITICAL: RESPOND ONLY WITH VALID JSON. NO ADDITIONAL TEXT OR EXPLANATIONS.
+
 ANTWORT FORMAT (IMMER VALID JSON):
 {
   "parameters": {
-    "parameter_name": "extracted_value",
-    ...
+    "stream_name": "NUR_DER_STREAM_NAME_OHNE_ZUSATZ",
+    "andere_parameter": "wert"
   },
   "confidence_scores": {
-    "parameter_name": 0.95,
-    ...
+    "stream_name": 0.95,
+    "andere_parameter": 0.80
   },
-  "suggestions": [
-    "Optional: Suggest missing required parameters",
-    "Optional: Suggest improvements"
-  ],
-  "warnings": [
-    "Optional: Warn about potential issues"
-  ]
+  "suggestions": [],
+  "warnings": []
 }
 
-REGELN:
-1. Extrahiere NUR die Parameter, die EINDEUTIG aus der Nachricht ersichtlich sind
-2. Verwende EXAKTE Werte, keine Interpretationen
-3. Confidence Score: 0.0-1.0 (1.0 = absolut sicher)
-4. Bei Unsicherheit: niedrigerer Confidence Score
+KRITISCHE REGELN:
+1. NIEMALS den gesamten Satz als stream_name verwenden
+2. NIEMALS Wörter wie "der", "ist", "ein", "soll" als stream_name
+3. Stream-Namen sind alphanumerisch + Unterstriche/Bindestriche
+4. Bei "streamname:abc123" → stream_name = "abc123" (NUR "abc123")
 5. IMMER valid JSON zurückgeben
+6. Confidence Score für stream_name sollte 0.9+ sein wenn klar erkennbar
 """
 
         return prompt
@@ -469,12 +501,19 @@ Antworte nur mit JSON im gleichen Format.
                 {"role": "user", "content": focused_prompt}
             ]
 
-            response = await self.openai_service.generate_completion(
+            response_data = await self.openai_service.chat_completion(
                 messages=messages,
-                model="gpt-4",  # Use best model for secondary extraction
+                model="gpt-4o",  # Use consistent model with JSON mode support
                 temperature=0.05,  # Very low temperature for precision
-                max_tokens=500
+                max_tokens=500,
+                json_mode=True
             )
+
+            # Extract the content from the response (chat_completion format)
+            if "choices" in response_data and response_data["choices"]:
+                response = response_data["choices"][0]["message"]["content"]
+            else:
+                response = response_data.get("response", "")
 
             extracted_data = json.loads(response)
 
@@ -529,7 +568,10 @@ Antworte nur mit JSON im gleichen Format.
         result: ParameterExtractionResult,
         context: ExtractionContext
     ) -> ParameterExtractionResult:
-        """Finalisiert die Extraktion mit letzten Optimierungen"""
+        """Finalisiert die Extraktion mit intelligenter Post-Processing"""
+
+        # CRITICAL: Stream-Name Post-Processing für alle Job-Types
+        result = self._postprocess_stream_names(result, context)
 
         # Job-Type specific post-processing
         if context.job_type == "FILE_TRANSFER":
@@ -546,6 +588,138 @@ Antworte nur mit JSON im gleichen Format.
                 result.suggestions.append(f"Erforderlicher Parameter '{param}' fehlt noch")
 
         return result
+
+    def _postprocess_stream_names(
+        self,
+        result: ParameterExtractionResult,
+        context: ExtractionContext
+    ) -> ParameterExtractionResult:
+        """Intelligente Post-Processing für Stream-Namen"""
+
+        if "stream_name" not in result.extracted_parameters:
+            return result
+
+        stream_name = result.extracted_parameters["stream_name"]
+        original_name = stream_name
+        confidence = result.confidence_scores.get("stream_name", 0.0)
+
+        # Pattern 1: "streamname:VALUE" → "VALUE"
+        if ":" in stream_name:
+            parts = stream_name.split(":")
+            if len(parts) >= 2:
+                cleaned_name = parts[-1].strip()
+                if cleaned_name and len(cleaned_name) > 0:
+                    stream_name = cleaned_name
+                    confidence = max(confidence, 0.9)  # High confidence for clear pattern
+                    result.suggestions.append(f"Stream-Name aus Pattern 'streamname:VALUE' extrahiert")
+
+        # Pattern 2: Entferne deutsche Stopwörter
+        german_stopwords = ["der", "die", "das", "ein", "eine", "ist", "sind", "soll", "sollte", "wird", "werden", "für", "zu", "mit", "von", "nach", "bei", "auf", "in", "an", "über", "unter", "durch", "gegen", "ohne", "um"]
+        words = stream_name.split()
+
+        # Entferne Stopwörter nur wenn mehr als ein Wort vorhanden
+        if len(words) > 1:
+            filtered_words = []
+            for word in words:
+                clean_word = word.strip(".,!?;:()[]{}\"'").lower()
+                if clean_word not in german_stopwords and len(clean_word) > 0:
+                    # Behalte das erste alphanumerische Wort
+                    if clean_word.replace("_", "").replace("-", "").isalnum():
+                        filtered_words.append(word.strip(".,!?;:()[]{}\"'"))
+
+            if filtered_words:
+                stream_name = filtered_words[0]  # Nimm das erste gefilterte Wort
+                confidence = max(confidence, 0.85)
+                result.suggestions.append(f"Stream-Name durch Stopwort-Entfernung bereinigt")
+
+        # Pattern 3: Entferne Satzzeichen am Ende
+        stream_name = stream_name.strip(".,!?;:()[]{}\"' ")
+
+        # Pattern 4: Validiere dass es ein gültiger Stream-Name ist
+        if stream_name and self._is_valid_stream_name(stream_name):
+            result.extracted_parameters["stream_name"] = stream_name
+            result.confidence_scores["stream_name"] = confidence
+
+            if original_name != stream_name:
+                result.suggestions.append(f"Stream-Name von '{original_name}' zu '{stream_name}' bereinigt")
+        else:
+            # Fallback: Versuche aus der Original-Nachricht zu extrahieren
+            extracted_from_message = self._extract_stream_name_regex(context)
+            if extracted_from_message:
+                result.extracted_parameters["stream_name"] = extracted_from_message
+                result.confidence_scores["stream_name"] = 0.8
+                result.suggestions.append(f"Stream-Name durch Regex-Fallback extrahiert: '{extracted_from_message}'")
+            else:
+                # Entferne den Parameter wenn er ungültig ist
+                result.warnings.append(f"Ungültiger Stream-Name '{stream_name}' entfernt")
+                del result.extracted_parameters["stream_name"]
+                if "stream_name" in result.confidence_scores:
+                    del result.confidence_scores["stream_name"]
+
+        return result
+
+    def _is_valid_stream_name(self, name: str) -> bool:
+        """Validiert ob ein Stream-Name gültig ist"""
+        if not name or len(name) < 2:
+            return False
+
+        # Darf nur alphanumerische Zeichen, Unterstriche und Bindestriche enthalten
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+            return False
+
+        # Darf nicht nur aus Zahlen bestehen (zu generisch)
+        if name.isdigit():
+            return False
+
+        # Darf keine deutschen Stopwörter sein
+        german_stopwords = ["der", "die", "das", "ein", "eine", "ist", "sind", "soll", "wird", "für", "zu", "mit", "von", "nach", "bei", "auf", "in", "an", "über", "unter", "durch", "gegen", "ohne", "um", "und", "oder", "aber", "denn", "doch", "noch", "nur", "auch", "nicht", "kein", "keine", "kann", "muss", "darf", "sollte", "könnte", "hätte", "wäre", "würde"]
+        if name.lower() in german_stopwords:
+            return False
+
+        return True
+
+    def _extract_stream_name_regex(self, context: ExtractionContext) -> Optional[str]:
+        """Fallback: Extrahiert Stream-Namen mit Regex aus der letzten Nachricht"""
+
+        if not context.conversation_history:
+            return None
+
+        # Hole die letzte User-Nachricht
+        last_message = None
+        for msg in reversed(context.conversation_history):
+            if msg.get("role") == "user":
+                last_message = msg.get("content", "")
+                break
+
+        if not last_message:
+            return None
+
+        import re
+
+        # Pattern 1: "streamname:VALUE"
+        match = re.search(r'streamname\s*:\s*([a-zA-Z0-9_-]+)', last_message, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+
+        # Pattern 2: "stream name VALUE" oder "stream VALUE"
+        match = re.search(r'stream\s+(?:name\s+)?([a-zA-Z0-9_-]+)', last_message, re.IGNORECASE)
+        if match:
+            candidate = match.group(1).strip()
+            if self._is_valid_stream_name(candidate):
+                return candidate
+
+        # Pattern 3: Alphanumerische Sequenz nach "stream" oder vor Keywords
+        keywords = ["transfer", "daten", "job", "soll", "ist", "für"]
+        for keyword in keywords:
+            pattern = rf'([a-zA-Z0-9_-]+).*?{keyword}'
+            match = re.search(pattern, last_message, re.IGNORECASE)
+            if match:
+                candidate = match.group(1).strip()
+                if self._is_valid_stream_name(candidate) and len(candidate) > 2:
+                    return candidate
+
+        return None
 
     def _postprocess_file_transfer(self, result: ParameterExtractionResult) -> ParameterExtractionResult:
         """Post-Processing speziell für FILE_TRANSFER Jobs"""
@@ -574,6 +748,133 @@ Antworte nur mit JSON im gleichen Format.
                 )
 
         return result
+
+    def _parse_json_response(self, response: str) -> dict:
+        """Robust JSON parsing with advanced fallback extraction"""
+        if not response or response.strip() == "":
+            logger.warning("Empty response received from OpenAI")
+            return {
+                "parameters": {},
+                "confidence_scores": {},
+                "suggestions": [],
+                "warnings": ["Empty response from OpenAI"]
+            }
+
+        response = response.strip()
+
+        try:
+            # Try direct JSON parsing
+            return json.loads(response)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Direct JSON parsing failed: {str(e)}")
+
+            # Advanced fallback extraction
+            import re
+
+            # Method 1: Look for JSON blocks with nested structures
+            json_patterns = [
+                r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}',  # Nested JSON
+                r'\{[^{}]*\}',  # Simple JSON
+                r'```json\s*(\{.*?\})\s*```',  # Markdown JSON blocks
+                r'```\s*(\{.*?\})\s*```',  # Generic code blocks
+            ]
+
+            for pattern in json_patterns:
+                matches = re.findall(pattern, response, re.DOTALL)
+                for match in matches:
+                    try:
+                        # Clean up common issues
+                        cleaned_match = match.strip()
+                        # Remove trailing commas before closing braces
+                        cleaned_match = re.sub(r',(\s*[}\]])', r'\1', cleaned_match)
+
+                        parsed = json.loads(cleaned_match)
+                        logger.info(f"Successfully parsed JSON using pattern: {pattern[:20]}...")
+                        return parsed
+                    except json.JSONDecodeError:
+                        continue
+
+            # Method 2: Extract key-value pairs manually
+            logger.warning("Attempting manual key-value extraction")
+            extracted_data = self._manual_parameter_extraction(response)
+            if extracted_data:
+                return extracted_data
+
+            # Method 3: Last resort - return structured empty response
+            logger.error(f"Could not extract valid JSON from response: {response[:200]}...")
+            return {
+                "parameters": {},
+                "confidence_scores": {},
+                "suggestions": ["JSON parsing failed - manual review needed"],
+                "warnings": [f"Failed to parse response: {response[:100]}..."]
+            }
+
+    def _manual_parameter_extraction(self, response: str) -> Optional[dict]:
+        """Manual parameter extraction when JSON parsing fails"""
+        import re
+
+        # Initialize result structure
+        result = {
+            "parameters": {},
+            "confidence_scores": {},
+            "suggestions": [],
+            "warnings": ["Manual extraction used due to JSON parsing failure"]
+        }
+
+        try:
+            # Extract stream_name patterns
+            stream_patterns = [
+                r'"stream_name"\s*:\s*"([^"]+)"',
+                r"'stream_name'\s*:\s*'([^']+)'",
+                r'stream_name[:\s]+([a-zA-Z0-9_-]+)',
+                r'streamname[:\s]+([a-zA-Z0-9_-]+)',
+            ]
+
+            for pattern in stream_patterns:
+                match = re.search(pattern, response, re.IGNORECASE)
+                if match:
+                    stream_name = match.group(1).strip()
+                    if self._is_valid_stream_name(stream_name):
+                        result["parameters"]["stream_name"] = stream_name
+                        result["confidence_scores"]["stream_name"] = 0.7
+                        break
+
+            # Extract confidence scores
+            confidence_pattern = r'"([^"]+)"\s*:\s*([0-9]*\.?[0-9]+)'
+            confidence_matches = re.findall(confidence_pattern, response)
+            for param, score in confidence_matches:
+                try:
+                    score_val = float(score)
+                    if 0.0 <= score_val <= 1.0:
+                        result["confidence_scores"][param] = score_val
+                except ValueError:
+                    continue
+
+            # Extract other common parameters
+            param_patterns = {
+                "job_type": r'"job_type"\s*:\s*"([^"]+)"',
+                "description": r'"description"\s*:\s*"([^"]+)"',
+                "priority": r'"priority"\s*:\s*"([^"]+)"',
+                "source_path": r'"source_path"\s*:\s*"([^"]+)"',
+                "destination_path": r'"destination_path"\s*:\s*"([^"]+)"',
+            }
+
+            for param_name, pattern in param_patterns.items():
+                match = re.search(pattern, response, re.IGNORECASE)
+                if match:
+                    result["parameters"][param_name] = match.group(1).strip()
+                    if param_name not in result["confidence_scores"]:
+                        result["confidence_scores"][param_name] = 0.6
+
+            # Only return if we extracted something
+            if result["parameters"]:
+                logger.info(f"Manual extraction recovered {len(result['parameters'])} parameters")
+                return result
+
+        except Exception as e:
+            logger.error(f"Manual extraction failed: {str(e)}")
+
+        return None
 
     def _fallback_extraction(
         self,

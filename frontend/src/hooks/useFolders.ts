@@ -5,13 +5,14 @@
 
 import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { useToasts } from '@/services/toast.service'
 import { apiService } from '@/services/api.service'
 import { Folder, FolderTree, FolderCreate, FolderUpdate, UseFoldersReturn } from '@/types/api.types'
 
 export function useFolders(): UseFoldersReturn {
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const toast = useToasts()
 
   // Queries
   const {
@@ -52,13 +53,16 @@ export function useFolders(): UseFoldersReturn {
         newFolder
       ])
       
-      toast.success(`Folder "${newFolder.name}" created successfully`)
+      toast.success(
+        'Ordner erstellt',
+        `Ordner "${newFolder.name}" wurde erfolgreich erstellt`
+      )
       setError(null)
     },
     onError: (error: Error) => {
-      const message = error.message || 'Failed to create folder'
+      const message = error.message || 'Fehler beim Erstellen des Ordners'
       setError(message)
-      toast.error(message)
+      toast.systemError('folder-create-failed', message)
     }
   })
 
@@ -74,13 +78,16 @@ export function useFolders(): UseFoldersReturn {
       // Invalidate tree to rebuild hierarchy
       queryClient.invalidateQueries({ queryKey: ['folders', 'tree'] })
       
-      toast.success(`Folder "${updatedFolder.name}" updated successfully`)
+      toast.success(
+        'Ordner aktualisiert',
+        `Ordner "${updatedFolder.name}" wurde erfolgreich aktualisiert`
+      )
       setError(null)
     },
     onError: (error: Error) => {
-      const message = error.message || 'Failed to update folder'
+      const message = error.message || 'Fehler beim Aktualisieren des Ordners'
       setError(message)
-      toast.error(message)
+      toast.systemError('folder-update-failed', message)
     }
   })
 
@@ -99,13 +106,16 @@ export function useFolders(): UseFoldersReturn {
       // Also invalidate documents that might be in this folder
       queryClient.invalidateQueries({ queryKey: ['documents'] })
       
-      toast.success('Folder deleted successfully')
+      toast.success(
+        'Ordner gelöscht',
+        'Der Ordner wurde erfolgreich gelöscht'
+      )
       setError(null)
     },
     onError: (error: Error) => {
-      const message = error.message || 'Failed to delete folder'
+      const message = error.message || 'Fehler beim Löschen des Ordners'
       setError(message)
-      toast.error(message)
+      toast.systemError('folder-delete-failed', message)
     }
   })
 

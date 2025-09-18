@@ -16,6 +16,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { EnhancedButton } from '@/components/ui/EnhancedButton'
+import { EnhancedInput } from '@/components/ui/EnhancedInput'
 import {
   Wand2,
   ArrowRight,
@@ -69,8 +71,8 @@ export const CreateStreamModal: React.FC<CreateStreamModalProps> = ({
       onOpenChange(false)
       resetForm()
 
-      // Navigate directly to stream editor (wizard mode)
-      router.push(`/xml/edit/${newStream.id}`)
+      // Navigate directly to new XML Chat Generator
+      router.push('/xml/chat')
     } catch (error) {
       console.error('Error creating stream:', error)
     }
@@ -103,37 +105,39 @@ export const CreateStreamModal: React.FC<CreateStreamModalProps> = ({
         <div className="space-y-6">
           {/* Stream Name */}
           <div className="space-y-2">
-            <Label htmlFor="stream_name">Stream Name *</Label>
-            <Input
-              id="stream_name"
+            <EnhancedInput
+              label="Stream Name *"
               placeholder="Geben Sie einen aussagekräftigen Namen ein..."
               value={streamName}
               onChange={(e) => setStreamName(e.target.value)}
+              validation={[
+                { test: (v) => v.trim().length >= 3, message: 'Mindestens 3 Zeichen erforderlich' },
+                { test: (v) => v.trim().length <= 50, message: 'Maximal 50 Zeichen erlaubt' }
+              ]}
+              leftIcon={<Wand2 className="h-4 w-4" />}
+              description="Eindeutiger Name für den XML-Stream"
               autoFocus
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={createStream.isPending}>
-            Abbrechen
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={!canSubmit}
+          <EnhancedButton
+            variant="secondary"
+            onClick={handleClose}
+            disabled={createStream.isPending}
           >
-            {createStream.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Erstellen...
-              </>
-            ) : (
-              <>
-                Stream erstellen
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </>
-            )}
-          </Button>
+            Abbrechen
+          </EnhancedButton>
+          <EnhancedButton
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            loading={createStream.isPending}
+            icon={createStream.isPending ? <Loader2 className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+          >
+            {createStream.isPending ? 'Erstellen...' : 'Stream erstellen'}
+          </EnhancedButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

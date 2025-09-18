@@ -8,10 +8,12 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Send, Bot, User, Clock, Loader, History, Plus, Search, 
-  BarChart3, Trash2, X, Zap, Cloud, MessageCircle 
+import {
+  Send, Bot, User, Clock, Loader, History, Plus, Search,
+  BarChart3, Trash2, X, Zap, Cloud, MessageCircle
 } from 'lucide-react'
+import { EnhancedButton } from '@/components/ui/EnhancedButton'
+import { EnhancedInput } from '@/components/ui/EnhancedInput'
 
 import { useChatStore, useChatSelectors } from '../../stores/chatStore'
 import { useChatContext } from './ChatProvider'
@@ -532,14 +534,16 @@ export const ModernChatInterface: React.FC = () => {
                 }}
               />
             </div>
-            <button
+            <EnhancedButton
               type="submit"
               disabled={!canSendMessage || !input.trim()}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center space-x-2"
+              variant="primary"
+              icon={<Send className="w-4 h-4" />}
+              loading={isSendingMessage}
+              className="px-6 py-3"
             >
-              <Send className="w-4 h-4" />
-              <span>Senden</span>
-            </button>
+              Senden
+            </EnhancedButton>
           </form>
           
           {!hasUserMessages && (

@@ -5,7 +5,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { useToasts } from '@/services/toast.service'
 import xmlStreamsApi, { 
   XMLStream, 
   StreamFilters, 
@@ -78,6 +78,7 @@ export function useStreamStats() {
  */
 export function useCreateStream() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: (data: CreateStreamRequest) => xmlStreamsApi.createStream(data),
@@ -89,10 +90,13 @@ export function useCreateStream() {
       // Add to cache
       queryClient.setQueryData(streamQueryKeys.detail(newStream.id), newStream)
       
-      toast.success(`Stream "${newStream.stream_name}" erfolgreich erstellt!`)
+      toast.success(
+        'XML-Stream erstellt',
+        `Stream "${newStream.stream_name}" wurde erfolgreich erstellt`
+      )
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Erstellen: ${error.message}`)
+      toast.systemError('xml-stream-create-failed', error.message)
     },
   })
 }
@@ -102,6 +106,7 @@ export function useCreateStream() {
  */
 export function useUpdateStream() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: ({ 
@@ -139,7 +144,10 @@ export function useUpdateStream() {
       queryClient.invalidateQueries({ queryKey: streamQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: streamQueryKeys.stats() })
       
-      toast.success(`Stream "${updatedStream.stream_name}" aktualisiert!`)
+      toast.success(
+        'XML-Stream aktualisiert',
+        `Stream "${updatedStream.stream_name}" wurde erfolgreich aktualisiert`
+      )
     },
     onError: (error: Error, { streamId }, context) => {
       console.error('❌ useUpdateStream - Error occurred:', {
@@ -173,7 +181,7 @@ export function useUpdateStream() {
         errorMessage = 'Netzwerk-Fehler - bitte überprüfen Sie Ihre Internetverbindung'
       }
 
-      toast.error(`Fehler beim Aktualisieren: ${errorMessage}`)
+      toast.systemError('xml-stream-update-failed', errorMessage)
     },
   })
 }
@@ -217,6 +225,7 @@ export function useAutoSaveStream() {
  */
 export function useDeleteStream() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: (streamId: string) => xmlStreamsApi.deleteStream(streamId),
@@ -233,7 +242,10 @@ export function useDeleteStream() {
       queryClient.invalidateQueries({ queryKey: streamQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: streamQueryKeys.stats() })
       
-      toast.success(`"${context?.streamName}" wurde gelöscht`)
+      toast.success(
+        'XML-Stream gelöscht',
+        `"${context?.streamName}" wurde erfolgreich gelöscht`
+      )
     },
     onError: (error: Error) => {
       toast.error(`Fehler beim Löschen: ${error.message}`)
@@ -246,6 +258,7 @@ export function useDeleteStream() {
  */
 export function useDuplicateStream() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: ({ streamId, newName }: { streamId: string; newName?: string }) =>
@@ -271,6 +284,7 @@ export function useDuplicateStream() {
  */
 export function useToggleFavorite() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: (streamId: string) => xmlStreamsApi.toggleFavorite(streamId),
@@ -330,6 +344,7 @@ export function useToggleFavorite() {
  */
 export function useBulkOperations() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   const bulkDelete = useMutation({
     mutationFn: (streamIds: string[]) => xmlStreamsApi.bulkDeleteStreams(streamIds),
@@ -362,6 +377,7 @@ export function useBulkOperations() {
  * Hook to export a stream
  */
 export function useExportStream() {
+  const toast = useToasts()
   return useMutation({
     mutationFn: ({ streamId, format }: { streamId: string; format: 'xml' | 'json' }) =>
       xmlStreamsApi.exportStream(streamId, format),
@@ -398,6 +414,7 @@ export function useInvalidateStreams() {
  */
 export function useSubmitForReview() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: (streamId: string) => xmlStreamsApi.submitForReview(streamId),
@@ -420,6 +437,7 @@ export function useSubmitForReview() {
  */
 export function useApproveStream() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: (streamId: string) => xmlStreamsApi.approveStream(streamId),
@@ -444,6 +462,7 @@ export function useApproveStream() {
  */
 export function useRejectStream() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: ({ streamId, reason }: { streamId: string; reason: string }) =>
@@ -469,6 +488,7 @@ export function useRejectStream() {
  */
 export function usePublishStream() {
   const queryClient = useQueryClient()
+  const toast = useToasts()
 
   return useMutation({
     mutationFn: (streamId: string) => xmlStreamsApi.publishStream(streamId),

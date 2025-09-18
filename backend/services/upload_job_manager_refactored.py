@@ -298,3 +298,6 @@ class UploadJobManager(ServiceLifecycle):
 def create_upload_job_manager() -> UploadJobManager:
     """Factory function to create UploadJobManager instance"""
     return UploadJobManager()
+
+# Global instance for backward compatibility
+upload_job_manager = UploadJobManager()

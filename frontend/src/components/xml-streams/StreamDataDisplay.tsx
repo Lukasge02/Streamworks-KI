@@ -79,7 +79,7 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
           if (value === undefined || value === null) break
         }
 
-        if (value !== undefined && value !== null && value !== '') {
+        if (value !== undefined && value !== null && (typeof value !== 'string' || value !== '')) {
           return value
         }
       }
@@ -289,8 +289,8 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
         onToggle={() => toggleSection('job')}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InfoItem label="Job-Name" value={data.basic.jobName} />
-          <InfoItem label="Beschreibung" value={data.basic.description} />
+          <InfoItem label="Job-Name" value={safeStringValue(data.basic.jobName)} />
+          <InfoItem label="Beschreibung" value={safeStringValue(data.basic.description)} />
           <InfoItem
             label="Job-Typ"
             value={
@@ -302,8 +302,8 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
               </Badge>
             }
           />
-          <InfoItem label="Priorität" value={data.basic.priority} />
-          <InfoItem label="Erstellt von" value={data.basic.createdBy} />
+          <InfoItem label="Priorität" value={safeStringValue(data.basic.priority)} />
+          <InfoItem label="Erstellt von" value={safeStringValue(data.basic.createdBy)} />
         </div>
       </ConfigSection>
 
@@ -316,12 +316,12 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
         onToggle={() => toggleSection('stream')}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InfoItem label="Stream-Name" value={data.streamProperties.streamName} />
-          <InfoItem label="Stream-Typ" value={data.streamProperties.streamType} />
-          <InfoItem label="Quelle" value={data.streamProperties.sourceSystem} />
-          <InfoItem label="Ziel" value={data.streamProperties.targetSystem} />
-          <InfoItem label="Datenformat" value={data.streamProperties.dataFormat} />
-          <InfoItem label="Encoding" value={data.streamProperties.encoding} />
+          <InfoItem label="Stream-Name" value={safeStringValue(data.streamProperties.streamName)} />
+          <InfoItem label="Stream-Typ" value={safeStringValue(data.streamProperties.streamType)} />
+          <InfoItem label="Quelle" value={safeStringValue(data.streamProperties.sourceSystem)} />
+          <InfoItem label="Ziel" value={safeStringValue(data.streamProperties.targetSystem)} />
+          <InfoItem label="Datenformat" value={safeStringValue(data.streamProperties.dataFormat)} />
+          <InfoItem label="Encoding" value={safeStringValue(data.streamProperties.encoding)} />
         </div>
       </ConfigSection>
 
@@ -334,10 +334,10 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
         onToggle={() => toggleSection('scheduling')}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InfoItem label="Typ" value={data.scheduling.type} />
-          <InfoItem label="Startzeit" value={data.scheduling.startTime} />
-          <InfoItem label="Häufigkeit" value={data.scheduling.frequency} />
-          <InfoItem label="Nächste Ausführung" value={data.scheduling.nextRun} />
+          <InfoItem label="Typ" value={safeStringValue(data.scheduling.type)} />
+          <InfoItem label="Startzeit" value={safeStringValue(data.scheduling.startTime)} />
+          <InfoItem label="Häufigkeit" value={safeStringValue(data.scheduling.frequency)} />
+          <InfoItem label="Nächste Ausführung" value={safeStringValue(data.scheduling.nextRun)} />
           {data.scheduling.days && (
             <InfoItem
               label="Ausführungstage"
@@ -359,12 +359,12 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
           onToggle={() => toggleSection('sap')}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InfoItem label="Host" value={data.jobSpecific.connectionHost} />
-            <InfoItem label="Client" value={data.jobSpecific.client} />
-            <InfoItem label="System-ID" value={data.jobSpecific.systemId} />
-            <InfoItem label="Benutzer" value={data.jobSpecific.username} />
-            <InfoItem label="Sprache" value={data.jobSpecific.language} />
-            <InfoItem label="Connection Pool" value={data.jobSpecific.connectionPool} />
+            <InfoItem label="Host" value={safeStringValue(data.jobSpecific.connectionHost)} />
+            <InfoItem label="Client" value={safeStringValue(data.jobSpecific.client)} />
+            <InfoItem label="System-ID" value={safeStringValue(data.jobSpecific.systemId)} />
+            <InfoItem label="Benutzer" value={safeStringValue(data.jobSpecific.username)} />
+            <InfoItem label="Sprache" value={safeStringValue(data.jobSpecific.language)} />
+            <InfoItem label="Connection Pool" value={safeStringValue(data.jobSpecific.connectionPool)} />
           </div>
         </ConfigSection>
       )}
@@ -381,17 +381,17 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
             <div>
               <h4 className="font-medium text-sm mb-3 text-gray-700 dark:text-gray-300">Quelle</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4 border-l-2 border-blue-200">
-                <InfoItem label="Typ" value={data.jobSpecific.sourceType} />
-                <InfoItem label="Pfad" value={data.jobSpecific.sourcePath} />
-                <InfoItem label="Pattern" value={data.jobSpecific.sourcePattern} />
+                <InfoItem label="Typ" value={safeStringValue(data.jobSpecific.sourceType)} />
+                <InfoItem label="Pfad" value={safeStringValue(data.jobSpecific.sourcePath)} />
+                <InfoItem label="Pattern" value={safeStringValue(data.jobSpecific.sourcePattern)} />
               </div>
             </div>
             <div>
               <h4 className="font-medium text-sm mb-3 text-gray-700 dark:text-gray-300">Ziel</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4 border-l-2 border-green-200">
-                <InfoItem label="Typ" value={data.jobSpecific.targetType} />
-                <InfoItem label="Endpoint" value={data.jobSpecific.targetEndpoint} />
-                <InfoItem label="Transfer-Modus" value={data.jobSpecific.transferMode} />
+                <InfoItem label="Typ" value={safeStringValue(data.jobSpecific.targetType)} />
+                <InfoItem label="Endpoint" value={safeStringValue(data.jobSpecific.targetEndpoint)} />
+                <InfoItem label="Transfer-Modus" value={safeStringValue(data.jobSpecific.transferMode)} />
               </div>
             </div>
           </div>
@@ -407,11 +407,11 @@ export const StreamDataDisplay: React.FC<StreamDataDisplayProps> = ({
           onToggle={() => toggleSection('custom')}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InfoItem label="API Endpoint" value={data.jobSpecific.apiEndpoint} />
-            <InfoItem label="Authentifizierung" value={data.jobSpecific.authMethod} />
-            <InfoItem label="Timeout" value={data.jobSpecific.timeout} />
-            <InfoItem label="Retry Count" value={data.jobSpecific.retryCount} />
-            <InfoItem label="Custom Logic" value={data.jobSpecific.customLogic} />
+            <InfoItem label="API Endpoint" value={safeStringValue(data.jobSpecific.apiEndpoint)} />
+            <InfoItem label="Authentifizierung" value={safeStringValue(data.jobSpecific.authMethod)} />
+            <InfoItem label="Timeout" value={safeStringValue(data.jobSpecific.timeout)} />
+            <InfoItem label="Retry Count" value={safeStringValue(data.jobSpecific.retryCount)} />
+            <InfoItem label="Custom Logic" value={safeStringValue(data.jobSpecific.customLogic)} />
           </div>
         </ConfigSection>
       )}
@@ -471,6 +471,15 @@ const ConfigSection: React.FC<ConfigSectionProps> = ({
       </Collapsible>
     </Card>
   )
+}
+
+// Helper function to safely convert values to strings for InfoItem
+const safeStringValue = (value: any): string => {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
 }
 
 interface InfoItemProps {

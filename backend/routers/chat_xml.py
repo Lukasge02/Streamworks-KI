@@ -15,6 +15,11 @@ from services.chat_xml.chat_session_service import get_chat_session_service, Cha
 from services.chat_xml.dialog_manager import get_dialog_manager, DialogIntent, DialogContext
 from services.chat_xml.parameter_extractor import get_parameter_extractor
 
+# MVP: Smart Parameter Collection
+from services.ai.smart_parameter_extractor import get_smart_parameter_extractor
+from services.ai.intelligent_dialog_manager import get_intelligent_dialog_manager
+from services.ai.parameter_state_manager import get_parameter_state_manager
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat-xml", tags=["Chat XML"])
@@ -102,6 +107,52 @@ class XMLGenerationResponse(BaseModel):
     validation_issues: List[str] = []
     file_size: Optional[int] = None
 
+# ================================
+# MVP: SMART PARAMETER COLLECTION MODELS
+# ================================
+
+class SmartChatSessionRequest(BaseModel):
+    user_id: Optional[str] = None
+    job_type: Optional[str] = None
+    initial_parameters: Optional[Dict[str, Any]] = None
+
+class SmartChatSessionResponse(BaseModel):
+    session_id: str
+    job_type: Optional[str] = None
+    status: str
+    dialog_state: str
+    completion_percentage: float
+    message: str
+    suggested_questions: List[str] = []
+    created_at: datetime
+
+class SmartChatMessageRequest(BaseModel):
+    message: str
+    extract_parameters: bool = True
+
+class SmartChatMessageResponse(BaseModel):
+    session_id: str
+    response_message: str
+    dialog_state: str
+    priority: str
+    extracted_parameters: List[str] = []
+    next_parameter: Optional[str] = None
+    completion_percentage: float
+    suggested_questions: List[str] = []
+    validation_issues: List[str] = []
+    timestamp: datetime
+
+class ParameterExportResponse(BaseModel):
+    session_id: str
+    job_type: Optional[str] = None
+    parameters: Dict[str, Any]
+    completion_percentage: float
+    validation_status: str
+    export_timestamp: datetime
+    xml_content: Optional[str] = None
+    validation_issues: List[str] = []
+    file_size: Optional[int] = None
+
 class SessionCleanupResponse(BaseModel):
     cleaned_sessions: int
     remaining_sessions: int
@@ -110,10 +161,8 @@ class SessionCleanupResponse(BaseModel):
 # DEPENDENCY INJECTION
 # ================================
 
-async def get_chat_session_service_dep():
-    service = get_chat_session_service()
-    await service.initialize()
-    return service
+def get_chat_session_service_dep():
+    return get_chat_session_service()
 
 async def get_dialog_manager_dep():
     manager = get_dialog_manager()
@@ -122,6 +171,16 @@ async def get_dialog_manager_dep():
 
 def get_parameter_extractor_dep():
     return get_parameter_extractor()
+
+# MVP: Smart Parameter Collection Dependencies
+def get_smart_parameter_extractor_dep():
+    return get_smart_parameter_extractor()
+
+def get_intelligent_dialog_manager_dep():
+    return get_intelligent_dialog_manager()
+
+def get_parameter_state_manager_dep():
+    return get_parameter_state_manager()
 
 # ================================
 # SESSION MANAGEMENT ENDPOINTS
@@ -135,16 +194,14 @@ async def create_chat_session(
     """Erstellt eine neue Chat-Session für XML-Generierung"""
 
     try:
-        session_id = session_service.create_session(request.user_id)
-        session = session_service.get_session(session_id)
+        session = session_service.create_session(request.user_id)
+        session_id = session.session_id
 
         if not session:
             raise HTTPException(status_code=500, detail="Session creation failed")
 
-        # Hole die Willkommensnachricht
+        # Simple welcome message
         welcome_message = "Willkommen beim XML-Generator! Welchen Job-Type möchten Sie erstellen?"
-        if session.messages:
-            welcome_message = session.messages[-1].content
 
         logger.info(f"Created new chat session: {session_id}")
 
@@ -510,3 +567,276 @@ async def debug_list_sessions(
         "total_sessions": len(sessions_info),
         "sessions": sessions_info
     }
+
+# ================================
+# MVP: SMART PARAMETER COLLECTION ENDPOINTS
+# ================================
+
+@router.post("/smart/sessions", response_model=SmartChatSessionResponse)
+async def create_smart_chat_session(
+    request: SmartChatSessionRequest,
+    state_manager = Depends(get_parameter_state_manager_dep)
+) -> SmartChatSessionResponse:
+    """Erstellt neue Smart Parameter Collection Session"""
+
+    try:
+        session = state_manager.create_session(
+            user_id=request.user_id,
+            job_type=request.job_type,
+            initial_parameters=request.initial_parameters
+        )
+
+        # Generiere initiale Nachricht
+        if session.job_type:
+            message = f"Perfekt! Lassen Sie uns einen {session.job_type}-Job konfigurieren. Ich führe Sie durch die benötigten Parameter."
+        else:
+            message = "Willkommen beim Smart Parameter Assistant! 🚀 Welchen Job-Type möchten Sie erstellen?"
+
+        suggested_questions = [
+            "Ich möchte einen Standard-Stream erstellen",
+            "Ich brauche einen SAP-Report",
+            "Ich möchte Dateien übertragen",
+            "Ich brauche eine benutzerdefinierte Konfiguration"
+        ] if not session.job_type else []
+
+        logger.info(f"Smart Chat Session erstellt: {session.session_id}")
+
+        return SmartChatSessionResponse(
+            session_id=session.session_id,
+            job_type=session.job_type,
+            status=session.status.value,
+            dialog_state=session.dialog_state,
+            completion_percentage=session.completion_percentage,
+            message=message,
+            suggested_questions=suggested_questions,
+            created_at=session.created_at
+        )
+
+    except Exception as e:
+        logger.error(f"Fehler bei Smart Session Creation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create smart session: {str(e)}")
+
+@router.post("/smart/sessions/{session_id}/messages", response_model=SmartChatMessageResponse)
+async def send_smart_chat_message(
+    session_id: str,
+    request: SmartChatMessageRequest,
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep),
+    state_manager = Depends(get_parameter_state_manager_dep)
+) -> SmartChatMessageResponse:
+    """Verarbeitet User-Message mit Smart Parameter Extraction"""
+
+    try:
+        # Hole Session
+        session = state_manager.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Bereite Session State für Dialog Manager vor
+        session_state = {
+            "session_id": session_id,
+            "job_type": session.job_type,
+            "state": session.dialog_state,
+            "parameters": session.collected_parameters,
+            "completion_percentage": session.completion_percentage
+        }
+
+        # Verarbeite Message mit Intelligent Dialog Manager
+        dialog_response = await dialog_manager.process_user_message(
+            user_message=request.message,
+            session_state=session_state
+        )
+
+        # Aktualisiere Session mit extrahierten Parametern
+        if dialog_response.extracted_parameters:
+            # Konvertiere Parameter-Namen zu Werten (vereinfacht)
+            extracted_values = {param: f"extracted_from_{request.message[:20]}" for param in dialog_response.extracted_parameters}
+
+            state_manager.update_session_parameters(
+                session_id=session_id,
+                new_parameters=extracted_values,
+                source_message=request.message
+            )
+
+        # Aktualisiere Dialog State
+        state_manager.update_session_state(
+            session_id=session_id,
+            dialog_state=dialog_response.state.value,
+            last_message=request.message,
+            suggested_questions=dialog_response.suggested_questions,
+            metadata=dialog_response.metadata
+        )
+
+        # Hole aktualisierte Session für Response
+        updated_session = state_manager.get_session(session_id)
+
+        logger.info(f"Smart Message verarbeitet: {session_id} | Extracted: {len(dialog_response.extracted_parameters)}")
+
+        return SmartChatMessageResponse(
+            session_id=session_id,
+            response_message=dialog_response.message,
+            dialog_state=dialog_response.state.value,
+            priority=dialog_response.priority.value,
+            extracted_parameters=dialog_response.extracted_parameters,
+            next_parameter=dialog_response.next_parameter,
+            completion_percentage=updated_session.completion_percentage if updated_session else 0.0,
+            suggested_questions=dialog_response.suggested_questions,
+            validation_issues=dialog_response.validation_issues,
+            timestamp=dialog_response.timestamp
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Fehler bei Smart Message Processing: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process message: {str(e)}")
+
+@router.get("/smart/sessions/{session_id}/status", response_model=SmartChatSessionResponse)
+async def get_smart_session_status(
+    session_id: str,
+    state_manager = Depends(get_parameter_state_manager_dep)
+) -> SmartChatSessionResponse:
+    """Gibt Status einer Smart Parameter Session zurück"""
+
+    session = state_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    return SmartChatSessionResponse(
+        session_id=session.session_id,
+        job_type=session.job_type,
+        status=session.status.value,
+        dialog_state=session.dialog_state,
+        completion_percentage=session.completion_percentage,
+        message=session.last_message or "Session aktiv",
+        suggested_questions=session.suggested_questions,
+        created_at=session.created_at
+    )
+
+@router.get("/smart/sessions/{session_id}/parameters", response_model=ParameterExportResponse)
+async def export_session_parameters(
+    session_id: str,
+    format: str = "json",
+    state_manager = Depends(get_parameter_state_manager_dep)
+) -> ParameterExportResponse:
+    """Exportiert gesammelte Parameter als JSON"""
+
+    try:
+        session = state_manager.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Validiere Parameter
+        validation_result = state_manager.validate_session_parameters(session_id)
+        validation_status = "valid" if validation_result and validation_result.is_valid else "invalid"
+
+        return ParameterExportResponse(
+            session_id=session_id,
+            job_type=session.job_type,
+            parameters=session.collected_parameters,
+            completion_percentage=session.completion_percentage,
+            validation_status=validation_status,
+            export_timestamp=datetime.now()
+        )
+
+    except Exception as e:
+        logger.error(f"Fehler bei Parameter Export: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@router.delete("/smart/sessions/{session_id}")
+async def delete_smart_session(
+    session_id: str,
+    state_manager = Depends(get_parameter_state_manager_dep)
+) -> Dict[str, str]:
+    """Löscht eine Smart Parameter Session"""
+
+    session = state_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Mark as expired (wird beim nächsten Cleanup entfernt)
+    state_manager._expire_session(session_id)
+
+    return {"message": "Session deleted successfully", "session_id": session_id}
+
+@router.get("/smart/job-types")
+async def get_smart_job_types(
+    extractor = Depends(get_smart_parameter_extractor_dep)
+) -> Dict[str, Any]:
+    """Gibt verfügbare Job-Types für Smart Parameter Collection zurück"""
+
+    try:
+        job_types = extractor.get_available_job_types()
+
+        formatted_types = {}
+        for job_type in job_types:
+            formatted_types[job_type["job_type"]] = {
+                "display_name": job_type["display_name"],
+                "description": job_type["description"],
+                "complexity": job_type["complexity"],
+                "estimated_time": job_type["estimated_time"],
+                "parameter_count": job_type["parameter_count"]
+            }
+
+        return {
+            "job_types": formatted_types,
+            "total_count": len(job_types),
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Fehler bei Job-Types Abfrage: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get job types: {str(e)}")
+
+@router.post("/smart/cleanup")
+async def cleanup_smart_sessions(
+    state_manager = Depends(get_parameter_state_manager_dep)
+) -> Dict[str, Any]:
+    """Räumt abgelaufene Smart Sessions auf"""
+
+    try:
+        cleaned_count = state_manager.cleanup_expired_sessions()
+        stats = state_manager.get_system_stats()
+
+        return {
+            "cleaned_sessions": cleaned_count,
+            "system_stats": stats,
+            "cleanup_timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Fehler bei Smart Cleanup: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+@router.get("/smart/health")
+async def smart_system_health(
+    extractor = Depends(get_smart_parameter_extractor_dep),
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep),
+    state_manager = Depends(get_parameter_state_manager_dep)
+) -> Dict[str, Any]:
+    """Gesundheitscheck für Smart Parameter Collection System"""
+
+    try:
+        # Teste alle Services
+        job_types = extractor.get_available_job_types()
+        system_stats = state_manager.get_system_stats()
+
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "services": {
+                "smart_parameter_extractor": "active",
+                "intelligent_dialog_manager": "active",
+                "parameter_state_manager": "active"
+            },
+            "metrics": {
+                "available_job_types": len(job_types),
+                "active_sessions": system_stats["session_counts"]["active"],
+                "completed_sessions": system_stats["session_counts"]["completed"]
+            },
+            "system_stats": system_stats,
+            "job_types": [jt["job_type"] for jt in job_types]
+        }
+
+    except Exception as e:
+        logger.error(f"Smart Health Check failed: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Smart system unhealthy: {str(e)}")

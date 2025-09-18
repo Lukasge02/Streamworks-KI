@@ -5,7 +5,7 @@
 
 import React from 'react'
 import { cn } from '@/components/shared/componentPatterns'
-import { LoadingSpinner, LoadingSkeleton } from '@/components/shared/componentPatterns'
+import { LoadingSkeleton } from '@/components/shared/componentPatterns'
 
 // ================================
 // LOADING STATE TYPES
@@ -382,7 +382,8 @@ function InlineLoading({
     spinner: LoadingSpinner,
     dots: LoadingDots,
     pulse: LoadingPulse,
-    skeleton: LoadingSkeletonComponent
+    skeleton: LoadingSkeletonComponent,
+    bar: LoadingBar
   }[variant]
 
   return (

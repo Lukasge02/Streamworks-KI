@@ -120,18 +120,12 @@ export function createStandardMutation<TData = unknown, TVariables = void, TErro
     invalidateQueries = []
   } = config
 
-  const queryClient = createOptimizedQueryClient()
-
   return {
     mutationKey: key,
     mutationFn,
     ...options,
     onSuccess: (data: TData, variables: TVariables, context: unknown) => {
-      // Invalidate related queries
-      invalidateQueries.forEach(queryKey => {
-        queryClient.invalidateQueries({ queryKey })
-      })
-
+      // Don't create new QueryClient instance here - let the context handle invalidation
       if (showToast && successMessage) {
         toast.success(successMessage)
       }
@@ -230,39 +224,39 @@ export interface OptimisticUpdateConfig<TData, TVariables> {
 }
 
 export function createOptimisticUpdate<TData = unknown, TVariables = void>(
-  config: OptimisticUpdateConfig<TData, TVariables>
+  config: OptimisticUpdateConfig<TData, TVariables>,
+  queryClient: QueryClient
 ) {
   const { queryKey, updateFn, rollbackFn } = config
-  const queryClient = createOptimizedQueryClient()
 
   return {
     onMutate: async (variables: TVariables) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey })
-      
+
       // Snapshot the previous value
       const previousData = queryClient.getQueryData<TData>(queryKey)
-      
+
       // Optimistically update to the new value
-      queryClient.setQueryData<TData>(queryKey, (oldData) => 
+      queryClient.setQueryData<TData>(queryKey, (oldData) =>
         updateFn(oldData, variables)
       )
-      
+
       // Return a context object with the snapshotted value
       return { previousData }
     },
-    
+
     onError: (err: any, variables: TVariables, context: { previousData?: TData } | undefined) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (rollbackFn && context?.previousData !== undefined) {
-        queryClient.setQueryData<TData>(queryKey, () => 
+        queryClient.setQueryData<TData>(queryKey, () =>
           rollbackFn(context.previousData)
         )
       } else {
         queryClient.setQueryData<TData>(queryKey, context?.previousData)
       }
     },
-    
+
     onSettled: () => {
       // Always refetch after error or success to make sure we're in sync
       queryClient.invalidateQueries({ queryKey })

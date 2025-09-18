@@ -485,7 +485,7 @@ function LazyComponent<T extends BaseComponentProps>(
   return function LazyWrapper(props: T) {
     return (
       <React.Suspense fallback={fallback || <LoadingCard />}>
-        <LazyComponent {...props} />
+        <LazyComponent {...(props as any)} />
       </React.Suspense>
     )
   }

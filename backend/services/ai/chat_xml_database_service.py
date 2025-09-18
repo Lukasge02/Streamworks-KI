@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.core import ChatXMLSession, ChatXMLMessage
-from database import get_async_session
+from database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class ChatXMLDatabaseService:
         """Initialisiert den Database Service"""
         try:
             # Test database connection
-            async with get_async_session() as session:
+            async with AsyncSessionLocal() as session:
                 await session.execute(select(ChatXMLSession).limit(1))
 
             self.initialized = True
@@ -119,7 +119,7 @@ class ChatXMLDatabaseService:
             retry_count=0
         )
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             db_session.add(session)
             await db_session.commit()
             await db_session.refresh(session)
@@ -134,7 +134,7 @@ class ChatXMLDatabaseService:
     ) -> Optional[ChatXMLSession]:
         """Lädt eine Session mit optionalen Messages"""
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             query = select(ChatXMLSession).where(ChatXMLSession.id == session_id)
 
             if include_messages:
@@ -152,7 +152,7 @@ class ChatXMLDatabaseService:
     ) -> bool:
         """Aktualisiert Session-Parameter mit History-Tracking"""
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             # Load current session
             session = await db_session.get(ChatXMLSession, session_id)
             if not session:
@@ -215,7 +215,7 @@ class ChatXMLDatabaseService:
     ) -> bool:
         """Aktualisiert Session-Status und XML-Content"""
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             update_data = {
                 "status": status,
                 "last_activity_at": datetime.utcnow()
@@ -243,7 +243,7 @@ class ChatXMLDatabaseService:
     async def deactivate_session(self, session_id: uuid.UUID) -> bool:
         """Deaktiviert eine Session"""
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             result = await db_session.execute(
                 update(ChatXMLSession)
                 .where(ChatXMLSession.id == session_id)
@@ -286,7 +286,7 @@ class ChatXMLDatabaseService:
             processing_time_ms=ai_metadata.get("processing_time_ms") if ai_metadata else None
         )
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             db_session.add(message)
             await db_session.commit()
             await db_session.refresh(message)
@@ -301,7 +301,7 @@ class ChatXMLDatabaseService:
     ) -> List[ChatXMLMessage]:
         """Lädt Messages einer Session"""
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             query = (
                 select(ChatXMLMessage)
                 .where(ChatXMLMessage.session_id == session_id)
@@ -328,7 +328,7 @@ class ChatXMLDatabaseService:
     ) -> List[ChatXMLSession]:
         """Sucht Sessions basierend auf Filtern"""
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             query = select(ChatXMLSession)
 
             # Apply filters
@@ -399,7 +399,7 @@ class ChatXMLDatabaseService:
 
         since_date = datetime.utcnow() - timedelta(days=days_back)
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             # Base query
             base_query = select(ChatXMLSession).where(ChatXMLSession.created_at >= since_date)
 
@@ -467,7 +467,7 @@ class ChatXMLDatabaseService:
 
         timeout_threshold = datetime.utcnow() - timedelta(hours=self.session_timeout_hours)
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             # Mark inactive sessions as inactive
             result = await db_session.execute(
                 update(ChatXMLSession)
@@ -494,7 +494,7 @@ class ChatXMLDatabaseService:
 
         retention_threshold = datetime.utcnow() - timedelta(days=self.data_retention_days)
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             # For now, just mark very old sessions as inactive
             # In production, you might want to move to archive storage
             result = await db_session.execute(
@@ -524,7 +524,7 @@ class ChatXMLDatabaseService:
     ) -> List[Dict[str, Any]]:
         """Lädt Parameter-Learning Daten für AI-Verbesserung"""
 
-        async with get_async_session() as db_session:
+        async with AsyncSessionLocal() as db_session:
             # Get sessions with successful parameter extraction
             query = (
                 select(ChatXMLSession)

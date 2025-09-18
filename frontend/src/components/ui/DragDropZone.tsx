@@ -90,7 +90,7 @@ export const DragDropZone: React.FC<DragDropZoneProps> = ({
       
       // Files added successfully - no notification needed
     }
-  }, [files.length, maxFiles, validateFile, onFilesDrop, toast, disabled])
+  }, [files.length, maxFiles, validateFile, onFilesDrop, disabled])
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()

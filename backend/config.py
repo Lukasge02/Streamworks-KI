@@ -49,8 +49,8 @@ class Settings(BaseSettings):
     # Central LLM Provider Configuration - Single Switch Point
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")  # openai|ollama
 
-    # OpenAI Configuration
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    # OpenAI Configuration - JSON Mode requires gpt-4o (not gpt-4o-mini)
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")  # Use gpt-4o for JSON mode support
     OPENAI_STREAMING: bool = os.getenv("OPENAI_STREAMING", "true").lower() == "true"
     OPENAI_MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "4000"))
     OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.1"))
@@ -172,8 +172,8 @@ class Settings(BaseSettings):
     HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.025"))  # Optimized from analysis (was 0.18)
     FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.01"))  # Optimized from analysis (was 0.02)
     
-    # Model Settings
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    # Model Settings - Use gpt-4o for JSON mode compatibility
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o")  # Changed from gpt-4o-mini for JSON mode support
     LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.1"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "2000"))
     

@@ -17,6 +17,7 @@ from routers.xml_streams import router as xml_streams
 from routers.chat_rag_test import router as chat
 from routers.chat_xml import router as chat_xml
 from routers.debug import router as debug
+from routers.auth import router as auth  # RBAC Auth Router
 from middleware.performance import PerformanceMiddleware
 from middleware.cors_error_handler import CORSErrorHandlerMiddleware
 
@@ -100,7 +101,7 @@ app.add_middleware(CORSErrorHandlerMiddleware)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:3002", "http://127.0.0.1:3002"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:3002", "http://127.0.0.1:3002", "http://localhost:3003", "http://127.0.0.1:3003"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -117,6 +118,7 @@ app.add_middleware(
 )
 
 # Include routers (minimal set)
+app.include_router(auth)  # RBAC Authentication (first for docs organization)
 app.include_router(folders)
 app.include_router(documents)
 app.include_router(websockets)

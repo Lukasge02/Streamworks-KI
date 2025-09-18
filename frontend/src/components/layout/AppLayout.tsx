@@ -4,14 +4,18 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { MessageSquare, FileText, Settings, FolderOpen } from 'lucide-react'
+import { MessageSquare, FileText, Settings, FolderOpen, BarChart3 } from 'lucide-react'
 import { SettingsModal } from '@/components/settings/SettingsModal'
+import { useAuthContext } from '@/contexts/AuthContext'
+import { UserAvatar } from '@/components/auth/UserAvatar'
+import { PermissionGuard } from '@/components/auth/PermissionGuard'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [systemStatus, setSystemStatus] = useState<{status: string, backend_online: boolean}>({ 
-    status: 'checking', 
-    backend_online: false 
+  const { isAuthenticated, user } = useAuthContext()
+  const [systemStatus, setSystemStatus] = useState<{status: string, backend_online: boolean}>({
+    status: 'checking',
+    backend_online: false
   })
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -78,13 +82,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           }`} />
           <span>{systemStatus.backend_online ? 'Backend Online' : 'Backend Offline'}</span>
         </div>
-        <button 
+        <button
           onClick={() => setSettingsOpen(true)}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group"
           title="Einstellungen öffnen"
         >
           <Settings className="w-5 h-5 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:rotate-90 transition-all duration-300" />
         </button>
+
+        {/* User Avatar - only show when authenticated */}
+        {isAuthenticated && user && (
+          <UserAvatar
+            user={user}
+            size="md"
+            showRole={true}
+            showMenu={true}
+          />
+        )}
+
+        {/* Login Link - only show when not authenticated */}
+        {!isAuthenticated && (
+          <Link
+            href="/auth/login"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            Anmelden
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -92,46 +116,95 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Sidebar Navigation
   const Sidebar = () => {
     const menuItems = [
-      { id: 'documents', label: 'Dokumentenverwaltung', icon: FolderOpen, href: '/documents', description: 'Dokumente verwalten & synchronisieren' },
-      { id: 'chat', label: 'Streamworks Chat', icon: MessageSquare, href: '/chat', description: 'KI-Assistent für Dokumentation' },
-      { id: 'xml', label: 'XML Generator', icon: FileText, href: '/xml', description: 'Konfiguration erstellen' },
+      {
+        id: 'documents',
+        label: 'Dokumentenverwaltung',
+        icon: FolderOpen,
+        href: '/documents',
+        description: 'Dokumente verwalten & synchronisieren',
+        permission: 'documents.read' as const
+      },
+      {
+        id: 'chat',
+        label: 'Streamworks Chat',
+        icon: MessageSquare,
+        href: '/chat',
+        description: 'KI-Assistent für Dokumentation',
+        permission: 'system.read' as const
+      },
+      {
+        id: 'xml',
+        label: 'XML Generator',
+        icon: FileText,
+        href: '/xml',
+        description: 'Konfiguration erstellen',
+        permission: 'documents.write' as const
+      },
     ]
-    
+
     return (
       <div className="w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 overflow-y-auto">
         <nav className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+
             return (
               <Link
                 key={item.id}
-                href={item.href}
+                  href={item.href}
+                  className={`sidebar-item w-full flex items-start space-x-3 p-4 rounded-xl text-left group ${
+                    isActive
+                      ? 'bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/30 dark:to-blue-900/30 text-primary-600 dark:text-primary-400 shadow-lg border border-primary-200 dark:border-primary-800'
+                      : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 dark:hover:from-gray-700 dark:hover:to-gray-600 text-gray-700 dark:text-gray-300 hover:shadow-md'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 transition-all duration-200 group-hover:scale-110 ${
+                    isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-primary-500'
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.description}</div>
+                  </div>
+                </Link>
+            )
+          })}
+
+          {/* Admin Panel Link - only for admins and owners */}
+          <PermissionGuard
+            requiredPermission="users.read"
+            fallback={null}
+          >
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+              <Link
+                href="/admin"
                 className={`sidebar-item w-full flex items-start space-x-3 p-4 rounded-xl text-left group ${
-                  isActive
-                    ? 'bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/30 dark:to-blue-900/30 text-primary-600 dark:text-primary-400 shadow-lg border border-primary-200 dark:border-primary-800'
+                  pathname.startsWith('/admin')
+                    ? 'bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30 text-red-600 dark:text-red-400 shadow-lg border border-red-200 dark:border-red-800'
                     : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 dark:hover:from-gray-700 dark:hover:to-gray-600 text-gray-700 dark:text-gray-300 hover:shadow-md'
                 }`}
               >
-                <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 transition-all duration-200 group-hover:scale-110 ${
-                  isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-primary-500'
+                <Settings className={`w-5 h-5 mt-0.5 flex-shrink-0 transition-all duration-200 group-hover:scale-110 ${
+                  pathname.startsWith('/admin') ? 'text-red-600 dark:text-red-400' : 'text-gray-500 group-hover:text-red-500'
                 }`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{item.label}</span>
+                    <span className="font-medium text-sm">Administration</span>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.description}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Benutzer- und Systemverwaltung</div>
                 </div>
               </Link>
-            )
-          })}
+            </div>
+          </PermissionGuard>
         </nav>
       </div>
     )
   }
 
-  // Don't render sidebar on homepage
-  if (pathname === '/' || pathname === '/home') {
+  // Don't render sidebar on homepage and auth pages
+  if (pathname === '/' || pathname === '/home' || pathname.startsWith('/auth')) {
     return <>{children}</>
   }
 

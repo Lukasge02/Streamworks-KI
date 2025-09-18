@@ -152,10 +152,6 @@ const ArvatoEnterpriseDashboard = () => {
 
   useEffect(() => {
     fetchSystemData()
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchSystemData, 30000)
-    return () => clearInterval(interval)
   }, [])
 
   const getStatusColor = (status: string) => {

@@ -23,7 +23,18 @@ import {
   BulkReprocessResponse,
   DocumentChunk,
   SystemStats,
-  ApiError
+  ApiError,
+  // XML Chat API Types
+  XMLChatSessionRequest,
+  XMLChatSessionResponse,
+  XMLChatSessionDetails,
+  XMLChatMessageRequest,
+  XMLChatMessageResponse,
+  XMLGenerationRequest,
+  XMLGenerationResponse,
+  XMLParameterStatus,
+  XMLParameterValidation,
+  XMLChatSystemStatus
 } from '@/types/api.types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
@@ -347,6 +358,59 @@ class ApiService {
 
   async getDocumentChunk(documentId: string, chunkId: string): Promise<DocumentChunk> {
     return this.request<DocumentChunk>(`/api/v1/documents/${documentId}/chunks/${chunkId}`)
+  }
+
+  // XML Chat Methods - Updated to match backend endpoints
+  async createXMLChatSession(request: XMLChatSessionRequest): Promise<XMLChatSessionResponse> {
+    return this.request<XMLChatSessionResponse>('/api/chat-xml/sessions', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: request.user_id,
+        initial_message: request.initial_context
+      }),
+    })
+  }
+
+  async getXMLChatSession(sessionId: string): Promise<XMLChatSessionDetails> {
+    return this.request<XMLChatSessionDetails>(`/api/chat-xml/sessions/${sessionId}/status`)
+  }
+
+  async sendXMLChatMessage(request: XMLChatMessageRequest): Promise<XMLChatMessageResponse> {
+    return this.request<XMLChatMessageResponse>(`/api/chat-xml/sessions/${request.session_id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({
+        message: request.message,
+        context: request.context
+      }),
+    })
+  }
+
+  async generateXMLFromChat(request: XMLGenerationRequest): Promise<XMLGenerationResponse> {
+    return this.request<XMLGenerationResponse>(`/api/chat-xml/sessions/${request.session_id}/generate-xml`, {
+      method: 'POST'
+    })
+  }
+
+  async getXMLChatParameters(sessionId: string): Promise<XMLParameterStatus[]> {
+    return this.request<XMLParameterStatus[]>(`/api/chat-xml/sessions/${sessionId}/parameters`)
+  }
+
+  async validateXMLChatParameters(sessionId: string, parameters: Record<string, any>): Promise<XMLParameterValidation> {
+    // Backend uses parameter collection endpoint for validation
+    return this.request<XMLParameterValidation>(`/api/chat-xml/sessions/${sessionId}/parameters`, {
+      method: 'POST',
+      body: JSON.stringify({ parameters })
+    })
+  }
+
+  async deleteXMLChatSession(sessionId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/api/chat-xml/sessions/${sessionId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getXMLChatStatus(): Promise<XMLChatSystemStatus> {
+    return this.request<XMLChatSystemStatus>('/api/chat-xml/health')
   }
 
   // System Methods

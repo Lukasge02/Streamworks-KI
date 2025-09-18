@@ -330,3 +330,114 @@ export interface DocumentViewerProps {
   initialDocumentId: string
   onNavigate?: (documentId: string) => void
 }
+
+// ================================
+// XML CHAT API TYPES
+// ================================
+
+export type XMLJobType = 'STANDARD' | 'SAP' | 'FILE_TRANSFER' | 'CUSTOM'
+export type XMLSessionStatus = 'CREATED' | 'COLLECTING_PARAMS' | 'GENERATING' | 'COMPLETED' | 'ERROR'
+export type XMLParameterStatusType = 'MISSING' | 'PARTIAL' | 'COMPLETE' | 'INVALID'
+
+// XML Chat Session Management
+export interface XMLChatSessionRequest {
+  user_id?: string
+  initial_context?: string
+  job_type?: XMLJobType
+}
+
+export interface XMLChatSessionResponse {
+  session_id: string
+  status: string
+  message: string
+}
+
+export interface XMLChatSessionDetails {
+  session: {
+    id: string
+    user_id: string
+    status: XMLSessionStatus
+    job_type?: XMLJobType
+    created_at: string
+    last_activity: string
+    completion_percentage: number
+  }
+  messages: XMLChatMessage[]
+  parameter_progress: {
+    total_parameters: number
+    required_parameters: number
+    completed_parameters: number
+    completion_percentage: number
+  }
+}
+
+// XML Chat Messaging
+export interface XMLChatMessageRequest {
+  session_id: string
+  message: string
+  context?: Record<string, any>
+}
+
+export interface XMLChatMessageResponse {
+  response: string
+  updated_params: Record<string, any>
+  parameter_statuses: XMLParameterStatus[]
+  completion_percentage: number
+  next_required_params: string[]
+  session_status: XMLSessionStatus
+  suggestions?: string[]
+  validation_errors?: string[]
+}
+
+export interface XMLChatMessage {
+  id: string
+  session_id: string
+  type: 'user' | 'assistant' | 'system'
+  content: string
+  timestamp: string
+  metadata?: {
+    extractedParams?: Record<string, any>
+    validationErrors?: string[]
+    suggestions?: string[]
+    parameterUpdates?: Record<string, any>
+  }
+}
+
+// XML Parameter Management
+export interface XMLParameterStatus {
+  parameter_name: string
+  current_value?: any
+  is_required: boolean
+  is_completed: boolean
+  validation_status: string
+  intelligent_suggestions: string[]
+  confidence_score: number
+}
+
+export interface XMLParameterValidation {
+  is_valid: boolean
+  errors: string[]
+  missing_required: string[]
+}
+
+// XML Generation
+export interface XMLGenerationRequest {
+  session_id: string
+  force_generation?: boolean
+}
+
+export interface XMLGenerationResponse {
+  xml_content: string
+  is_valid: boolean
+  validation_errors?: string[]
+  template_used: string
+  generation_time: number
+}
+
+// System Status
+export interface XMLChatSystemStatus {
+  chat_xml_service: string
+  active_sessions: number
+  openai_integration: string
+  overall_status: string
+}

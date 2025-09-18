@@ -5,9 +5,9 @@
 
 import React, { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { 
-  DocumentTextIcon, 
-  PhotoIcon, 
+import {
+  DocumentTextIcon,
+  PhotoIcon,
   VideoCameraIcon,
   MusicalNoteIcon,
   ArchiveBoxIcon,
@@ -17,6 +17,8 @@ import {
   ArrowDownTrayIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline'
+import { EnhancedButton } from '@/components/ui/EnhancedButton'
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
 import { DocumentWithFolder, DocumentGridProps } from '@/types/api.types'
 import { DocumentStatusBadge } from '@/components/ui/DocumentStatusBadge'
 import { t, formatUploadDate, formatProcessingDate } from '@/lib/translations'
@@ -275,12 +277,13 @@ function DocumentInfoModal({ isOpen, onClose, document: doc }: DocumentInfoModal
 
         {/* Footer */}
         <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-700">
-          <button
+          <EnhancedButton
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
+            variant="secondary"
+            size="sm"
           >
             {t('actions.close')}
-          </button>
+          </EnhancedButton>
         </div>
       </div>
     </div>
@@ -628,16 +631,21 @@ export function DocumentGrid({
     return (
       <div className="p-6">
         <div className={`
-          ${viewMode === 'grid' 
-            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6' 
+          ${viewMode === 'grid'
+            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6'
             : 'space-y-2'
           }
         `}>
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className={`
-              animate-pulse bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-600
-              ${viewMode === 'grid' ? 'min-h-[140px]' : 'h-16'}
-            `} />
+            <SkeletonLoader
+              key={i}
+              loading={true}
+              variant={viewMode === 'grid' ? 'rectangular' : 'text'}
+              height={viewMode === 'grid' ? '200px' : '64px'}
+              lines={viewMode === 'list' ? 2 : undefined}
+            >
+              <div />
+            </SkeletonLoader>
           ))}
         </div>
       </div>

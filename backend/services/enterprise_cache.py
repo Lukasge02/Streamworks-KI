@@ -18,6 +18,8 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+__all__ = ['EnterpriseCacheService', 'get_cache_service', 'cache_response']
+
 class EnterpriseCacheService:
     """Enterprise-grade Redis caching service mit compression und TTL management"""
     
@@ -368,6 +370,10 @@ class EnterpriseCacheService:
 
 # Global cache service instance
 cache_service = EnterpriseCacheService()
+
+def get_cache_service() -> EnterpriseCacheService:
+    """Get the global cache service instance"""
+    return cache_service
 
 # Cache decorators für common patterns
 def cache_response(prefix: str, ttl_seconds: int = 3600):

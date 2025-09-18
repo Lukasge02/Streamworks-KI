@@ -6,7 +6,7 @@ Dedicated endpoint for upload progress tracking only
 import logging
 from typing import Dict
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from services.upload_job_manager import upload_job_manager, UploadJobProgress
+from services.upload_job_manager_refactored import upload_job_manager, UploadJobProgress
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

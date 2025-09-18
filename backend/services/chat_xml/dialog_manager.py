@@ -18,6 +18,7 @@ from services.llm_factory import get_llm_service
 from services.xml_template_engine import get_template_engine
 from services.ai.parameter_extraction_ai import get_parameter_extraction_ai, ExtractionContext, ParameterExtractionMode
 from services.ai.chat_xml_database_service import get_chat_xml_database_service
+from services.enterprise_cache import get_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,7 @@ class DialogManager:
         self.parameter_extractor = get_parameter_extractor()
         self.llm_service = None  # Will be initialized on first use
         self.template_engine = get_template_engine()
+        self.db_service = None  # Will be initialized on first use
 
         # Enhanced Configuration
         self.max_retry_attempts = 3
@@ -178,6 +180,13 @@ class DialogManager:
                 logger.warning(f"OpenAI not available, falling back to default LLM: {e}")
                 self.llm_service = await get_llm_service()
         return self.llm_service
+
+    async def _get_db_service(self):
+        """Get Database service instance (lazy initialization) - Temporarily disabled"""
+        # Temporarily disabled due to foreign key schema mismatch
+        # TODO: Fix database schema and re-enable
+        logger.debug("Database service temporarily disabled due to schema issues")
+        return None
 
     def _initialize_intelligent_prompts(self) -> IntelligentPromptTemplate:
         """Initialize advanced prompt templates for OpenAI intelligence"""
@@ -321,14 +330,31 @@ Erstelle eine verbesserte Extraktionsstrategie und eine höfliche Nachfrage."""
 
             # Enhanced context and intent analysis with OpenAI
             context = self._determine_dialog_context(session)
-            intent, intent_confidence = await self._analyze_user_intent_with_ai(
+
+            # PERFORMANCE OPTIMIZATION: Parallelize AI operations
+            import asyncio
+            intent_task = asyncio.create_task(self._analyze_user_intent_with_ai(
                 user_message, context, session, memory
+            ))
+            extraction_task = asyncio.create_task(self._intelligent_parameter_extraction(
+                user_message, session, memory
+            ))
+
+            # Wait for both AI operations to complete in parallel
+            (intent, intent_confidence), extracted_data = await asyncio.gather(
+                intent_task,
+                extraction_task,
+                return_exceptions=True
             )
 
-            # Intelligent parameter extraction before processing - Phase 3+ Enhancement
-            extracted_data = await self._intelligent_parameter_extraction(
-                user_message, session, memory
-            )
+            # Handle potential exceptions from parallel execution
+            if isinstance((intent, intent_confidence), Exception):
+                logger.warning(f"Intent analysis failed: {(intent, intent_confidence)}")
+                intent, intent_confidence = DialogIntent.PARAMETER_REQUEST, 0.5
+
+            if isinstance(extracted_data, Exception):
+                logger.warning(f"Parameter extraction failed: {extracted_data}")
+                extracted_data = None
 
             # Update conversation memory with extracted parameters and metadata
             if extracted_data and extracted_data.get("parameters"):
@@ -338,30 +364,55 @@ Erstelle eine verbesserte Extraktionsstrategie und eine höfliche Nachfrage."""
                 # Store in conversation memory
                 memory.extracted_parameters.update(extracted_params)
 
-                # Store in database for persistence and analytics
-                try:
-                    db_service = get_chat_xml_database_service()
-                    await db_service.update_session_parameters(
-                        session_id=uuid.UUID(session_id),
-                        parameters=extracted_params,
-                        extraction_metadata=ai_metadata,
-                        completion_percentage=session.completion_percentage
-                    )
-                    logger.info(f"Stored {len(extracted_params)} parameters in database")
-                except Exception as e:
-                    logger.warning(f"Failed to store parameters in database: {str(e)}")
-
-                # Update session service for legacy compatibility
-                for param_name, value in extracted_params.items():
+                # PERFORMANCE OPTIMIZATION: Parallelize database and session operations
+                async def update_database():
                     try:
-                        success, message, next_prompt = self.session_service.collect_parameter(
-                            session_id, param_name, value
-                        )
-                        if success:
-                            confidence = extracted_data.get("confidence_scores", {}).get(param_name, "N/A")
-                            logger.info(f"✅ Parameter '{param_name}' = '{value}' (confidence: {confidence})")
+                        db_service = await self._get_db_service()
+                        if db_service:
+                            await db_service.update_session_parameters(
+                                session_id=uuid.UUID(session_id),
+                                parameters=extracted_params,
+                                extraction_metadata=ai_metadata,
+                                completion_percentage=session.completion_percentage
+                            )
+                            logger.info(f"Stored {len(extracted_params)} parameters in database")
+                        else:
+                            logger.warning("Database service not available for parameter storage")
                     except Exception as e:
-                        logger.warning(f"Failed to update session service for parameter {param_name}: {str(e)}")
+                        logger.warning(f"Failed to store parameters in database: {str(e)}")
+
+                async def update_session_service():
+                    # PERFORMANCE OPTIMIZATION: Parallelize parameter collection
+                    async def collect_single_parameter(param_name, value):
+                        try:
+                            success, message, next_prompt = self.session_service.collect_parameter(
+                                session_id, param_name, value
+                            )
+                            if success:
+                                confidence = extracted_data.get("confidence_scores", {}).get(param_name, "N/A")
+                                logger.info(f"✅ Parameter '{param_name}' = '{value}' (confidence: {confidence})")
+                                return (param_name, True, message)
+                            else:
+                                logger.warning(f"❌ Failed to collect parameter '{param_name}': {message}")
+                                return (param_name, False, message)
+                        except Exception as e:
+                            logger.warning(f"Exception collecting parameter {param_name}: {str(e)}")
+                            return (param_name, False, str(e))
+
+                    # Run all parameter collections in parallel
+                    if extracted_params:
+                        parameter_tasks = [
+                            collect_single_parameter(param_name, value)
+                            for param_name, value in extracted_params.items()
+                        ]
+                        await asyncio.gather(*parameter_tasks, return_exceptions=True)
+
+                # Run database and session updates in parallel
+                await asyncio.gather(
+                    update_database(),
+                    update_session_service(),
+                    return_exceptions=True
+                )
 
                 # Store AI suggestions and warnings
                 if extracted_data.get("suggestions"):

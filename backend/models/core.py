@@ -15,6 +15,13 @@ from enum import Enum
 
 Base = declarative_base()
 
+# Import auth models to ensure they're registered with Base
+try:
+    from models.auth import User, Company, UserSession
+except ImportError:
+    # Auth models not yet available during initial migration
+    pass
+
 
 class DocumentStatus(str, Enum):
     """Document processing status with German labels"""
@@ -97,14 +104,20 @@ class Folder(Base):
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
-    # Multi-user support (for future)
-    created_by = Column(UUID(as_uuid=True), nullable=True)
+
+    # RBAC Support - Multi-tenant architecture
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey('companies.id', ondelete='SET NULL'), nullable=True)
+    created_by = Column(UUID(as_uuid=True), nullable=True)  # Legacy field
     
     # Relationships
     parent = relationship("Folder", remote_side=[id])
     children = relationship("Folder", back_populates="parent")
     documents = relationship("Document", back_populates="folder")
+
+    # RBAC Relationships
+    user = relationship("User", back_populates="folders", foreign_keys=[user_id])
+    company = relationship("Company", back_populates="folders", foreign_keys=[company_id])
     
     def __repr__(self):
         return f"<Folder(id={self.id}, name='{self.name}', path={self.path})>"
@@ -143,9 +156,11 @@ class Document(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     processed_at = Column(DateTime, nullable=True)
-    
-    # Multi-user support (for future)
-    created_by = Column(UUID(as_uuid=True), nullable=True)
+
+    # RBAC Support - Multi-tenant architecture
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey('companies.id', ondelete='SET NULL'), nullable=True)
+    created_by = Column(UUID(as_uuid=True), nullable=True)  # Legacy field
     
     # Search and categorization
     tags = Column(ARRAY(String), nullable=False, default=list)
@@ -157,6 +172,10 @@ class Document(Base):
 
     # Relationships
     folder = relationship("Folder", back_populates="documents")
+
+    # RBAC Relationships
+    user = relationship("User", back_populates="documents", foreign_keys=[user_id])
+    company = relationship("Company", back_populates="documents", foreign_keys=[company_id])
     
     def __repr__(self):
         return f"<Document(id={self.id}, filename='{self.filename}', folder_id={self.folder_id})>"
@@ -184,8 +203,10 @@ class XMLStream(Base):
     job_type = Column(String(50), nullable=True, default="standard")
     status = Column(String(50), nullable=False, default="draft", index=True)
 
-    # User and workflow
-    created_by = Column(String(100), nullable=False, default="system")
+    # RBAC Support - Multi-tenant architecture
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey('companies.id', ondelete='SET NULL'), nullable=True)
+    created_by = Column(String(100), nullable=False, default="system")  # Legacy field
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -197,6 +218,10 @@ class XMLStream(Base):
     is_favorite = Column(Boolean, default=False, nullable=False)
     version = Column(Integer, default=1, nullable=False)
     template_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # RBAC Relationships
+    user = relationship("User", back_populates="xml_streams", foreign_keys=[user_id])
+    company = relationship("Company", back_populates="xml_streams", foreign_keys=[company_id])
 
     def __repr__(self):
         return f"<XMLStream(id={self.id}, stream_name='{self.stream_name}', status='{self.status}')>"
@@ -214,8 +239,8 @@ class ChatSession(Base):
 
     # Session metadata
     title = Column(Text, nullable=False)
-    user_id = Column(Text, nullable=False, index=True)
-    company_id = Column(UUID(as_uuid=True), nullable=True, default=uuid.UUID('00000000-0000-0000-0000-000000000001'))
+    user_id = Column(Text, nullable=False, index=True)  # Legacy string field for compatibility
+    company_id = Column(UUID(as_uuid=True), ForeignKey('companies.id', ondelete='SET NULL'), nullable=True, default=uuid.UUID('00000000-0000-0000-0000-000000000001'))
 
     # Session statistics
     message_count = Column(Integer, default=0, nullable=False)
@@ -235,6 +260,9 @@ class ChatSession(Base):
 
     # Relationships
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+
+    # RBAC Relationships
+    company = relationship("Company", back_populates="chat_sessions", foreign_keys=[company_id])
 
     def __repr__(self):
         return f"<ChatSession(id={self.id}, title='{self.title}', user_id='{self.user_id}')>"
@@ -294,7 +322,8 @@ class ChatXMLSession(Base):
 
     # Session metadata
     session_name = Column(String(255), nullable=False)
-    user_id = Column(String(100), nullable=False, index=True)
+    user_id = Column(String(100), nullable=False, index=True)  # Legacy string field for compatibility
+    company_id = Column(UUID(as_uuid=True), ForeignKey('companies.id', ondelete='SET NULL'), nullable=True)
     job_type = Column(String(50), nullable=False, index=True)  # STANDARD, SAP, FILE_TRANSFER, CUSTOM
 
     # Session status and workflow
@@ -325,6 +354,9 @@ class ChatXMLSession(Base):
 
     # Relationships
     xml_messages = relationship("ChatXMLMessage", back_populates="session", cascade="all, delete-orphan")
+
+    # RBAC Relationships
+    company = relationship("Company", back_populates="chat_xml_sessions", foreign_keys=[company_id])
 
     def __repr__(self):
         return f"<ChatXMLSession(id={self.id}, job_type='{self.job_type}', status='{self.status}')>"
