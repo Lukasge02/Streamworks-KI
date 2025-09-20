@@ -4,11 +4,10 @@ WebSocket Router for Real-time Upload Progress
 
 import asyncio
 import logging
-import uuid
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from services.websocket_manager import ConnectionManager
-from services.di_container import get_service
+from services.upload_job_manager_refactored import upload_job_manager
 
 router = APIRouter(prefix="/ws", tags=["websockets"])
 logger = logging.getLogger(__name__)

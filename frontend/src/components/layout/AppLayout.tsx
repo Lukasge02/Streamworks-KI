@@ -209,19 +209,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className="h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
         <CleanHeader />
-        
-        <div className="flex flex-1 overflow-hidden">
+
+        <div className="flex flex-1 overflow-hidden min-w-0">
           <Sidebar />
-          
-          <main className={`flex-1 ${pathname.startsWith('/xml') ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+
+          <main className="flex-1 overflow-hidden min-w-0">
             <motion.div
               key={pathname}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className={pathname.startsWith('/xml') ? 'min-h-full' : 'h-full'}
+              className="h-full w-full"
             >
               {children}
             </motion.div>

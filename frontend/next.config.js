@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Performance optimizations (swcMinify is now default in Next.js 15)
+  swcMinify: true,
   compress: true,
   
   // Cache optimization for development stability
@@ -53,6 +54,11 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+      };
+
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'monaco-editor': 'monaco-editor/esm/vs/editor/editor.api.js',
       };
     }
     

@@ -25,7 +25,7 @@ import { DocumentGrid } from './DocumentGrid'
 import dynamic from 'next/dynamic'
 
 // Make DocumentViewerModal client-side only
-const DocumentViewerModal = dynamic(() => import('./DocumentViewerModal').then(mod => ({ default: mod.DocumentViewerModal })), {
+const DocumentViewerModal = dynamic(() => import('./DocumentViewerModal'), {
   ssr: false,
   loading: () => null
 })
@@ -568,8 +568,8 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
   const error = foldersError || documentsError
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      
+    <div className="h-full w-full flex flex-col overflow-hidden">
+
       {/* Error Display */}
       {error && (
         <div className="flex-shrink-0 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 mx-6 mt-4">
@@ -578,12 +578,12 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
       )}
 
       {/* Main Content with Split Headers */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 w-full overflow-hidden">
         <PanelGroup direction="horizontal">
-          
+
           {/* Sidebar with integrated Header */}
           <Panel defaultSize={25} minSize={20} maxSize={40}>
-            <div className="h-full border-r bg-gray-50 dark:bg-gray-800 flex flex-col overflow-hidden">
+            <div className="h-full w-full border-r bg-gray-50 dark:bg-gray-800 flex flex-col overflow-hidden">
               
               {/* Sidebar Header */}
               <div className="flex-shrink-0 h-[73px] border-b bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 px-4 py-4 flex flex-col justify-center">
@@ -616,7 +616,7 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
 
           {/* Main Content Area with integrated Action Bar Header */}
           <Panel defaultSize={75}>
-            <div className="h-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+            <div className="h-full w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
               
               {/* Document Area Header with Action Bar */}
               <div className="flex-shrink-0 min-h-[73px] border-b bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
@@ -802,7 +802,7 @@ export function DocumentManager({ defaultView }: DocumentManagerProps) {
 
 
               {/* Scrollable Document Grid - ONLY this area scrolls */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-gray-900">
+              <div className="flex-1 w-full overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-gray-900">
                 {!viewState.currentFolder && !viewState.isGlobalView ? (
                   <div className="h-full flex items-center justify-center">
                     <div className="text-center">

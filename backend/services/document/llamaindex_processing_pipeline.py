@@ -63,7 +63,7 @@ class LlamaIndexProcessingPipeline:
             # Progress tracking (if available)
             if job_id:
                 try:
-                    from services.upload_job_manager import upload_job_manager, UploadStage
+                    from services.upload_job_manager_refactored import upload_job_manager, UploadStage
                     from routers.websockets import send_upload_progress_to_document_sync
 
                     job = upload_job_manager.update_job_progress(
@@ -100,7 +100,7 @@ class LlamaIndexProcessingPipeline:
 
             if job_id:
                 try:
-                    from services.upload_job_manager import upload_job_manager, UploadStage
+                    from services.upload_job_manager_refactored import upload_job_manager, UploadStage
                     from routers.websockets import send_upload_progress_to_document_sync
 
                     job = upload_job_manager.update_job_progress(
@@ -125,7 +125,7 @@ class LlamaIndexProcessingPipeline:
 
             if job_id:
                 try:
-                    from services.upload_job_manager import upload_job_manager, UploadStage
+                    from services.upload_job_manager_refactored import upload_job_manager, UploadStage
                     from routers.websockets import send_upload_progress_to_document_sync
 
                     job = upload_job_manager.update_job_progress(
@@ -162,7 +162,7 @@ class LlamaIndexProcessingPipeline:
 
             if job_id:
                 try:
-                    from services.upload_job_manager import upload_job_manager
+                    from services.upload_job_manager_refactored import upload_job_manager
                     upload_job_manager.complete_job(job_id, len(chunks))
                 except ImportError:
                     logger.info("Upload job manager not available for job completion")
@@ -210,7 +210,7 @@ class LlamaIndexProcessingPipeline:
 
             if job_id:
                 try:
-                    from services.upload_job_manager import upload_job_manager
+                    from services.upload_job_manager_refactored import upload_job_manager
                     upload_job_manager.fail_job(job_id, error_message)
                 except ImportError:
                     logger.info("Upload job manager not available for job failure notification")

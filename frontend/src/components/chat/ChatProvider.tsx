@@ -175,7 +175,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         session_id: sessionId,
         sources: response.sources,
         confidence_score: response.confidence_score,
-        processing_time: response.processing_time,
+        processing_time: typeof response.processing_time === 'string' ? parseFloat(response.processing_time) : response.processing_time,
         model_info: response.model_info,
       })
     } catch (error) {

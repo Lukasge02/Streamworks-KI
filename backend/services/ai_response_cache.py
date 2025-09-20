@@ -24,8 +24,8 @@ class CacheEntry:
 class AIResponseCache:
     """Thread-safe in-memory cache for AI responses"""
 
-    def __init__(self, max_size: int = 1000, ttl_seconds: int = 3600):
-        """Initialize cache with size limit and TTL"""
+    def __init__(self, max_size: int = 2000, ttl_seconds: int = 7200):
+        """Initialize cache with size limit and TTL - PERFORMANCE OPTIMIZED"""
         self.max_size = max_size
         self.ttl_seconds = ttl_seconds
         self._cache: Dict[str, CacheEntry] = {}
@@ -159,12 +159,12 @@ class AIResponseCache:
 _global_cache = None
 
 def get_ai_cache() -> AIResponseCache:
-    """Get or create global AI response cache"""
+    """Get or create global AI response cache - PERFORMANCE OPTIMIZED"""
     global _global_cache
     if _global_cache is None:
         _global_cache = AIResponseCache(
-            max_size=1000,
-            ttl_seconds=3600  # 1 hour default TTL
+            max_size=2000,      # Doubled for better hit rate
+            ttl_seconds=7200    # 2 hours for longer retention
         )
     return _global_cache
 

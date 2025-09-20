@@ -14,6 +14,9 @@ from ..qdrant_rag_service import get_rag_service
 from .context_manager import get_context_manager
 from .query_processor import get_query_processor
 from .adaptive_retrieval import get_adaptive_retriever
+from ..performance_monitor import performance_monitor, PerformanceTracker
+from ..ai_response_cache import get_cached_ai_response, cache_ai_response
+from ..advanced_cache_system import get_advanced_cache
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +40,7 @@ class UnifiedRAGService:
         self._query_processor = None
         self._adaptive_retriever = None
         self._query_cache = {}
+        self._advanced_cache = None  # Advanced multi-level cache
         self._performance_metrics = {
             "total_queries": 0,
             "avg_response_time": 0.0,
@@ -60,6 +64,10 @@ class UnifiedRAGService:
             # Initialize Context Manager
             self._context_manager = await get_context_manager()
             logger.info("✅ Context Manager initialized")
+
+            # Initialize Advanced Cache System
+            self._advanced_cache = await get_advanced_cache()
+            logger.info("✅ Advanced Multi-Level Cache System initialized")
 
             # Initialize Phase 2 components
             try:
@@ -105,7 +113,7 @@ class UnifiedRAGService:
         user_id: Optional[str] = None
     ) -> RAGResponse:
         """
-        Process a query using the unified RAG system
+        Process a query using the unified RAG system - PERFORMANCE OPTIMIZED
 
         Args:
             query: User query
@@ -117,57 +125,93 @@ class UnifiedRAGService:
         Returns:
             RAGResponse with answer and metadata
         """
-        start_time = time.time()
+        async with PerformanceTracker("unified_rag", "query_processing", {"mode": mode.value, "query_length": len(query)}) as tracker:
+            start_time = time.time()
 
-        if not await self.initialize():
-            raise Exception("Failed to initialize RAG service")
+            if not await self.initialize():
+                raise Exception("Failed to initialize RAG service")
 
-        try:
-            logger.info(f"🔍 Processing query in {mode.value} mode: {query[:100]}...")
+            # Advanced multi-level cache lookup
+            cache_key = f"{query}_{mode.value}_{str(filters)}_{str(conversation_context)}"
 
-            # Check if Phase 2 components are available
-            use_phase2 = (self._query_processor is not None and
-                         self._adaptive_retriever is not None)
+            # Generate query embedding for semantic cache
+            query_embedding = None
+            if self._llamaindex_service and self._llamaindex_service.embed_model:
+                try:
+                    query_embedding = self._llamaindex_service.embed_model.get_text_embedding(query)
+                except Exception as e:
+                    logger.warning(f"Failed to generate query embedding for cache: {str(e)}")
 
-            if use_phase2:
-                logger.info("🚀 Using Phase 2 enhanced RAG pipeline")
-                self._performance_metrics["phase2_queries"] += 1
-
-                # Phase 2: Advanced Query Processing
-                from . import QueryContext
-                query_context = QueryContext(
-                    original_query=query,
-                    conversation_context=conversation_context or [],
-                    session_id=session_id,
-                    user_id=user_id,
-                    filters=filters,
-                    mode=mode
+            # Try advanced cache first
+            cached_response = None
+            if self._advanced_cache:
+                cached_response = await self._advanced_cache.get(
+                    key=cache_key,
+                    semantic_vector=query_embedding,
+                    use_semantic=True
                 )
 
-                enhanced_query, sub_queries, query_metadata = await self._query_processor.process_query(
-                    query_context=query_context,
-                    mode=mode
+            # Fallback to simple cache
+            if not cached_response:
+                cached_response = get_cached_ai_response(cache_key, method="rag_unified")
+
+            if cached_response:
+                logger.info(f"🎯 Cache HIT for RAG query: {query[:50]}...")
+                await performance_monitor.record_metric(
+                    component="cache",
+                    operation="rag_query_hit",
+                    duration_ms=1,
+                    cache_hit=True
                 )
-                logger.info(f"📝 Phase 2 query enhancement: {len(sub_queries)} sub-queries generated")
+                self._performance_metrics["cache_hits"] += 1
+                return cached_response
 
-                # Phase 2: Adaptive Retrieval
-                processed_sources = await self._adaptive_retriever.retrieve(
-                    query=query,
-                    enhanced_query=enhanced_query,
-                    sub_queries=sub_queries,
-                    mode=mode,
-                    filters=filters
-                )
-                logger.info(f"🔍 Phase 2 adaptive retrieval: {len(processed_sources)} sources")
+            try:
+                logger.info(f"🔍 Processing query in {mode.value} mode: {query[:100]}...")
 
-                # Generate answer from retrieved sources
-                if processed_sources:
-                    context_texts = [source.content for source in processed_sources]
-                    context_str = "\n\n".join(context_texts[:8])  # Limit context
+                # Check if Phase 2 components are available
+                use_phase2 = (self._query_processor is not None and
+                             self._adaptive_retriever is not None)
 
-                    from llama_index.core.prompts import PromptTemplate
-                    qa_template = PromptTemplate(
-                        """Basierend auf dem folgenden Kontext, beantworte die Frage:
+                if use_phase2:
+                    logger.info("🚀 Using Phase 2 enhanced RAG pipeline")
+                    self._performance_metrics["phase2_queries"] += 1
+
+                    # Phase 2: Advanced Query Processing
+                    from . import QueryContext
+                    query_context = QueryContext(
+                        original_query=query,
+                        conversation_context=conversation_context or [],
+                        session_id=session_id,
+                        user_id=user_id,
+                        filters=filters,
+                        mode=mode
+                    )
+
+                    enhanced_query, sub_queries, query_metadata = await self._query_processor.process_query(
+                        query_context=query_context,
+                        mode=mode
+                    )
+                    logger.info(f"📝 Phase 2 query enhancement: {len(sub_queries)} sub-queries generated")
+
+                    # Phase 2: Adaptive Retrieval
+                    processed_sources = await self._adaptive_retriever.retrieve(
+                        query=query,
+                        enhanced_query=enhanced_query,
+                        sub_queries=sub_queries,
+                        mode=mode,
+                        filters=filters
+                    )
+                    logger.info(f"🔍 Phase 2 adaptive retrieval: {len(processed_sources)} sources")
+
+                    # Generate answer from retrieved sources
+                    if processed_sources:
+                        context_texts = [source.content for source in processed_sources]
+                        context_str = "\n\n".join(context_texts[:8])  # Limit context
+
+                        from llama_index.core.prompts import PromptTemplate
+                        qa_template = PromptTemplate(
+                            """Basierend auf dem folgenden Kontext, beantworte die Frage:
 
 KONTEXT:
 {context_str}
@@ -175,144 +219,174 @@ KONTEXT:
 FRAGE: {query_str}
 
 ANTWORT:"""
-                    )
+                        )
 
-                    response_prompt = qa_template.format(
-                        context_str=context_str,
-                        query_str=query
-                    )
+                        response_prompt = qa_template.format(
+                            context_str=context_str,
+                            query_str=query
+                        )
 
-                    response = await self._llamaindex_service.llm.acomplete(response_prompt)
-                    answer = str(response).strip()
+                        response = await self._llamaindex_service.llm.acomplete(response_prompt)
+                        answer = str(response).strip()
+                    else:
+                        answer = "Entschuldigung, ich konnte keine relevanten Informationen finden."
+
                 else:
-                    answer = "Entschuldigung, ich konnte keine relevanten Informationen finden."
+                    # Phase 1: Fallback to basic RAG pipeline
+                    logger.info("🔄 Using Phase 1 basic RAG pipeline")
 
-            else:
-                # Phase 1: Fallback to basic RAG pipeline
-                logger.info("🔄 Using Phase 1 basic RAG pipeline")
+                    # 1. Query preprocessing and enhancement
+                    enhanced_query = await self._enhance_query(query, conversation_context, mode)
 
-                # 1. Query preprocessing and enhancement
-                enhanced_query = await self._enhance_query(query, conversation_context, mode)
+                    # 2. Determine retrieval parameters based on mode
+                    retrieval_params = self._get_retrieval_parameters(mode, max_sources)
 
-                # 2. Determine retrieval parameters based on mode
-                retrieval_params = self._get_retrieval_parameters(mode, max_sources)
+                    # 3. Execute RAG pipeline
+                    answer, sources = await self._llamaindex_service.query_documents(
+                        query=enhanced_query,
+                        doc_filters=filters,
+                        top_k=retrieval_params["top_k"]
+                    )
 
-                # 3. Execute RAG pipeline
-                answer, sources = await self._llamaindex_service.query_documents(
-                    query=enhanced_query,
-                    doc_filters=filters,
-                    top_k=retrieval_params["top_k"]
+                    # 4. Process and rank sources
+                    processed_sources = await self._process_sources(sources, query, max_sources)
+
+                # 5. Enhance response quality
+                enhanced_answer = await self._enhance_response(answer, processed_sources, mode)
+
+                # 6. Calculate confidence score
+                confidence_score = await self._calculate_confidence(
+                    enhanced_answer, processed_sources, query
                 )
 
-                # 4. Process and rank sources
-                processed_sources = await self._process_sources(sources, query, max_sources)
+                processing_time = int((time.time() - start_time) * 1000)
 
-            # 5. Enhance response quality
-            enhanced_answer = await self._enhance_response(answer, processed_sources, mode)
+                # 7. Update metrics
+                self._update_metrics(processing_time)
 
-            # 6. Calculate confidence score
-            confidence_score = await self._calculate_confidence(
-                enhanced_answer, processed_sources, query
-            )
-
-            processing_time = int((time.time() - start_time) * 1000)
-
-            # 7. Update metrics
-            self._update_metrics(processing_time)
-
-            # 8. Context management and follow-up suggestions
-            follow_up_suggestions = []
-            if session_id and user_id and self._context_manager:
-                # Add user query to context
-                await self._context_manager.add_conversation_turn(
-                    session_id=session_id,
-                    user_id=user_id,
-                    role="user",
-                    content=query
-                )
-
-                # Add assistant response to context
-                await self._context_manager.add_conversation_turn(
-                    session_id=session_id,
-                    user_id=user_id,
-                    role="assistant",
-                    content=enhanced_answer,
-                    confidence_score=confidence_score,
-                    sources_used=[source.document_id for source in processed_sources]
-                )
-
-                # Generate follow-up suggestions
-                try:
-                    follow_up_suggestions = await self._context_manager.suggest_follow_up_questions(
+                # 8. Context management and follow-up suggestions
+                follow_up_suggestions = []
+                if session_id and user_id and self._context_manager:
+                    # Add user query to context
+                    await self._context_manager.add_conversation_turn(
                         session_id=session_id,
                         user_id=user_id,
-                        last_response=enhanced_answer
+                        role="user",
+                        content=query
                     )
-                except Exception as e:
-                    logger.warning(f"Failed to generate follow-up suggestions: {str(e)}")
 
-            # 9. Create response with enhanced metadata
-            metadata = {
-                "mode_used": mode.value,
-                "query_length": len(query),
-                "enhanced_query": enhanced_query if not use_phase2 else enhanced_query,
-                "sources_returned": len(processed_sources),
-                "model_used": "llama-index + ollama",
-                "follow_up_suggestions": follow_up_suggestions,
-                "timestamp": datetime.now().isoformat(),
-                "pipeline": "phase2" if use_phase2 else "phase1"
-            }
+                    # Add assistant response to context
+                    await self._context_manager.add_conversation_turn(
+                        session_id=session_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=enhanced_answer,
+                        confidence_score=confidence_score,
+                        sources_used=[source.document_id for source in processed_sources]
+                    )
 
-            if use_phase2:
-                # Add Phase 2 specific metadata
-                metadata.update({
-                    "query_processing": query_metadata,
-                    "sub_queries_generated": len(sub_queries),
-                    "retrieval_strategy": "adaptive_multi_query",
-                    "enhancement_features": [
-                        "query_expansion",
-                        "sub_query_generation",
-                        "adaptive_retrieval",
-                        "similarity_reranking",
-                        "diversity_enhancement"
-                    ]
-                })
-            else:
-                # Add Phase 1 specific metadata
-                metadata.update({
-                    "total_sources_found": len(sources),
-                    "retrieval_strategy": "basic_vector_search"
-                })
+                    # Generate follow-up suggestions
+                    try:
+                        follow_up_suggestions = await self._context_manager.suggest_follow_up_questions(
+                            session_id=session_id,
+                            user_id=user_id,
+                            last_response=enhanced_answer
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to generate follow-up suggestions: {str(e)}")
 
-            rag_response = RAGResponse(
-                answer=enhanced_answer,
-                confidence_score=confidence_score,
-                sources=[source.__dict__ for source in processed_sources],
-                metadata=metadata,
-                processing_time_ms=processing_time,
-                mode_used=mode
-            )
-
-            logger.info(f"✅ Query processed successfully in {processing_time}ms (confidence: {confidence_score:.2f})")
-            return rag_response
-
-        except Exception as e:
-            logger.error(f"❌ Query processing failed: {str(e)}")
-
-            # Fallback response
-            processing_time = int((time.time() - start_time) * 1000)
-            return RAGResponse(
-                answer="Entschuldigung, ich konnte Ihre Anfrage nicht vollständig verarbeiten. Bitte versuchen Sie es erneut oder formulieren Sie Ihre Frage anders.",
-                confidence_score=0.0,
-                sources=[],
-                metadata={
-                    "error": str(e),
+                # 9. Create response with enhanced metadata
+                metadata = {
                     "mode_used": mode.value,
-                    "timestamp": datetime.now().isoformat()
-                },
-                processing_time_ms=processing_time,
-                mode_used=mode
-            )
+                    "query_length": len(query),
+                    "enhanced_query": enhanced_query if not use_phase2 else enhanced_query,
+                    "sources_returned": len(processed_sources),
+                    "model_used": "llama-index + ollama",
+                    "follow_up_suggestions": follow_up_suggestions,
+                    "timestamp": datetime.now().isoformat(),
+                    "pipeline": "phase2" if use_phase2 else "phase1"
+                }
+
+                if use_phase2:
+                    # Add Phase 2 specific metadata
+                    metadata.update({
+                        "query_processing": query_metadata,
+                        "sub_queries_generated": len(sub_queries),
+                        "retrieval_strategy": "adaptive_multi_query",
+                        "enhancement_features": [
+                            "query_expansion",
+                            "sub_query_generation",
+                            "adaptive_retrieval",
+                            "similarity_reranking",
+                            "diversity_enhancement"
+                        ]
+                    })
+                else:
+                    # Add Phase 1 specific metadata
+                    metadata.update({
+                        "total_sources_found": len(sources),
+                        "retrieval_strategy": "basic_vector_search"
+                    })
+
+                rag_response = RAGResponse(
+                    answer=enhanced_answer,
+                    confidence_score=confidence_score,
+                    sources=[source.__dict__ for source in processed_sources],
+                    metadata=metadata,
+                    processing_time_ms=processing_time,
+                    mode_used=mode
+                )
+
+                # Cache the response for future queries (performance optimization)
+                if confidence_score > 0.7:  # Only cache high-confidence responses
+                    # Use advanced cache system
+                    if self._advanced_cache and query_embedding:
+                        await self._advanced_cache.set(
+                            key=cache_key,
+                            value=rag_response,
+                            ttl=7200,  # 2 hours for high-confidence responses
+                            semantic_vector=query_embedding,
+                            confidence_score=confidence_score,
+                            tags=['rag_response', mode.value, 'high_confidence']
+                        )
+                        logger.debug(f"💾 Cached RAG response in advanced cache (score: {confidence_score:.2f})")
+                    else:
+                        # Fallback to simple cache
+                        cache_ai_response(cache_key, rag_response, method="rag_unified")
+                        logger.debug(f"💾 Cached RAG response in simple cache (score: {confidence_score:.2f})")
+
+                # Record final performance metrics
+                await performance_monitor.record_metric(
+                    component="unified_rag",
+                    operation="query_complete",
+                    duration_ms=processing_time,
+                    metadata={
+                        "confidence_score": confidence_score,
+                        "sources_count": len(processed_sources),
+                        "pipeline": "phase2" if use_phase2 else "phase1"
+                    }
+                )
+
+                logger.info(f"✅ Query processed successfully in {processing_time}ms (confidence: {confidence_score:.2f})")
+                return rag_response
+
+            except Exception as e:
+                logger.error(f"❌ Query processing failed: {str(e)}")
+
+                # Fallback response
+                processing_time = int((time.time() - start_time) * 1000)
+                return RAGResponse(
+                    answer="Entschuldigung, ich konnte Ihre Anfrage nicht vollständig verarbeiten. Bitte versuchen Sie es erneut oder formulieren Sie Ihre Frage anders.",
+                    confidence_score=0.0,
+                    sources=[],
+                    metadata={
+                        "error": str(e),
+                        "mode_used": mode.value,
+                        "timestamp": datetime.now().isoformat()
+                    },
+                    processing_time_ms=processing_time,
+                    mode_used=mode
+                )
 
     async def _enhance_query(
         self,
@@ -491,12 +565,52 @@ ANTWORT:"""
 
     async def get_performance_metrics(self) -> Dict[str, Any]:
         """Get detailed performance metrics"""
+        # Get advanced cache statistics
+        advanced_cache_stats = {}
+        if self._advanced_cache:
+            try:
+                advanced_cache_stats = self._advanced_cache.get_statistics()
+            except Exception as e:
+                logger.warning(f"Failed to get advanced cache stats: {str(e)}")
+
         return {
             **self._performance_metrics,
             "cache_size": len(self._query_cache),
+            "advanced_cache": advanced_cache_stats,
             "initialized": self._initialized,
             "timestamp": datetime.now().isoformat()
         }
+
+    async def optimize_cache(self) -> Dict[str, Any]:
+        """Optimize cache performance and return results"""
+        if not self._advanced_cache:
+            return {"error": "Advanced cache not initialized"}
+
+        try:
+            optimization_results = await self._advanced_cache.optimize()
+            logger.info(f"✅ Cache optimization completed in {optimization_results['optimization_time_ms']:.2f}ms")
+            return optimization_results
+        except Exception as e:
+            logger.error(f"❌ Cache optimization failed: {str(e)}")
+            return {"error": str(e)}
+
+    async def clear_cache(self, tags: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Clear cache by tags or completely"""
+        try:
+            if self._advanced_cache:
+                if tags:
+                    removed_count = self._advanced_cache.invalidate_by_tags(tags)
+                    logger.info(f"🗑️ Cleared {removed_count} cache entries with tags: {tags}")
+                    return {"cleared_entries": removed_count, "tags": tags}
+                else:
+                    self._advanced_cache.clear_all()
+                    logger.info("🧹 Cleared entire advanced cache")
+                    return {"message": "All cache levels cleared"}
+            else:
+                return {"error": "Advanced cache not initialized"}
+        except Exception as e:
+            logger.error(f"❌ Cache clear failed: {str(e)}")
+            return {"error": str(e)}
 
 
 # Global service instance

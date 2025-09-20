@@ -99,7 +99,7 @@ export default function ChatMessage({
         `}>
           {/* Message Text */}
           <div className="prose prose-sm max-w-none">
-            {message.content.split('\n').map((line, index) => (
+            {message.content.split('\n').map((line: string, index: number) => (
               <p key={index} className={`
                 ${index === 0 ? 'mt-0' : 'mt-2'}
                 ${line.trim() === '' ? 'h-2' : ''}

@@ -4,6 +4,7 @@ Enterprise-grade FastAPI backend with clean architecture
 """
 
 import logging
+from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,7 @@ from routers.chat_rag_test import router as chat
 from routers.chat_xml import router as chat_xml
 from routers.debug import router as debug
 from routers.auth import router as auth  # RBAC Auth Router
+from routers.performance import router as performance  # Performance Analytics
 from middleware.performance import PerformanceMiddleware
 from middleware.cors_error_handler import CORSErrorHandlerMiddleware
 
@@ -129,6 +131,7 @@ app.include_router(xml_generator)
 app.include_router(xml_streams)
 app.include_router(feature_flags)
 app.include_router(health)
+app.include_router(performance, prefix="/api", tags=["performance"])  # Performance Analytics API
 app.include_router(debug, prefix="/debug", tags=["debug"])
 
 
@@ -159,6 +162,8 @@ async def detailed_health():
         from pathlib import Path
         storage_healthy = Path("storage/documents").exists()
         
+        timestamp = datetime.utcnow().isoformat()
+
         return {
             "status": "healthy" if db_healthy and storage_healthy else "degraded",
             "components": {
@@ -166,7 +171,7 @@ async def detailed_health():
                 "storage": "healthy" if storage_healthy else "unhealthy"
             },
             "version": "2.0.0",
-            "timestamp": "2025-09-05T21:28:00Z"
+            "timestamp": timestamp
         }
         
     except Exception as e:
@@ -174,7 +179,7 @@ async def detailed_health():
         return {
             "status": "unhealthy",
             "error": str(e),
-            "timestamp": "2025-09-05T21:28:00Z"
+            "timestamp": datetime.utcnow().isoformat()
         }
 
 

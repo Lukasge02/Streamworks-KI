@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "npm run lint",
     "cache:clear": "rm -rf .next .turbo node_modules/.cache",
     "fresh": "npm run cache:clear && npm install && npm run dev"
   },

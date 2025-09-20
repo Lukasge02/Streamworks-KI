@@ -57,8 +57,14 @@ export function useUploadProgress(): UseUploadProgressReturn {
         try {
           const data = JSON.parse(event.data) as UploadProgressData
           console.log(`Upload progress received for ${jobId}:`, data)
-          
-          setProgressData(prev => new Map(prev).set(jobId, data))
+
+          // Round progress to avoid float numbers in UI
+          const roundedData = {
+            ...data,
+            progress: Math.round(data.progress || 0)
+          }
+
+          setProgressData(prev => new Map(prev).set(jobId, roundedData))
           
           // Auto-disconnect when completed or error
           if (data.status === 'completed' || data.status === 'error') {

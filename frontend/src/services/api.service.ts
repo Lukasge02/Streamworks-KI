@@ -413,6 +413,41 @@ class ApiService {
     return this.request<XMLChatSystemStatus>('/api/chat-xml/health')
   }
 
+  // Generic HTTP Methods (for compatibility with other services)
+  async get<T>(endpoint: string, options: RequestInit = {}): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'GET',
+      ...options,
+    })
+    return { data }
+  }
+
+  async post<T>(endpoint: string, body?: any, options: RequestInit = {}): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+    })
+    return { data }
+  }
+
+  async put<T>(endpoint: string, body?: any, options: RequestInit = {}): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+    })
+    return { data }
+  }
+
+  async delete<T>(endpoint: string, options: RequestInit = {}): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'DELETE',
+      ...options,
+    })
+    return { data }
+  }
+
   // System Methods
   async getSystemStats(): Promise<SystemStats> {
     return this.request<SystemStats>('/api/v1/documents/stats/overview')

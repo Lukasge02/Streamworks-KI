@@ -46,7 +46,7 @@ async function generateXMLFromConversation(request: XMLGenerationRequest): Promi
   }
 }
 
-async function validateXML(xml: string) {
+function validateXML(xml: string) {
   try {
     const parser = new DOMParser()
     const doc = parser.parseFromString(xml, 'application/xml')

@@ -24,17 +24,22 @@ import {
 import { toast } from 'sonner'
 
 // Store and hooks
-import { useXMLChatStore } from './store/xmlChatStore'
+import { useXMLChatStore, useXMLChatSelectors, type StreamType } from './store/xmlChatStore'
 import { useXMLGeneration } from './hooks/useXMLGeneration'
+import { useSmartChat } from './hooks/useSmartChat'
 
 // Components
 import ChatMessage from './components/ChatMessage'
 import XMLPreview from './components/XMLPreview'
 import ChatInput from './components/ChatInput'
 import SessionManager from './components/SessionManager'
+import StreamTypeSelector from './components/StreamTypeSelector'
+import ParameterProgress from './components/ParameterProgress'
+import SmartSuggestions from './components/SmartSuggestions'
+import ParameterOverview from './components/ParameterOverview'
 
 // Types
-import { XMLChatMessage, XMLGenerationStatus } from './types'
+import { XMLChatMessage, XMLGenerationStatus } from './store/xmlChatStore'
 
 // ================================
 // MAIN COMPONENT
@@ -55,11 +60,43 @@ export default function XMLChatInterface() {
     createNewSession,
     generatedXML,
     setGeneratedXML,
-    generationStatus
+    generationStatus,
+    selectedStreamType,
+    setSelectedStreamType,
+    extractedParameters,
+    setExtractedParameters,
+    completionPercentage,
+    setCompletionPercentage,
+    aiSuggestions,
+    setAISuggestions,
+    nextParameter,
+    setNextParameter,
+    setSmartSession
   } = useXMLChatStore()
+
+  // Store Selectors
+  const {
+    isSmartMode,
+    isSmartWorking,
+    shouldShowStreamTypeSelection,
+    hasSelectedStreamType,
+    shouldShowParameterProgress,
+    shouldShowSuggestions
+  } = useXMLChatSelectors()
 
   // Hooks
   const { generateXMLFromChat, isLoading: isXMLGenerating } = useXMLGeneration()
+  const {
+    createSession: createSmartSession,
+    sendSmartMessage,
+    generateXML: generateSmartXML,
+    isCreatingSession,
+    isSendingMessage,
+    isGeneratingXML: isGeneratingSmartXML,
+    extractedParameters: liveExtractedParameters,
+    currentSession: smartSession,
+    lastResponse
+  } = useSmartChat()
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -71,43 +108,169 @@ export default function XMLChatInterface() {
     inputRef.current?.focus()
   }, [])
 
+  // Keep store smart session in sync with hook state
+  useEffect(() => {
+    if (isSmartMode) {
+      setSmartSession(smartSession ?? null)
+    } else {
+      setSmartSession(null)
+    }
+  }, [isSmartMode, smartSession, setSmartSession])
+
+  // Create smart session when stream type is selected
+  useEffect(() => {
+    if (isSmartMode && selectedStreamType && !smartSession) {
+      createSmartSession({ job_type: selectedStreamType })
+    }
+  }, [selectedStreamType, isSmartMode, smartSession, createSmartSession])
+
+  // Sync extracted parameters from smart chat hook into store
+  useEffect(() => {
+    if (isSmartMode && liveExtractedParameters) {
+      // Only update if parameters have actually changed
+      const paramsChanged = JSON.stringify(extractedParameters) !== JSON.stringify(liveExtractedParameters)
+      if (paramsChanged) {
+        console.log('🔄 Updating extracted parameters:', liveExtractedParameters)
+        setExtractedParameters(liveExtractedParameters)
+      }
+    }
+  }, [isSmartMode, liveExtractedParameters, extractedParameters, setExtractedParameters])
+
+  // Also sync parameters from lastResponse immediately
+  useEffect(() => {
+    if (isSmartMode && smartSession && lastResponse?.extracted_parameters) {
+      const responseParams = lastResponse.extracted_parameters
+      console.log('📥 Parameters from lastResponse:', responseParams)
+
+      // Always use the latest parameters from the API response
+      console.log('🔄 Setting parameters from lastResponse:', responseParams)
+      setExtractedParameters(responseParams)
+    }
+  }, [isSmartMode, smartSession, lastResponse?.extracted_parameters, setExtractedParameters])
+
+  // Sync completion percentage from smart session status
+  useEffect(() => {
+    if (isSmartMode && smartSession) {
+      setCompletionPercentage(smartSession.completion_percentage)
+    }
+  }, [isSmartMode, smartSession, setCompletionPercentage])
+
   // Handle message submission
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isGenerating) return
+    if (!inputValue.trim() || isGenerating || isSmartWorking) return
 
-    const userMessage: XMLChatMessage = {
-      id: crypto.randomUUID(),
-      sessionId: currentSession?.id || '',
-      role: 'user',
-      content: inputValue.trim(),
-      timestamp: new Date().toISOString()
-    }
-
-    // Add user message
-    addMessage(userMessage)
+    const messageContent = inputValue.trim()
     setInputValue('')
     setIsGenerating(true)
 
     try {
-      // Simulate AI response (replace with actual API call)
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (isSmartMode) {
+        // Ensure smart session exists
+        let activeSession = smartSession
+        if (!activeSession) {
+          const createdSession = await createSmartSession({
+            job_type: selectedStreamType || undefined
+          })
+          activeSession = createdSession
+          setSmartSession(createdSession)
 
-      const aiResponse: XMLChatMessage = {
-        id: crypto.randomUUID(),
-        sessionId: currentSession?.id || '',
-        role: 'assistant',
-        content: generateAIResponse(inputValue),
-        timestamp: new Date().toISOString(),
-        metadata: {
-          canGenerateXML: shouldOfferXMLGeneration(inputValue)
+          if (createdSession.message) {
+            const welcomeMessage: XMLChatMessage = {
+              id: crypto.randomUUID(),
+              sessionId: createdSession.session_id,
+              role: 'assistant',
+              content: createdSession.message,
+              timestamp: createdSession.created_at || new Date().toISOString(),
+              metadata: {
+                type: 'info'
+              }
+            }
+            addMessage(welcomeMessage)
+          }
         }
-      }
 
-      addMessage(aiResponse)
+        if (!activeSession) {
+          throw new Error('Konnte keine Smart-Session erstellen')
+        }
 
-      // Auto-generate XML if this looks like a complete request
-      if (shouldAutoGenerateXML(inputValue)) {
-        handleGenerateXML()
+        const userMessage: XMLChatMessage = {
+          id: crypto.randomUUID(),
+          sessionId: activeSession.session_id,
+          role: 'user',
+          content: messageContent,
+          timestamp: new Date().toISOString(),
+          metadata: selectedStreamType ? { streamType: selectedStreamType } : undefined
+        }
+
+        addMessage(userMessage)
+
+        const response = await sendSmartMessage(messageContent, activeSession.session_id)
+
+        if (response.metadata?.job_type) {
+          const detectedType = response.metadata.job_type as StreamType
+          if (detectedType && detectedType !== selectedStreamType) {
+            setSelectedStreamType(detectedType)
+          }
+        }
+
+        const assistantMessage: XMLChatMessage = {
+          id: response.session_id ? `${response.session_id}-${crypto.randomUUID()}` : crypto.randomUUID(),
+          sessionId: response.session_id || activeSession.session_id,
+          role: 'assistant',
+          content: response.response_message,
+          timestamp: response.timestamp || new Date().toISOString(),
+          metadata: {
+            type: 'info',
+            parameters: response.extracted_parameters,
+            nextParameter: response.next_parameter,
+            completion: response.completion_percentage,
+            parameterConfidences: response.parameter_confidences,
+            job_type: response.metadata?.job_type
+          }
+        }
+
+        addMessage(assistantMessage)
+
+        // Update extracted parameters immediately
+        if (response.extracted_parameters) {
+          console.log('🆕 New parameters from response:', response.extracted_parameters)
+
+          // Always use the latest parameters from response
+          setExtractedParameters(response.extracted_parameters)
+
+          console.log('🔄 Updated total parameters:', response.extracted_parameters)
+        }
+        setAISuggestions(response.suggested_questions || [])
+        setNextParameter(response.next_parameter || null)
+        setCompletionPercentage(response.completion_percentage || 0)
+      } else {
+        // Legacy mode - generic XML generation
+        const userMessage: XMLChatMessage = {
+          id: crypto.randomUUID(),
+          sessionId: currentSession?.id || '',
+          role: 'user',
+          content: messageContent,
+          timestamp: new Date().toISOString()
+        }
+
+        const aiResponse: XMLChatMessage = {
+          id: crypto.randomUUID(),
+          sessionId: currentSession?.id || '',
+          role: 'assistant',
+          content: generateAIResponse(messageContent),
+          timestamp: new Date().toISOString(),
+          metadata: {
+            canGenerateXML: shouldOfferXMLGeneration(messageContent)
+          }
+        }
+
+        addMessage(userMessage)
+        addMessage(aiResponse)
+
+        // Auto-generate XML if this looks like a complete request
+        if (shouldAutoGenerateXML(messageContent)) {
+          handleGenerateXML()
+        }
       }
 
     } catch (error) {
@@ -120,32 +283,56 @@ export default function XMLChatInterface() {
 
   // Handle XML generation
   const handleGenerateXML = async () => {
-    if (!currentSession || messages.length === 0) return
+    if (messages.length === 0) return
 
     try {
-      const conversationContext = messages
-        .filter(msg => msg.role !== 'system')
-        .map(msg => `${msg.role}: ${msg.content}`)
-        .join('\n')
+      if (isSmartMode && selectedStreamType) {
+        // Use smart XML generation for StreamWorks
+        const xmlContent = await generateSmartXML()
 
-      const result = await generateXMLFromChat(conversationContext)
+        setGeneratedXML(xmlContent)
+        toast.success('StreamWorks XML erfolgreich generiert!')
 
-      if (result.success && result.xml) {
-        setGeneratedXML(result.xml)
-        toast.success('XML generated successfully!')
-
-        // Add system message about successful generation
         const systemMessage: XMLChatMessage = {
           id: crypto.randomUUID(),
-          sessionId: currentSession.id,
+          sessionId: smartSession?.session_id || currentSession?.id || '',
           role: 'system',
-          content: 'XML has been generated based on your requirements. You can preview and download it using the panel on the right.',
+          content: `Ihr ${selectedStreamType} StreamWorks-Stream wurde erfolgreich generiert! Sie können das XML rechts in der Vorschau betrachten und herunterladen.`,
           timestamp: new Date().toISOString(),
           metadata: {
-            type: 'xml_generated'
+            type: 'xml_generated',
+            ...(selectedStreamType ? { streamType: selectedStreamType } : {})
           }
         }
         addMessage(systemMessage)
+      } else {
+        // Legacy XML generation
+        if (!currentSession) return
+
+        const conversationContext = messages
+          .filter(msg => msg.role !== 'system')
+          .map(msg => `${msg.role}: ${msg.content}`)
+          .join('\n')
+
+        const result = await generateXMLFromChat(conversationContext)
+
+        if (result.success && result.xml) {
+          setGeneratedXML(result.xml)
+          toast.success('XML generated successfully!')
+
+          // Add system message about successful generation
+          const systemMessage: XMLChatMessage = {
+            id: crypto.randomUUID(),
+            sessionId: currentSession.id,
+            role: 'system',
+            content: 'XML has been generated based on your requirements. You can preview and download it using the panel on the right.',
+            timestamp: new Date().toISOString(),
+            metadata: {
+              type: 'xml_generated'
+            }
+          }
+          addMessage(systemMessage)
+        }
       }
     } catch (error) {
       console.error('Error generating XML:', error)
@@ -162,55 +349,66 @@ export default function XMLChatInterface() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 overflow-hidden">
       {/* Chat Panel */}
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+        <div className="flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-5 shadow-sm">
+          <div className="flex items-center justify-between max-w-6xl mx-auto">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">XML Assistant</h1>
-                <p className="text-sm text-gray-500">Describe what you need, and I'll generate the XML</p>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  StreamWorks Assistant
+                </h1>
+                <p className="text-sm text-slate-600 font-medium">
+                  Intelligente StreamWorks-Streams durch natürliche Sprache erstellen
+                </p>
               </div>
             </div>
-            <SessionManager />
+            <div className="flex items-center gap-3">
+              <div className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">
+                Smart Mode
+              </div>
+              <SessionManager />
+            </div>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+          <div className="max-w-5xl mx-auto space-y-4">
             {messages.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MessageSquare className="w-8 h-8 text-blue-600" />
+              <div className="space-y-4">
+                {/* Welcome Header */}
+                <div className="text-center py-4">
+                  <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                    Stream erstellen
+                  </h3>
+                  <p className="text-slate-600 max-w-xl mx-auto text-sm">
+                    Beschreiben Sie Ihren gewünschten Stream in natürlicher Sprache
+                  </p>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Welcome to XML Assistant
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  Describe what kind of XML you need, and I'll help you create it.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md mx-auto">
-                  <button
-                    className="p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                    onClick={() => setInputValue("Create a job definition XML for data processing")}
-                  >
-                    <div className="font-medium text-sm text-gray-900">Data Processing Job</div>
-                    <div className="text-xs text-gray-500">Standard job definition</div>
-                  </button>
-                  <button
-                    className="p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                    onClick={() => setInputValue("Generate XML for SAP interface configuration")}
-                  >
-                    <div className="font-medium text-sm text-gray-900">SAP Interface</div>
-                    <div className="text-xs text-gray-500">SAP integration setup</div>
-                  </button>
-                </div>
+
+                {/* Stream Type Selector */}
+                <StreamTypeSelector
+                  selectedType={selectedStreamType}
+                  onSelect={setSelectedStreamType}
+                  isVisible={shouldShowStreamTypeSelection}
+                />
+
+                {/* Smart Suggestions */}
+                {shouldShowSuggestions && (
+                  <SmartSuggestions
+                    suggestions={aiSuggestions}
+                    streamType={selectedStreamType}
+                    nextParameter={nextParameter ?? undefined}
+                    completionPercentage={completionPercentage}
+                    onSuggestionClick={(suggestion) => setInputValue(suggestion)}
+                  />
+                )}
               </div>
             ) : (
               <>
@@ -231,6 +429,27 @@ export default function XMLChatInterface() {
                     </motion.div>
                   ))}
                 </AnimatePresence>
+
+                {/* Parameter Progress */}
+                {shouldShowParameterProgress && (
+                  <ParameterProgress
+                    streamType={selectedStreamType}
+                    extractedParameters={extractedParameters}
+                    completionPercentage={completionPercentage}
+                    nextParameter={nextParameter ?? undefined}
+                  />
+                )}
+
+                {/* Smart Suggestions in Chat */}
+                {shouldShowSuggestions && messages.length > 0 && (
+                  <SmartSuggestions
+                    suggestions={aiSuggestions}
+                    streamType={selectedStreamType}
+                    nextParameter={nextParameter ?? undefined}
+                    completionPercentage={completionPercentage}
+                    onSuggestionClick={(suggestion) => setInputValue(suggestion)}
+                  />
+                )}
 
                 {/* Loading indicator */}
                 {isGenerating && (
@@ -256,23 +475,56 @@ export default function XMLChatInterface() {
         </div>
 
         {/* Input Area */}
-        <div className="bg-white border-t border-gray-200 p-6">
-          <div className="max-w-3xl mx-auto">
-            <ChatInput
-              ref={inputRef}
-              value={inputValue}
-              onChange={setInputValue}
-              onSend={handleSendMessage}
-              onKeyDown={handleKeyDown}
-              disabled={isGenerating}
-              placeholder="Describe the XML you need..."
-            />
-            <div className="text-xs text-gray-500 mt-2 text-center">
-              Press Ctrl+Enter to send • Ask me to create any kind of XML configuration
+        <div className="flex-shrink-0 bg-white/90 backdrop-blur-sm border-t border-slate-200/60 p-4 shadow-lg">
+          <div className="max-w-4xl mx-auto">
+            <div className="relative">
+              <ChatInput
+                ref={inputRef}
+                value={inputValue}
+                onChange={setInputValue}
+                onSend={handleSendMessage}
+                onKeyDown={handleKeyDown}
+                disabled={isGenerating || isSmartWorking}
+                placeholder={isSmartMode
+                  ? (selectedStreamType
+                      ? `Beschreiben Sie Ihren ${selectedStreamType} Stream (z.B. "SAP Kalender Export von ZTV nach PA1")...`
+                      : "Wählen Sie zuerst einen Stream-Typ oben aus..."
+                    )
+                  : "Beschreiben Sie die gewünschte XML-Konfiguration..."
+                }
+              />
+              {(isGenerating || isSmartWorking) && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                </div>
+              )}
+            </div>
+            <div className="text-center mt-1">
+              <div className="text-xs text-slate-500">
+                Strg+Enter zum Senden
+                {selectedStreamType && (
+                  <span className="ml-2">
+                    • {selectedStreamType}
+                    {Object.keys(extractedParameters).length > 0 && (
+                      <span> • {Object.keys(extractedParameters).length} Parameter</span>
+                    )}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Parameter Overview Panel */}
+      {selectedStreamType && !generatedXML && (
+        <ParameterOverview
+          streamType={selectedStreamType}
+          extractedParameters={extractedParameters}
+          completionPercentage={completionPercentage}
+          nextParameter={nextParameter ?? undefined}
+        />
+      )}
 
       {/* XML Preview Panel */}
       {generatedXML && (

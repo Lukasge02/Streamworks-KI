@@ -10,7 +10,7 @@ export default function DocumentsPage() {
   }, [])
 
   return (
-    <div className="h-screen bg-gray-50">
+    <div className="h-full">
       {/* DocumentManager with automatic Global View */}
       <DocumentManagerWithGlobalView />
     </div>

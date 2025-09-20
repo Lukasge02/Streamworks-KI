@@ -310,19 +310,19 @@ export function DocumentSyncProvider({
   useEffect(() => {
     isManualClose.current = false
     connect()
-    
+
     return () => {
-      disconnect()
-    }
-  }, [])
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
+      isManualClose.current = true
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
       }
       stopHeartbeat()
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close(1000, 'Component unmounting')
+      }
+      wsRef.current = null
+      setConnectionStatus('disconnected')
     }
   }, [])
   

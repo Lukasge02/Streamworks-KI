@@ -34,6 +34,7 @@ export const ModernChatInterface: React.FC = () => {
   const [selectedSource, setSelectedSource] = useState<any>(null)
   const [sourcePreviewOpen, setSourcePreviewOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [welcomeTimestamp] = useState(() => new Date().toISOString())
   const [isDeletingAllChats, setIsDeletingAllChats] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -184,7 +185,7 @@ export const ModernChatInterface: React.FC = () => {
     id: 'welcome',
     type: 'assistant' as const,
     content: 'Hallo! Ich bin der StreamWorks RAG Assistant. Ich kann Fragen zu deinen Dokumenten beantworten und dir bei StreamWorks-spezifischen Konfigurationen helfen. Was möchtest du wissen?',
-    created_at: new Date().toISOString(),
+    created_at: welcomeTimestamp,
     session_id: currentSessionId || '',
     sequence_number: 0,
     confidence_score: undefined,

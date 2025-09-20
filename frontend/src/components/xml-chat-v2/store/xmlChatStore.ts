@@ -7,6 +7,9 @@ import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 
+// Import Smart Chat types
+import type { SmartSession, SmartChatMessage, ExtractedParameters } from '../hooks/useSmartChat'
+
 // ================================
 // TYPES
 // ================================
@@ -17,11 +20,16 @@ export interface XMLChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: string
-  metadata?: {
-    canGenerateXML?: boolean
-    type?: 'xml_generated' | 'error' | 'info'
-    parameters?: Record<string, any>
-  }
+    metadata?: {
+      canGenerateXML?: boolean
+      type?: 'xml_generated' | 'error' | 'info'
+      parameters?: Record<string, any>
+      streamType?: StreamType
+      nextParameter?: string | null
+      completion?: number
+      parameterConfidences?: Record<string, number>
+      job_type?: string
+    }
 }
 
 export interface XMLChatSession {
@@ -34,6 +42,8 @@ export interface XMLChatSession {
 }
 
 export type XMLGenerationStatus = 'idle' | 'generating' | 'success' | 'error'
+export type StreamType = 'SAP' | 'FILE_TRANSFER' | 'STANDARD'
+export type ChatMode = 'legacy' | 'smart'
 
 interface XMLChatState {
   // Sessions
@@ -50,6 +60,37 @@ interface XMLChatState {
   // UI State
   isLoading: boolean
   error: string | null
+
+  // ================================
+  // SMART CHAT INTEGRATION
+  // ================================
+
+  // Chat Mode
+  chatMode: ChatMode
+
+  // Smart Session
+  smartSession: SmartSession | null
+  smartMessages: SmartChatMessage[]
+
+  // Stream Configuration
+  selectedStreamType: StreamType | null
+  streamTypeSelectionVisible: boolean
+
+  // Parameter Management
+  extractedParameters: ExtractedParameters
+  missingParameters: string[]
+  nextParameter: string | null
+  completionPercentage: number
+
+  // Smart Suggestions
+  aiSuggestions: string[]
+  suggestedQuestions: string[]
+
+  // Smart UI State
+  isCreatingSmartSession: boolean
+  isSendingSmartMessage: boolean
+  isGeneratingSmartXML: boolean
+  isLoadingParameters: boolean
 }
 
 interface XMLChatActions {
@@ -72,6 +113,47 @@ interface XMLChatActions {
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   reset: () => void
+
+  // ================================
+  // SMART CHAT ACTIONS
+  // ================================
+
+  // Chat Mode Management
+  setChatMode: (mode: ChatMode) => void
+  enableSmartMode: () => void
+  enableLegacyMode: () => void
+
+  // Smart Session Management
+  setSmartSession: (session: SmartSession | null) => void
+  addSmartMessage: (message: SmartChatMessage) => void
+  clearSmartMessages: () => void
+
+  // Stream Type Management
+  setSelectedStreamType: (type: StreamType | null) => void
+  showStreamTypeSelection: () => void
+  hideStreamTypeSelection: () => void
+
+  // Parameter Management
+  setExtractedParameters: (parameters: ExtractedParameters) => void
+  updateExtractedParameter: (key: string, value: any) => void
+  setMissingParameters: (parameters: string[]) => void
+  setNextParameter: (parameter: string | null) => void
+  setCompletionPercentage: (percentage: number) => void
+
+  // Suggestions Management
+  setAISuggestions: (suggestions: string[]) => void
+  setSuggestedQuestions: (questions: string[]) => void
+  addAISuggestion: (suggestion: string) => void
+
+  // Smart UI State
+  setCreatingSmartSession: (loading: boolean) => void
+  setSendingSmartMessage: (loading: boolean) => void
+  setGeneratingSmartXML: (loading: boolean) => void
+  setLoadingParameters: (loading: boolean) => void
+
+  // Smart Utilities
+  resetSmartState: () => void
+  resetParameterState: () => void
 }
 
 type XMLChatStore = XMLChatState & XMLChatActions
@@ -81,13 +163,31 @@ type XMLChatStore = XMLChatState & XMLChatActions
 // ================================
 
 const initialState: XMLChatState = {
+  // Legacy state
   sessions: [],
   currentSession: null,
   messages: [],
   generatedXML: null,
   generationStatus: 'idle',
   isLoading: false,
-  error: null
+  error: null,
+
+  // Smart Chat state
+  chatMode: 'smart', // Default to smart mode
+  smartSession: null,
+  smartMessages: [],
+  selectedStreamType: null,
+  streamTypeSelectionVisible: true,
+  extractedParameters: {},
+  missingParameters: [],
+  nextParameter: null,
+  completionPercentage: 0,
+  aiSuggestions: [],
+  suggestedQuestions: [],
+  isCreatingSmartSession: false,
+  isSendingSmartMessage: false,
+  isGeneratingSmartXML: false,
+  isLoadingParameters: false
 }
 
 // ================================
@@ -259,6 +359,197 @@ export const useXMLChatStore = create<XMLChatStore>()(
 
         reset: () => {
           set(() => ({ ...initialState }))
+        },
+
+        // ================================
+        // SMART CHAT ACTIONS
+        // ================================
+
+        // Chat Mode Management
+        setChatMode: (mode: ChatMode) => {
+          set((state) => {
+            state.chatMode = mode
+          })
+        },
+
+        enableSmartMode: () => {
+          set((state) => {
+            state.chatMode = 'smart'
+            state.streamTypeSelectionVisible = !state.selectedStreamType
+          })
+        },
+
+        enableLegacyMode: () => {
+          set((state) => {
+            state.chatMode = 'legacy'
+            state.streamTypeSelectionVisible = false
+          })
+        },
+
+        // Smart Session Management
+        setSmartSession: (session: SmartSession | null) => {
+          set((state) => {
+            state.smartSession = session
+            if (session) {
+              state.completionPercentage = session.completion_percentage || 0
+              state.aiSuggestions = session.suggested_questions || []
+            }
+          })
+        },
+
+        addSmartMessage: (message: SmartChatMessage) => {
+          set((state) => {
+            state.smartMessages.push(message)
+
+            // Update state from message
+            state.completionPercentage = message.completion_percentage || 0
+            state.aiSuggestions = message.suggested_questions || []
+            state.nextParameter = message.next_parameter || null
+          })
+        },
+
+        clearSmartMessages: () => {
+          set((state) => {
+            state.smartMessages = []
+          })
+        },
+
+        // Stream Type Management
+        setSelectedStreamType: (type: StreamType | null) => {
+          set((state) => {
+            if (state.selectedStreamType === type) {
+              state.streamTypeSelectionVisible = !type
+              return
+            }
+
+            state.selectedStreamType = type
+            state.streamTypeSelectionVisible = !type
+
+            if (type) {
+              state.extractedParameters = {}
+              state.missingParameters = []
+              state.completionPercentage = 0
+              state.nextParameter = null
+            }
+          })
+        },
+
+        showStreamTypeSelection: () => {
+          set((state) => {
+            state.streamTypeSelectionVisible = true
+          })
+        },
+
+        hideStreamTypeSelection: () => {
+          set((state) => {
+            state.streamTypeSelectionVisible = false
+          })
+        },
+
+        // Parameter Management
+        setExtractedParameters: (parameters: ExtractedParameters) => {
+          set((state) => {
+            state.extractedParameters = parameters
+          })
+        },
+
+        updateExtractedParameter: (key: string, value: any) => {
+          set((state) => {
+            state.extractedParameters[key] = value
+          })
+        },
+
+        setMissingParameters: (parameters: string[]) => {
+          set((state) => {
+            state.missingParameters = parameters
+          })
+        },
+
+        setNextParameter: (parameter: string | null) => {
+          set((state) => {
+            state.nextParameter = parameter
+          })
+        },
+
+        setCompletionPercentage: (percentage: number) => {
+          set((state) => {
+            state.completionPercentage = percentage
+          })
+        },
+
+        // Suggestions Management
+        setAISuggestions: (suggestions: string[]) => {
+          set((state) => {
+            state.aiSuggestions = suggestions
+          })
+        },
+
+        setSuggestedQuestions: (questions: string[]) => {
+          set((state) => {
+            state.suggestedQuestions = questions
+          })
+        },
+
+        addAISuggestion: (suggestion: string) => {
+          set((state) => {
+            if (!state.aiSuggestions.includes(suggestion)) {
+              state.aiSuggestions.push(suggestion)
+            }
+          })
+        },
+
+        // Smart UI State
+        setCreatingSmartSession: (loading: boolean) => {
+          set((state) => {
+            state.isCreatingSmartSession = loading
+          })
+        },
+
+        setSendingSmartMessage: (loading: boolean) => {
+          set((state) => {
+            state.isSendingSmartMessage = loading
+          })
+        },
+
+        setGeneratingSmartXML: (loading: boolean) => {
+          set((state) => {
+            state.isGeneratingSmartXML = loading
+          })
+        },
+
+        setLoadingParameters: (loading: boolean) => {
+          set((state) => {
+            state.isLoadingParameters = loading
+          })
+        },
+
+        // Smart Utilities
+        resetSmartState: () => {
+          set((state) => {
+            state.smartSession = null
+            state.smartMessages = []
+            state.selectedStreamType = null
+            state.streamTypeSelectionVisible = true
+            state.extractedParameters = {}
+            state.missingParameters = []
+            state.nextParameter = null
+            state.completionPercentage = 0
+            state.aiSuggestions = []
+            state.suggestedQuestions = []
+            state.isCreatingSmartSession = false
+            state.isSendingSmartMessage = false
+            state.isGeneratingSmartXML = false
+            state.isLoadingParameters = false
+          })
+        },
+
+        resetParameterState: () => {
+          set((state) => {
+            state.extractedParameters = {}
+            state.missingParameters = []
+            state.nextParameter = null
+            state.completionPercentage = 0
+          })
         }
       })),
       {
@@ -293,6 +584,45 @@ export const useXMLChatSelectors = () => {
 
     // UI state
     isEmpty: store.messages.length === 0,
-    isWorking: store.isLoading || store.generationStatus === 'generating'
+    isWorking: store.isLoading || store.generationStatus === 'generating',
+
+    // ================================
+    // SMART CHAT SELECTORS
+    // ================================
+
+    // Chat Mode
+    isSmartMode: store.chatMode === 'smart',
+    isLegacyMode: store.chatMode === 'legacy',
+
+    // Smart Session
+    hasSmartSession: Boolean(store.smartSession),
+    smartSessionId: store.smartSession?.session_id || null,
+    smartMessageCount: store.smartMessages.length,
+
+    // Stream Type
+    hasSelectedStreamType: Boolean(store.selectedStreamType),
+    streamTypeSelected: store.selectedStreamType,
+    shouldShowStreamTypeSelection: store.streamTypeSelectionVisible,
+
+    // Parameters
+    hasExtractedParameters: Object.keys(store.extractedParameters).length > 0,
+    parameterCount: Object.keys(store.extractedParameters).length,
+    missingParameterCount: store.missingParameters.length,
+    isParametersComplete: store.completionPercentage >= 100,
+    hasNextParameter: Boolean(store.nextParameter),
+
+    // Suggestions
+    hasSuggestions: store.aiSuggestions.length > 0,
+    suggestionCount: store.aiSuggestions.length,
+
+    // Smart Loading States
+    isSmartWorking: store.isCreatingSmartSession || store.isSendingSmartMessage || store.isGeneratingSmartXML,
+    canSendSmartMessage: Boolean(store.smartSession) && !store.isSendingSmartMessage,
+    canGenerateSmartXML: Boolean(store.smartSession) && store.completionPercentage >= 100 && !store.isGeneratingSmartXML,
+
+    // UI State
+    isSmartEmpty: store.smartMessages.length === 0,
+    shouldShowParameterProgress: Boolean(store.selectedStreamType) && store.smartMessages.length > 0,
+    shouldShowSuggestions: Boolean(store.selectedStreamType)
   }
 }

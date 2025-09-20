@@ -94,6 +94,9 @@ cd frontend && npm run fresh
 # Frontend
 npm run dev          # Standard Development Server
 npm run dev:clean    # Start mit sauberem Cache
+npm run lint         # ESLint Checks
+npm run type-check   # TypeScript ohne Emit
+npm test             # Lint (temporäre Test-Stub)
 npm run cache:clear  # Nur Cache bereinigen
 npm run fresh        # Vollständiger Neustart
 

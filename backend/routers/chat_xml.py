@@ -4,12 +4,13 @@ RESTful API Endpoints für Chat-zu-XML Konversationen
 """
 
 import logging
+import re
 import time
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import Response, JSONResponse
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from services.chat_xml.chat_session_service import get_chat_session_service, ChatSessionState, MessageType
 from services.chat_xml.dialog_manager import get_dialog_manager, DialogIntent, DialogContext
@@ -77,8 +78,8 @@ class ChatHistoryMessage(BaseModel):
     content: str
     timestamp: datetime
     parameter_name: Optional[str] = None
-    validation_errors: List[str] = []
-    metadata: Dict[str, Any] = {}
+    validation_errors: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class ChatHistoryResponse(BaseModel):
     session_id: str
@@ -123,7 +124,7 @@ class SmartChatSessionResponse(BaseModel):
     dialog_state: str
     completion_percentage: float
     message: str
-    suggested_questions: List[str] = []
+    suggested_questions: List[str] = Field(default_factory=list)
     created_at: datetime
 
 class SmartChatMessageRequest(BaseModel):
@@ -135,27 +136,60 @@ class SmartChatMessageResponse(BaseModel):
     response_message: str
     dialog_state: str
     priority: str
-    extracted_parameters: List[str] = []
+    extracted_parameters: Dict[str, Any] = Field(default_factory=dict)
+    parameter_confidences: Dict[str, float] = Field(default_factory=dict)
     next_parameter: Optional[str] = None
     completion_percentage: float
-    suggested_questions: List[str] = []
-    validation_issues: List[str] = []
+    suggested_questions: List[str] = Field(default_factory=list)
+    validation_issues: List[str] = Field(default_factory=list)
     timestamp: datetime
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class ParameterExportResponse(BaseModel):
     session_id: str
     job_type: Optional[str] = None
     parameters: Dict[str, Any]
+    raw_parameters: Dict[str, Any] = Field(default_factory=dict)
     completion_percentage: float
     validation_status: str
     export_timestamp: datetime
     xml_content: Optional[str] = None
-    validation_issues: List[str] = []
+    validation_issues: List[str] = Field(default_factory=list)
     file_size: Optional[int] = None
 
 class SessionCleanupResponse(BaseModel):
     cleaned_sessions: int
     remaining_sessions: int
+
+def _camel_to_snake(name: str) -> str:
+    if not name or name.lower() == name:
+        return name
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def _normalize_parameter_keys(parameters: Dict[str, Any]) -> Dict[str, Any]:
+    normalized: Dict[str, Any] = {}
+    for key, value in parameters.items():
+        normalized_key = _camel_to_snake(key)
+        if isinstance(value, dict):
+            normalized[normalized_key] = _normalize_parameter_keys(value)
+        elif isinstance(value, list):
+            normalized[normalized_key] = [
+                _normalize_parameter_keys(item) if isinstance(item, dict) else item
+                for item in value
+            ]
+        else:
+            normalized[normalized_key] = value
+    return normalized
+
+
+def _normalize_completion_percentage(value: Optional[float]) -> float:
+    if value is None:
+        return 0.0
+    if value <= 1.0:
+        return round(value * 100, 2)
+    return round(value, 2)
 
 # ================================
 # DEPENDENCY INJECTION
@@ -606,7 +640,7 @@ async def create_smart_chat_session(
             job_type=session.job_type,
             status=session.status.value,
             dialog_state=session.dialog_state,
-            completion_percentage=session.completion_percentage,
+            completion_percentage=_normalize_completion_percentage(session.completion_percentage),
             message=message,
             suggested_questions=suggested_questions,
             created_at=session.created_at
@@ -660,29 +694,40 @@ async def send_smart_chat_message(
             )
 
         # Aktualisiere Session mit extrahierten Parametern
-        if dialog_response.extracted_parameters:
-            # Konvertiere Parameter-Namen zu Werten (vereinfacht)
-            extracted_values = {param: f"extracted_from_{request.message[:20]}" for param in dialog_response.extracted_parameters}
+        extracted_values = dialog_response.extracted_parameters or {}
+        if extracted_values:
+            confidence_map = dialog_response.parameter_confidences or {}
+            avg_confidence = 0.0
+            if confidence_map:
+                avg_confidence = sum(confidence_map.values()) / len(confidence_map)
 
             state_manager.update_session_parameters(
                 session_id=session_id,
                 new_parameters=extracted_values,
-                source_message=request.message
+                source_message=request.message,
+                extraction_confidence=avg_confidence if avg_confidence > 0 else None
             )
 
         # Aktualisiere Dialog State
+        metadata = dialog_response.metadata or {}
+        job_type_update = metadata.get("job_type")
         state_manager.update_session_state(
             session_id=session_id,
             dialog_state=dialog_response.state.value,
+            job_type=job_type_update,
             last_message=request.message,
             suggested_questions=dialog_response.suggested_questions,
-            metadata=dialog_response.metadata
+            metadata=metadata
         )
 
         # Hole aktualisierte Session für Response
         updated_session = state_manager.get_session(session_id)
 
-        logger.info(f"Smart Message verarbeitet: {session_id} | Extracted: {len(dialog_response.extracted_parameters)}")
+        logger.info(
+            "Smart Message verarbeitet: %s | Extracted: %s",
+            session_id,
+            len(extracted_values),
+        )
 
         return SmartChatMessageResponse(
             session_id=session_id,
@@ -690,11 +735,15 @@ async def send_smart_chat_message(
             dialog_state=dialog_response.state.value,
             priority=dialog_response.priority.value,
             extracted_parameters=dialog_response.extracted_parameters,
+            parameter_confidences=dialog_response.parameter_confidences,
             next_parameter=dialog_response.next_parameter,
-            completion_percentage=updated_session.completion_percentage if updated_session else 0.0,
+            completion_percentage=_normalize_completion_percentage(
+                updated_session.completion_percentage if updated_session else 0.0
+            ),
             suggested_questions=dialog_response.suggested_questions,
             validation_issues=dialog_response.validation_issues,
-            timestamp=dialog_response.timestamp
+            timestamp=dialog_response.timestamp,
+            metadata=dialog_response.metadata or {}
         )
 
     except HTTPException:
@@ -719,7 +768,7 @@ async def get_smart_session_status(
         job_type=session.job_type,
         status=session.status.value,
         dialog_state=session.dialog_state,
-        completion_percentage=session.completion_percentage,
+        completion_percentage=_normalize_completion_percentage(session.completion_percentage),
         message=session.last_message or "Session aktiv",
         suggested_questions=session.suggested_questions,
         created_at=session.created_at
@@ -742,13 +791,18 @@ async def export_session_parameters(
         validation_result = state_manager.validate_session_parameters(session_id)
         validation_status = "valid" if validation_result and validation_result.is_valid else "invalid"
 
+        raw_parameters = session.collected_parameters or {}
+        normalized_parameters = _normalize_parameter_keys(raw_parameters)
+
         return ParameterExportResponse(
             session_id=session_id,
             job_type=session.job_type,
-            parameters=session.collected_parameters,
-            completion_percentage=session.completion_percentage,
+            parameters=normalized_parameters,
+            raw_parameters=raw_parameters,
+            completion_percentage=_normalize_completion_percentage(session.completion_percentage),
             validation_status=validation_status,
-            export_timestamp=datetime.now()
+            export_timestamp=datetime.now(),
+            validation_issues=validation_result.errors if validation_result else []
         )
 
     except Exception as e:

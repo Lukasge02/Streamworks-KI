@@ -5,7 +5,7 @@ Refactored Upload Job Manager with proper dependency injection
 import time
 import asyncio
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable, Awaitable
 from datetime import datetime, timedelta
 from enum import Enum
 import logging
@@ -135,8 +135,25 @@ class UploadJobManager(ServiceLifecycle):
     
     def __init__(self):
         self._jobs: Dict[str, UploadJobProgress] = {}
+        self._progress_callbacks: Dict[
+            str, List[Callable[[UploadJobProgress], Awaitable[None]]]
+        ] = {}
         self._cleanup_task: Optional[asyncio.Task] = None
         self._initialized = False
+
+    def _ensure_initialized(self) -> None:
+        """Start background cleanup when used without DI lifecycle"""
+        if self._initialized:
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.debug("Event loop not running; defer cleanup initialization")
+            return
+
+        self._cleanup_task = loop.create_task(self._cleanup_old_jobs())
+        self._initialized = True
         
     async def initialize(self) -> None:
         """Initialize the upload job manager"""
@@ -175,7 +192,10 @@ class UploadJobManager(ServiceLifecycle):
         self._initialized = False
         logger.info("UploadJobManager cleaned up")
     
-    def create_job(self, job_id: str, filename: str, file_size_bytes: int) -> UploadJobProgress:
+    def create_job(
+        self, job_id: str, filename: str, file_size_bytes: int
+    ) -> UploadJobProgress:
+        self._ensure_initialized()
         """Create a new upload job"""
         job = UploadJobProgress(
             job_id=job_id,
@@ -188,6 +208,7 @@ class UploadJobManager(ServiceLifecycle):
         
         # Broadcast initial progress
         asyncio.create_task(self._broadcast_progress(job_id))
+        self._notify_callbacks(job_id)
         
         return job
     
@@ -195,12 +216,13 @@ class UploadJobManager(ServiceLifecycle):
         """Get an upload job by ID"""
         return self._jobs.get(job_id)
     
-    def update_job(self, job_id: str, **kwargs):
+    def update_job(self, job_id: str, **kwargs) -> Optional[UploadJobProgress]:
+        self._ensure_initialized()
         """Update an upload job"""
         job = self._jobs.get(job_id)
         if not job:
             logger.warning(f"Attempted to update non-existent job: {job_id}")
-            return
+            return None
         
         # Update job based on provided kwargs
         if "progress" in kwargs:
@@ -224,27 +246,53 @@ class UploadJobManager(ServiceLifecycle):
         
         # Broadcast progress update
         asyncio.create_task(self._broadcast_progress(job_id))
+        self._notify_callbacks(job_id)
+        return job
     
-    def complete_job(self, job_id: str):
+    def update_job_progress(
+        self,
+        job_id: str,
+        progress: float,
+        stage: Optional[UploadStage] = None,
+        stage_details: str = "",
+        chunk_count: Optional[int] = None
+    ) -> Optional[UploadJobProgress]:
+        """Backward compatible helper for legacy calls"""
+        return self.update_job(
+            job_id,
+            progress=progress,
+            stage=stage,
+            stage_details=stage_details,
+            chunk_count=chunk_count
+        )
+    
+    def complete_job(self, job_id: str, chunk_count: Optional[int] = None):
+        self._ensure_initialized()
         """Mark an upload job as completed"""
         job = self._jobs.get(job_id)
         if job:
+            if chunk_count is not None:
+                job.chunk_count = chunk_count
             job.complete()
             asyncio.create_task(self._broadcast_progress(job_id))
+            self._notify_callbacks(job_id)
             logger.info(f"Completed upload job: {job_id}")
     
     def fail_job(self, job_id: str, error_message: str):
+        self._ensure_initialized()
         """Mark an upload job as failed"""
         job = self._jobs.get(job_id)
         if job:
             job.set_error(error_message)
             asyncio.create_task(self._broadcast_progress(job_id))
+            self._notify_callbacks(job_id)
             logger.error(f"Failed upload job: {job_id} - {error_message}")
     
     def remove_job(self, job_id: str):
         """Remove an upload job"""
         if job_id in self._jobs:
             del self._jobs[job_id]
+            self._progress_callbacks.pop(job_id, None)
             logger.info(f"Removed upload job: {job_id}")
     
     def get_all_jobs(self) -> Dict[str, UploadJobProgress]:
@@ -292,6 +340,74 @@ class UploadJobManager(ServiceLifecycle):
                 break
             except Exception as e:
                 logger.error(f"Error during job cleanup: {e}")
+
+    def add_progress_callback(
+        self,
+        job_id: str,
+        callback: Callable[[UploadJobProgress], Awaitable[None]]
+    ) -> None:
+        """Register async callback for job progress updates"""
+        callbacks = self._progress_callbacks.setdefault(job_id, [])
+        if callback not in callbacks:
+            callbacks.append(callback)
+
+    def remove_progress_callback(
+        self,
+        job_id: str,
+        callback: Callable[[UploadJobProgress], Awaitable[None]]
+    ) -> None:
+        """Remove previously registered progress callback"""
+        callbacks = self._progress_callbacks.get(job_id)
+        if not callbacks:
+            return
+        try:
+            callbacks.remove(callback)
+        except ValueError:
+            return
+        if not callbacks:
+            self._progress_callbacks.pop(job_id, None)
+
+    async def get_job_details(self, job_id: str) -> Optional[UploadJobProgress]:
+        """Return job if it exists"""
+        return self._jobs.get(job_id)
+
+    async def get_job_status(self, job_id: str) -> Optional[UploadJobProgress]:
+        """Alias kept for backward compatibility"""
+        return await self.get_job_details(job_id)
+
+    async def get_queue_stats(self) -> Dict[str, Any]:
+        """Return aggregated metrics about current upload queue"""
+        jobs = list(self._jobs.values())
+        total_jobs = len(jobs)
+        status_counts: Dict[str, int] = {}
+        total_progress = 0.0
+
+        for job in jobs:
+            status_counts[job.status.value] = status_counts.get(job.status.value, 0) + 1
+            total_progress += job.progress_percentage
+
+        return {
+            "total_jobs": total_jobs,
+            "status_counts": status_counts,
+            "average_progress": (
+                round(total_progress / total_jobs, 2) if total_jobs else 0.0
+            )
+        }
+
+    def _notify_callbacks(self, job_id: str) -> None:
+        """Trigger registered callbacks asynchronously"""
+        if job_id not in self._progress_callbacks:
+            return
+
+        job = self._jobs.get(job_id)
+        if not job:
+            return
+
+        for callback in list(self._progress_callbacks.get(job_id, [])):
+            try:
+                asyncio.create_task(callback(job))
+            except Exception as error:
+                logger.error(f"Progress callback failed for {job_id}: {error}")
 
 
 # Factory function for dependency injection

@@ -173,6 +173,27 @@ class SmartParameterExtractor:
         """Erkennt Job-Type aus User-Nachricht"""
 
         # Erstelle Job-Type Detection Prompt
+        message_lower = user_message.lower()
+
+        keyword_mapping = {
+            "FILE_TRANSFER": [
+                "file transfer", "file", "datei", "dateien", "transfer", "kopier", "kopieren",
+                "verschieben", "sftp", "ftp", "rsync", "kopie", "copy"
+            ],
+            "SAP": [
+                "sap", "jexa", "mandant", "report", "transaction", "transaktion", "fabrik",
+                "calendar", "kalender", "variant", "sap-system"
+            ],
+            "STANDARD": [
+                "script", "skript", "batch", "job", "prozess", "process", "command",
+                "befehl", "shell", "python", "exe"
+            ],
+        }
+
+        for job_type, keywords in keyword_mapping.items():
+            if any(keyword in message_lower for keyword in keywords):
+                return job_type
+
         job_types_info = []
         for job_type, schema in self.schemas.items():
             job_types_info.append(f"""

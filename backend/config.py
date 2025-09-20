@@ -28,13 +28,13 @@ class Settings(BaseSettings):
     LOCAL_EMBEDDING_DEVICE: str = os.getenv("LOCAL_EMBEDDING_DEVICE", "auto")  # auto|cpu|cuda|mps
     BATCH_SIZE_LOCAL: int = int(os.getenv("BATCH_SIZE_LOCAL", "32"))
     
-    # Enhanced Embedding Cache Configuration - Optimized for better performance
-    EMBEDDING_CACHE_SIZE: int = int(os.getenv("EMBEDDING_CACHE_SIZE", "1500"))  # Optimized size
-    EMBEDDING_CACHE_TTL: int = int(os.getenv("EMBEDDING_CACHE_TTL", "7200"))  # 2 hours - longer retention
+    # Enhanced Embedding Cache Configuration - PERFORMANCE OPTIMIZED
+    EMBEDDING_CACHE_SIZE: int = int(os.getenv("EMBEDDING_CACHE_SIZE", "2500"))  # Increased for better hit rate
+    EMBEDDING_CACHE_TTL: int = int(os.getenv("EMBEDDING_CACHE_TTL", "14400"))  # 4 hours - longer retention
     ENABLE_SEMANTIC_CACHE: bool = os.getenv("ENABLE_SEMANTIC_CACHE", "true").lower() == "true"
-    SEMANTIC_CACHE_SIZE: int = int(os.getenv("SEMANTIC_CACHE_SIZE", "300"))  # Smaller for efficiency
-    SEMANTIC_CACHE_TTL: int = int(os.getenv("SEMANTIC_CACHE_TTL", "3600"))  # 1 hour - longer retention
-    SEMANTIC_SIMILARITY_THRESHOLD: float = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.80"))  # Less restrictive from 0.85
+    SEMANTIC_CACHE_SIZE: int = int(os.getenv("SEMANTIC_CACHE_SIZE", "500"))  # Increased for better coverage
+    SEMANTIC_CACHE_TTL: int = int(os.getenv("SEMANTIC_CACHE_TTL", "7200"))  # 2 hours - longer retention
+    SEMANTIC_SIMILARITY_THRESHOLD: float = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.85"))  # Higher for better quality
     
     # Advanced Cache Settings
     CACHE_CLEANUP_INTERVAL: int = int(os.getenv("CACHE_CLEANUP_INTERVAL", "300"))  # 5 minutes
@@ -143,6 +143,9 @@ class Settings(BaseSettings):
     
     # API Configuration
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8000")
+    ALLOW_DEV_AUTH_FALLBACK: bool = (
+        os.getenv("ALLOW_DEV_AUTH_FALLBACK", "false").lower() == "true"
+    )
     
     # Redis Cache Configuration (optional)
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
@@ -181,14 +184,14 @@ class Settings(BaseSettings):
     CONTEXT_PRESERVATION_RATIO: float = float(os.getenv("CONTEXT_PRESERVATION_RATIO", "0.25"))  # 25% overlap for context
     SEMANTIC_COHERENCE_THRESHOLD: float = float(os.getenv("SEMANTIC_COHERENCE_THRESHOLD", "0.7"))  # Coherence scoring
     
-    # RAG Pipeline Settings - OPTIMIZED Based on Similarity Threshold Analysis (2025-09-15)
-    # Analysis Results: avg_similarity_score: 0.5647, optimal_threshold: 0.01, balance_score: 0.82
-    TOP_K_RETRIEVAL: int = int(os.getenv("TOP_K_RETRIEVAL", "10"))
-    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.01"))  # Optimized from analysis (was 0.25)
+    # RAG Pipeline Settings - PERFORMANCE OPTIMIZED (2024-09-19)
+    # Performance Analysis: 9037ms → Target <2000ms, Quality 50% → Target >80%
+    TOP_K_RETRIEVAL: int = int(os.getenv("TOP_K_RETRIEVAL", "15"))  # Increased from 10 for better coverage
+    SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.15"))  # Optimized for quality (was 0.01 - too permissive)
 
-    # Advanced RAG Thresholds - Based on Qdrant Performance Analysis
-    HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.025"))  # Optimized from analysis (was 0.18)
-    FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.01"))  # Optimized from analysis (was 0.02)
+    # Advanced RAG Thresholds - Performance & Quality Balance
+    HIGH_QUALITY_THRESHOLD: float = float(os.getenv("HIGH_QUALITY_THRESHOLD", "0.20"))  # Higher for better quality
+    FALLBACK_THRESHOLD: float = float(os.getenv("FALLBACK_THRESHOLD", "0.10"))  # More selective fallback
     
     # Model Settings - Use gpt-4o for JSON mode compatibility
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o")  # Changed from gpt-4o-mini for JSON mode support

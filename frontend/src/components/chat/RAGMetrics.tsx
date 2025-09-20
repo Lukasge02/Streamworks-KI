@@ -4,9 +4,11 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BarChart3, Clock, Zap, FileText, Database, Brain,
-  ChevronDown, ChevronUp, Info, TrendingUp, Target
+  ChevronDown, ChevronUp, Info, TrendingUp, Target, Activity, AlertTriangle
 } from 'lucide-react'
 import { ConfidenceIndicator } from '../ui/StatusIndicator'
+import { usePerformanceMetrics } from '../../hooks/usePerformanceMetrics'
+import { performanceApi } from '../../services/performance.api'
 
 interface RAGMetricsProps {
   confidence_score?: number
@@ -44,31 +46,58 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
 }) => {
   const [showDetails, setShowDetails] = useState(false)
 
-  const getPerformanceGrade = (time?: string) => {
-    if (!time) return { grade: 'N/A', color: 'text-gray-500' }
+  // Use real performance metrics
+  const {
+    dashboardMetrics,
+    metrics,
+    isLoading,
+    isConnected,
+    responseTime,
+    cacheHitRate,
+    sourceQuality: performanceSourceQuality,
+    systemHealth,
+    activeBottlenecks
+  } = usePerformanceMetrics({
+    autoRefresh: true,
+    refreshInterval: 5000
+  })
 
-    const timeMs = parseFloat(time.replace('ms', '').replace('s', '000'))
+  // Use real-time performance data with fallbacks to props
+  const realProcessingTime = dashboardMetrics?.dashboard_metrics.processing_time.current_ms ||
+                            (processing_time ? parseFloat(processing_time.replace('ms', '').replace('s', '000')) : 0)
+
+  const realSourceQuality = performanceSourceQuality ||
+                           (sources.length > 0 ? ((1 - (sources.reduce((sum, source) =>
+                           sum + (source.relevance_score || 0.5), 0) / sources.length)) * 100) : 0)
+
+  const realCacheHitRate = cacheHitRate
+
+  const getPerformanceGrade = (timeMs: number) => {
+    if (timeMs === 0) return { grade: isLoading ? 'Laden...' : 'N/A', color: 'text-gray-500' }
     if (timeMs < 1000) return { grade: 'Exzellent', color: 'text-emerald-600' }
-    if (timeMs < 3000) return { grade: 'Gut', color: 'text-green-600' }
+    if (timeMs < 2000) return { grade: 'Gut', color: 'text-green-600' }
     if (timeMs < 5000) return { grade: 'Mittel', color: 'text-amber-600' }
     return { grade: 'Langsam', color: 'text-red-600' }
   }
 
-  const getSourceQuality = () => {
-    if (sources.length === 0) return { score: 0, label: 'Keine Quellen' }
-
-    const avgRelevance = sources.reduce((sum, source) =>
-      sum + (source.relevance_score || 0.5), 0) / sources.length
-
-    const quality = 1 - avgRelevance // Invert so higher is better
-
-    if (quality >= 0.8) return { score: Math.round(quality * 100), label: 'Hoch' }
-    if (quality >= 0.6) return { score: Math.round(quality * 100), label: 'Mittel' }
-    return { score: Math.round(quality * 100), label: 'Niedrig' }
+  const getQualityGrade = (quality: number) => {
+    if (quality === 0) return { label: isLoading ? 'Laden...' : 'Keine Daten', color: 'text-gray-500' }
+    if (quality >= 80) return { label: 'Hoch', color: 'text-emerald-600' }
+    if (quality >= 60) return { label: 'Mittel', color: 'text-amber-600' }
+    return { label: 'Niedrig', color: 'text-red-600' }
   }
 
-  const performance = getPerformanceGrade(processing_time)
-  const sourceQuality = getSourceQuality()
+  const getCacheGrade = (hitRate: number) => {
+    if (hitRate === 0) return { label: isLoading ? 'Laden...' : 'N/A', color: 'text-gray-500' }
+    if (hitRate >= 95) return { label: 'Exzellent', color: 'text-emerald-600' }
+    if (hitRate >= 85) return { label: 'Gut', color: 'text-green-600' }
+    if (hitRate >= 70) return { label: 'Mittel', color: 'text-amber-600' }
+    return { label: 'Niedrig', color: 'text-red-600' }
+  }
+
+  const performance = getPerformanceGrade(realProcessingTime)
+  const qualityGrade = getQualityGrade(realSourceQuality)
+  const cacheGrade = getCacheGrade(realCacheHitRate)
 
   const MetricCard: React.FC<{
     icon: React.ReactNode
@@ -123,9 +152,27 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Connection status indicator */}
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+                 title={isConnected ? 'Live-Daten' : 'Offline'} />
+
+            {/* Confidence score */}
             {confidence_score && (
               <ConfidenceIndicator score={confidence_score} />
             )}
+
+            {/* System health indicator */}
+            {systemHealth !== 'unknown' && (
+              <div className={`px-2 py-1 rounded text-xs font-medium ${
+                systemHealth === 'excellent' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
+                systemHealth === 'good' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+              }`}>
+                {systemHealth === 'excellent' ? '🟢' : systemHealth === 'good' ? '🟡' : '🔴'}
+                {systemHealth === 'excellent' ? 'Optimal' : systemHealth === 'good' ? 'Gut' : 'Degradiert'}
+              </div>
+            )}
+
             {expanded ? (
               <ChevronUp className="w-4 h-4 text-gray-400" />
             ) : (
@@ -153,7 +200,7 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
                   label="Verarbeitungszeit"
                   value={
                     <div>
-                      <div>{processing_time || 'N/A'}</div>
+                      <div>{performanceApi.formatDuration(realProcessingTime)}</div>
                       <div className={`text-xs ${performance.color}`}>
                         {performance.grade}
                       </div>
@@ -167,25 +214,37 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
                   label="Quellenqualität"
                   value={
                     <div>
-                      <div>{sourceQuality.score}%</div>
-                      <div className="text-xs text-gray-500">{sourceQuality.label}</div>
+                      <div>{Math.round(realSourceQuality)}%</div>
+                      <div className={`text-xs ${qualityGrade.color}`}>{qualityGrade.label}</div>
                     </div>
                   }
                   tooltip="Durchschnittliche Relevanz der abgerufenen Quellen"
                 />
 
                 <MetricCard
-                  icon={<FileText className="w-3 h-3 text-green-600" />}
-                  label="Quellenanzahl"
-                  value={sources.length}
-                  tooltip="Anzahl der für die Antwort verwendeten Dokumente"
+                  icon={<Activity className="w-3 h-3 text-green-600" />}
+                  label="Cache Hit-Rate"
+                  value={
+                    <div>
+                      <div>{Math.round(realCacheHitRate)}%</div>
+                      <div className={`text-xs ${cacheGrade.color}`}>{cacheGrade.label}</div>
+                    </div>
+                  }
+                  tooltip="Cache-Effizienz für wiederholte Anfragen"
                 />
 
                 <MetricCard
                   icon={<Brain className="w-3 h-3 text-purple-600" />}
-                  label="Modell"
-                  value={model_info?.split('-')[0] || 'N/A'}
-                  tooltip="Verwendetes KI-Modell"
+                  label="Komponenten"
+                  value={
+                    <div>
+                      <div>{dashboardMetrics ? Object.keys(dashboardMetrics.dashboard_metrics.system_health.components).length : (sources.length || 0)}</div>
+                      <div className="text-xs text-gray-500">
+                        {activeBottlenecks > 0 ? `${activeBottlenecks} Engpässe` : 'Gesund'}
+                      </div>
+                    </div>
+                  }
+                  tooltip="Anzahl aktiver Systemkomponenten"
                 />
               </div>
 
@@ -265,21 +324,63 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
 
               {/* Performance Insights */}
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                <h4 className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-2">
-                  Performance Insights
+                <h4 className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center">
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  Smart Performance Insights
                 </h4>
                 <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                  {parseFloat(processing_time?.replace('ms', '').replace('s', '000') || '0') > 3000 && (
-                    <div>• Die Verarbeitungszeit ist über dem Zielwert von 3s</div>
+                  {/* Real-time performance insights */}
+                  {realProcessingTime > 2000 && (
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-3 h-3 mr-1 text-amber-500" />
+                      Verarbeitungszeit ({performanceApi.formatDuration(realProcessingTime)}) über Zielwert (2s)
+                    </div>
+                  )}
+                  {realCacheHitRate < 85 && (
+                    <div className="flex items-center">
+                      <Database className="w-3 h-3 mr-1 text-blue-500" />
+                      Cache-Effizienz ({Math.round(realCacheHitRate)}%) kann verbessert werden
+                    </div>
+                  )}
+                  {realSourceQuality < 70 && realSourceQuality > 0 && (
+                    <div className="flex items-center">
+                      <Target className="w-3 h-3 mr-1 text-orange-500" />
+                      Quellenqualität ({Math.round(realSourceQuality)}%) benötigt Optimierung
+                    </div>
                   )}
                   {confidence_score && confidence_score < 0.7 && (
-                    <div>• Das Vertrauen in die Antwort ist niedrig - erwäge zusätzliche Quellen</div>
+                    <div className="flex items-center">
+                      <Brain className="w-3 h-3 mr-1 text-purple-500" />
+                      Niedriges Vertrauen ({Math.round(confidence_score * 100)}%) - mehr Kontext benötigt
+                    </div>
                   )}
-                  {sources.length === 0 && (
-                    <div>• Keine Quellen gefunden - Antwort basiert auf Modellwissen</div>
+                  {activeBottlenecks > 0 && (
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-3 h-3 mr-1 text-red-500" />
+                      {activeBottlenecks} aktive Engpässe erkannt - Performance wird beeinträchtigt
+                    </div>
                   )}
-                  {sourceQuality.score < 60 && (
-                    <div>• Die Quellenqualität könnte verbessert werden</div>
+                  {!isConnected && (
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-3 h-3 mr-1 text-red-500" />
+                      Keine Live-Verbindung - Metriken möglicherweise veraltet
+                    </div>
+                  )}
+
+                  {/* Positive insights */}
+                  {realProcessingTime > 0 && realProcessingTime <= 1000 && realCacheHitRate >= 90 && realSourceQuality >= 80 && (
+                    <div className="flex items-center text-emerald-600">
+                      <Activity className="w-3 h-3 mr-1" />
+                      System läuft optimal - alle Metriken im grünen Bereich
+                    </div>
+                  )}
+
+                  {/* No issues found */}
+                  {realProcessingTime <= 2000 && realCacheHitRate >= 85 && (realSourceQuality >= 70 || realSourceQuality === 0) && activeBottlenecks === 0 && isConnected && (
+                    <div className="flex items-center text-green-600">
+                      <FileText className="w-3 h-3 mr-1" />
+                      Keine Performance-Probleme erkannt - System arbeitet effizient
+                    </div>
                   )}
                 </div>
               </div>

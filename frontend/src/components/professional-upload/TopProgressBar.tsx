@@ -3,9 +3,9 @@
  * Shows compact upload progress for all active uploads
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { XMarkIcon, DocumentTextIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, DocumentTextIcon, CloudArrowUpIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@/lib/utils'
 // Upload file interface for progress tracking
 export interface UploadFile {
@@ -24,14 +24,16 @@ interface BottomProgressBarProps {
   className?: string
 }
 
-export function BottomProgressBar({ 
-  uploads, 
-  onRemoveUpload, 
+export function BottomProgressBar({
+  uploads,
+  onRemoveUpload,
   onClearAll,
-  className 
+  className
 }: BottomProgressBarProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
   // Only show active uploads (not completed or error)
-  const activeUploads = uploads.filter(upload => 
+  const activeUploads = uploads.filter(upload =>
     ['pending', 'uploading', 'analyzing', 'processing'].includes(upload.status)
   )
 
@@ -100,8 +102,8 @@ export function BottomProgressBar({
               </span>
             </div>
 
-            {/* Center: File Progress (only show current file) */}
-            {activeUploads.length > 0 && (
+            {/* Center: File Progress (only show current file when collapsed) */}
+            {activeUploads.length > 0 && !isExpanded && (
               <div className="flex items-center space-x-3 flex-1 max-w-md mx-6">
                 <div className="flex items-center space-x-2 min-w-0 flex-1">
                   {getStatusIcon(activeUploads[0].status)}
@@ -122,21 +124,108 @@ export function BottomProgressBar({
                     />
                   </div>
                   <span className="text-xs text-gray-600 min-w-[2.5rem]">
-                    {activeUploads[0].progress}%
+                    {Math.round(activeUploads[0].progress)}%
                   </span>
                 </div>
               </div>
+            )}
+
+            {/* Expand/Collapse Button */}
+            {activeUploads.length > 1 && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="px-2 py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center space-x-1"
+                title={isExpanded ? 'Zuklappen' : 'Warteschlange anzeigen'}
+              >
+                <span className="text-xs">
+                  {isExpanded ? 'Zuklappen' : `+${activeUploads.length - 1} weitere`}
+                </span>
+                {isExpanded ?
+                  <ChevronDownIcon className="w-3 h-3" /> :
+                  <ChevronUpIcon className="w-3 h-3" />
+                }
+              </button>
             )}
 
             {/* Right: Close Button */}
             <button
               onClick={onClearAll}
               className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              title="Schließen"
+              title="Alle Uploads abbrechen"
             >
               <XMarkIcon className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Expanded Upload Queue */}
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="overflow-hidden"
+              >
+                <div className="pt-3 border-t border-gray-200/50">
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {activeUploads.map((upload, index) => (
+                      <motion.div
+                        key={upload.id}
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          {getStatusIcon(upload.status)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-900 truncate">
+                                {upload.file.name}
+                              </span>
+                              <span className="text-xs text-gray-500 ml-2">
+                                {formatFileSize(upload.file.size)}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                                <motion.div
+                                  className={cn(
+                                    "h-full rounded-full",
+                                    getStatusColor(upload.status)
+                                  )}
+                                  initial={{ width: '0%' }}
+                                  animate={{ width: `${upload.progress}%` }}
+                                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-600 min-w-[2.5rem]">
+                                {Math.round(upload.progress)}%
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {upload.status === 'uploading' && 'Wird hochgeladen...'}
+                              {upload.status === 'analyzing' && 'Wird analysiert...'}
+                              {upload.status === 'processing' && 'Wird verarbeitet...'}
+                              {upload.status === 'pending' && 'Wartet...'}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => onRemoveUpload(upload.id)}
+                          className="ml-3 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          title="Upload abbrechen"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </AnimatePresence>

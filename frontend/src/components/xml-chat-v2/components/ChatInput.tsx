@@ -23,21 +23,22 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(({
   // Merge refs
   React.useImperativeHandle(ref, () => textareaRef.current!)
 
-  // Auto-resize textarea
+  // Auto-resize textarea with stable positioning
   useEffect(() => {
     const textarea = textareaRef.current
     if (!textarea) return
 
-    // Reset height to auto to get the correct scrollHeight
+    // Always maintain consistent height to prevent shifting
+    const minHeight = 44
+    const maxHeight = 120
+
+    // Temporarily set to auto to get scroll height
     textarea.style.height = 'auto'
     const scrollHeight = textarea.scrollHeight
 
-    // Calculate number of rows (assuming 24px line height)
-    const lineHeight = 24
-    const newRows = Math.min(Math.max(Math.ceil(scrollHeight / lineHeight), 1), 6)
-
-    setRows(newRows)
-    textarea.style.height = `${newRows * lineHeight}px`
+    // Calculate new height but ensure minimum
+    const newHeight = Math.max(Math.min(scrollHeight, maxHeight), minHeight)
+    textarea.style.height = `${newHeight}px`
   }, [value])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -75,14 +76,15 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(({
           placeholder={placeholder}
           className={`
             w-full px-4 py-3 pr-12 resize-none border-0 outline-none rounded-2xl
-            placeholder-gray-400 text-gray-900
+            placeholder-gray-400 text-gray-900 overflow-hidden
             ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-transparent'}
           `}
           style={{
-            minHeight: '24px',
-            maxHeight: '144px' // 6 lines
+            minHeight: '44px',
+            maxHeight: '120px',
+            lineHeight: '20px',
+            height: '44px' // Always start with fixed height
           }}
-          rows={rows}
         />
 
         {/* Send Button */}
@@ -123,20 +125,6 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(({
         </motion.div>
       )}
 
-      {/* Quick Actions */}
-      {value.length === 0 && !disabled && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {QUICK_PROMPTS.map((prompt) => (
-            <button
-              key={prompt.text}
-              onClick={() => onChange(prompt.text)}
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              {prompt.emoji} {prompt.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 })

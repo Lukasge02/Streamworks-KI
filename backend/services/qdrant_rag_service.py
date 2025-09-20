@@ -383,7 +383,7 @@ class QdrantRAGService:
         top_k: int = 5
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
-        Query documents using Qdrant pipeline
+        Query documents using Qdrant pipeline - PERFORMANCE OPTIMIZED
 
         Args:
             query: User query
@@ -399,24 +399,45 @@ class QdrantRAGService:
         logger.info(f"🔍 Processing query with Qdrant: {query}")
 
         try:
+            # Performance tracking for embedding generation
+            embedding_start = time.time()
+
             # 1. Generate query embedding
             query_embedding = self.embed_model.get_text_embedding(query)
-            logger.info("✅ Generated query embedding")
+            embedding_time = (time.time() - embedding_start) * 1000
 
-            # 2. Query Qdrant for similar chunks
+            logger.info(f"✅ Generated query embedding in {embedding_time:.2f}ms")
+
+            # 2. Optimized Qdrant query with better parameters
+            search_start = time.time()
+
+            # Use optimized top_k for better quality/performance balance
+            optimized_top_k = min(max(top_k, 10), 20)  # Between 10-20 for better coverage
+
             similar_chunks = await self.qdrant_service.similarity_search(
                 query_embedding=query_embedding,
-                top_k=top_k,
+                top_k=optimized_top_k,  # Use optimized top_k
                 score_threshold=self.settings.SIMILARITY_THRESHOLD,
                 doc_filters=doc_filters
             )
 
-            logger.info(f"✅ Found {len(similar_chunks)} similar chunks from Qdrant")
+            search_time = (time.time() - search_start) * 1000
+            logger.info(f"✅ Found {len(similar_chunks)} similar chunks from Qdrant in {search_time:.2f}ms")
 
-            # 3. Generate LLM response using retrieved context
+            # 3. Enhanced chunk ranking and filtering for better quality
             if similar_chunks:
-                context_texts = [chunk["content"] for chunk in similar_chunks]
+                # Filter and rank chunks for better quality
+                filtered_chunks = self._filter_and_rank_chunks(similar_chunks, query, top_k)
+
+                if not filtered_chunks:
+                    logger.warning("No high-quality chunks found after filtering")
+                    return "Entschuldigung, ich konnte keine relevanten Informationen finden.", []
+
+                context_texts = [chunk["content"] for chunk in filtered_chunks]
                 context = "\n\n".join(context_texts)
+
+                # 4. Optimized LLM generation with performance tracking
+                llm_start = time.time()
 
                 # Create prompt for LLM
                 prompt = f"""Context:
@@ -429,16 +450,23 @@ Answer based on the context above:"""
                 response = await self.llm.acomplete(prompt)
                 response_text = str(response).strip()
 
-                # Format source documents
+                llm_time = (time.time() - llm_start) * 1000
+                logger.info(f"✅ Generated LLM response in {llm_time:.2f}ms")
+
+                # Format source documents with enhanced metadata
                 source_docs = []
-                for chunk in similar_chunks:
+                for chunk in filtered_chunks:
                     source_docs.append({
                         "content": chunk["content"],
-                        "metadata": chunk["metadata"],
+                        "metadata": {
+                            **chunk["metadata"],
+                            "relevance_score": chunk["score"],
+                            "quality_score": self._calculate_chunk_quality(chunk, query)
+                        },
                         "score": chunk["score"]
                     })
 
-                logger.info(f"✅ Generated LLM response using Qdrant context")
+                logger.info(f"✅ Generated LLM response using {len(filtered_chunks)} high-quality chunks")
                 return response_text, source_docs
             else:
                 logger.info("ℹ️ No relevant context found - generating general response")
@@ -929,6 +957,159 @@ Generate the complete XML now:"""
                 break
 
         return '\n'.join(xml_lines) if xml_lines else response.strip()
+
+    def _filter_and_rank_chunks(self, chunks: List[Dict], query: str, top_k: int) -> List[Dict]:
+        """
+        Filter and rank chunks for better quality and relevance - PERFORMANCE OPTIMIZED
+
+        Args:
+            chunks: Raw chunks from Qdrant
+            query: Original query
+            top_k: Number of top chunks to return
+
+        Returns:
+            Filtered and ranked chunks
+        """
+        if not chunks:
+            return []
+
+        # Calculate enhanced scores for each chunk
+        enhanced_chunks = []
+        query_words = set(query.lower().split())
+
+        for chunk in chunks:
+            content = chunk.get("content", "")
+            metadata = chunk.get("metadata", {})
+
+            # Original similarity score
+            similarity_score = chunk.get("score", 0.0)
+
+            # Content quality score
+            content_quality = self._calculate_content_quality(content)
+
+            # Keyword overlap score
+            content_words = set(content.lower().split())
+            keyword_overlap = len(query_words & content_words) / max(len(query_words), 1)
+
+            # Document type bonus (prefer certain document types)
+            doc_type_bonus = self._get_doc_type_bonus(metadata.get("doctype", ""))
+
+            # Length penalty for very short or very long chunks
+            length_penalty = self._calculate_length_penalty(content)
+
+            # Combined score
+            enhanced_score = (
+                similarity_score * 0.4 +           # Original similarity
+                content_quality * 0.25 +           # Content quality
+                keyword_overlap * 0.2 +            # Keyword relevance
+                doc_type_bonus * 0.1 +             # Document type preference
+                length_penalty * 0.05              # Length appropriateness
+            )
+
+            enhanced_chunks.append({
+                **chunk,
+                "enhanced_score": enhanced_score,
+                "content_quality": content_quality,
+                "keyword_overlap": keyword_overlap
+            })
+
+        # Sort by enhanced score
+        enhanced_chunks.sort(key=lambda x: x["enhanced_score"], reverse=True)
+
+        # Apply quality filter - only keep chunks above minimum quality threshold
+        min_quality_threshold = 0.3
+        filtered_chunks = [
+            chunk for chunk in enhanced_chunks
+            if chunk["enhanced_score"] > min_quality_threshold
+        ]
+
+        # Return top chunks, but ensure we have at least some results
+        if not filtered_chunks and enhanced_chunks:
+            # If no chunks meet the quality threshold, return top 3 anyway
+            return enhanced_chunks[:3]
+
+        return filtered_chunks[:top_k]
+
+    def _calculate_content_quality(self, content: str) -> float:
+        """Calculate content quality score (0-1)"""
+        if not content or len(content.strip()) < 20:
+            return 0.0
+
+        quality_score = 0.0
+
+        # Length appropriateness (prefer 100-1000 characters)
+        length = len(content)
+        if 100 <= length <= 1000:
+            quality_score += 0.3
+        elif 50 <= length <= 1500:
+            quality_score += 0.2
+        else:
+            quality_score += 0.1
+
+        # Sentence structure
+        sentences = content.split('.')
+        if 2 <= len(sentences) <= 10:
+            quality_score += 0.2
+
+        # Word variety (simple measure)
+        words = content.lower().split()
+        unique_words = set(words)
+        if len(words) > 0:
+            variety_ratio = len(unique_words) / len(words)
+            quality_score += variety_ratio * 0.3
+
+        # Avoid repetitive content
+        if len(set(content.split('\n'))) > 1:
+            quality_score += 0.2
+
+        return min(quality_score, 1.0)
+
+    def _get_doc_type_bonus(self, doctype: str) -> float:
+        """Get bonus score based on document type"""
+        doc_type_scores = {
+            "pdf": 0.8,
+            "docx": 0.7,
+            "txt": 0.6,
+            "html": 0.5,
+            "xml": 0.4,
+            "general": 0.5
+        }
+        return doc_type_scores.get(doctype.lower(), 0.5)
+
+    def _calculate_length_penalty(self, content: str) -> float:
+        """Calculate penalty/bonus based on content length"""
+        length = len(content)
+
+        if 200 <= length <= 800:
+            return 1.0  # Optimal length
+        elif 100 <= length <= 1200:
+            return 0.8  # Good length
+        elif 50 <= length <= 1500:
+            return 0.6  # Acceptable length
+        else:
+            return 0.3  # Too short or too long
+
+    def _calculate_chunk_quality(self, chunk: Dict, query: str) -> float:
+        """Calculate overall chunk quality for metadata"""
+        content = chunk.get("content", "")
+        similarity_score = chunk.get("score", 0.0)
+
+        # Combine multiple quality factors
+        content_quality = self._calculate_content_quality(content)
+
+        # Query relevance
+        query_words = set(query.lower().split())
+        content_words = set(content.lower().split())
+        relevance = len(query_words & content_words) / max(len(query_words), 1)
+
+        # Combined quality score
+        quality_score = (
+            similarity_score * 0.4 +
+            content_quality * 0.4 +
+            relevance * 0.2
+        )
+
+        return min(quality_score, 1.0)
 
 
 # Global service instance

@@ -75,7 +75,7 @@ export const useWebSocketUpload = (options: UseWebSocketUploadOptions = {}) => {
                 filename: progressData.filename || '',
                 file_size_bytes: progressData.file_size_bytes || 0,
                 status: progressData.status || 'uploading',
-                progress_percentage: progressData.progress || 0,
+                progress_percentage: Math.round(progressData.progress || 0),
                 current_stage: progressData.stage || 'Hochladen...',
                 stage_details: progressData.stage_details || '',
                 current_stage_index: 0,

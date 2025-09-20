@@ -3,12 +3,10 @@
  * Clean, focused types for the new system
  */
 
+import type { XMLChatMessage, XMLChatSession, XMLGenerationStatus } from '../store/xmlChatStore'
+
 // Re-export store types for convenience
-export type {
-  XMLChatMessage,
-  XMLChatSession,
-  XMLGenerationStatus
-} from '../store/xmlChatStore'
+export { type XMLChatMessage, type XMLChatSession, type XMLGenerationStatus } from '../store/xmlChatStore'
 
 // ================================
 // API TYPES

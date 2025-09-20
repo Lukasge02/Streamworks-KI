@@ -54,17 +54,19 @@ class DialogResponse:
         state: DialogState,
         priority: DialogPriority,
         suggested_questions: List[str] = None,
-        extracted_parameters: List[str] = None,
+        extracted_parameters: Optional[Dict[str, Any]] = None,
         next_parameter: str = None,
         completion_percentage: float = 0.0,
         validation_issues: List[str] = None,
-        metadata: Dict[str, Any] = None
-    ):
+        metadata: Dict[str, Any] = None,
+        parameter_confidences: Optional[Dict[str, float]] = None
+    ) -> None:
         self.message = message
         self.state = state
         self.priority = priority
         self.suggested_questions = suggested_questions or []
-        self.extracted_parameters = extracted_parameters or []
+        self.extracted_parameters = extracted_parameters or {}
+        self.parameter_confidences = parameter_confidences or {}
         self.next_parameter = next_parameter
         self.completion_percentage = completion_percentage
         self.validation_issues = validation_issues or []
@@ -242,8 +244,25 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 message="Entschuldigung, es ist ein Fehler aufgetreten. Könnten Sie Ihre Anfrage wiederholen?",
                 state=DialogState.INITIAL,
                 priority=DialogPriority.CRITICAL,
-                metadata={"error": str(e)}
+                metadata={"error": str(e)},
+                extracted_parameters={}
             )
+
+    def _build_extraction_maps(
+        self,
+        extraction: ParameterExtractionResult,
+        min_confidence: float = 0.5
+    ) -> Tuple[Dict[str, Any], Dict[str, float]]:
+        extracted_map: Dict[str, Any] = {}
+        confidence_map: Dict[str, float] = {}
+
+        if extraction and extraction.extracted_parameters:
+            for param in extraction.extracted_parameters:
+                if param.confidence >= min_confidence and param.value not in (None, ""):
+                    extracted_map[param.name] = param.value
+                    confidence_map[param.name] = param.confidence
+
+        return extracted_map, confidence_map
 
     async def _handle_initial_state(
         self,
@@ -253,38 +272,17 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
         """Behandelt initiale User-Nachricht"""
 
         if extraction.job_type:
-            # Job-Type wurde erkannt
-            job_types_info = self.extractor.get_available_job_types()
-            job_type_details = next(
-                (jt for jt in job_types_info if jt["job_type"] == extraction.job_type),
-                None
+            # Job-Type wurde erkannt – direkt zur Parameter-Sammlung übergehen
+            augmented_session_state = {
+                "job_type": extraction.job_type,
+                "state": DialogState.JOB_TYPE_SELECTION.value,
+                "parameters": {}
+            }
+            return await self._handle_job_type_selection(
+                user_message,
+                extraction,
+                augmented_session_state
             )
-
-            if job_type_details:
-                # Generiere Bestätigungs-Nachricht
-                template = self.dialog_templates["job_type_selection"]
-                chain = template | self.llm
-
-                job_types_text = "\n".join([
-                    f"- {jt['display_name']}: {jt['description']}"
-                    for jt in job_types_info
-                ])
-
-                response = await chain.ainvoke({
-                    "user_message": user_message,
-                    "job_types": job_types_text
-                })
-
-                return DialogResponse(
-                    message=response.content,
-                    state=DialogState.JOB_TYPE_SELECTION,
-                    priority=DialogPriority.IMPORTANT,
-                    extracted_parameters=[extraction.job_type],
-                    metadata={
-                        "suggested_job_type": extraction.job_type,
-                        "confidence": extraction.confidence_score
-                    }
-                )
 
         # Fallback: Job-Type Selection
         job_types_info = self.extractor.get_available_job_types()
@@ -302,7 +300,8 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 "Ich brauche einen SAP-Report",
                 "Ich möchte Dateien übertragen",
                 "Ich brauche eine benutzerdefinierte Konfiguration"
-            ]
+            ],
+            extracted_parameters={}
         )
 
     async def _handle_job_type_selection(
@@ -323,7 +322,9 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 return DialogResponse(
                     message="Entschuldigung, der gewählte Job-Type ist nicht verfügbar. Bitte wählen Sie einen anderen.",
                     state=DialogState.JOB_TYPE_SELECTION,
-                    priority=DialogPriority.CRITICAL
+                    priority=DialogPriority.CRITICAL,
+                    extracted_parameters={},
+                    metadata={"job_type": job_type}
                 )
 
             # Finde den ersten erforderlichen Parameter
@@ -337,8 +338,10 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                     job_type=job_type,
                     parameter_info=first_param,
                     collected_parameters={},
-                    context="Lassen Sie uns mit der Konfiguration beginnen!"
+                    context=f"Ich habe '{job_schema['display_name']}' erkannt. Lassen Sie uns mit der Konfiguration beginnen!"
                 )
+
+                extracted_map, confidence_map = self._build_extraction_maps(extraction)
 
                 return DialogResponse(
                     message=question,
@@ -350,7 +353,9 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                         "job_type": job_type,
                         "total_parameters": len(job_schema["parameters"]),
                         "required_parameters": len(required_params)
-                    }
+                    },
+                    extracted_parameters=extracted_map,
+                    parameter_confidences=confidence_map
                 )
             else:
                 # Keine erforderlichen Parameter - direkt zur Bestätigung
@@ -358,7 +363,9 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                     message=f"Perfekt! Der {job_schema['display_name']} ist konfiguriert. Soll ich die XML-Datei generieren?",
                     state=DialogState.CONFIRMATION,
                     priority=DialogPriority.COMPLETE,
-                    completion_percentage=100.0
+                    completion_percentage=100.0,
+                    extracted_parameters={},
+                    metadata={"job_type": job_type}
                 )
 
         else:
@@ -367,7 +374,8 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 message="Ich konnte nicht eindeutig bestimmen, welchen Job-Type Sie möchten. Könnten Sie es spezifischer formulieren?",
                 state=DialogState.JOB_TYPE_SELECTION,
                 priority=DialogPriority.IMPORTANT,
-                suggested_questions=extraction.suggested_questions
+                suggested_questions=extraction.suggested_questions,
+                extracted_parameters={}
             )
 
     async def _handle_parameter_collection(
@@ -385,16 +393,19 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
             return DialogResponse(
                 message="Fehler: Job-Type ist nicht gesetzt. Bitte beginnen Sie von vorn.",
                 state=DialogState.INITIAL,
-                priority=DialogPriority.CRITICAL
+                priority=DialogPriority.CRITICAL,
+                extracted_parameters={}
             )
 
         # Aktualisiere Parameter mit extrahierten Werten
         updated_parameters = current_parameters.copy()
+        extracted_map, confidence_map = self._build_extraction_maps(extraction)
 
-        for param in extraction.extracted_parameters:
-            if param.confidence >= 0.5:  # Nur Parameter mit ausreichender Konfidenz
-                updated_parameters[param.name] = param.value
-                logger.info(f"Parameter aktualisiert: {param.name} = {param.value} (Konfidenz: {param.confidence})")
+        for param_name, value in extracted_map.items():
+            updated_parameters[param_name] = value
+            logger.info(
+                "Parameter aktualisiert: %s = %s", param_name, value
+            )
 
         # Validiere aktuelle Parameter
         validation_result = self._validate_parameters(job_type, updated_parameters)
@@ -419,7 +430,12 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                     priority=DialogPriority.CRITICAL,
                     next_parameter=next_param_name,
                     completion_percentage=validation_result.completion_percentage * 100,
-                    extracted_parameters=[p.name for p in extraction.extracted_parameters if p.confidence >= 0.5]
+                    extracted_parameters=extracted_map,
+                    parameter_confidences=confidence_map,
+                    metadata={
+                        "job_type": job_type,
+                        "parameter_confidences": confidence_map,
+                    }
                 )
 
         elif validation_result.errors:
@@ -431,7 +447,13 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 state=DialogState.VALIDATION,
                 priority=DialogPriority.IMPORTANT,
                 validation_issues=validation_result.errors,
-                completion_percentage=validation_result.completion_percentage * 100
+                completion_percentage=validation_result.completion_percentage * 100,
+                extracted_parameters=extracted_map,
+                parameter_confidences=confidence_map,
+                metadata={
+                    "job_type": job_type,
+                    "parameter_confidences": confidence_map,
+                }
             )
 
         else:
@@ -445,7 +467,12 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 state=DialogState.CONFIRMATION,
                 priority=DialogPriority.COMPLETE,
                 completion_percentage=100.0,
-                extracted_parameters=[p.name for p in extraction.extracted_parameters if p.confidence >= 0.5]
+                extracted_parameters=extracted_map,
+                parameter_confidences=confidence_map,
+                metadata={
+                    "job_type": job_type,
+                    "parameter_confidences": confidence_map,
+                }
             )
 
     async def _handle_validation(
@@ -460,9 +487,13 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
         current_parameters = session_state.get("parameters", {})
 
         # Aktualisiere Parameter mit Korrekturen
-        for param in extraction.extracted_parameters:
-            if param.confidence >= 0.7:  # Höhere Konfidenz für Korrekturen
-                current_parameters[param.name] = param.value
+        extracted_map, confidence_map = self._build_extraction_maps(
+            extraction,
+            min_confidence=0.7
+        )
+
+        for param_name, value in extracted_map.items():
+            current_parameters[param_name] = value
 
         # Re-validiere
         validation_result = self._validate_parameters(job_type, current_parameters)
@@ -472,7 +503,13 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 message="Perfekt! Alle Parameter sind jetzt korrekt. Soll ich die XML-Datei generieren?",
                 state=DialogState.CONFIRMATION,
                 priority=DialogPriority.COMPLETE,
-                completion_percentage=100.0
+                completion_percentage=100.0,
+                extracted_parameters=extracted_map,
+                parameter_confidences=confidence_map,
+                metadata={
+                    "job_type": job_type,
+                    "parameter_confidences": confidence_map,
+                }
             )
         else:
             feedback = await self._generate_validation_feedback(validation_result, current_parameters)
@@ -480,7 +517,13 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 message=feedback,
                 state=DialogState.VALIDATION,
                 priority=DialogPriority.IMPORTANT,
-                validation_issues=validation_result.errors
+                validation_issues=validation_result.errors,
+                extracted_parameters=extracted_map,
+                parameter_confidences=confidence_map,
+                metadata={
+                    "job_type": job_type,
+                    "parameter_confidences": confidence_map,
+                }
             )
 
     async def _handle_fallback(
