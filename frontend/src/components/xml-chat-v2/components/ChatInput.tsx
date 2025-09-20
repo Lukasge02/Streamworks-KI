@@ -23,22 +23,15 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(({
   // Merge refs
   React.useImperativeHandle(ref, () => textareaRef.current!)
 
-  // Auto-resize textarea with stable positioning
+  // Fixed height to prevent any layout shifts
   useEffect(() => {
     const textarea = textareaRef.current
     if (!textarea) return
 
-    // Always maintain consistent height to prevent shifting
-    const minHeight = 44
-    const maxHeight = 120
-
-    // Temporarily set to auto to get scroll height
-    textarea.style.height = 'auto'
-    const scrollHeight = textarea.scrollHeight
-
-    // Calculate new height but ensure minimum
-    const newHeight = Math.max(Math.min(scrollHeight, maxHeight), minHeight)
-    textarea.style.height = `${newHeight}px`
+    // Always maintain fixed height to prevent ANY shifting
+    const fixedHeight = 44
+    textarea.style.height = `${fixedHeight}px`
+    textarea.style.overflowY = value.split('\n').length > 1 || textarea.scrollHeight > fixedHeight ? 'auto' : 'hidden'
   }, [value])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -80,10 +73,11 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(({
             ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-transparent'}
           `}
           style={{
+            height: '44px', // Fixed height - no resizing
             minHeight: '44px',
-            maxHeight: '120px',
+            maxHeight: '44px',
             lineHeight: '20px',
-            height: '44px' // Always start with fixed height
+            resize: 'none' // Disable manual resize
           }}
         />
 
