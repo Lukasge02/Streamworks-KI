@@ -12,11 +12,14 @@ from enum import Enum
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from services.ai.smart_parameter_extractor import SmartParameterExtractor, ParameterExtractionResult
+from services.ai.smart_parameter_extractor import SmartParameterExtractor, ParameterExtractionResult, HierarchicalExtractionResult
+from services.ai.parameter_state_manager import HierarchicalParameterStateManager
 from models.parameter_models import (
     JOB_TYPE_MODEL_MAPPING,
     ParameterValidationResult,
-    create_parameter_instance
+    create_parameter_instance,
+    HierarchicalStreamSession,
+    ParameterScope
 )
 
 logger = logging.getLogger(__name__)
@@ -26,10 +29,11 @@ logger = logging.getLogger(__name__)
 # ================================
 
 class DialogState(str, Enum):
-    """Status des Dialog-Flows"""
-    INITIAL = "initial"              # Neuer Dialog, Job-Type noch unbekannt
-    JOB_TYPE_SELECTION = "job_type_selection"  # User wählt Job-Type
-    PARAMETER_COLLECTION = "parameter_collection"  # Parameter werden gesammelt
+    """Status des Dialog-Flows für vollständige Stream-Konfiguration"""
+    INITIAL = "initial"              # Neuer Dialog, beginnt immer mit Stream-Parametern
+    STREAM_CONFIGURATION = "stream_configuration"      # Stream-Level Parameter sammeln (Name, Beschreibung, etc.)
+    JOB_TYPE_SELECTION = "job_type_selection"          # User wählt Job-Type für den Stream
+    PARAMETER_COLLECTION = "parameter_collection"      # Job-Parameter werden gesammelt
     VALIDATION = "validation"        # Parameter werden validiert
     CONFIRMATION = "confirmation"    # Finale Bestätigung
     COMPLETED = "completed"         # Dialog abgeschlossen
@@ -91,30 +95,76 @@ class IntelligentDialogManager:
     def __init__(
         self,
         parameter_extractor: SmartParameterExtractor,
+        hierarchical_state_manager: HierarchicalParameterStateManager,
         openai_api_key: str
     ):
         self.extractor = parameter_extractor
+        self.hierarchical_manager = hierarchical_state_manager
         self.llm = ChatOpenAI(
             api_key=openai_api_key,
             model="gpt-4-turbo-preview",
-            temperature=0.2  # Leicht kreativer für natürliche Dialoge
+            temperature=0.2,  # Leicht kreativer für natürliche Dialoge
+            timeout=30.0,     # 30 Sekunden Timeout
+            max_retries=2     # Maximal 2 Versuche
         )
 
         # Dialog Templates
         self.dialog_templates = self._load_dialog_templates()
 
-        logger.info("IntelligentDialogManager initialisiert")
+        logger.info("IntelligentDialogManager mit hierarchischer Unterstützung initialisiert")
 
     def _load_dialog_templates(self) -> Dict[str, ChatPromptTemplate]:
         """Lädt vordefinierte Dialog-Templates"""
 
         templates = {}
 
+        # Template für Session-Type Auswahl (Stream vs Job)
+        templates["session_type_selection"] = ChatPromptTemplate.from_template("""
+Du bist ein intelligenter Assistent für StreamWorks-Konfiguration.
+
+Der User hat eine Anfrage gestellt. Analysiere, ob er einen vollständigen Stream oder nur einen einzelnen Job konfigurieren möchte.
+
+User-Nachricht: "{user_message}"
+
+Optionen:
+🎯 **Stream-Konfiguration**: Vollständiger Stream mit Metadaten (Name, Beschreibung, Scheduling) und einem oder mehreren Jobs
+🔧 **Job-Konfiguration**: Einzelner Job ohne Stream-Container
+
+Aufgabe:
+1. Analysiere die User-Absicht
+2. Schlage die passende Konfigurationsart vor
+3. Erkläre kurz den Unterschied
+4. Frage nach Bestätigung
+
+Stil: Klar, hilfreich, strukturiert. Maximal 3 Sätze.
+""")
+
+        # Template für Stream-Parameter Sammlung
+        templates["stream_configuration"] = ChatPromptTemplate.from_template("""
+Du bist ein Assistent für Stream-Metadaten-Konfiguration.
+
+Situation:
+- Konfiguriere Stream-Level Parameter
+- Bereits gesammelt: {collected_stream_parameters}
+- Nächster Parameter: {next_parameter}
+- Parameter-Beschreibung: {parameter_description}
+
+Aufgabe:
+Stelle eine natürliche Frage nach dem benötigten Stream-Parameter.
+
+Richtlinien:
+- Fokussiere auf Stream-Eigenschaften (Name, Beschreibung, Scheduling)
+- Erkläre kurz, wofür der Parameter verwendet wird
+- Maximal 2 Sätze
+
+Frage:
+""")
+
         # Template für Job-Type Auswahl
         templates["job_type_selection"] = ChatPromptTemplate.from_template("""
-Du bist ein freundlicher Assistent für Stream-Konfiguration.
+Du bist ein freundlicher Assistent für Job-Konfiguration.
 
-Der User hat eine Anfrage gestellt, aber es ist noch nicht klar, welchen Job-Type er erstellen möchte.
+Der Stream ist bereits konfiguriert. Jetzt wählen wir den Job-Type für den ersten Job.
 
 User-Nachricht: "{user_message}"
 
@@ -125,7 +175,7 @@ Aufgabe:
 1. Analysiere die User-Nachricht
 2. Schlage den wahrscheinlichsten Job-Type vor
 3. Erkläre kurz, warum dieser Job-Type passend wäre
-4. Frage freundlich nach Bestätigung oder Korrektur
+4. Frage freundlich nach Bestätigung
 
 Stil: Freundlich, hilfreich, präzise. Maximal 3 Sätze.
 """)
@@ -198,7 +248,8 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
     async def process_user_message(
         self,
         user_message: str,
-        session_state: Dict[str, Any]
+        session_id: str,
+        session_state: Optional[Dict[str, Any]] = None
     ) -> DialogResponse:
         """
         Verarbeitet User-Nachricht und gibt intelligente Antwort
@@ -213,27 +264,40 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
         try:
             logger.info(f"Verarbeite User-Nachricht: '{user_message[:100]}...'")
 
-            # Extrahiere Parameter aus User-Nachricht
-            extraction_result = await self.extractor.extract_parameters(
+            # Hole oder erstelle hierarchische Session
+            hierarchical_session = self.hierarchical_manager.get_hierarchical_session(session_id)
+            if not hierarchical_session:
+                hierarchical_session = self.hierarchical_manager.create_hierarchical_session(session_id)
+
+            # Führe hierarchische Parameter-Extraktion durch
+            extraction_result = await self.extractor.extract_hierarchical_parameters(
                 user_message=user_message,
-                current_job_type=session_state.get("job_type"),
-                existing_parameters=session_state.get("parameters", {})
+                session_context={
+                    "session_type": hierarchical_session.session_type,
+                    "stream_parameters": hierarchical_session.stream_parameters,
+                    "jobs": [job.model_dump() for job in hierarchical_session.jobs]
+                }
             )
 
-            # Bestimme Dialog-State
-            current_state = DialogState(session_state.get("state", DialogState.INITIAL))
-
-            # Route zu spezifischer Handler-Methode
-            if current_state == DialogState.INITIAL or not session_state.get("job_type"):
-                response = await self._handle_initial_state(user_message, extraction_result)
-            elif current_state == DialogState.JOB_TYPE_SELECTION:
-                response = await self._handle_job_type_selection(user_message, extraction_result, session_state)
-            elif current_state == DialogState.PARAMETER_COLLECTION:
-                response = await self._handle_parameter_collection(user_message, extraction_result, session_state)
-            elif current_state == DialogState.VALIDATION:
-                response = await self._handle_validation(user_message, extraction_result, session_state)
+            # Bestimme Dialog-State basierend auf session_state oder hierarchical_session
+            if session_state:
+                current_state = DialogState(session_state.get("state", DialogState.INITIAL))
             else:
-                response = await self._handle_fallback(user_message, extraction_result, session_state)
+                current_state = self._determine_state_from_session(hierarchical_session)
+
+            # Route zu spezifischer Handler-Methode (vereinfachter Flow: immer Stream)
+            if current_state == DialogState.INITIAL:
+                response = await self._handle_initial_state(user_message, extraction_result, session_id)
+            elif current_state == DialogState.STREAM_CONFIGURATION:
+                response = await self._handle_stream_configuration(user_message, extraction_result, session_id)
+            elif current_state == DialogState.JOB_TYPE_SELECTION:
+                response = await self._handle_job_type_selection(user_message, extraction_result, session_id)
+            elif current_state == DialogState.PARAMETER_COLLECTION:
+                response = await self._handle_parameter_collection(user_message, extraction_result, session_id)
+            elif current_state == DialogState.VALIDATION:
+                response = await self._handle_validation(user_message, extraction_result, session_id)
+            else:
+                response = await self._handle_fallback(user_message, extraction_result, session_id)
 
             logger.info(f"Dialog Response: {response.state} | {response.priority}")
             return response
@@ -248,71 +312,189 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 extracted_parameters={}
             )
 
+    def _determine_state_from_session(self, session: HierarchicalStreamSession) -> DialogState:
+        """Bestimmt den Dialog-State basierend auf der aktuellen Session (alle Sessions sind Streams)"""
+
+        # Alle Sessions sind vollständige Streams - prüfe Stream-Parameter zuerst
+        required_stream_params = ["StreamName", "ShortDescription"]
+        missing_stream_params = [p for p in required_stream_params if p not in session.stream_parameters]
+
+        if missing_stream_params:
+            return DialogState.STREAM_CONFIGURATION
+        elif not session.jobs:
+            return DialogState.JOB_TYPE_SELECTION
+        else:
+            # Prüfe Job-Parameter Vollständigkeit
+            incomplete_jobs = [job for job in session.jobs if job.completion_percentage < 1.0]
+            if incomplete_jobs:
+                return DialogState.PARAMETER_COLLECTION
+            else:
+                return DialogState.CONFIRMATION
+
+        return DialogState.INITIAL
+
     def _build_extraction_maps(
         self,
-        extraction: ParameterExtractionResult,
+        extraction: HierarchicalExtractionResult,
         min_confidence: float = 0.5
-    ) -> Tuple[Dict[str, Any], Dict[str, float]]:
-        extracted_map: Dict[str, Any] = {}
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, float]]:
+        stream_params: Dict[str, Any] = {}
+        job_params: Dict[str, Any] = {}
         confidence_map: Dict[str, float] = {}
 
-        if extraction and extraction.extracted_parameters:
-            for param in extraction.extracted_parameters:
+        if extraction:
+            # Stream-Parameter
+            for param in extraction.stream_parameters:
                 if param.confidence >= min_confidence and param.value not in (None, ""):
-                    extracted_map[param.name] = param.value
+                    stream_params[param.name] = param.value
                     confidence_map[param.name] = param.confidence
 
-        return extracted_map, confidence_map
+            # Job-Parameter (alle Job-Types)
+            for job_type, job_param_list in extraction.job_parameters.items():
+                job_params[job_type] = {}
+                for param in job_param_list:
+                    if param.confidence >= min_confidence and param.value not in (None, ""):
+                        job_params[job_type][param.name] = param.value
+                        confidence_map[param.name] = param.confidence
+
+        return stream_params, job_params, confidence_map
 
     async def _handle_initial_state(
         self,
         user_message: str,
-        extraction: ParameterExtractionResult
+        extraction: HierarchicalExtractionResult,
+        session_id: str
     ) -> DialogResponse:
-        """Behandelt initiale User-Nachricht"""
+        """Behandelt initiale User-Nachricht - beginnt immer mit Stream-Konfiguration"""
 
-        if extraction.job_type:
-            # Job-Type wurde erkannt – direkt zur Parameter-Sammlung übergehen
-            augmented_session_state = {
-                "job_type": extraction.job_type,
-                "state": DialogState.JOB_TYPE_SELECTION.value,
-                "parameters": {}
-            }
-            return await self._handle_job_type_selection(
-                user_message,
-                extraction,
-                augmented_session_state
+        # Alle Sessions sind vollständige Streams - starte direkt mit Stream-Parameter Sammlung
+        session = self.hierarchical_manager.get_hierarchical_session(session_id)
+        stream_params, _, confidence_map = self._build_extraction_maps(extraction)
+
+        # Aktualisiere erkannte Stream-Parameter
+        if stream_params:
+            for param_name, value in stream_params.items():
+                session.stream_parameters[param_name] = value
+
+        # Prüfe ob bereits Job-Parameter erkannt wurden
+        detected_job_types = []
+        if extraction.job_parameters:
+            detected_job_types = list(extraction.job_parameters.keys())
+
+        if detected_job_types:
+            # Job-Parameter wurden erkannt - weiter zur Job-Konfiguration nach Stream-Parametern
+            return DialogResponse(
+                message="Perfect! Ich erkenne bereits Job-Parameter in Ihrer Nachricht. 🎯\n\nLassen Sie uns zuerst den Stream konfigurieren und dann die Job-Details verfeinern.\n\nWie soll der Stream heißen?",
+                state=DialogState.STREAM_CONFIGURATION,
+                priority=DialogPriority.CRITICAL,
+                next_parameter="StreamName",
+                completion_percentage=10.0,
+                extracted_parameters=stream_params,
+                parameter_confidences=confidence_map,
+                metadata={"detected_job_types": detected_job_types}
+            )
+        else:
+            # Starte mit Stream-Parameter Sammlung
+            return DialogResponse(
+                message="Willkommen! Ich helfe Ihnen bei der Konfiguration eines StreamWorks-Streams. 🚀\n\nJeder Stream benötigt zuerst grundlegende Eigenschaften. Wie soll Ihr Stream heißen?",
+                state=DialogState.STREAM_CONFIGURATION,
+                priority=DialogPriority.CRITICAL,
+                next_parameter="StreamName",
+                completion_percentage=0.0,
+                extracted_parameters=stream_params,
+                parameter_confidences=confidence_map,
+                suggested_questions=[
+                    "Der Stream soll 'Datentransfer_Test' heißen",
+                    "Ich möchte einen FILE_TRANSFER Stream erstellen",
+                    "Zeig mir die benötigten Parameter"
+                ]
             )
 
-        # Fallback: Job-Type Selection
-        job_types_info = self.extractor.get_available_job_types()
-        options_text = "\n".join([
-            f"🔹 **{jt['display_name']}**: {jt['description']} (ca. {jt['estimated_time']})"
-            for jt in job_types_info
-        ])
 
-        return DialogResponse(
-            message=f"Gerne helfe ich Ihnen bei der Stream-Konfiguration! 🚀\n\nWelchen Job-Type möchten Sie erstellen?\n\n{options_text}",
-            state=DialogState.JOB_TYPE_SELECTION,
-            priority=DialogPriority.CRITICAL,
-            suggested_questions=[
-                "Ich möchte einen Standard-Stream erstellen",
-                "Ich brauche einen SAP-Report",
-                "Ich möchte Dateien übertragen",
-                "Ich brauche eine benutzerdefinierte Konfiguration"
-            ],
-            extracted_parameters={}
-        )
+    async def _handle_stream_configuration(
+        self,
+        user_message: str,
+        extraction: HierarchicalExtractionResult,
+        session_id: str
+    ) -> DialogResponse:
+        """Behandelt Stream-Parameter Sammlung"""
+
+        session = self.hierarchical_manager.get_hierarchical_session(session_id)
+        stream_params, _, confidence_map = self._build_extraction_maps(extraction)
+
+        # Aktualisiere Stream-Parameter
+        if stream_params:
+            for param_name, value in stream_params.items():
+                session.stream_parameters[param_name] = value
+                logger.info(f"Stream-Parameter aktualisiert: {param_name} = {value}")
+
+        # Bestimme nächsten fehlenden Parameter
+        required_stream_params = {
+            "StreamName": "Name des Streams",
+            "ShortDescription": "Kurze Beschreibung für die Übersicht"
+        }
+
+        missing_params = [name for name, desc in required_stream_params.items()
+                         if name not in session.stream_parameters or not session.stream_parameters[name]]
+
+        if missing_params:
+            next_param = missing_params[0]
+            description = required_stream_params[next_param]
+
+            # Generiere Frage für nächsten Parameter
+            question = await self._generate_stream_parameter_question(
+                parameter_name=next_param,
+                parameter_description=description,
+                collected_parameters=session.stream_parameters
+            )
+
+            completion = (len(required_stream_params) - len(missing_params)) / len(required_stream_params) * 100
+
+            self.hierarchical_manager.save_hierarchical_session(session)
+
+            return DialogResponse(
+                message=question,
+                state=DialogState.STREAM_CONFIGURATION,
+                priority=DialogPriority.CRITICAL,
+                next_parameter=next_param,
+                completion_percentage=completion,
+                extracted_parameters=stream_params,
+                parameter_confidences=confidence_map,
+                metadata={"session_type": "STREAM_CONFIGURATION"}
+            )
+        else:
+            # Stream-Parameter vollständig - weiter zu Job-Konfiguration
+            self.hierarchical_manager.save_hierarchical_session(session)
+
+            return DialogResponse(
+                message=f"Excellent! Stream '{session.stream_parameters.get('StreamName')}' ist konfiguriert. 🎉\n\nJetzt konfigurieren wir den ersten Job. Welchen Job-Type benötigen Sie?",
+                state=DialogState.JOB_TYPE_SELECTION,
+                priority=DialogPriority.IMPORTANT,
+                completion_percentage=100.0,
+                extracted_parameters=stream_params,
+                suggested_questions=[
+                    "Ich brauche einen FILE_TRANSFER Job",
+                    "Ich möchte einen STANDARD Job",
+                    "Zeig mir alle verfügbaren Job-Types"
+                ],
+                metadata={"session_type": "STREAM_CONFIGURATION"}
+            )
 
     async def _handle_job_type_selection(
         self,
         user_message: str,
-        extraction: ParameterExtractionResult,
-        session_state: Dict[str, Any]
+        extraction: HierarchicalExtractionResult,
+        session_id: str
     ) -> DialogResponse:
         """Behandelt Job-Type Auswahl und beginnt Parameter-Sammlung"""
 
-        job_type = extraction.job_type or session_state.get("suggested_job_type")
+        # Erkenne Job-Type aus hierarchischer Extraktion
+        detected_job_type = None
+        if extraction.job_parameters:
+            # Nimm den ersten erkannten Job-Type
+            detected_job_type = list(extraction.job_parameters.keys())[0]
+
+        job_type = detected_job_type
 
         if job_type:
             # Job-Type bestätigt, beginne Parameter-Sammlung
@@ -341,7 +523,16 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                     context=f"Ich habe '{job_schema['display_name']}' erkannt. Lassen Sie uns mit der Konfiguration beginnen!"
                 )
 
-                extracted_map, confidence_map = self._build_extraction_maps(extraction)
+                stream_params, job_params, confidence_map = self._build_extraction_maps(extraction)
+
+                # Speichere Job-Type in Session
+                session = self.hierarchical_manager.get_hierarchical_session(session_id)
+                job_id = session.add_or_update_job(
+                    job_type=job_type,
+                    job_parameters=job_params.get(job_type, {}),
+                    job_name=f"{job_type}_Job"
+                )
+                self.hierarchical_manager.save_hierarchical_session(session)
 
                 return DialogResponse(
                     message=question,
@@ -354,7 +545,7 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                         "total_parameters": len(job_schema["parameters"]),
                         "required_parameters": len(required_params)
                     },
-                    extracted_parameters=extracted_map,
+                    extracted_parameters=job_params.get(job_type, {}),
                     parameter_confidences=confidence_map
                 )
             else:
@@ -369,43 +560,76 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 )
 
         else:
-            # Job-Type noch nicht klar
+            # Job-Type noch nicht klar - zeige verfügbare Optionen
+            job_types_info = self.extractor.get_available_job_types()
+            options_text = "\n".join([
+                f"🔹 **{jt['display_name']}**: {jt['description']}"
+                for jt in job_types_info[:3]  # Nur die ersten 3 zeigen
+            ])
+
             return DialogResponse(
-                message="Ich konnte nicht eindeutig bestimmen, welchen Job-Type Sie möchten. Könnten Sie es spezifischer formulieren?",
+                message=f"Welchen Job-Type möchten Sie konfigurieren?\n\n{options_text}\n\n...oder beschreiben Sie Ihr Vorhaben?",
                 state=DialogState.JOB_TYPE_SELECTION,
                 priority=DialogPriority.IMPORTANT,
-                suggested_questions=extraction.suggested_questions,
+                suggested_questions=[
+                    "Ich möchte Dateien übertragen (FILE_TRANSFER)",
+                    "Ich brauche einen Standard-Job (STANDARD)",
+                    "Zeig mir alle verfügbaren Job-Types"
+                ],
                 extracted_parameters={}
             )
 
     async def _handle_parameter_collection(
         self,
         user_message: str,
-        extraction: ParameterExtractionResult,
-        session_state: Dict[str, Any]
+        extraction: HierarchicalExtractionResult,
+        session_id: str
     ) -> DialogResponse:
         """Behandelt Parameter-Sammlung"""
 
-        job_type = session_state.get("job_type")
-        current_parameters = session_state.get("parameters", {})
-
-        if not job_type:
+        session = self.hierarchical_manager.get_hierarchical_session(session_id)
+        if not session or not session.jobs:
             return DialogResponse(
-                message="Fehler: Job-Type ist nicht gesetzt. Bitte beginnen Sie von vorn.",
+                message="Fehler: Kein aktiver Job gefunden. Bitte beginnen Sie von vorn.",
                 state=DialogState.INITIAL,
                 priority=DialogPriority.CRITICAL,
                 extracted_parameters={}
             )
 
+        # Finde aktuellen unvollständigen Job
+        current_job = None
+        for job in session.jobs:
+            if job.completion_percentage < 1.0:
+                current_job = job
+                break
+
+        if not current_job:
+            return DialogResponse(
+                message="Alle Jobs sind bereits vollständig konfiguriert. Soll ich die XML-Datei generieren?",
+                state=DialogState.CONFIRMATION,
+                priority=DialogPriority.COMPLETE,
+                completion_percentage=100.0,
+                extracted_parameters={}
+            )
+
+        job_type = current_job.job_type
+        current_parameters = current_job.parameters
+
         # Aktualisiere Parameter mit extrahierten Werten
         updated_parameters = current_parameters.copy()
-        extracted_map, confidence_map = self._build_extraction_maps(extraction)
+        stream_params, job_params, confidence_map = self._build_extraction_maps(extraction)
 
-        for param_name, value in extracted_map.items():
-            updated_parameters[param_name] = value
-            logger.info(
-                "Parameter aktualisiert: %s = %s", param_name, value
-            )
+        # Aktualisiere relevante Job-Parameter
+        if job_type in job_params:
+            for param_name, value in job_params[job_type].items():
+                updated_parameters[param_name] = value
+                logger.info(
+                    "Job-Parameter aktualisiert: %s = %s", param_name, value
+                )
+
+        # Speichere aktualisierte Parameter in Session
+        current_job.parameters = updated_parameters
+        self.hierarchical_manager.save_hierarchical_session(session)
 
         # Validiere aktuelle Parameter
         validation_result = self._validate_parameters(job_type, updated_parameters)
@@ -430,7 +654,7 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                     priority=DialogPriority.CRITICAL,
                     next_parameter=next_param_name,
                     completion_percentage=validation_result.completion_percentage * 100,
-                    extracted_parameters=extracted_map,
+                    extracted_parameters=job_params.get(job_type, {}),
                     parameter_confidences=confidence_map,
                     metadata={
                         "job_type": job_type,
@@ -448,7 +672,7 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 priority=DialogPriority.IMPORTANT,
                 validation_issues=validation_result.errors,
                 completion_percentage=validation_result.completion_percentage * 100,
-                extracted_parameters=extracted_map,
+                extracted_parameters=job_params.get(job_type, {}),
                 parameter_confidences=confidence_map,
                 metadata={
                     "job_type": job_type,
@@ -467,7 +691,7 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 state=DialogState.CONFIRMATION,
                 priority=DialogPriority.COMPLETE,
                 completion_percentage=100.0,
-                extracted_parameters=extracted_map,
+                extracted_parameters=job_params.get(job_type, {}),
                 parameter_confidences=confidence_map,
                 metadata={
                     "job_type": job_type,
@@ -478,22 +702,47 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
     async def _handle_validation(
         self,
         user_message: str,
-        extraction: ParameterExtractionResult,
-        session_state: Dict[str, Any]
+        extraction: HierarchicalExtractionResult,
+        session_id: str
     ) -> DialogResponse:
         """Behandelt Parameter-Validierung und Korrekturen"""
 
-        job_type = session_state.get("job_type")
-        current_parameters = session_state.get("parameters", {})
+        session = self.hierarchical_manager.get_hierarchical_session(session_id)
+        if not session or not session.jobs:
+            return DialogResponse(
+                message="Fehler: Keine aktive Session gefunden. Bitte beginnen Sie von vorn.",
+                state=DialogState.INITIAL,
+                priority=DialogPriority.CRITICAL,
+                extracted_parameters={}
+            )
+
+        # Finde aktuellen Job
+        current_job = session.jobs[0] if session.jobs else None
+        if not current_job:
+            return DialogResponse(
+                message="Fehler: Kein Job gefunden. Bitte beginnen Sie von vorn.",
+                state=DialogState.INITIAL,
+                priority=DialogPriority.CRITICAL,
+                extracted_parameters={}
+            )
+
+        job_type = current_job.job_type
+        current_parameters = current_job.parameters.copy()
 
         # Aktualisiere Parameter mit Korrekturen
-        extracted_map, confidence_map = self._build_extraction_maps(
+        stream_params, job_params, confidence_map = self._build_extraction_maps(
             extraction,
             min_confidence=0.7
         )
 
-        for param_name, value in extracted_map.items():
-            current_parameters[param_name] = value
+        # Aktualisiere relevante Job-Parameter
+        if job_type in job_params:
+            for param_name, value in job_params[job_type].items():
+                current_parameters[param_name] = value
+
+        # Speichere aktualisierte Parameter
+        current_job.parameters = current_parameters
+        self.hierarchical_manager.save_hierarchical_session(session)
 
         # Re-validiere
         validation_result = self._validate_parameters(job_type, current_parameters)
@@ -504,7 +753,7 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 state=DialogState.CONFIRMATION,
                 priority=DialogPriority.COMPLETE,
                 completion_percentage=100.0,
-                extracted_parameters=extracted_map,
+                extracted_parameters=job_params.get(job_type, {}),
                 parameter_confidences=confidence_map,
                 metadata={
                     "job_type": job_type,
@@ -518,7 +767,7 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 state=DialogState.VALIDATION,
                 priority=DialogPriority.IMPORTANT,
                 validation_issues=validation_result.errors,
-                extracted_parameters=extracted_map,
+                extracted_parameters=job_params.get(job_type, {}),
                 parameter_confidences=confidence_map,
                 metadata={
                     "job_type": job_type,
@@ -529,8 +778,8 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
     async def _handle_fallback(
         self,
         user_message: str,
-        extraction: ParameterExtractionResult,
-        session_state: Dict[str, Any]
+        extraction: HierarchicalExtractionResult,
+        session_id: str
     ) -> DialogResponse:
         """Fallback-Handler für unerwartete Situationen"""
 
@@ -544,6 +793,38 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
                 "Zeigen Sie mir die verfügbaren Optionen"
             ]
         )
+
+    async def _generate_stream_parameter_question(
+        self,
+        parameter_name: str,
+        parameter_description: str,
+        collected_parameters: Dict[str, Any]
+    ) -> str:
+        """Generiert natürliche Frage für einen Stream-Parameter"""
+
+        template = self.dialog_templates["stream_configuration"]
+        chain = template | self.llm
+
+        try:
+            response = await chain.ainvoke({
+                "collected_stream_parameters": collected_parameters,
+                "next_parameter": parameter_name,
+                "parameter_description": parameter_description
+            })
+
+            return response.content.strip()
+
+        except Exception as e:
+            logger.error(f"Fehler bei Stream-Parameter-Frage-Generierung: {e}")
+            # Fallback zu einfacher Frage
+            if parameter_name == "StreamName":
+                return "Wie soll Ihr Stream heißen? Wählen Sie einen aussagekräftigen Namen."
+            elif parameter_name == "StreamDocumentation":
+                return "Bitte beschreiben Sie ausführlich, was dieser Stream tut und welchen Zweck er erfüllt."
+            elif parameter_name == "ShortDescription":
+                return "Geben Sie eine kurze, prägnante Beschreibung für die Übersicht an."
+            else:
+                return f"Bitte geben Sie {parameter_name} an."
 
     async def _generate_parameter_question(
         self,
@@ -733,6 +1014,7 @@ _dialog_manager_instance: Optional[IntelligentDialogManager] = None
 
 def get_intelligent_dialog_manager(
     parameter_extractor: SmartParameterExtractor = None,
+    hierarchical_state_manager: HierarchicalParameterStateManager = None,
     openai_api_key: str = None
 ) -> IntelligentDialogManager:
     """Factory function für IntelligentDialogManager"""
@@ -743,12 +1025,17 @@ def get_intelligent_dialog_manager(
             from services.ai.smart_parameter_extractor import get_smart_parameter_extractor
             parameter_extractor = get_smart_parameter_extractor()
 
+        if not hierarchical_state_manager:
+            from services.ai.parameter_state_manager import get_hierarchical_parameter_state_manager
+            hierarchical_state_manager = get_hierarchical_parameter_state_manager()
+
         if not openai_api_key:
             from config import settings
             openai_api_key = settings.OPENAI_API_KEY
 
         _dialog_manager_instance = IntelligentDialogManager(
             parameter_extractor=parameter_extractor,
+            hierarchical_state_manager=hierarchical_state_manager,
             openai_api_key=openai_api_key
         )
 

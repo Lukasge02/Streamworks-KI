@@ -21,6 +21,15 @@ from services.ai.smart_parameter_extractor import get_smart_parameter_extractor
 from services.ai.intelligent_dialog_manager import get_intelligent_dialog_manager
 from services.ai.parameter_state_manager import get_parameter_state_manager
 
+# LangExtract Integration
+# from services.ai.langextract_parameter_service import get_langextract_parameter_service
+from models.source_grounded_models import (
+    SourceGroundedParameter,
+    SourceGroundedExtractionResult,
+    ParameterCorrectionRequest,
+    ParameterCorrectionResult
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat-xml", tags=["Chat XML"])
@@ -114,7 +123,7 @@ class XMLGenerationResponse(BaseModel):
 
 class SmartChatSessionRequest(BaseModel):
     user_id: Optional[str] = None
-    job_type: Optional[str] = None
+    initial_message: Optional[str] = None
     initial_parameters: Optional[Dict[str, Any]] = None
 
 class SmartChatSessionResponse(BaseModel):
@@ -144,6 +153,12 @@ class SmartChatMessageResponse(BaseModel):
     validation_issues: List[str] = Field(default_factory=list)
     timestamp: datetime
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    # LangExtract Source Grounding Data
+    source_grounding_data: Optional[Dict[str, Any]] = None
+    source_grounded_parameters: Optional[List[Dict[str, Any]]] = None
+    extraction_quality: Optional[str] = None
+    needs_review: Optional[bool] = None
 
 class ParameterExportResponse(BaseModel):
     session_id: str
@@ -215,6 +230,10 @@ def get_intelligent_dialog_manager_dep():
 
 def get_parameter_state_manager_dep():
     return get_parameter_state_manager()
+
+def get_langextract_parameter_service_dep():
+    """Dependency für LangExtract Parameter Service"""
+    return get_langextract_parameter_service()
 
 # ================================
 # SESSION MANAGEMENT ENDPOINTS
@@ -316,7 +335,7 @@ async def send_chat_message(
             raise HTTPException(status_code=404, detail="Session not found")
 
         # Verarbeite Nachricht mit Dialog Manager
-        response = await dialog_manager.process_user_message(session_id, request.message)
+        response = await dialog_manager.process_user_message(request.message, session_id)
 
         return ChatMessageResponse(
             response_id=f"resp_{int(time.time() * 1000)}",
@@ -609,38 +628,38 @@ async def debug_list_sessions(
 @router.post("/smart/sessions", response_model=SmartChatSessionResponse)
 async def create_smart_chat_session(
     request: SmartChatSessionRequest,
-    state_manager = Depends(get_parameter_state_manager_dep)
+    state_manager = Depends(get_parameter_state_manager_dep),
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep)
 ) -> SmartChatSessionResponse:
     """Erstellt neue Smart Parameter Collection Session"""
 
     try:
-        session = state_manager.create_session(
+        # Alle Sessions sind jetzt hierarchische Stream-Sessions
+        session = dialog_manager.hierarchical_manager.create_hierarchical_session(
             user_id=request.user_id,
-            job_type=request.job_type,
-            initial_parameters=request.initial_parameters
+            initial_stream_parameters=request.initial_parameters
         )
 
-        # Generiere initiale Nachricht
-        if session.job_type:
-            message = f"Perfekt! Lassen Sie uns einen {session.job_type}-Job konfigurieren. Ich führe Sie durch die benötigten Parameter."
-        else:
-            message = "Willkommen beim Smart Parameter Assistant! 🚀 Welchen Job-Type möchten Sie erstellen?"
+        # Alle Sessions sind hierarchische Stream-Sessions
+        message = session.last_message if session.last_message else "Willkommen beim StreamWorks Konfigurations-Assistenten! 🚀\n\nJeder Stream benötigt grundlegende Eigenschaften. Wie soll Ihr Stream heißen?"
+        suggested_questions = session.suggested_questions if session.suggested_questions else [
+            "Der Stream soll 'Datentransfer_Test' heißen",
+            "Ich möchte einen FILE_TRANSFER Stream erstellen",
+            "Zeig mir die benötigten Parameter"
+        ]
+        job_type = None  # Streams haben multiple Job-Types
+        dialog_state = session.dialog_state
+        completion = session.completion_status.overall_percentage
+        status = "active"
 
-        suggested_questions = [
-            "Ich möchte einen Standard-Stream erstellen",
-            "Ich brauche einen SAP-Report",
-            "Ich möchte Dateien übertragen",
-            "Ich brauche eine benutzerdefinierte Konfiguration"
-        ] if not session.job_type else []
-
-        logger.info(f"Smart Chat Session erstellt: {session.session_id}")
+        logger.info(f"Stream Session erstellt: {session.session_id}")
 
         return SmartChatSessionResponse(
             session_id=session.session_id,
-            job_type=session.job_type,
-            status=session.status.value,
-            dialog_state=session.dialog_state,
-            completion_percentage=_normalize_completion_percentage(session.completion_percentage),
+            job_type=job_type,
+            status=status,
+            dialog_state=dialog_state,
+            completion_percentage=completion,
             message=message,
             suggested_questions=suggested_questions,
             created_at=session.created_at
@@ -654,34 +673,25 @@ async def create_smart_chat_session(
 async def send_smart_chat_message(
     session_id: str,
     request: SmartChatMessageRequest,
-    dialog_manager = Depends(get_intelligent_dialog_manager_dep),
-    state_manager = Depends(get_parameter_state_manager_dep)
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep)
 ) -> SmartChatMessageResponse:
-    """Verarbeitet User-Message mit Smart Parameter Extraction"""
+    """Verarbeitet User-Message mit Smart Parameter Extraction (Hierarchical-Only)"""
 
     try:
-        # Hole Session
-        session = state_manager.get_session(session_id)
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+        # Check hierarchical session only
+        hierarchical_session = dialog_manager.hierarchical_manager.get_hierarchical_session(session_id)
 
-        # Bereite Session State für Dialog Manager vor
-        session_state = {
-            "session_id": session_id,
-            "job_type": session.job_type,
-            "state": session.dialog_state,
-            "parameters": session.collected_parameters,
-            "completion_percentage": session.completion_percentage
-        }
+        if not hierarchical_session:
+            raise HTTPException(status_code=404, detail="Hierarchical session not found")
 
-        # Verarbeite Message mit Intelligent Dialog Manager
+        # Verarbeite Message mit Intelligent Dialog Manager (Hierarchical-Only)
         try:
-            logger.info(f"Processing message with dialog manager: '{request.message[:50]}...'")
-            logger.debug(f"Session state: {session_state}")
+            logger.info(f"Processing hierarchical message: '{request.message[:50]}...'")
 
             dialog_response = await dialog_manager.process_user_message(
                 user_message=request.message,
-                session_state=session_state
+                session_id=session_id,
+                session_state=None  # Hierarchical sessions don't need legacy state
             )
 
             logger.info(f"Dialog manager response: state={dialog_response.state}, priority={dialog_response.priority}")
@@ -693,40 +703,60 @@ async def send_smart_chat_message(
                 detail=f"Dialog processing failed: {str(e)}"
             )
 
-        # Aktualisiere Session mit extrahierten Parametern
-        extracted_values = dialog_response.extracted_parameters or {}
-        if extracted_values:
-            confidence_map = dialog_response.parameter_confidences or {}
-            avg_confidence = 0.0
-            if confidence_map:
-                avg_confidence = sum(confidence_map.values()) / len(confidence_map)
+        # Get updated hierarchical session for response
+        updated_hierarchical_session = dialog_manager.hierarchical_manager.get_hierarchical_session(session_id)
 
-            state_manager.update_session_parameters(
-                session_id=session_id,
-                new_parameters=extracted_values,
-                source_message=request.message,
-                extraction_confidence=avg_confidence if avg_confidence > 0 else None
-            )
+        # LangExtract Source Grounding Integration
+        source_grounding_data = None
+        source_grounded_parameters = None
+        extraction_quality = None
+        needs_review = None
 
-        # Aktualisiere Dialog State
-        metadata = dialog_response.metadata or {}
-        job_type_update = metadata.get("job_type")
-        state_manager.update_session_state(
-            session_id=session_id,
-            dialog_state=dialog_response.state.value,
-            job_type=job_type_update,
-            last_message=request.message,
-            suggested_questions=dialog_response.suggested_questions,
-            metadata=metadata
+        # Use LangExtract for enhanced parameter extraction with source grounding
+        langextract_service = get_langextract_parameter_service()
+
+        # Extract parameters with source grounding - NO FALLBACK!
+        langextract_result = await langextract_service.extract_parameters_with_grounding(
+            user_message=request.message,
+            job_type=dialog_response.state.value if dialog_response.state.value != 'stream_configuration' else None,
+            existing_stream_params=dialog_response.extracted_parameters.get('stream_parameters', {}),
+            existing_job_params=dialog_response.extracted_parameters.get('job_parameters', {})
         )
 
-        # Hole aktualisierte Session für Response
-        updated_session = state_manager.get_session(session_id)
+        if langextract_result:
+            # Add source grounding data to response
+            source_grounding_data = {
+                "highlighted_ranges": langextract_result.highlighted_ranges,
+                "parameter_sources": [],  # Will be populated from parameters
+                "full_text": request.message,
+                "extraction_quality": langextract_result.extraction_quality,
+                "overall_confidence": langextract_result.overall_confidence
+            }
+
+            # Convert source-grounded parameters for frontend
+            source_grounded_parameters = []
+            for param in langextract_result.stream_parameters + langextract_result.job_parameters:
+                source_grounded_parameters.append({
+                    "name": param.name,
+                    "value": param.value,
+                    "confidence": param.confidence,
+                    "source_text": param.source_text,
+                    "character_offsets": param.character_offsets,
+                    "context_preview": param.context_preview,
+                    "highlight_color": param.highlight_color
+                })
+
+            extraction_quality = langextract_result.extraction_quality
+            needs_review = (extraction_quality == "needs_review" or
+                          langextract_result.overall_confidence < 0.6)
+
+            logger.info(f"🎯 LangExtract SUCCESS: {len(source_grounded_parameters)} parameters with source grounding")
 
         logger.info(
-            "Smart Message verarbeitet: %s | Extracted: %s",
+            "Smart Message verarbeitet: %s | Extracted: %s | Source Grounded: %s",
             session_id,
-            len(extracted_values),
+            len(dialog_response.extracted_parameters or {}),
+            len(source_grounded_parameters or [])
         )
 
         return SmartChatMessageResponse(
@@ -738,12 +768,17 @@ async def send_smart_chat_message(
             parameter_confidences=dialog_response.parameter_confidences,
             next_parameter=dialog_response.next_parameter,
             completion_percentage=_normalize_completion_percentage(
-                updated_session.completion_percentage if updated_session else 0.0
+                updated_hierarchical_session.completion_status.overall_percentage if updated_hierarchical_session else 0.0
             ),
             suggested_questions=dialog_response.suggested_questions,
             validation_issues=dialog_response.validation_issues,
             timestamp=dialog_response.timestamp,
-            metadata=dialog_response.metadata or {}
+            metadata=dialog_response.metadata or {},
+            # LangExtract Source Grounding Data
+            source_grounding_data=source_grounding_data,
+            source_grounded_parameters=source_grounded_parameters,
+            extraction_quality=extraction_quality,
+            needs_review=needs_review
         )
 
     except HTTPException:
@@ -755,54 +790,50 @@ async def send_smart_chat_message(
 @router.get("/smart/sessions/{session_id}/status", response_model=SmartChatSessionResponse)
 async def get_smart_session_status(
     session_id: str,
-    state_manager = Depends(get_parameter_state_manager_dep)
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep)
 ) -> SmartChatSessionResponse:
-    """Gibt Status einer Smart Parameter Session zurück"""
+    """Gibt Status einer Hierarchical Parameter Session zurück"""
 
-    session = state_manager.get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    hierarchical_session = dialog_manager.hierarchical_manager.get_hierarchical_session(session_id)
+    if not hierarchical_session:
+        raise HTTPException(status_code=404, detail="Hierarchical session not found")
 
     return SmartChatSessionResponse(
-        session_id=session.session_id,
-        job_type=session.job_type,
-        status=session.status.value,
-        dialog_state=session.dialog_state,
-        completion_percentage=_normalize_completion_percentage(session.completion_percentage),
-        message=session.last_message or "Session aktiv",
-        suggested_questions=session.suggested_questions,
-        created_at=session.created_at
+        session_id=session_id,
+        job_type="STREAM_CONFIGURATION",
+        status="active",
+        dialog_state=hierarchical_session.dialog_state,
+        completion_percentage=_normalize_completion_percentage(hierarchical_session.completion_status.overall_percentage),
+        message=hierarchical_session.last_message or "Hierarchical session aktiv",
+        suggested_questions=hierarchical_session.suggested_questions,
+        created_at=hierarchical_session.created_at
     )
 
 @router.get("/smart/sessions/{session_id}/parameters", response_model=ParameterExportResponse)
 async def export_session_parameters(
     session_id: str,
     format: str = "json",
-    state_manager = Depends(get_parameter_state_manager_dep)
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep)
 ) -> ParameterExportResponse:
-    """Exportiert gesammelte Parameter als JSON"""
+    """Exportiert gesammelte Parameter aus Hierarchical Session als JSON"""
 
     try:
-        session = state_manager.get_session(session_id)
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+        hierarchical_session = dialog_manager.hierarchical_manager.get_hierarchical_session(session_id)
+        if not hierarchical_session:
+            raise HTTPException(status_code=404, detail="Hierarchical session not found")
 
-        # Validiere Parameter
-        validation_result = state_manager.validate_session_parameters(session_id)
-        validation_status = "valid" if validation_result and validation_result.is_valid else "invalid"
-
-        raw_parameters = session.collected_parameters or {}
+        raw_parameters = hierarchical_session.stream_parameters or {}
         normalized_parameters = _normalize_parameter_keys(raw_parameters)
 
         return ParameterExportResponse(
             session_id=session_id,
-            job_type=session.job_type,
+            job_type="STREAM_CONFIGURATION",
             parameters=normalized_parameters,
             raw_parameters=raw_parameters,
-            completion_percentage=_normalize_completion_percentage(session.completion_percentage),
-            validation_status=validation_status,
+            completion_percentage=_normalize_completion_percentage(hierarchical_session.completion_status.overall_percentage),
+            validation_status="valid" if hierarchical_session.completion_status.validation_passed else "invalid",
             export_timestamp=datetime.now(),
-            validation_issues=validation_result.errors if validation_result else []
+            validation_issues=[]
         )
 
     except Exception as e:
@@ -907,3 +938,74 @@ async def smart_system_health(
     except Exception as e:
         logger.error(f"Smart Health Check failed: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Smart system unhealthy: {str(e)}")
+
+
+# ================================
+# HIERARCHICAL SESSION ENDPOINTS
+# ================================
+
+@router.get("/smart/sessions/{session_id}/hierarchical")
+async def get_hierarchical_session(
+    session_id: str,
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep)
+) -> Dict[str, Any]:
+    """Get hierarchical session with stream and job parameters"""
+    try:
+        hierarchical_session = dialog_manager.hierarchical_manager.get_hierarchical_session(session_id)
+        if not hierarchical_session:
+            raise HTTPException(status_code=404, detail="Hierarchical session not found")
+
+        return hierarchical_session.model_dump()
+
+    except Exception as e:
+        logger.error(f"Error getting hierarchical session {session_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get hierarchical session: {str(e)}")
+
+
+@router.get("/smart/sessions/{session_id}/hierarchical-parameters")
+async def get_hierarchical_parameters(
+    session_id: str,
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep)
+) -> Dict[str, Any]:
+    """Get hierarchical parameters (stream + jobs)"""
+    try:
+        hierarchical_session = dialog_manager.hierarchical_manager.get_hierarchical_session(session_id)
+        if not hierarchical_session:
+            raise HTTPException(status_code=404, detail="Hierarchical session not found")
+
+        return {
+            "stream_parameters": hierarchical_session.stream_parameters,
+            "jobs": [job.model_dump() for job in hierarchical_session.jobs],
+            "completion_status": hierarchical_session.completion_status.model_dump()
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting hierarchical parameters {session_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get hierarchical parameters: {str(e)}")
+
+
+
+@router.post("/smart/sessions/{session_id}/generate-hierarchical-xml")
+async def generate_hierarchical_xml(
+    session_id: str,
+    dialog_manager = Depends(get_intelligent_dialog_manager_dep)
+) -> Dict[str, Any]:
+    """Generate XML from hierarchical session"""
+    try:
+        hierarchical_session = dialog_manager.hierarchical_manager.get_hierarchical_session(session_id)
+        if not hierarchical_session:
+            raise HTTPException(status_code=404, detail="Hierarchical session not found")
+
+        # For now, return simple XML generation
+        # TODO: Implement proper hierarchical XML generation
+        return {
+            "success": True,
+            "xml": f"<HierarchicalStream sessionId='{session_id}'><!-- Hierarchical XML generation not implemented yet --></HierarchicalStream>"
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating hierarchical XML {session_id}: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Failed to generate hierarchical XML: {str(e)}"
+        }

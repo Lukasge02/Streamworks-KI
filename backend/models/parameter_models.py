@@ -3,7 +3,7 @@ Parameter Models - Pydantic Models für alle Job-Types
 Auto-generiert aus job_type_schemas.json
 """
 
-from typing import Optional, List, Union, Any
+from typing import Optional, List, Union, Any, Dict
 from datetime import datetime
 from enum import Enum
 
@@ -414,3 +414,287 @@ def create_parameter_instance(job_type: str, **kwargs) -> Union[
         return model_class(**kwargs)
     else:
         raise ValueError(f"Unbekannter Job-Type: {job_type}")
+
+# ================================
+# HIERARCHICAL STREAM MODELS
+# ================================
+
+class ParameterScope(str, Enum):
+    """Parameter-Scope für hierarchische Stream-Konfiguration"""
+    STREAM = "stream"
+    JOB = "job"
+    UNKNOWN = "unknown"
+
+class JobConfiguration(BaseModel):
+    """Konfiguration für einen einzelnen Job innerhalb eines Streams"""
+    job_id: str = Field(description="Eindeutige Job-ID")
+    job_type: str = Field(description="Job-Type (STANDARD, SAP, FILE_TRANSFER, CUSTOM)")
+    job_name: Optional[str] = Field(None, description="Benutzerfreundlicher Job-Name")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Job-spezifische Parameter")
+    completion_percentage: float = Field(default=0.0, description="Vervollständigung des Jobs (0.0-1.0)")
+    validation_errors: List[str] = Field(default_factory=list, description="Validierungsfehler für diesen Job")
+    created_at: datetime = Field(default_factory=datetime.now, description="Erstellungszeitpunkt")
+    updated_at: datetime = Field(default_factory=datetime.now, description="Letzte Aktualisierung")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "job_id": "job_001",
+                "job_type": "FILE_TRANSFER",
+                "job_name": "MainTransfer",
+                "parameters": {
+                    "source_agent": "gt123",
+                    "target_agent": "basf",
+                    "source_path": "E://test",
+                    "target_path": "C://test"
+                },
+                "completion_percentage": 1.0,
+                "validation_errors": []
+            }
+        }
+
+class CompletionStatus(BaseModel):
+    """Vervollständigungsstatus für hierarchische Stream-Konfiguration"""
+    stream_complete: bool = Field(default=False, description="Stream-Level Parameter vollständig")
+    jobs_complete: bool = Field(default=False, description="Alle Jobs vollständig konfiguriert")
+    overall_percentage: float = Field(default=0.0, description="Gesamt-Vervollständigung (0.0-1.0)")
+    missing_stream_parameters: List[str] = Field(default_factory=list, description="Fehlende Stream-Parameter")
+    incomplete_jobs: List[str] = Field(default_factory=list, description="Unvollständige Job-IDs")
+    validation_passed: bool = Field(default=False, description="Gesamte Validierung bestanden")
+
+class HierarchicalStreamSession(BaseModel):
+    """
+    Hierarchische Stream-Session für Parameter-Akkumulation
+    Unterstützt sowohl Stream-Level als auch Job-Level Parameter
+    """
+    session_id: str = Field(description="Eindeutige Session-ID")
+    session_type: str = Field(default="STREAM_CONFIGURATION", description="Session-Typ")
+    user_id: Optional[str] = Field(None, description="Benutzer-ID")
+
+    # Stream-Level Parameter (aus STANDARD Job-Type)
+    stream_parameters: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Stream-Level Parameter (Name, Dokumentation, etc.)"
+    )
+
+    # Job-Level Konfigurationen
+    jobs: List[JobConfiguration] = Field(
+        default_factory=list,
+        description="Liste der Jobs in diesem Stream"
+    )
+
+    # Status und Metadaten
+    completion_status: CompletionStatus = Field(
+        default_factory=CompletionStatus,
+        description="Vervollständigungsstatus"
+    )
+    dialog_state: str = Field(default="initial", description="Aktueller Dialog-Status")
+    last_message: Optional[str] = Field(None, description="Letzte Benutzer-Nachricht")
+    suggested_questions: List[str] = Field(default_factory=list, description="Vorgeschlagene Fragen")
+
+    # Zeitstempel
+    created_at: datetime = Field(default_factory=datetime.now, description="Erstellungszeitpunkt")
+    updated_at: datetime = Field(default_factory=datetime.now, description="Letzte Aktualisierung")
+    expires_at: datetime = Field(description="Ablaufzeitpunkt")
+
+    # Metadaten
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Zusätzliche Metadaten")
+
+    def add_or_update_job(self, job_type: str, parameters: Dict[str, Any], job_name: Optional[str] = None) -> str:
+        """Fügt einen Job hinzu oder aktualisiert bestehenden Job"""
+        import uuid
+
+        # Suche nach bestehendem Job desselben Typs
+        existing_job = next((job for job in self.jobs if job.job_type == job_type), None)
+
+        if existing_job:
+            # Aktualisiere bestehenden Job
+            existing_job.parameters.update(parameters)
+            existing_job.updated_at = datetime.now()
+            if job_name:
+                existing_job.job_name = job_name
+            return existing_job.job_id
+        else:
+            # Erstelle neuen Job
+            job_id = str(uuid.uuid4())
+            new_job = JobConfiguration(
+                job_id=job_id,
+                job_type=job_type,
+                job_name=job_name or f"{job_type}_Job",
+                parameters=parameters,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+            self.jobs.append(new_job)
+            return job_id
+
+    def update_stream_parameters(self, parameters: Dict[str, Any]) -> None:
+        """Aktualisiert Stream-Level Parameter"""
+        self.stream_parameters.update(parameters)
+        self.updated_at = datetime.now()
+
+    def get_job_by_type(self, job_type: str) -> Optional[JobConfiguration]:
+        """Holt Job-Konfiguration nach Typ"""
+        return next((job for job in self.jobs if job.job_type == job_type), None)
+
+    def get_all_parameters(self) -> Dict[str, Any]:
+        """Gibt alle Parameter (Stream + Jobs) als flache Struktur zurück"""
+        all_params = self.stream_parameters.copy()
+
+        for job in self.jobs:
+            # Prefix Job-Parameter mit Job-Type um Konflikte zu vermeiden
+            for param_name, param_value in job.parameters.items():
+                all_params[f"{job.job_type.lower()}_{param_name}"] = param_value
+
+        return all_params
+
+    def calculate_completion(self) -> CompletionStatus:
+        """Berechnet Vervollständigungsstatus"""
+        from services.ai.smart_parameter_extractor import get_smart_parameter_extractor
+
+        try:
+            extractor = get_smart_parameter_extractor()
+
+            # Stream-Parameter prüfen (STANDARD Schema)
+            standard_schema = extractor.get_job_type_info("STANDARD")
+            if standard_schema:
+                required_stream_params = [p["name"] for p in standard_schema["parameters"] if p["required"]]
+                missing_stream = [name for name in required_stream_params
+                                if self.stream_parameters.get(name) is None]
+                stream_complete = len(missing_stream) == 0
+            else:
+                missing_stream = []
+                stream_complete = True
+
+            # Jobs prüfen
+            incomplete_jobs = []
+            total_job_completion = 0.0
+
+            for job in self.jobs:
+                job_schema = extractor.get_job_type_info(job.job_type)
+                if job_schema:
+                    required_params = [p["name"] for p in job_schema["parameters"] if p["required"]]
+                    missing_params = [name for name in required_params
+                                    if job.parameters.get(name) is None]
+
+                    if missing_params:
+                        incomplete_jobs.append(job.job_id)
+                        job.completion_percentage = max(0.0, 1.0 - len(missing_params) / len(required_params))
+                    else:
+                        job.completion_percentage = 1.0
+
+                    total_job_completion += job.completion_percentage
+
+            jobs_complete = len(incomplete_jobs) == 0 and len(self.jobs) > 0
+
+            # Gesamt-Completion
+            if len(self.jobs) > 0:
+                avg_job_completion = total_job_completion / len(self.jobs)
+                overall_percentage = (0.3 * (1.0 if stream_complete else 0.5)) + (0.7 * avg_job_completion)
+            else:
+                overall_percentage = 1.0 if stream_complete else 0.5
+
+            # Update Completion Status
+            self.completion_status = CompletionStatus(
+                stream_complete=stream_complete,
+                jobs_complete=jobs_complete,
+                overall_percentage=overall_percentage,
+                missing_stream_parameters=missing_stream,
+                incomplete_jobs=incomplete_jobs,
+                validation_passed=stream_complete and jobs_complete
+            )
+
+            return self.completion_status
+
+        except Exception as e:
+            # Fallback bei Fehlern
+            self.completion_status = CompletionStatus(
+                overall_percentage=0.5 if self.stream_parameters or self.jobs else 0.0
+            )
+            return self.completion_status
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "session_id": "session_123",
+                "session_type": "STREAM_CONFIGURATION",
+                "stream_parameters": {
+                    "StreamName": "datentransfer_test",
+                    "StreamDocumentation": "Transfer zwischen GT123 und BASF",
+                    "ShortDescription": "Datentransfer Test"
+                },
+                "jobs": [
+                    {
+                        "job_id": "job_001",
+                        "job_type": "FILE_TRANSFER",
+                        "job_name": "MainTransfer",
+                        "parameters": {
+                            "source_agent": "gt123",
+                            "target_agent": "basf"
+                        }
+                    }
+                ],
+                "completion_status": {
+                    "stream_complete": True,
+                    "jobs_complete": False,
+                    "overall_percentage": 0.65
+                }
+            }
+        }
+
+# ================================
+# PARAMETER SCOPE UTILITIES
+# ================================
+
+# Stream-Level Parameter (aus STANDARD Job-Type)
+STREAM_LEVEL_PARAMETERS = {
+    "StreamName", "StreamDocumentation", "MaxStreamRuns", "ShortDescription",
+    "SchedulingRequiredFlag", "StreamRunDeletionType", "JobName", "JobCategory",
+    "IsNotificationRequired"
+}
+
+# Job-Level Parameter nach Job-Type
+JOB_LEVEL_PARAMETERS = {
+    "SAP": {"system", "report", "variant", "batch_user"},
+    "FILE_TRANSFER": {"source_agent", "target_agent", "source_path", "target_path"},
+    "CUSTOM": {"ResourceName", "ShortDescription", "Status", "MaxParallelAllocations",
+               "AutoReleaseFlag", "LogicalResourceType", "MasterLogicalResourceId",
+               "DefaultMaxParallelAllocations"}
+}
+
+def classify_parameter_scope(parameter_name: str, context_job_type: Optional[str] = None) -> ParameterScope:
+    """Klassifiziert Parameter-Scope basierend auf Name und Kontext"""
+
+    # Stream-Level Parameter prüfen
+    if parameter_name in STREAM_LEVEL_PARAMETERS:
+        return ParameterScope.STREAM
+
+    # Job-Level Parameter prüfen
+    if context_job_type and context_job_type in JOB_LEVEL_PARAMETERS:
+        if parameter_name in JOB_LEVEL_PARAMETERS[context_job_type]:
+            return ParameterScope.JOB
+
+    # Alle Job-Types durchsuchen
+    for job_type, params in JOB_LEVEL_PARAMETERS.items():
+        if parameter_name in params:
+            return ParameterScope.JOB
+
+    return ParameterScope.UNKNOWN
+
+def split_parameters_by_scope(parameters: Dict[str, Any], context_job_type: Optional[str] = None) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Teilt Parameter nach Scope auf: (stream_params, job_params)"""
+    stream_params = {}
+    job_params = {}
+
+    for param_name, param_value in parameters.items():
+        scope = classify_parameter_scope(param_name, context_job_type)
+
+        if scope == ParameterScope.STREAM:
+            stream_params[param_name] = param_value
+        elif scope == ParameterScope.JOB:
+            job_params[param_name] = param_value
+        # UNKNOWN Parameter werden zu Job-Parameter (safer default)
+        else:
+            job_params[param_name] = param_value
+
+    return stream_params, job_params

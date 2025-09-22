@@ -132,52 +132,6 @@ export default function SmartSuggestions({
         )}
       </AnimatePresence>
 
-      {/* Example Suggestions */}
-      {exampleSuggestions.length > 0 && streamType && completionPercentage === 0 && (
-        <motion.div
-          className="bg-white border border-gray-200 rounded-lg overflow-hidden"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border-b border-emerald-200 p-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              <h4 className="font-medium text-emerald-900">
-                Beispiele für {streamType} Streams
-              </h4>
-            </div>
-          </div>
-          <div className="p-3 space-y-2">
-            {exampleSuggestions.map((example, index) => (
-              <motion.button
-                key={index}
-                className="w-full text-left p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-emerald-50 rounded-lg border border-gray-200 transition-all duration-200 hover:border-emerald-300 hover:shadow-sm group"
-                onClick={() => handleExampleClick(example)}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + index * 0.1 }}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded group-hover:bg-emerald-200">
-                    <Lightbulb className="w-3 h-3" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm text-gray-700 group-hover:text-gray-900">
-                      {example}
-                    </div>
-                  </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ArrowRight className="w-4 h-4 text-emerald-500" />
-                  </div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
     </motion.div>
   )

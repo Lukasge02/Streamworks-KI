@@ -49,15 +49,29 @@ cd Streamworks-KI
 
 ### 2. Backend starten
 ```bash
-cd backend
-pip install -r requirements.txt
-
-# Umgebung konfigurieren (optional)
 cp .env.example .env
+cd backend
+
+# Einmalig empfohlene virtuelle Umgebung (Python 3.11)
+python3.11 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install -r requirements.txt
 
 # Backend starten
-python main.py
+python -m uvicorn main:app --reload --port 8000
 ```
+
+#### Alternative: Backend in Docker (empfohlen für Python ≥3.10)
+```bash
+# Backend (uvicorn) + Hot Reload im Container starten
+docker compose -f docker-compose.backend.yml up --build
+
+# Optional zusammen mit Qdrant
+docker compose -f docker-compose.qdrant.yml -f docker-compose.backend.yml up --build
+```
+Der Container nutzt Python 3.11, installiert automatisch `backend/requirements.txt` inklusive `langextract`
+und mounted den lokalen `backend/`-Ordner nach `/app`, sodass Codeänderungen ohne Neu-Build live geladen werden.
 
 ### 3. Frontend starten
 ```bash
@@ -70,6 +84,7 @@ npm run dev
 - **Frontend**: http://localhost:3000
 - **API Docs**: http://localhost:8000/docs  
 - **Health Check**: http://localhost:8000/health
+- **LangExtract Check**: `python3.11 backend/test_langextract.py`
 
 **✅ Sofort einsatzbereit** - Dokumente hochladen und intelligente Fragen stellen!
 

@@ -16,7 +16,9 @@ from routers import folders, documents, websockets, upload_progress_websocket, f
 from routers.xml_generator import router as xml_generator
 from routers.xml_streams import router as xml_streams
 from routers.chat_rag_test import router as chat
-from routers.chat_xml import router as chat_xml
+# from routers.chat_xml import router as chat_xml
+from routers.chat_xml_unified import router as chat_xml_unified  # Unified Chat XML
+from routers.langextract_chat import router as langextract_chat  # NEW: LangExtract-First System
 from routers.debug import router as debug
 from routers.auth import router as auth  # RBAC Auth Router
 from routers.performance import router as performance  # Performance Analytics
@@ -125,7 +127,9 @@ app.include_router(folders)
 app.include_router(documents)
 app.include_router(websockets)
 app.include_router(chat)
-app.include_router(chat_xml)
+# app.include_router(chat_xml)
+app.include_router(chat_xml_unified)  # New Unified Chat XML System
+app.include_router(langextract_chat)  # 🚀 NEW: LangExtract-First System
 app.include_router(upload_progress_websocket)
 app.include_router(xml_generator)
 app.include_router(xml_streams)

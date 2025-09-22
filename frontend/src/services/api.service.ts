@@ -34,7 +34,20 @@ import {
   XMLGenerationResponse,
   XMLParameterStatus,
   XMLParameterValidation,
-  XMLChatSystemStatus
+  XMLChatSystemStatus,
+  // LangExtract Types
+  LangExtractSessionState,
+  LangExtractSession,
+  SourceGroundingData,
+  SourceGroundedParameter,
+  LangExtractRequest,
+  LangExtractResponse,
+  ParameterCorrectionRequest,
+  ParameterCorrectionResponse,
+  LangExtractXMLGenerationRequest,
+  LangExtractXMLGenerationResponse,
+  LangExtractSessionAnalytics,
+  LangExtractHealthStatus
 } from '@/types/api.types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
@@ -411,6 +424,95 @@ class ApiService {
 
   async getXMLChatStatus(): Promise<XMLChatSystemStatus> {
     return this.request<XMLChatSystemStatus>('/api/chat-xml/health')
+  }
+
+  // ================================
+  // LANGEXTRACT STREAMWORKS METHODS
+  // ================================
+
+  // Session Management
+  async createLangExtractSession(jobType?: string): Promise<{ session_id: string; message: string; suggested_questions: string[] }> {
+    return this.request<{ session_id: string; message: string; suggested_questions: string[] }>('/api/streamworks/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ job_type: jobType })
+    })
+  }
+
+  async getLangExtractSession(sessionId: string): Promise<LangExtractSession> {
+    return this.request<LangExtractSession>(`/api/streamworks/sessions/${sessionId}`)
+  }
+
+  // Message Processing
+  async sendLangExtractMessage(request: LangExtractRequest): Promise<LangExtractResponse> {
+    return this.request<LangExtractResponse>(`/api/streamworks/sessions/${request.session_id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ message: request.message })
+    })
+  }
+
+  // Parameter Management
+  async getLangExtractParameters(sessionId: string): Promise<{
+    session_id: string
+    job_type: string
+    stream_parameters: Record<string, any>
+    job_parameters: Record<string, any>
+    completion_percentage: number
+    critical_missing: string[]
+    total_parameters: number
+    last_updated: string
+  }> {
+    return this.request(`/api/streamworks/sessions/${sessionId}/parameters`)
+  }
+
+  async correctLangExtractParameter(request: ParameterCorrectionRequest): Promise<ParameterCorrectionResponse> {
+    return this.request<ParameterCorrectionResponse>(`/api/streamworks/sessions/${request.session_id}/parameters/correct`, {
+      method: 'POST',
+      body: JSON.stringify({
+        parameter_name: request.parameter_name,
+        old_value: request.old_value,
+        new_value: request.new_value,
+        correction_reason: request.correction_reason
+      })
+    })
+  }
+
+  // XML Generation
+  async generateLangExtractXML(request: LangExtractXMLGenerationRequest): Promise<LangExtractXMLGenerationResponse> {
+    return this.request<LangExtractXMLGenerationResponse>(`/api/streamworks/sessions/${request.session_id}/generate-xml`, {
+      method: 'POST',
+      body: JSON.stringify({
+        force_generation: request.force_generation,
+        custom_template: request.custom_template
+      })
+    })
+  }
+
+  // Analytics & Monitoring
+  async getLangExtractAnalytics(): Promise<LangExtractSessionAnalytics> {
+    return this.request<LangExtractSessionAnalytics>('/api/streamworks/analytics/sessions')
+  }
+
+  async getLangExtractHealth(): Promise<LangExtractHealthStatus> {
+    return this.request<LangExtractHealthStatus>('/api/streamworks/health')
+  }
+
+  // Development & Testing
+  async testLangExtractExtraction(message: string, jobType?: string): Promise<{
+    test_message: string
+    detected_job_type: string
+    extracted_stream_parameters: Record<string, any>
+    extracted_job_parameters: Record<string, any>
+    completion_percentage: number
+    source_grounding: any
+    processing_time: number
+  }> {
+    const params = new URLSearchParams()
+    params.append('message', message)
+    if (jobType) params.append('job_type', jobType)
+
+    return this.request(`/api/streamworks/test/extract?${params.toString()}`, {
+      method: 'POST'
+    })
   }
 
   // Generic HTTP Methods (for compatibility with other services)

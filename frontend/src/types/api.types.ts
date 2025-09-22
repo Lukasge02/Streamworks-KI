@@ -360,14 +360,12 @@ export interface XMLChatSessionDetails {
     job_type?: XMLJobType
     created_at: string
     last_activity: string
-    completion_percentage: number
   }
   messages: XMLChatMessage[]
   parameter_progress: {
     total_parameters: number
     required_parameters: number
     completed_parameters: number
-    completion_percentage: number
   }
 }
 
@@ -382,7 +380,6 @@ export interface XMLChatMessageResponse {
   response: string
   updated_params: Record<string, any>
   parameter_statuses: XMLParameterStatus[]
-  completion_percentage: number
   next_required_params: string[]
   session_status: XMLSessionStatus
   suggestions?: string[]
@@ -440,4 +437,133 @@ export interface XMLChatSystemStatus {
   active_sessions: number
   openai_integration: string
   overall_status: string
+}
+
+// ================================
+// LANGEXTRACT STREAMWORKS TYPES
+// ================================
+
+// Session States
+export type LangExtractSessionState =
+  | 'stream_configuration'
+  | 'parameter_collection'
+  | 'validation'
+  | 'ready_for_xml'
+  | 'completed'
+
+// StreamWorks Session
+export interface LangExtractSession {
+  session_id: string
+  job_type?: string
+  state: LangExtractSessionState
+  stream_parameters: Record<string, any>
+  job_parameters: Record<string, any>
+  critical_missing: string[]
+  created_at: string
+  last_activity: string
+  user_id?: string
+  metadata: Record<string, any>
+}
+
+// Source Grounding Data
+export interface SourceGroundingData {
+  highlighted_ranges: Array<[number, number, string]>
+  full_text: string
+  extraction_quality: 'high' | 'medium' | 'low'
+  overall_confidence: number
+}
+
+// Source Grounded Parameter
+export interface SourceGroundedParameter {
+  name: string
+  value: any
+  confidence: number
+  source_text?: string
+  character_offsets?: [number, number]
+  user_confirmed: boolean
+}
+
+// LangExtract Request
+export interface LangExtractRequest {
+  message: string
+  session_id?: string
+  job_type?: string
+  previous_context?: Record<string, any>
+  user_preferences?: Record<string, any>
+}
+
+// LangExtract Response
+export interface LangExtractResponse {
+  session_id: string
+  response_message: string
+  extracted_stream_parameters: Record<string, any>
+  extracted_job_parameters: Record<string, any>
+  next_parameter?: string
+  suggested_questions: string[]
+  source_grounding_data?: SourceGroundingData
+  source_grounded_parameters: SourceGroundedParameter[]
+  extraction_quality: 'high' | 'medium' | 'low'
+  needs_review: boolean
+  parameter_confidences: Record<string, number>
+  job_type?: string
+  session_state: string
+  processing_time: number
+  error?: string
+  warnings: string[]
+  timestamp: string
+}
+
+// Parameter Correction
+export interface ParameterCorrectionRequest {
+  session_id: string
+  parameter_name: string
+  old_value: any
+  new_value: any
+  correction_reason?: string
+}
+
+export interface ParameterCorrectionResponse {
+  session_id: string
+  parameter_name: string
+  correction_applied: boolean
+  updated_confidence: number
+  impact_on_other_parameters: string[]
+}
+
+// XML Generation
+export interface LangExtractXMLGenerationRequest {
+  session_id: string
+  force_generation?: boolean
+  custom_template?: string
+}
+
+export interface LangExtractXMLGenerationResponse {
+  session_id: string
+  xml_content: string
+  generation_successful: boolean
+  validation_errors: string[]
+  used_parameters: Record<string, any>
+  missing_parameters: string[]
+}
+
+// Session Analytics
+export interface LangExtractSessionAnalytics {
+  total_sessions: number
+  active_sessions: number
+  completed_sessions: number
+  average_completion: number
+  job_type_distribution: Record<string, number>
+  timestamp: string
+}
+
+// Health Check
+export interface LangExtractHealthStatus {
+  status: 'healthy' | 'unhealthy'
+  service: string
+  version: string
+  capabilities: string[]
+  active_sessions: number
+  schemas_loaded: number
+  timestamp: string
+  error?: string
 }

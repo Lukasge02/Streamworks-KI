@@ -177,7 +177,7 @@ const initialState: XMLChatState = {
   smartSession: null,
   smartMessages: [],
   selectedStreamType: null,
-  streamTypeSelectionVisible: true,
+  streamTypeSelectionVisible: false, // Unified flow - no stream type selection needed
   extractedParameters: {},
   missingParameters: [],
   nextParameter: null,
@@ -436,7 +436,7 @@ export const useXMLChatStore = create<XMLChatStore>()(
 
         showStreamTypeSelection: () => {
           set((state) => {
-            state.streamTypeSelectionVisible = true
+            state.streamTypeSelectionVisible = false // Unified flow - no stream type selection
           })
         },
 
@@ -529,7 +529,7 @@ export const useXMLChatStore = create<XMLChatStore>()(
             state.smartSession = null
             state.smartMessages = []
             state.selectedStreamType = null
-            state.streamTypeSelectionVisible = true
+            state.streamTypeSelectionVisible = false // Unified flow - always hidden
             state.extractedParameters = {}
             state.missingParameters = []
             state.nextParameter = null
@@ -622,7 +622,7 @@ export const useXMLChatSelectors = () => {
 
     // UI State
     isSmartEmpty: store.smartMessages.length === 0,
-    shouldShowParameterProgress: Boolean(store.selectedStreamType) && store.smartMessages.length > 0,
+    shouldShowParameterProgress: (Boolean(store.selectedStreamType) || Boolean(store.extractedParameters && Object.keys(store.extractedParameters).length > 0)) && store.smartMessages.length > 0,
     shouldShowSuggestions: Boolean(store.selectedStreamType)
   }
 }

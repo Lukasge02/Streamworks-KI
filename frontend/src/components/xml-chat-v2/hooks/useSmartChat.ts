@@ -11,6 +11,34 @@ import { toast } from 'sonner'
 // TYPES
 // ================================
 
+// Hierarchical Session Types
+export interface JobConfiguration {
+  job_type: string
+  job_name: string
+  parameters: Record<string, any>
+  completion_percentage: number
+}
+
+export interface CompletionStatus {
+  stream_complete: boolean
+  jobs_complete: boolean
+  overall_percentage: number
+}
+
+export interface HierarchicalSession {
+  session_id: string
+  session_type: 'STREAM_CONFIGURATION' | 'JOB_ONLY'
+  stream_parameters: Record<string, any>
+  jobs: JobConfiguration[]
+  completion_status: CompletionStatus
+  status: string
+  dialog_state: string
+  message: string
+  suggested_questions: string[]
+  created_at: string
+}
+
+// Legacy support for backwards compatibility
 export interface SmartSession {
   session_id: string
   job_type?: string
@@ -35,6 +63,39 @@ export interface SmartChatMessage {
   validation_issues: string[]
   timestamp: string
   metadata?: Record<string, any>
+
+  // LangExtract Source Grounding Data
+  source_grounding_data?: {
+    highlighted_ranges: Array<[number, number, string]>
+    parameter_sources: Array<{
+      name: string
+      source_text: string
+      character_offsets: [number, number]
+      confidence: number
+      highlight_color: string
+    }>
+    full_text: string
+    extraction_quality: string
+    overall_confidence: number
+  }
+  source_grounded_parameters?: Array<{
+    name: string
+    value: any
+    confidence: number
+    source_text: string
+    character_offsets: [number, number]
+    context_preview: string
+    highlight_color: string
+  }>
+  extraction_quality?: string
+  needs_review?: boolean
+}
+
+// Enhanced Parameters Interface
+export interface HierarchicalParameters {
+  streamParameters: Record<string, any>
+  jobs: JobConfiguration[]
+  completionStatus: CompletionStatus
 }
 
 export interface ExtractedParameters {
@@ -127,6 +188,40 @@ async function getExtractedParameters(sessionId: string): Promise<ExtractedParam
   return {}
 }
 
+// New Hierarchical API Functions
+async function getHierarchicalSession(sessionId: string): Promise<HierarchicalSession> {
+  const response = await fetch(`${SMART_API}/sessions/${sessionId}/hierarchical`)
+
+  if (!response.ok) {
+    throw new Error('Failed to get hierarchical session')
+  }
+
+  const data = await response.json()
+  console.log('🏗️ Hierarchical session response:', data)
+  return data as HierarchicalSession
+}
+
+async function getHierarchicalParameters(sessionId: string): Promise<HierarchicalParameters> {
+  const response = await fetch(`${SMART_API}/sessions/${sessionId}/hierarchical-parameters`)
+
+  if (!response.ok) {
+    throw new Error('Failed to get hierarchical parameters')
+  }
+
+  const data = await response.json()
+  console.log('📊 Hierarchical parameters response:', data)
+
+  return {
+    streamParameters: data.stream_parameters || {},
+    jobs: data.jobs || [],
+    completionStatus: data.completion_status || {
+      stream_complete: false,
+      jobs_complete: false,
+      overall_percentage: 0
+    }
+  }
+}
+
 async function generateXMLFromSession(sessionId: string): Promise<{ success: boolean; xml?: string; error?: string }> {
   const response = await fetch(`${SMART_API}/sessions/${sessionId}/generate-xml`, {
     method: 'POST',
@@ -143,28 +238,55 @@ async function generateXMLFromSession(sessionId: string): Promise<{ success: boo
   return response.json()
 }
 
+async function generateHierarchicalXML(sessionId: string): Promise<{ success: boolean; xml?: string; error?: string }> {
+  const response = await fetch(`${SMART_API}/sessions/${sessionId}/generate-hierarchical-xml`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Hierarchical XML generation failed' }))
+    throw new Error(error.error || 'Failed to generate hierarchical XML')
+  }
+
+  return response.json()
+}
+
 // ================================
 // CUSTOM HOOK
 // ================================
 
 export interface UseSmartChatReturn {
-  // Session Management
+  // Session Management (Legacy)
   currentSession: SmartSession | null
   isCreatingSession: boolean
   createSession: (request: CreateSessionRequest) => Promise<SmartSession>
+
+  // Hierarchical Session Management
+  hierarchicalSession: HierarchicalSession | null
+  isLoadingHierarchical: boolean
+  refreshHierarchicalSession: () => void
 
   // Messaging
   sendSmartMessage: (message: string, sessionIdOverride?: string) => Promise<SmartChatMessage>
   isSendingMessage: boolean
   lastResponse: SmartChatMessage | null
 
-  // Parameters
+  // Parameters (Legacy)
   extractedParameters: ExtractedParameters
   isLoadingParameters: boolean
   refreshParameters: () => void
 
+  // Hierarchical Parameters
+  hierarchicalParameters: HierarchicalParameters
+  isLoadingHierarchicalParameters: boolean
+  refreshHierarchicalParameters: () => void
+
   // XML Generation
   generateXML: () => Promise<string>
+  generateHierarchicalXML: () => Promise<string>
   isGeneratingXML: boolean
 
   // Session Status
@@ -178,6 +300,7 @@ export interface UseSmartChatReturn {
 
 export function useSmartChat(): UseSmartChatReturn {
   const [currentSession, setCurrentSession] = useState<SmartSession | null>(null)
+  const [hierarchicalSession, setHierarchicalSession] = useState<HierarchicalSession | null>(null)
   const [lastResponse, setLastResponse] = useState<SmartChatMessage | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -211,11 +334,15 @@ export function useSmartChat(): UseSmartChatReturn {
       if (response.session_id) {
         console.log('🔄 Invalidating parameter queries for session:', response.session_id)
         queryClient.invalidateQueries({ queryKey: ['parameters', response.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['hierarchical-parameters', response.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['hierarchical-session', response.session_id] })
         queryClient.invalidateQueries({ queryKey: ['session-status', response.session_id] })
 
         // Force a refetch of parameters immediately
         setTimeout(() => {
           queryClient.refetchQueries({ queryKey: ['parameters', response.session_id] })
+          queryClient.refetchQueries({ queryKey: ['hierarchical-parameters', response.session_id] })
+          queryClient.refetchQueries({ queryKey: ['hierarchical-session', response.session_id] })
         }, 100)
       }
     },
@@ -241,7 +368,23 @@ export function useSmartChat(): UseSmartChatReturn {
     }
   })
 
-  const sessionId = currentSession?.session_id
+  // Hierarchical XML Generation
+  const generateHierarchicalXMLMutation = useMutation({
+    mutationFn: (sessionId: string) => generateHierarchicalXML(sessionId),
+    onSuccess: (result) => {
+      if (result.success && result.xml) {
+        toast.success('Hierarchical XML erfolgreich generiert!')
+      } else {
+        toast.error(result.error || 'Hierarchical XML generation failed')
+      }
+    },
+    onError: (error: Error) => {
+      setError(error.message)
+      toast.error(`Hierarchical XML generation failed: ${error.message}`)
+    }
+  })
+
+  const sessionId = currentSession?.session_id || hierarchicalSession?.session_id
 
   // Parameters Query - Intelligent refreshing only when needed
   const parametersQuery = useQuery<ExtractedParameters>({
@@ -257,6 +400,32 @@ export function useSmartChat(): UseSmartChatReturn {
     }
   })
 
+  // Hierarchical Parameters Query
+  const hierarchicalParametersQuery = useQuery<HierarchicalParameters>({
+    queryKey: ['hierarchical-parameters', sessionId],
+    enabled: Boolean(sessionId),
+    staleTime: 5000, // 5 seconds freshness
+    gcTime: 30000, // 30 seconds cache
+    refetchOnWindowFocus: false,
+    queryFn: ({ queryKey }) => {
+      console.log('🏗️ Fetching hierarchical parameters for session:', queryKey[1])
+      return getHierarchicalParameters(queryKey[1] as string)
+    }
+  })
+
+  // Hierarchical Session Query
+  const hierarchicalSessionQuery = useQuery<HierarchicalSession>({
+    queryKey: ['hierarchical-session', sessionId],
+    enabled: Boolean(sessionId),
+    staleTime: 5000,
+    gcTime: 30000,
+    refetchOnWindowFocus: false,
+    queryFn: ({ queryKey }) => {
+      console.log('🏗️ Fetching hierarchical session for session:', queryKey[1])
+      return getHierarchicalSession(queryKey[1] as string)
+    }
+  })
+
   // Session Status Query
   const statusQuery = useQuery<SmartSession>({
     queryKey: ['session-status', sessionId],
@@ -269,6 +438,12 @@ export function useSmartChat(): UseSmartChatReturn {
       setCurrentSession(statusQuery.data)
     }
   }, [statusQuery.data])
+
+  useEffect(() => {
+    if (hierarchicalSessionQuery.data) {
+      setHierarchicalSession(hierarchicalSessionQuery.data)
+    }
+  }, [hierarchicalSessionQuery.data])
 
   // Public Methods
   const createSession = useCallback(async (request: CreateSessionRequest) => {
@@ -297,32 +472,64 @@ export function useSmartChat(): UseSmartChatReturn {
     throw new Error(result.error || 'XML generation failed')
   }, [currentSession, generateXMLMutation])
 
+  const generateHierarchicalXMLFunc = useCallback(async () => {
+    const activeSession = hierarchicalSession || currentSession
+    if (!activeSession) {
+      throw new Error('No active session')
+    }
+    const result = await generateHierarchicalXMLMutation.mutateAsync(activeSession.session_id)
+    if (result.success && result.xml) {
+      return result.xml
+    }
+    throw new Error(result.error || 'Hierarchical XML generation failed')
+  }, [hierarchicalSession, currentSession, generateHierarchicalXMLMutation])
+
   const reset = useCallback(() => {
     setCurrentSession(null)
+    setHierarchicalSession(null)
     setLastResponse(null)
     setError(null)
     queryClient.clear()
   }, [queryClient])
 
   return {
-    // Session Management
+    // Session Management (Legacy)
     currentSession,
     isCreatingSession: createSessionMutation.isPending,
     createSession,
+
+    // Hierarchical Session Management
+    hierarchicalSession,
+    isLoadingHierarchical: hierarchicalSessionQuery.isFetching,
+    refreshHierarchicalSession: () => hierarchicalSessionQuery.refetch(),
 
     // Messaging
     sendSmartMessage: sendMessage,
     isSendingMessage: sendMessageMutation.isPending,
     lastResponse,
 
-    // Parameters
+    // Parameters (Legacy)
     extractedParameters: parametersQuery.data ?? {},
     isLoadingParameters: parametersQuery.isFetching,
     refreshParameters: () => parametersQuery.refetch(),
 
+    // Hierarchical Parameters
+    hierarchicalParameters: hierarchicalParametersQuery.data ?? {
+      streamParameters: {},
+      jobs: [],
+      completionStatus: {
+        stream_complete: false,
+        jobs_complete: false,
+        overall_percentage: 0
+      }
+    },
+    isLoadingHierarchicalParameters: hierarchicalParametersQuery.isFetching,
+    refreshHierarchicalParameters: () => hierarchicalParametersQuery.refetch(),
+
     // XML Generation
     generateXML,
-    isGeneratingXML: generateXMLMutation.isPending,
+    generateHierarchicalXML: generateHierarchicalXMLFunc,
+    isGeneratingXML: generateXMLMutation.isPending || generateHierarchicalXMLMutation.isPending,
 
     // Session Status
     refreshStatus: () => statusQuery.refetch(),

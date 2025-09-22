@@ -2,12 +2,31 @@
 
 .PHONY: help dev prod stop clean logs setup test
 
+BACKEND_VENV := $(abspath backend/.venv/bin/python)
+
+PYTHON ?= $(shell \
+    if [ -x "$(BACKEND_VENV)" ]; then \
+        echo "$(BACKEND_VENV)"; \
+    elif command -v /opt/homebrew/bin/python3.10 >/dev/null 2>&1; then \
+        echo "/opt/homebrew/bin/python3.10"; \
+    elif command -v python3.10 >/dev/null 2>&1; then \
+        command -v python3.10; \
+    elif command -v python3.11 >/dev/null 2>&1; then \
+        command -v python3.11; \
+    elif command -v python3 >/dev/null 2>&1; then \
+        command -v python3; \
+    else \
+        command -v python; \
+    fi)
+PIP := $(PYTHON) -m pip
+
 # Default target
 help:
 	@echo "StreamWorks KI - Development Commands"
 	@echo "======================================"
 	@echo "make setup       - Initial setup (install dependencies)"
 	@echo "make dev        - Start development environment (local)"
+	@echo "make backend    - Start backend only (Python 3.10)"
 	@echo "make docker     - Start with Docker Compose"
 	@echo "make prod       - Start production environment"
 	@echo "make stop       - Stop all services"
@@ -19,7 +38,7 @@ help:
 # Setup development environment
 setup:
 	@echo "🚀 Setting up StreamWorks KI..."
-	cd backend && pip install -r requirements.txt
+	cd backend && $(PIP) install -r requirements.txt
 	cd frontend && npm install
 	cp .env.example .env
 	@echo "✅ Setup complete! Edit .env with your API keys"
@@ -27,12 +46,17 @@ setup:
 # Start development (local)
 dev:
 	@echo "🚀 Starting development environment..."
-	@tmux new-session -d -s streamworks-backend 'cd backend && python -m uvicorn main:app --reload --port 8000'
+	@tmux new-session -d -s streamworks-backend 'cd backend && $(PYTHON) -m uvicorn main:app --reload --port 8000'
 	@tmux new-session -d -s streamworks-frontend 'cd frontend && npm run dev'
 	@echo "✅ Development environment started!"
 	@echo "Backend: http://localhost:8000"
 	@echo "Frontend: http://localhost:3000"
 	@echo "Use 'tmux attach -t streamworks-backend' or 'tmux attach -t streamworks-frontend' to view logs"
+
+# Start backend only with reliable startup script
+backend:
+	@echo "🚀 Starting backend with Python 3.10..."
+	cd backend && ./start_backend.sh
 
 # Start with Docker
 docker:
@@ -71,7 +95,7 @@ logs:
 # Run tests
 test:
 	@echo "🧪 Running tests..."
-	cd backend && pytest tests/ -v
+	cd backend && $(PYTHON) -m pytest tests/ -v
 	cd frontend && npm test
 
 # Test document upload

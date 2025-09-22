@@ -172,30 +172,12 @@ export default function ParameterProgress({
             </div>
           </div>
           <div className="text-right">
-            <div className={`text-2xl font-bold text-${config.color}-600`}>
-              {roundedCompletion}%
-            </div>
             <div className="text-xs text-gray-500">
               {collectedRequired}/{totalRequired} erforderlich
             </div>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-            <span>Fortschritt</span>
-            <span>{collectedRequired}/{totalRequired} Parameter</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <motion.div
-              className={`bg-${config.color}-500 h-2 rounded-full`}
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(Math.max(roundedCompletion, 0), 100)}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Parameters List */}

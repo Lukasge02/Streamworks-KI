@@ -33,7 +33,7 @@ import { toast } from 'sonner'
 // Store and hooks
 import { useXMLChatStore, useXMLChatSelectors, type StreamType } from './store/xmlChatStore'
 import { useXMLGeneration } from './hooks/useXMLGeneration'
-import { useSmartChat } from './hooks/useSmartChat'
+import { useLangExtractChat } from './hooks/useLangExtractChat'
 
 // Components
 import ChatMessage from './components/ChatMessage'
@@ -43,6 +43,10 @@ import StreamTypeSelector from './components/StreamTypeSelector'
 import ParameterProgress from './components/ParameterProgress'
 import SmartSuggestions from './components/SmartSuggestions'
 import ParameterOverview from './components/ParameterOverview'
+
+// Enhanced LangExtract Components
+import { EnhancedChatMessage } from './enhanced'
+import SourceGrounding from './components/SourceGrounding'
 
 // Types
 import { XMLChatMessage, XMLGenerationStatus } from './store/xmlChatStore'
@@ -58,6 +62,7 @@ export default function XMLChatInterface() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showStats, setShowStats] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [breakpoint, setBreakpoint] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -100,16 +105,23 @@ export default function XMLChatInterface() {
   // Hooks
   const { generateXMLFromChat, isLoading: isXMLGenerating } = useXMLGeneration()
   const {
-    createSession: createSmartSession,
-    sendSmartMessage,
-    generateXML: generateSmartXML,
-    isCreatingSession,
-    isSendingMessage,
-    isGeneratingXML: isGeneratingSmartXML,
-    extractedParameters: liveExtractedParameters,
-    currentSession: smartSession,
-    lastResponse
-  } = useSmartChat()
+    session: langExtractSession,
+    messages: langExtractMessages,
+    isLoading: isLangExtractLoading,
+    error: langExtractError,
+    isTyping: isLangExtractTyping,
+    createSession: createLangExtractSession,
+    sendMessage: sendLangExtractMessage,
+    correctParameter,
+    generateXML: generateLangExtractXML,
+    resetSession,
+    allParameters,
+    streamParameters,
+    jobParameters,
+    completionPercentage: langExtractCompletionPercentage,
+    criticalMissing,
+    sourceGroundedParameters
+  } = useLangExtractChat()
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -121,41 +133,100 @@ export default function XMLChatInterface() {
     inputRef.current?.focus()
   }, [])
 
-  // Client-side hydration protection
+  // Client-side hydration protection and responsive breakpoints
   useEffect(() => {
     setIsClient(true)
+
+    const handleResize = () => {
+      const width = window.innerWidth
+      if (width < 768) {
+        setBreakpoint('mobile')
+        setSidebarOpen(false) // Auto-close sidebar on mobile
+      } else if (width < 1024) {
+        setBreakpoint('tablet')
+      } else {
+        setBreakpoint('desktop')
+      }
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Keep store smart session in sync with hook state
+  // Keep store smart session in sync with LangExtract state
   useEffect(() => {
     if (isSmartMode) {
-      setSmartSession(smartSession ?? null)
+      setSmartSession(langExtractSession)
     } else {
       setSmartSession(null)
     }
-  }, [isSmartMode, smartSession, setSmartSession])
+  }, [isSmartMode, langExtractSession, setSmartSession])
 
-  // Create smart session when stream type is selected
+  // Create LangExtract session when stream type is selected
   useEffect(() => {
-    if (isSmartMode && selectedStreamType && !smartSession) {
-      createSmartSession({ job_type: selectedStreamType })
+    if (isSmartMode && selectedStreamType && !langExtractSession) {
+      createLangExtractSession(selectedStreamType)
     }
-  }, [selectedStreamType, isSmartMode, smartSession, createSmartSession])
+  }, [selectedStreamType, isSmartMode, langExtractSession, createLangExtractSession])
 
-  // Sync extracted parameters from smart chat hook into store
+  // Sync LangExtract messages into store
   useEffect(() => {
-    if (isSmartMode && liveExtractedParameters) {
-      // Only update if parameters have actually changed
-      const paramsChanged = JSON.stringify(extractedParameters) !== JSON.stringify(liveExtractedParameters)
+    if (isSmartMode && langExtractMessages.length > 0) {
+      // Convert LangExtract messages to XMLChatMessage format
+      const convertedMessages: XMLChatMessage[] = langExtractMessages.map(msg => ({
+        id: msg.id,
+        sessionId: langExtractSession?.session_id || '',
+        role: msg.type as 'user' | 'assistant' | 'system',
+        content: msg.content,
+        timestamp: msg.timestamp,
+        metadata: {
+          type: msg.type === 'assistant' ? 'info' : undefined,
+          parameters: msg.extracted_parameters,
+          sourceGroundingData: msg.source_grounding,
+          sourceGroundedParameters: msg.source_grounding ?
+            msg.source_grounding.highlighted_ranges?.map(([start, end, name]) => ({
+              name,
+              value: msg.extracted_parameters?.[name],
+              confidence: 0.8,
+              character_offsets: [start, end] as [number, number],
+              user_confirmed: false
+            })) : [],
+          extractionQuality: 'high',
+          processing_time: msg.processing_time,
+          needsReview: false
+        }
+      }))
+
+      // Only update if messages have changed
+      if (convertedMessages.length !== messages.length ||
+          convertedMessages[convertedMessages.length - 1]?.id !== messages[messages.length - 1]?.id) {
+        // Clear existing messages and add converted ones
+        messages.forEach(msg => {
+          // Clear only if this is a LangExtract session
+          if (msg.sessionId === langExtractSession?.session_id) {
+            // Will be replaced by LangExtract messages
+          }
+        })
+
+        // Add LangExtract messages
+        convertedMessages.forEach(msg => addMessage(msg))
+      }
+    }
+  }, [isSmartMode, langExtractMessages, langExtractSession, messages, addMessage])
+
+  // Sync extracted parameters from LangExtract into store
+  useEffect(() => {
+    if (isSmartMode && allParameters) {
+      const paramsChanged = JSON.stringify(extractedParameters) !== JSON.stringify(allParameters)
       if (paramsChanged) {
-        console.log('🔄 Updating extracted parameters:', liveExtractedParameters)
-        setExtractedParameters(liveExtractedParameters)
+        console.log('🔄 Updating extracted parameters:', allParameters)
+        setExtractedParameters(allParameters)
 
         // Auto-detect stream type from JobCategory if we have parameters but no type selected
-        if (Object.keys(liveExtractedParameters).length > 0 && !selectedStreamType) {
-          // Check if parameters contain JobCategory information
-          if (liveExtractedParameters?.JobCategory) {
-            const jobCategory = liveExtractedParameters.JobCategory
+        if (Object.keys(allParameters).length > 0 && !selectedStreamType) {
+          if (allParameters?.JobCategory) {
+            const jobCategory = allParameters.JobCategory
             let detectedType: StreamType | null = null
 
             if (jobCategory === 'SAP') {
@@ -174,30 +245,37 @@ export default function XMLChatInterface() {
         }
       }
     }
-  }, [isSmartMode, liveExtractedParameters, extractedParameters, setExtractedParameters])
+  }, [isSmartMode, allParameters, extractedParameters, setExtractedParameters, selectedStreamType, setSelectedStreamType])
 
-  // Also sync parameters from lastResponse immediately
+  // Sync completion percentage from LangExtract
   useEffect(() => {
-    if (isSmartMode && smartSession && lastResponse?.extracted_parameters) {
-      const responseParams = lastResponse.extracted_parameters
-      console.log('📥 Parameters from lastResponse:', responseParams)
-
-      // Always use the latest parameters from the API response
-      console.log('🔄 Setting parameters from lastResponse:', responseParams)
-      setExtractedParameters(responseParams)
+    if (isSmartMode && langExtractCompletionPercentage !== undefined) {
+      setCompletionPercentage(langExtractCompletionPercentage)
     }
-  }, [isSmartMode, smartSession, lastResponse?.extracted_parameters, setExtractedParameters])
+  }, [isSmartMode, langExtractCompletionPercentage, setCompletionPercentage])
 
-  // Sync completion percentage from smart session status
-  useEffect(() => {
-    if (isSmartMode && smartSession) {
-      setCompletionPercentage(smartSession.completion_percentage)
+  // Handle parameter confirmation from Source Grounding
+  const handleParameterConfirm = async (parameterName: string, confirmed: boolean) => {
+    if (!langExtractSession) return
+
+    try {
+      if (confirmed) {
+        // Mark parameter as confirmed - this is handled by the LangExtract hook internally
+        console.log(`✅ Parameter confirmed: ${parameterName}`)
+      } else {
+        // Parameter rejected - could trigger correction flow
+        console.log(`❌ Parameter rejected: ${parameterName}`)
+        // Could implement parameter removal or correction request here
+      }
+    } catch (error) {
+      console.error('Error confirming parameter:', error)
+      toast.error('Failed to confirm parameter')
     }
-  }, [isSmartMode, smartSession, setCompletionPercentage])
+  }
 
   // Handle message submission
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isGenerating || isSmartWorking) return
+    if (!inputValue.trim() || isGenerating || isLangExtractLoading) return
 
     const messageContent = inputValue.trim()
     setInputValue('')
@@ -205,108 +283,17 @@ export default function XMLChatInterface() {
 
     try {
       if (isSmartMode) {
-        // Ensure smart session exists
-        let activeSession = smartSession
-        if (!activeSession) {
-          const createdSession = await createSmartSession({
-            job_type: selectedStreamType || undefined
-          })
-          activeSession = createdSession
-          setSmartSession(createdSession)
-
-          if (createdSession.message) {
-            const welcomeMessage: XMLChatMessage = {
-              id: crypto.randomUUID(),
-              sessionId: createdSession.session_id,
-              role: 'assistant',
-              content: createdSession.message,
-              timestamp: createdSession.created_at || new Date().toISOString(),
-              metadata: {
-                type: 'info'
-              }
-            }
-            addMessage(welcomeMessage)
-          }
+        // Ensure LangExtract session exists
+        if (!langExtractSession) {
+          await createLangExtractSession(selectedStreamType || undefined)
         }
 
-        if (!activeSession) {
-          throw new Error('Konnte keine Smart-Session erstellen')
-        }
+        // Send message through LangExtract
+        await sendLangExtractMessage(messageContent)
 
-        const userMessage: XMLChatMessage = {
-          id: crypto.randomUUID(),
-          sessionId: activeSession.session_id,
-          role: 'user',
-          content: messageContent,
-          timestamp: new Date().toISOString(),
-          metadata: selectedStreamType ? { streamType: selectedStreamType } : undefined
-        }
+        // The LangExtract hook will handle all parameter updates automatically
+        // Parameters will be synced through the useEffect above
 
-        addMessage(userMessage)
-
-        const response = await sendSmartMessage(messageContent, activeSession.session_id)
-
-        if (response.metadata?.job_type) {
-          // Handle hierarchical session type mapping
-          let detectedType: StreamType | null = null
-
-          // Check if we have a JobCategory from extracted parameters
-          if (response.extracted_parameters?.JobCategory) {
-            const jobCategory = response.extracted_parameters.JobCategory
-            if (jobCategory === 'SAP') {
-              detectedType = 'SAP'
-            } else if (jobCategory === 'DataTransfer' || jobCategory === 'FILE_TRANSFER') {
-              detectedType = 'FILE_TRANSFER'
-            } else if (jobCategory === 'STANDARD') {
-              detectedType = 'STANDARD'
-            }
-          }
-
-          // Fallback to old logic if no JobCategory detected
-          if (!detectedType) {
-            if (response.metadata.job_type === 'STREAM_CONFIGURATION') {
-              // Don't default to STANDARD, wait for JobCategory
-              detectedType = null
-            } else if (['SAP', 'FILE_TRANSFER', 'STANDARD'].includes(response.metadata.job_type)) {
-              detectedType = response.metadata.job_type as StreamType
-            }
-          }
-
-          if (detectedType && detectedType !== selectedStreamType) {
-            setSelectedStreamType(detectedType)
-          }
-        }
-
-        const assistantMessage: XMLChatMessage = {
-          id: response.session_id ? `${response.session_id}-${crypto.randomUUID()}` : crypto.randomUUID(),
-          sessionId: response.session_id || activeSession.session_id,
-          role: 'assistant',
-          content: response.response_message,
-          timestamp: response.timestamp || new Date().toISOString(),
-          metadata: {
-            type: 'info',
-            parameters: response.extracted_parameters,
-            nextParameter: response.next_parameter,
-            completion: response.completion_percentage,
-            parameterConfidences: response.parameter_confidences,
-            job_type: response.metadata?.job_type
-          }
-        }
-
-        addMessage(assistantMessage)
-
-        // Update extracted parameters immediately
-        if (response.extracted_parameters) {
-          console.log('🆕 New parameters from response:', response.extracted_parameters)
-
-          // Always use the latest parameters from response
-          setExtractedParameters(response.extracted_parameters)
-
-          console.log('🔄 Updated total parameters:', response.extracted_parameters)
-        }
-        setAISuggestions(response.suggested_questions || [])
-        setNextParameter(response.next_parameter || null)
-        setCompletionPercentage(response.completion_percentage || 0)
       } else {
         // Legacy mode - generic XML generation
         const userMessage: XMLChatMessage = {
@@ -350,25 +337,27 @@ export default function XMLChatInterface() {
     if (messages.length === 0) return
 
     try {
-      if (isSmartMode && selectedStreamType) {
-        // Use smart XML generation for StreamWorks
-        const xmlContent = await generateSmartXML()
+      if (isSmartMode && selectedStreamType && langExtractSession) {
+        // Use LangExtract XML generation for StreamWorks
+        const xmlContent = await generateLangExtractXML()
 
-        setGeneratedXML(xmlContent)
-        toast.success('StreamWorks XML erfolgreich generiert!')
+        if (xmlContent) {
+          setGeneratedXML(xmlContent)
+          toast.success('StreamWorks XML erfolgreich generiert!')
 
-        const systemMessage: XMLChatMessage = {
-          id: crypto.randomUUID(),
-          sessionId: smartSession?.session_id || currentSession?.id || '',
-          role: 'system',
-          content: `Ihr ${selectedStreamType} StreamWorks-Stream wurde erfolgreich generiert! Sie können das XML rechts in der Vorschau betrachten und herunterladen.`,
-          timestamp: new Date().toISOString(),
-          metadata: {
-            type: 'xml_generated',
-            ...(selectedStreamType ? { streamType: selectedStreamType } : {})
+          const systemMessage: XMLChatMessage = {
+            id: crypto.randomUUID(),
+            sessionId: langExtractSession.session_id || currentSession?.id || '',
+            role: 'system',
+            content: `Ihr ${selectedStreamType} StreamWorks-Stream wurde erfolgreich generiert! Sie können das XML rechts in der Vorschau betrachten und herunterladen.`,
+            timestamp: new Date().toISOString(),
+            metadata: {
+              type: 'xml_generated',
+              ...(selectedStreamType ? { streamType: selectedStreamType } : {})
+            }
           }
+          addMessage(systemMessage)
         }
-        addMessage(systemMessage)
       } else {
         // Legacy XML generation
         if (!currentSession) return
@@ -462,18 +451,26 @@ export default function XMLChatInterface() {
     return date.toLocaleDateString()
   }
 
+  // Simplified grid columns - always show all areas, hide with 0px width
+  const getGridColumns = () => {
+    const hasRightPanel = (Object.keys(extractedParameters).length > 0 && !generatedXML) || generatedXML
+    return `${sidebarOpen && breakpoint !== 'mobile' ? '350px' : '0px'} 1fr ${hasRightPanel && breakpoint !== 'mobile' ? '384px' : '0px'}`
+  }
+
   return (
-    <div className="flex h-full w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 overflow-hidden">
-      {/* Sidebar */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 350, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="bg-white/90 backdrop-blur-sm border-r border-slate-200/60 flex flex-col h-full overflow-hidden shadow-lg"
-          >
+    <div className="grid min-h-screen h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 overflow-hidden"
+         style={{
+           gridTemplateColumns: getGridColumns(),
+           gridTemplateAreas: '"sidebar main-content right-panel"',
+           gridTemplateRows: '1fr',
+           transition: 'grid-template-columns 0.3s ease-in-out'
+         }}>
+      {/* Sidebar - Desktop/Tablet Grid */}
+      {(sidebarOpen && breakpoint !== 'mobile') && (
+        <div
+          className="bg-white/90 backdrop-blur-sm border-r border-slate-200/60 flex flex-col h-full overflow-hidden shadow-lg transition-all duration-300 ease-in-out"
+          style={{ gridArea: 'sidebar' }}
+        >
             {/* Sidebar Header */}
             <div className="px-4 py-3 border-b border-slate-200/60">
               <div className="flex items-center justify-between mb-4">
@@ -512,7 +509,7 @@ export default function XMLChatInterface() {
               {/* New Chat Button */}
               <button
                 onClick={handleNewChat}
-                disabled={isGenerating || isSmartWorking}
+                disabled={isGenerating || isLangExtractLoading}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
               >
                 <Plus className="w-4 h-4" />
@@ -530,9 +527,8 @@ export default function XMLChatInterface() {
                   >
                     <div className="grid grid-cols-2 gap-2 text-slate-600">
                       <div>Sessions: {sessions.length}</div>
-                      <div>Nachrichten: {messages.length}</div>
                       <div>AI Mode: ⚡ Smart</div>
-                      <div>Status: {isGenerating || isSmartWorking ? 'Laden...' : 'Bereit'}</div>
+                      <div>Status: {isGenerating || isSmartWorking ? 'Arbeitet...' : 'Bereit'}</div>
                     </div>
                   </motion.div>
                 )}
@@ -591,7 +587,6 @@ export default function XMLChatInterface() {
                       </div>
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span>{formatTimeForDisplay(session.updatedAt, isClient)}</span>
-                        <span>{session.messageCount} Nachrichten</span>
                       </div>
                     </motion.div>
                   ))}
@@ -611,14 +606,137 @@ export default function XMLChatInterface() {
                 <span>Alle Chats löschen</span>
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
-      {/* Chat Panel */}
-      <div className="flex-1 relative min-w-0 h-full">
+      {/* Mobile Sidebar Overlay */}
+      {breakpoint === 'mobile' && sidebarOpen && (
+        <AnimatePresence>
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-40 bg-white/90 backdrop-blur-sm"
+          >
+            <div className="bg-white/90 backdrop-blur-sm border-r border-slate-200/60 flex flex-col h-full overflow-hidden shadow-lg w-80">
+              {/* Sidebar Header */}
+              <div className="px-4 py-3 border-b border-slate-200/60">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Chat-Verlauf
+                  </h2>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                    title="Schließen"
+                  >
+                    <X className="w-4 h-4 text-slate-600" />
+                  </button>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Chats durchsuchen..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded hover:bg-slate-200"
+                    >
+                      <X className="w-3 h-3 text-slate-400" />
+                    </button>
+                  )}
+                </div>
+
+                {/* New Chat Button */}
+                <button
+                  onClick={handleNewChat}
+                  disabled={isGenerating || isLangExtractLoading}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Neuer Chat</span>
+                </button>
+              </div>
+
+              {/* Sessions List */}
+              <div className="flex-1 overflow-y-auto p-2">
+                {sessions.length === 0 ? (
+                  <div className="text-center p-8 text-slate-500">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                    <div className="text-sm">Noch keine Chat-Verläufe</div>
+                    <div className="text-xs mt-1">Erstelle einen neuen Chat!</div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredSessions.map((session) => (
+                      <motion.div
+                        key={session.id}
+                        layout
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          handleSessionSelect(session.id)
+                          setSidebarOpen(false) // Close sidebar after selection on mobile
+                        }}
+                        className={`w-full text-left p-3 rounded-lg transition-colors group cursor-pointer ${
+                          session.id === currentSession?.id
+                            ? 'bg-blue-50 border border-blue-200 shadow-sm'
+                            : 'hover:bg-slate-50 border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="truncate font-medium text-slate-900 text-sm flex-1">
+                            {session.title}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteSession(session.id)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 transition-all"
+                            aria-label={`Chat "${session.title}" löschen`}
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span>{formatTimeForDisplay(session.updatedAt, isClient)}</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer with Delete All Chats */}
+              <div className="p-4 border-t border-slate-200/60 bg-slate-50/50">
+                <button
+                  onClick={handleClearAllChats}
+                  disabled={!sessions.length}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Alle Chats löschen"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Alle Chats löschen</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      )}
+
+      {/* Chat Panel - CSS Grid Main Content */}
+      <div className="flex flex-col min-w-0 h-screen overflow-hidden" style={{ gridArea: 'main-content' }}>
         {/* Header - Fixed at top */}
-        <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-r from-white/95 via-blue-50/90 to-indigo-50/95 backdrop-blur-lg border-b border-gradient-to-r from-slate-200/40 via-blue-200/30 to-indigo-200/40 px-8 py-5 shadow-xl shadow-blue-500/5">
+        <div className="flex-shrink-0 bg-gradient-to-r from-white/95 via-blue-50/90 to-indigo-50/95 backdrop-blur-lg border-b border-gradient-to-r from-slate-200/40 via-blue-200/30 to-indigo-200/40 px-8 py-5 shadow-xl shadow-blue-500/5 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <motion.button
@@ -667,8 +785,8 @@ export default function XMLChatInterface() {
           </div>
         </div>
 
-        {/* Messages - Fixed positioned content area */}
-        <div className="absolute top-20 bottom-32 left-0 right-0 overflow-y-auto px-8 py-6 bg-gradient-to-b from-white/50 to-slate-50/80">
+        {/* Messages - Flexible content area */}
+        <div className="flex-1 overflow-y-auto px-8 py-6 bg-gradient-to-b from-white/50 to-slate-50/80">
           <div className="max-w-6xl mx-auto space-y-6">
             {messages.length === 0 ? (
               <div className="space-y-4">
@@ -727,11 +845,44 @@ export default function XMLChatInterface() {
                       whileHover={{ scale: 1.01 }}
                       className="will-change-transform"
                     >
-                      <ChatMessage
-                        message={message}
-                        onGenerateXML={handleGenerateXML}
-                        isGeneratingXML={isXMLGenerating}
-                      />
+                      {/* Always use Enhanced Chat Message for LangExtract mode with proper source grounding */}
+                      {isSmartMode ? (
+                        <EnhancedChatMessage
+                          message={message}
+                          extractionResult={message.metadata?.sourceGroundingData ? {
+                            stream_parameters: sourceGroundedParameters.filter(p => p.name in streamParameters).map(p => ({ ...p, scope: 'stream' })),
+                            job_parameters: sourceGroundedParameters.filter(p => p.name in jobParameters).map(p => ({ ...p, scope: 'job' })),
+                            full_text: message.metadata?.sourceGroundingData?.full_text || message.content,
+                            highlighted_ranges: message.metadata?.sourceGroundingData?.highlighted_ranges || [],
+                            extraction_quality: message.metadata?.extractionQuality || 'medium',
+                            overall_confidence: message.metadata?.sourceGroundingData?.overall_confidence || 0.8,
+                            extraction_duration: message.metadata?.processing_time || 0.1,
+                            detected_job_type: message.metadata?.job_type,
+                            job_type_confidence: 0.9
+                          } : undefined}
+                          onParameterEdit={(param) => {
+                            // Handle parameter editing through LangExtract correction
+                            if (langExtractSession) {
+                              correctParameter({
+                                session_id: langExtractSession.session_id,
+                                parameter_name: param.name,
+                                old_value: param.value,
+                                new_value: param.value, // This would be updated in a modal
+                                correction_reason: 'User correction'
+                              })
+                            }
+                          }}
+                          onParameterConfirm={(paramName) => handleParameterConfirm(paramName, true)}
+                          showSourceGrounding={true}
+                          interactive={true}
+                        />
+                      ) : (
+                        <ChatMessage
+                          message={message}
+                          onGenerateXML={handleGenerateXML}
+                          isGeneratingXML={isXMLGenerating}
+                        />
+                      )}
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -743,6 +894,15 @@ export default function XMLChatInterface() {
                     extractedParameters={extractedParameters}
                     completionPercentage={completionPercentage}
                     nextParameter={nextParameter ?? undefined}
+                  />
+                )}
+
+                {/* Source Grounding Panel for Critical Missing Parameters */}
+                {isSmartMode && criticalMissing.length > 0 && (
+                  <SourceGrounding
+                    sourceGroundedParameters={sourceGroundedParameters}
+                    onParameterConfirm={handleParameterConfirm}
+                    className="mt-6"
                   />
                 )}
 
@@ -798,13 +958,11 @@ export default function XMLChatInterface() {
               </>
             )}
 
-            {/* Bottom spacing to prevent content from hiding behind input */}
-            <div className="h-8"></div>
           </div>
         </div>
 
-        {/* Input Area - Fixed at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-white/95 via-blue-50/90 to-indigo-50/95 backdrop-blur-lg border-t border-gradient-to-r from-slate-200/40 via-blue-200/30 to-indigo-200/40 p-6 shadow-2xl shadow-blue-500/10">
+        {/* Input Area - Properly positioned at bottom */}
+        <div className="flex-shrink-0 mt-auto bg-gradient-to-r from-white/95 via-blue-50/90 to-indigo-50/95 backdrop-blur-lg border-t border-gradient-to-r from-slate-200/40 via-blue-200/30 to-indigo-200/40 p-6 shadow-2xl shadow-blue-500/10">
           <div className="max-w-5xl mx-auto">
             <div className="relative">
               <ChatInput
@@ -813,7 +971,7 @@ export default function XMLChatInterface() {
                 onChange={setInputValue}
                 onSend={handleSendMessage}
                 onKeyDown={handleKeyDown}
-                disabled={isGenerating || isSmartWorking}
+                disabled={isGenerating || isLangExtractLoading}
                 placeholder={isSmartMode
                   ? (selectedStreamType
                       ? `Beschreiben Sie Ihren ${selectedStreamType} Stream (z.B. "SAP Kalender Export von ZTV nach PA1")...`
@@ -828,49 +986,84 @@ export default function XMLChatInterface() {
                 </div>
               )}
             </div>
-            <div className="text-center mt-3">
-              <div className="flex items-center justify-center gap-6 text-sm text-slate-600">
-                <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded border border-slate-300 font-mono">Strg</kbd>
-                  <span className="text-slate-400">+</span>
-                  <kbd className="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded border border-slate-300 font-mono">Enter</kbd>
-                  <span className="text-slate-500">zum Senden</span>
+            {selectedStreamType && (
+              <div className="text-center mt-3">
+                <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium">{selectedStreamType}</span>
                 </div>
-                {selectedStreamType && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="font-medium">{selectedStreamType}</span>
-                    {Object.keys(extractedParameters).length > 0 && (
-                      <>
-                        <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-                        <span className="text-slate-500">{Object.keys(extractedParameters).length} Parameter</span>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Parameter Overview Panel - Show when parameters exist (unified stream flow) */}
-      {Object.keys(extractedParameters).length > 0 && !generatedXML && (
-        <ParameterOverview
-          streamType={selectedStreamType || "STANDARD"}
-          extractedParameters={extractedParameters}
-          completionPercentage={completionPercentage}
-          nextParameter={nextParameter ?? undefined}
-        />
+      {/* Unified Right Panel Container */}
+      {((Object.keys(extractedParameters).length > 0 && !generatedXML) || generatedXML) && breakpoint !== 'mobile' && (
+        <div className="h-full overflow-hidden" style={{ gridArea: 'right-panel' }}>
+          {/* Parameter Overview Panel - Show when parameters exist (unified stream flow) */}
+          {Object.keys(extractedParameters).length > 0 && !generatedXML && (
+            <ParameterOverview
+              streamType={selectedStreamType || "STANDARD"}
+              extractedParameters={extractedParameters}
+              completionPercentage={completionPercentage}
+              nextParameter={nextParameter ?? undefined}
+            />
+          )}
+
+          {/* XML Preview Panel */}
+          {generatedXML && (
+            <XMLPreview
+              xml={generatedXML}
+              status={generationStatus}
+              onClose={() => setGeneratedXML(null)}
+            />
+          )}
+        </div>
       )}
 
-      {/* XML Preview Panel */}
-      {generatedXML && (
-        <XMLPreview
-          xml={generatedXML}
-          status={generationStatus}
-          onClose={() => setGeneratedXML(null)}
-        />
+      {/* Mobile Overlay Panels */}
+      {breakpoint === 'mobile' && (
+        <>
+          {/* Mobile Parameter Overview Overlay */}
+          <AnimatePresence>
+            {Object.keys(extractedParameters).length > 0 && !generatedXML && (
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed inset-0 z-50 bg-white"
+              >
+                <ParameterOverview
+                  streamType={selectedStreamType || "STANDARD"}
+                  extractedParameters={extractedParameters}
+                  completionPercentage={completionPercentage}
+                  nextParameter={nextParameter ?? undefined}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Mobile XML Preview Overlay */}
+          <AnimatePresence>
+            {generatedXML && (
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed inset-0 z-50"
+              >
+                <XMLPreview
+                  xml={generatedXML}
+                  status={generationStatus}
+                  onClose={() => setGeneratedXML(null)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
       )}
     </div>
   )

@@ -9,8 +9,8 @@ from typing import List, Optional
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-# Load environment variables from project root
-load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
+# Load environment variables from backend directory
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 class Settings(BaseSettings):
     """Application settings from environment variables"""

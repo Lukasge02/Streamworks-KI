@@ -27,12 +27,38 @@ import { toast } from 'sonner'
 // TYPES
 // ================================
 
+// Hierarchical Parameter Types
+interface JobConfiguration {
+  job_type: string
+  job_name: string
+  parameters: Record<string, any>
+  completion_percentage: number
+}
+
+interface CompletionStatus {
+  stream_complete: boolean
+  jobs_complete: boolean
+  overall_percentage: number
+}
+
+interface HierarchicalParameters {
+  streamParameters: Record<string, any>
+  jobs: JobConfiguration[]
+  completionStatus: CompletionStatus
+}
+
 interface ParameterOverviewProps {
+  // Legacy support
   streamType?: 'SAP' | 'FILE_TRANSFER' | 'STANDARD' | null
   extractedParameters: Record<string, any>
   completionPercentage: number
   nextParameter?: string
   className?: string
+
+  // New hierarchical support
+  hierarchicalParameters?: HierarchicalParameters
+  sessionType?: 'STREAM_CONFIGURATION' | 'JOB_ONLY'
+  isHierarchical?: boolean
 }
 
 interface ParameterDisplayItem {
@@ -48,11 +74,31 @@ interface ParameterDisplayItem {
 // PARAMETER DEFINITIONS
 // ================================
 
-const PARAMETER_DEFINITIONS = {
+// Stream-level Parameter Definitions
+const STREAM_PARAMETER_DEFINITIONS = {
+  basic: [
+    { key: 'StreamName', label: 'Stream Name', description: 'Eindeutiger Name für den Stream' },
+    { key: 'StreamDocumentation', label: 'Beschreibung', description: 'Ausführliche Beschreibung des Streams' },
+    { key: 'ShortDescription', label: 'Kurzbeschreibung', description: 'Kurze Beschreibung für die Übersicht' }
+  ],
+  configuration: [
+    { key: 'MaxStreamRuns', label: 'Max. Läufe', description: 'Maximale Anzahl Stream-Ausführungen' },
+    { key: 'SchedulingRequiredFlag', label: 'Zeitplanung', description: 'Zeitplanung erforderlich' },
+    { key: 'StreamRunDeletionType', label: 'Löschtyp', description: 'Art der Stream-Run-Löschung' }
+  ],
+  notification: [
+    { key: 'IsNotificationRequired', label: 'Benachrichtigung', description: 'Benachrichtigung erforderlich' },
+    { key: 'NotificationEmail', label: 'E-Mail', description: 'E-Mail für Benachrichtigungen' }
+  ]
+}
+
+// Job-level Parameter Definitions
+const JOB_PARAMETER_DEFINITIONS = {
   SAP: {
     basic: [
       { key: 'StreamName', label: 'Stream Name', description: 'Eindeutiger Name für den Stream' },
-      { key: 'Description', label: 'Beschreibung', description: 'Beschreibung des Streams' },
+      { key: 'StreamDocumentation', label: 'Beschreibung', description: 'Ausführliche Beschreibung des Streams' },
+      { key: 'ShortDescription', label: 'Kurzbeschreibung', description: 'Kurze Beschreibung für die Übersicht' },
       { key: 'SystemName', label: 'SAP System', description: 'SAP-System (z.B. ZTV, PA1)' },
       { key: 'Client', label: 'Mandant', description: 'SAP-Mandant (z.B. 100)' }
     ],
@@ -70,7 +116,8 @@ const PARAMETER_DEFINITIONS = {
   FILE_TRANSFER: {
     basic: [
       { key: 'StreamName', label: 'Stream Name', description: 'Eindeutiger Name für den Transfer' },
-      { key: 'Description', label: 'Beschreibung', description: 'Beschreibung des Transfers' },
+      { key: 'StreamDocumentation', label: 'Beschreibung', description: 'Ausführliche Beschreibung des Transfers' },
+      { key: 'ShortDescription', label: 'Kurzbeschreibung', description: 'Kurze Beschreibung für die Übersicht' },
       { key: 'FilePattern', label: 'Dateimuster', description: 'Datei-Pattern (z.B. *.xml)' }
     ],
     connection: [
@@ -88,8 +135,9 @@ const PARAMETER_DEFINITIONS = {
   },
   STANDARD: {
     basic: [
-      { key: 'StreamName', label: 'Stream Name', description: 'Eindeutiger Name für den Job' },
-      { key: 'Description', label: 'Beschreibung', description: 'Beschreibung des Jobs' },
+      { key: 'StreamName', label: 'Stream Name', description: 'Eindeutiger Name für den Stream' },
+      { key: 'StreamDocumentation', label: 'Beschreibung', description: 'Ausführliche Beschreibung des Streams' },
+      { key: 'ShortDescription', label: 'Kurzbeschreibung', description: 'Kurze Beschreibung für die Übersicht' },
       { key: 'Command', label: 'Befehl', description: 'Auszuführender Befehl' }
     ],
     connection: [
@@ -106,7 +154,225 @@ const PARAMETER_DEFINITIONS = {
 }
 
 // ================================
-// COMPONENT
+// HIERARCHICAL COMPONENT
+// ================================
+
+function HierarchicalParameterView({
+  hierarchicalParameters,
+  sessionType,
+  nextParameter,
+  className
+}: {
+  hierarchicalParameters: HierarchicalParameters
+  sessionType?: 'STREAM_CONFIGURATION' | 'JOB_ONLY'
+  nextParameter?: string
+  className?: string
+}) {
+  const { streamParameters, jobs, completionStatus } = hierarchicalParameters
+
+  console.log('🏗️ Hierarchical View:', {
+    streamParameters,
+    jobs,
+    completionStatus,
+    sessionType
+  })
+
+  const handleCopyValue = async (value: any) => {
+    try {
+      await navigator.clipboard.writeText(String(value))
+      toast.success('Wert in Zwischenablage kopiert!')
+    } catch (error) {
+      toast.error('Kopieren fehlgeschlagen')
+    }
+  }
+
+  const renderParameterGroup = (
+    title: string,
+    parameters: Record<string, any>,
+    definitions: any,
+    color: string,
+    icon: React.ComponentType<any>
+  ) => {
+    if (!definitions) return null
+
+    const Icon = icon
+    const paramCount = Object.keys(parameters).length
+    const totalParams = Object.values(definitions).flat().length
+
+    return (
+      <motion.div
+        className="mb-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {/* Group Header */}
+        <div className="mx-4 mb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-6 h-6 bg-${color}-100 rounded flex items-center justify-center`}>
+                <Icon className={`w-3 h-3 text-${color}-600`} />
+              </div>
+              <h4 className="font-medium text-gray-900 text-sm">{title}</h4>
+              <span className="text-xs text-gray-500">({paramCount}/{totalParams})</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Parameters */}
+        <div className="mx-4 space-y-1">
+          {Object.entries(definitions).map(([category, params]) =>
+            (params as any[]).map((param, index) => {
+              const hasValue = parameters.hasOwnProperty(param.key) &&
+                              parameters[param.key] !== null &&
+                              parameters[param.key] !== undefined &&
+                              parameters[param.key] !== ''
+              const value = parameters[param.key]
+
+              return (
+                <motion.div
+                  key={param.key}
+                  className={`group relative overflow-hidden rounded-lg border transition-all duration-200 ${
+                    hasValue
+                      ? 'bg-white border-emerald-200 hover:shadow-sm'
+                      : 'bg-white border-gray-200 opacity-75'
+                  }`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.02 }}
+                  title={param.description}
+                >
+                  {/* Status Indicator */}
+                  <div className={`absolute left-0 top-0 w-1 h-full ${
+                    hasValue ? 'bg-emerald-500' : 'bg-gray-300'
+                  }`} />
+
+                  <div className="p-3 pl-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {hasValue ? (
+                          <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                        )}
+                        <span className="font-medium text-sm text-gray-900 truncate">
+                          {param.label}
+                        </span>
+                      </div>
+
+                      {/* Value or Status */}
+                      <div className="flex items-center gap-2">
+                        {hasValue ? (
+                          <div className="flex items-center gap-1">
+                            <code className="text-xs font-mono text-gray-600 max-w-24 truncate">
+                              {String(value)}
+                            </code>
+                            <button
+                              onClick={() => handleCopyValue(value)}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-200 rounded transition-all"
+                              title="Kopieren"
+                            >
+                              <Copy className="w-3 h-3 text-gray-500" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">Nicht gesetzt</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })
+          )}
+        </div>
+      </motion.div>
+    )
+  }
+
+  return (
+    <motion.div
+      className={`h-full w-full bg-white border-l border-gray-200 shadow-xl flex flex-col ${className}`}
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+    >
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-500" />
+              Hierarchische Parameter
+            </h3>
+            <p className="text-gray-500 text-sm">
+              {sessionType === 'STREAM_CONFIGURATION' ? 'Vollständiger Stream' : 'Einzelner Job'}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500">Hierarchisch</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Next Parameter Info */}
+      {nextParameter && (
+        <div className="bg-blue-50 border-b border-blue-100 p-3">
+          <div className="text-xs text-blue-700">
+            Nächster Parameter: {nextParameter}
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto bg-gray-50">
+        {/* Stream Parameters */}
+        {sessionType === 'STREAM_CONFIGURATION' && (
+          renderParameterGroup(
+            'Stream-Konfiguration',
+            streamParameters,
+            STREAM_PARAMETER_DEFINITIONS,
+            'blue',
+            Settings
+          )
+        )}
+
+        {/* Job Parameters */}
+        {jobs.map((job, index) => (
+          <div key={index}>
+            {renderParameterGroup(
+              `Job: ${job.job_name} (${job.job_type})`,
+              job.parameters,
+              JOB_PARAMETER_DEFINITIONS[job.job_type as keyof typeof JOB_PARAMETER_DEFINITIONS],
+              'emerald',
+              Zap
+            )}
+          </div>
+        ))}
+
+        {/* Empty State */}
+        {jobs.length === 0 && Object.keys(streamParameters).length === 0 && (
+          <div className="p-8 text-center text-gray-500">
+            <FileCode className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+            <p className="text-sm">Noch keine Parameter extrahiert</p>
+          </div>
+        )}
+      </div>
+
+      {/* Summary Footer */}
+      <div className="bg-gray-50 border-t border-gray-200 p-4">
+        <div className="text-center text-sm text-gray-600">
+          {completionStatus.stream_complete && completionStatus.jobs_complete
+            ? 'Konfiguration vollständig'
+            : 'Konfiguration in Bearbeitung'
+          }
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ================================
+// LEGACY COMPONENT
 // ================================
 
 export default function ParameterOverview({
@@ -114,10 +380,26 @@ export default function ParameterOverview({
   extractedParameters = {},
   completionPercentage,
   nextParameter,
-  className = ''
+  className = '',
+  hierarchicalParameters,
+  sessionType,
+  isHierarchical = false
 }: ParameterOverviewProps) {
 
-  const parameterDefs = streamType ? PARAMETER_DEFINITIONS[streamType] : null
+  // Use hierarchical view if available
+  if (isHierarchical && hierarchicalParameters) {
+    return (
+      <HierarchicalParameterView
+        hierarchicalParameters={hierarchicalParameters}
+        sessionType={sessionType}
+        nextParameter={nextParameter}
+        className={className}
+      />
+    )
+  }
+
+  // Fallback to legacy view
+  const parameterDefs = streamType ? JOB_PARAMETER_DEFINITIONS[streamType] : null
 
   // Enhanced Debug logging
   console.group('🔍 ParameterOverview Debug')
@@ -194,7 +476,13 @@ export default function ParameterOverview({
           altKeys.push('client', 'mandant', 'Client', 'client_number', 'mandant_number')
           break
         case 'Description':
-          altKeys.push('description', 'desc', 'Description', 'beschreibung')
+          altKeys.push('description', 'desc', 'Description', 'beschreibung', 'StreamDocumentation', 'stream_documentation', 'streamDocumentation')
+          break
+        case 'ShortDescription':
+          altKeys.push('short_description', 'shortDescription', 'Short_Description', 'kurzbeschreibung', 'ShortDesc')
+          break
+        case 'StreamDocumentation':
+          altKeys.push('stream_documentation', 'streamDocumentation', 'Stream_Documentation', 'dokumentation', 'description', 'Description', 'beschreibung')
           break
         case 'AgentName':
           altKeys.push('agent_name', 'agentName', 'agent', 'Agent_Name')
@@ -287,13 +575,13 @@ export default function ParameterOverview({
 
   return (
     <motion.div
-      className={`w-96 bg-white border-l border-gray-200 shadow-xl flex flex-col ${className}`}
-      initial={{ opacity: 0, x: 384 }}
+      className={`h-full w-full bg-white border-l border-gray-200 shadow-xl flex flex-col ${className}`}
+      initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
       {/* Simple Header */}
-      <div className="bg-white border-b border-gray-200 p-4">
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-gray-900">Parameter</h3>
@@ -301,7 +589,7 @@ export default function ParameterOverview({
           </div>
           <div className="text-right">
             <div className="text-lg font-semibold text-gray-900">{extractedCount}/{totalCount}</div>
-            <div className="text-xs text-gray-500">{actualCompletionPercentage}%</div>
+            <div className="text-xs text-gray-500">Parameter</div>
           </div>
         </div>
       </div>
@@ -350,9 +638,6 @@ export default function ParameterOverview({
                     <span className="text-xs text-gray-500">
                       ({extractedInCategory}/{categoryParams.length})
                     </span>
-                  </div>
-                  <div className={`px-2 py-0.5 bg-${categoryColor}-100 text-${categoryColor}-700 text-xs font-medium rounded`}>
-                    {Math.round((extractedInCategory / categoryParams.length) * 100)}%
                   </div>
                 </div>
               </div>
@@ -434,7 +719,7 @@ export default function ParameterOverview({
       {/* Simple Summary Footer */}
       <div className="bg-gray-50 border-t border-gray-200 p-4">
         <div className="text-center text-sm text-gray-600">
-          {extractedCount} von {totalCount} Parameter ({actualCompletionPercentage}%)
+          {extractedCount} von {totalCount} Parameter
         </div>
       </div>
     </motion.div>

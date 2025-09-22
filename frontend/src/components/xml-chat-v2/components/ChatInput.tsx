@@ -56,8 +56,8 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(({
       {/* Input Container */}
       <div className={`
         relative bg-white border rounded-2xl transition-all
-        ${disabled ? 'border-gray-200' : 'border-gray-300 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10'}
-        ${isAtLimit ? 'border-red-300 focus-within:border-red-500 focus-within:ring-red-500/10' : ''}
+        ${disabled ? 'border-gray-200' : 'border-gray-300 focus-within:border-blue-500'}
+        ${isAtLimit ? 'border-red-300 focus-within:border-red-500' : ''}
       `}>
         {/* Textarea */}
         <textarea
