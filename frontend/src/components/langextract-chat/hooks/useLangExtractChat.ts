@@ -3,8 +3,9 @@ import apiService from '@/services/api.service'
 
 interface Message {
   role: 'user' | 'assistant'
+  type: 'user' | 'assistant'  // Support both role and type for compatibility
   content: string
-  extractedParameters?: Record<string, any>
+  extracted_parameters?: Record<string, any>
   sourceGrounding?: Array<{
     parameter: string
     source: string
@@ -15,12 +16,12 @@ interface Message {
 
 interface LangExtractResponse {
   session_id: string
-  message: string
+  message?: string
   response_message?: string
   extracted_stream_parameters: Record<string, any>
   extracted_job_parameters: Record<string, any>
-  completion_percentage: number
-  critical_missing: string[]
+  completion_percentage?: number
+  critical_missing?: string[]
   source_grounding_data?: Array<{
     parameter: string
     source_text: string
@@ -80,25 +81,34 @@ export const useLangExtractChat = () => {
   const createSession = useCallback(async (jobType?: string) => {
     try {
       setIsLoading(true)
-      const response = await apiService.post<{ session_id: string; message: string; completion_percentage?: number }>('/api/streamworks/sessions', {
-        job_type: jobType
-      })
 
-      setSession(response.data.session_id)
+      // 🎯 FIX: ZUERST State komplett leeren (als wäre Session bereits gewechselt)
+      setMessages([])
+      setStreamParameters({})
+      setJobParameters({})
+      setCompletionPercentage(0)
+      setCriticalMissing([])
 
-      // Add welcome message
+      // 🎯 FIX: DANN API-Call für neue Session
+      const response = await apiService.createLangExtractSession(jobType)
+
+      // 🎯 FIX: DANN neue Session setzen
+      setSession(response.session_id)
+
+      // 🎯 FIX: DANN Welcome Message hinzufügen (ist jetzt in neuer Session)
       setMessages([{
         role: 'assistant',
-        content: response.data.message,
+        type: 'assistant',
+        content: response.message || 'Neue Session erstellt',
         timestamp: new Date().toISOString()
       }])
 
-      setCompletionPercentage(response.data.completion_percentage || 0)
+      setCompletionPercentage(response.completion_percentage || 0)
 
       // Reload sessions to include new session
       loadSessions()
 
-      return response.data.session_id
+      return response.session_id
     } catch (error) {
       console.error('Failed to create session:', error)
       throw error
@@ -111,18 +121,49 @@ export const useLangExtractChat = () => {
     try {
       setIsLoading(true)
 
-      // Clear current state
+      // 🎯 FIX: SOFORT State komplett leeren (UI reagiert sofort)
       setMessages([])
-      setStreamParameters({})
-      setJobParameters({})
-      setCompletionPercentage(0)
+      setStreamParameters({})      // ✅ Parameter UI wird sofort geleert
+      setJobParameters({})         // ✅ Parameter UI wird sofort geleert
+      setCompletionPercentage(0)   // ✅ Completion wird sofort zurückgesetzt
       setCriticalMissing([])
 
       // Switch to new session
       setSession(sessionId)
 
-      // Load session data will be handled after getParameters is defined
-      // This will be called later in the flow
+      // Load session messages
+      try {
+        const messagesResponse = await apiService.getLangExtractMessages(sessionId)
+        const loadedMessages = messagesResponse.messages.map(msg => ({
+          role: msg.type as 'user' | 'assistant',
+          type: msg.type as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: msg.timestamp
+        }))
+        setMessages(loadedMessages)
+        console.log(`✅ Loaded ${loadedMessages.length} messages for session ${sessionId}`)
+      } catch (error) {
+        console.error('Failed to load session messages:', error)
+        // Continue with empty messages if loading fails
+      }
+
+      // Load session parameters
+      try {
+        const parametersResponse = await apiService.getLangExtractParameters(sessionId)
+
+        // 🧹 PHASE 2 FIX: Clean parameters when loading session
+        const cleanedStreamParams = filterCleanParameters(parametersResponse.stream_parameters || {})
+        const cleanedJobParams = filterCleanParameters(parametersResponse.job_parameters || {})
+
+        setStreamParameters(cleanedStreamParams)
+        setJobParameters(cleanedJobParams)
+        setCompletionPercentage(parametersResponse.completion_percentage || 0)
+        setCriticalMissing(parametersResponse.critical_missing || [])
+        console.log(`✅ Loaded parameters for session ${sessionId}`)
+      } catch (error) {
+        console.error('Failed to load session parameters:', error)
+        // Continue with empty parameters if loading fails
+      }
 
       return sessionId
     } catch (error) {
@@ -150,7 +191,7 @@ export const useLangExtractChat = () => {
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
-      await apiService.delete(`/api/streamworks/sessions/${sessionId}`)
+      await apiService.deleteLangExtractSession(sessionId)
 
       // Remove from local state
       setSessions(prev => prev.filter(s => s.session_id !== sessionId))
@@ -172,6 +213,32 @@ export const useLangExtractChat = () => {
     }
   }, [session])
 
+  const deleteAllSessions = useCallback(async () => {
+    try {
+      setIsLoading(true)
+
+      const result = await apiService.deleteAllLangExtractSessions()
+
+      // Clear all local state
+      setSessions([])
+      setSession(null)
+      setMessages([])
+      setStreamParameters({})
+      setJobParameters({})
+      setCompletionPercentage(0)
+      setCriticalMissing([])
+
+      console.log(`✅ Deleted ${result.deleted_count}/${result.total_sessions} sessions`)
+
+      return result
+    } catch (error) {
+      console.error('Failed to delete all sessions:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   const sendMessage = useCallback(async (message: string) => {
     if (!session) {
       console.error('No active session')
@@ -183,6 +250,7 @@ export const useLangExtractChat = () => {
 
       // Add user message immediately
       const userMessage: Message = {
+        role: 'user',
         type: 'user',
         content: message,
         timestamp: new Date().toISOString()
@@ -190,40 +258,43 @@ export const useLangExtractChat = () => {
       setMessages(prev => [...prev, userMessage])
 
       // Send to API
-      const response = await apiService.post<LangExtractResponse>(
-        `/api/streamworks/sessions/${session}/messages`,
-        { message }
-      )
+      const response = await apiService.sendLangExtractMessage({
+        session_id: session,
+        message: message
+      })
 
-      // Update parameters
-      if (response.data.extracted_stream_parameters) {
+      // 🧹 PHASE 2 FIX: Filter and clean parameters before updating state
+      if (response.extracted_stream_parameters) {
+        const cleanedStreamParams = filterCleanParameters(response.extracted_stream_parameters)
         setStreamParameters(prev => ({
           ...prev,
-          ...response.data.extracted_stream_parameters
+          ...cleanedStreamParams
         }))
       }
 
-      if (response.data.extracted_job_parameters) {
+      if (response.extracted_job_parameters) {
+        const cleanedJobParams = filterCleanParameters(response.extracted_job_parameters)
         setJobParameters(prev => ({
           ...prev,
-          ...response.data.extracted_job_parameters
+          ...cleanedJobParams
         }))
       }
 
       // Update completion and missing
-      setCompletionPercentage(response.data.completion_percentage)
-      setCriticalMissing(response.data.critical_missing)
+      setCompletionPercentage(response.completion_percentage || 0)
+      setCriticalMissing(response.critical_missing || [])
 
       // Add assistant response
       const assistantMessage: Message = {
+        role: 'assistant',
         type: 'assistant',
-        content: response.data.response_message || response.data.message || 'Keine Antwort erhalten',
+        content: response.response_message || 'Keine Antwort erhalten',
         extracted_parameters: {
-          stream: response.data.extracted_stream_parameters || {},
-          job: response.data.extracted_job_parameters || {}
+          stream: response.extracted_stream_parameters || {},
+          job: response.extracted_job_parameters || {}
         },
-        sourceGrounding: Array.isArray(response.data.source_grounding_data)
-          ? response.data.source_grounding_data.map((sg: any) => ({
+        sourceGrounding: Array.isArray(response.source_grounding_data)
+          ? response.source_grounding_data.map((sg: any) => ({
               parameter: sg.parameter,
               source: sg.source_text,
               confidence: sg.confidence
@@ -236,12 +307,13 @@ export const useLangExtractChat = () => {
       // Reload sessions to update last_activity timestamps
       loadSessions()
 
-      return response.data
+      return response
     } catch (error) {
       console.error('Failed to send message:', error)
 
       // Add error message
       setMessages(prev => [...prev, {
+        role: 'assistant',
         type: 'assistant',
         content: 'Entschuldigung, es gab einen Fehler bei der Verarbeitung Ihrer Nachricht.',
         timestamp: new Date().toISOString()
@@ -361,10 +433,61 @@ export const useLangExtractChat = () => {
     createSession,
     switchSession,
     deleteSession,
+    deleteAllSessions,
     loadSessions,
     sendMessage,
     generateXML,
     getParameters,
     correctParameter
   }
+}
+
+/**
+ * 🧹 PHASE 2 FIX: Filter out LangExtract technical artifacts from parameters
+ */
+function filterCleanParameters(parameters: Record<string, any>): Record<string, any> {
+  const cleaned: Record<string, any> = {}
+
+  // Technical fields that should never be shown to users
+  const blacklistFields = new Set([
+    'extractions',
+    'text',
+    '_document_id',
+    'extraction_class',
+    'extraction_text',
+    'confidence',
+    'highlighted_ranges',
+    'source_grounding',
+    'metadata',
+    '__dict__',
+    '__class__',
+    'api_calls_made',
+    'extraction_duration',
+    'warnings',
+    'extraction_errors',
+    'processing_time'
+  ])
+
+  for (const [key, value] of Object.entries(parameters)) {
+    // Skip blacklisted technical fields
+    if (blacklistFields.has(key.toLowerCase())) {
+      continue
+    }
+
+    // Skip empty or invalid values
+    if (value === null || value === undefined || value === '') {
+      continue
+    }
+
+    // Skip object references like "[object Object],[object Object]..."
+    if (typeof value === 'string' && value.toLowerCase().includes('[object')) {
+      continue
+    }
+
+    // Only include clean, user-relevant parameters
+    cleaned[key] = value
+  }
+
+  console.log(`🧹 Filtered ${Object.keys(parameters).length} → ${Object.keys(cleaned).length} parameters`)
+  return cleaned
 }

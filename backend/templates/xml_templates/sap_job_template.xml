@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>{{ stream_name | default('SAP_STREAM_' + timestamp) }}</StreamName>
+    <StreamDocumentation><![CDATA[{{ stream_documentation | default('Automatisch generierter SAP Stream') }}]]></StreamDocumentation>
+    <AgentDetail>{{ agent_detail | default('') }}</AgentDetail>
+    <AccountNoId>{{ account_no_id | default('') }}</AccountNoId>
+    <CalendarId>{{ calendar_id | default('UATDefaultCalendar') }}</CalendarId>
+    <StreamType>{{ stream_type | default('Real') }}</StreamType>
+    <MaxStreamRuns>{{ max_stream_runs | default(1) }}</MaxStreamRuns>
+    <ShortDescription><![CDATA[{{ short_description | default('SAP Job: ' + (sap_system | default('SAP_SYSTEM')) + ' - ' + (sap_report | default('Report'))) }}]]></ShortDescription>
+    <SchedulingRequiredFlag>{{ scheduling_required_flag | default(True) }}</SchedulingRequiredFlag>
+    <ScheduleRuleObject>{{ schedule_rule_object | default('') }}</ScheduleRuleObject>
+    <OverviewInfoMessage IsNull="True" />
+    <RuntimeDataStorageDays IsNull="True" />
+    <RuntimeDataStorageDaySource IsNull="True" />
+    <StreamRunDeletionSource IsNull="True" />
+    <StreamRunDeletionType>None</StreamRunDeletionType>
+    <StreamRunDeletionTime IsNull="True" />
+    <StreamRunDeletionDays IsNull="True" />
+    <StreamRunDeletionDayType IsNull="True" />
+    <DeletionTimeTimeZoneId />
+    <DeletionTimeValidFlag IsNull="True" />
+    <DeletionTimeValidSource IsNull="True" />
+    <StreamRunTimeStatisticsDays IsNull="True" />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityId />
+    <MaxStreamRunDuration IsNull="True" />
+    <MinStreamRunDuration IsNull="True" />
+    <CentralJobLogAreaFlag IsNull="True" />
+    <CentralJobLogSource>{{ central_job_log_source | default('UseMasterStreamValue') }}</CentralJobLogSource>
+    <CentralJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDaySource>{{ agent_job_log_storage_day_source | default('UseMasterStreamValue') }}</AgentJobLogStorageDaySource>
+    <StreamRunInterval IsNull="True" />
+    <MaxJobLogSize IsNull="True" />
+    <ReorgType IsNull="True" />
+    <ExternalJobScriptRequired IsNull="True" />
+    <KeepPreparedRuns IsNull="True" />
+    <InteractivePslFlag>False</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled>{{ concurrent_plan_dates_enabled | default(False) }}</ConcurrentPlanDatesEnabled>
+    <UncatExclusion IsNull="True" />
+    <Jobs>
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <Severity />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          {% if run_number_1_required %}
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <Severity />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          {% endif %}
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <ReportToIncidentManagementRule />
+        <UseCostCenterFromStreamFlag>True</UseCostCenterFromStreamFlag>
+        <UseWorkloadApplicationObjectFromStreamFlag>False</UseWorkloadApplicationObjectFromStreamFlag>
+      </Job>
+      <Job>
+        <JobName>{{ job_name | default('010_SAP_Job') }}</JobName>
+        <JobDocumentation><![CDATA[{{ job_documentation | default('SAP Job für System ' + (sap_system | default('SAP_SYSTEM'))) }}]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject>{{ login_object | default('') }}</LoginObject>
+        <ShortDescription><![CDATA[{{ job_short_description | default('SAP Report/Job Execution') }}]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Job</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>{{ job_type | default('Windows') }}</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript><![CDATA[{{ main_script | default('REM SAP Job Script\nREM System: ' + (sap_system | default('SAP_SYSTEM')) + '\nREM Report: ' + (sap_report | default('SAP_REPORT')) + '\necho "SAP Job executed"') }}]]></MainScript>
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType>{{ template_type | default('Normal') }}</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <JobInternalSuccessorRunCondition>OnSuccess</JobInternalSuccessorRunCondition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        {% if sap_properties %}
+        <JobSapProperty>
+          <SapSystem>{{ sap_system | default('PA1_100') }}</SapSystem>
+          <SapClient>{{ sap_client | default('100') }}</SapClient>
+          <SapUser>{{ sap_user | default('SAP_USER') }}</SapUser>
+          <SapLanguage>{{ sap_language | default('DE') }}</SapLanguage>
+          {% if sap_report %}
+          <SapReport>{{ sap_report }}</SapReport>
+          {% endif %}
+          {% if sap_transaction %}
+          <SapTransaction>{{ sap_transaction }}</SapTransaction>
+          {% endif %}
+          {% if sap_variant %}
+          <SapVariant>{{ sap_variant }}</SapVariant>
+          {% endif %}
+          {% if sap_parameters %}
+          <SapParameters>
+            {% for param_name, param_value in sap_parameters.items() %}
+            <SapParameter>
+              <ParameterName>{{ param_name }}</ParameterName>
+              <ParameterValue>{{ param_value }}</ParameterValue>
+            </SapParameter>
+            {% endfor %}
+          </SapParameters>
+          {% endif %}
+          <SapOutputFormat>{{ sap_output_format | default('SPOOL') }}</SapOutputFormat>
+          <SapOutputPath>{{ sap_output_path | default('/sap/output/') }}</SapOutputPath>
+          <SapArchiveMode>{{ sap_archive_mode | default(False) }}</SapArchiveMode>
+          <SapWaitTime>{{ sap_wait_time | default(30) }}</SapWaitTime>
+          <SapRetryCount>{{ sap_retry_count | default(3) }}</SapRetryCount>
+        </JobSapProperty>
+        {% endif %}
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            {% if start_time %}
+            <StartTime>{{ start_time }}</StartTime>
+            <StartTimeDayType>{{ start_time_day_type | default('Normal') }}</StartTimeDayType>
+            <StartTimeType>{{ start_time_type | default('Absolute') }}</StartTimeType>
+            {% else %}
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeType IsNull="True" />
+            {% endif %}
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <Severity />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          {% if run_number_1_required %}
+          <StreamRunJobProperty>
+            <RunNumber>1</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <Severity />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+          {% endif %}
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <ReportToIncidentManagementRule />
+        <UseCostCenterFromStreamFlag>True</UseCostCenterFromStreamFlag>
+        <UseWorkloadApplicationObjectFromStreamFlag>False</UseWorkloadApplicationObjectFromStreamFlag>
+      </Job>
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription IsNull="True" />
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>EndPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeOffsetDays IsNull="True" />
+            <LatestStartTimeDayType IsNull="True" />
+            <LatestStartTimeConsiderAfterRestart IsNull="True" />
+            <LatestStartTimeAction IsNull="True" />
+            <JobHoldFlag IsNull="True" />
+            <CentralJobLogFlag IsNull="True" />
+            <BypassStatus IsNull="True" />
+            <AgentDetail />
+            <AgentSource IsNull="True" />
+            <AccountDetail />
+            <AccountSource IsNull="True" />
+            <Severity />
+            <AgentJobLogStorageDays IsNull="True" />
+            <ExternalDependencies />
+            <FileDependency />
+            <JobCompletionCodeRules />
+            <LogicalResourceDependencies />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons />
+        <JobPreparationScript />
+        <RecoveryRules />
+        <ParserJobDefinitions />
+        <ReportToIncidentManagementRule />
+        <UseCostCenterFromStreamFlag>True</UseCostCenterFromStreamFlag>
+        <UseWorkloadApplicationObjectFromStreamFlag>False</UseWorkloadApplicationObjectFromStreamFlag>
+      </Job>
+    </Jobs>
+    <StreamInternalSuccessors />
+    <StreamRunTimeStatistics />
+    <StreamRunProperties />
+    <StreamCostCenterApplications />
+    <StreamCostCenterApplicationInternalSuccessors />
+    <ReportToIncidentManagementRule />
+    <StreamVariables />
+    <StreamEnvironmentVariables />
+    <StreamInternalSuccessorStreamCommunications />
+    <StreamCalendars />
+    <StreamApplicationReferences />
+    <StreamWorkloadApplicationObject />
+    <UseWorkloadApplicationObjectFlag>False</UseWorkloadApplicationObjectFlag>
+    <WorkloadApplicationObjectTemplateExecution IsNull="True" />
+    <WorkloadApplicationObjectTemplateArguments />
+  </Stream>
+</ExportableStream>

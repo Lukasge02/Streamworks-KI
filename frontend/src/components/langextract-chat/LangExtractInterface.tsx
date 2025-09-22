@@ -48,6 +48,7 @@ export const LangExtractInterface: React.FC = () => {
     createSession,
     switchSession,
     deleteSession,
+    deleteAllSessions,
     generateXML
   } = useLangExtractChat()
 
@@ -87,6 +88,7 @@ export const LangExtractInterface: React.FC = () => {
               onCreateSession={createSession}
               onSwitchSession={switchSession}
               onDeleteSession={deleteSession}
+              onDeleteAllSessions={deleteAllSessions}
               className="w-80"
             />
           </motion.div>
@@ -355,6 +357,9 @@ export const LangExtractInterface: React.FC = () => {
               streamParameters={streamParameters || {}}
               jobParameters={jobParameters || {}}
               criticalMissing={criticalMissing || []}
+              completionPercentage={completionPercentage || 0}
+              currentSessionId={session}
+              sessions={sessions}
               className="h-full"
             />
           </div>

@@ -442,7 +442,40 @@ class ApiService {
     return this.request<LangExtractSession>(`/api/streamworks/sessions/${sessionId}`)
   }
 
+  async deleteLangExtractSession(sessionId: string): Promise<{ deleted: boolean; session_id: string }> {
+    return this.request<{ deleted: boolean; session_id: string }>(`/api/streamworks/sessions/${sessionId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async deleteAllLangExtractSessions(): Promise<{
+    deleted_count: number
+    total_sessions: number
+    success_rate: number
+    message?: string
+    warning?: string
+    failed_deletions?: string[]
+    timestamp: string
+  }> {
+    return this.request(`/api/streamworks/sessions`, {
+      method: 'DELETE'
+    })
+  }
+
   // Message Processing
+  async getLangExtractMessages(sessionId: string): Promise<{
+    session_id: string
+    messages: Array<{
+      type: 'user' | 'assistant'
+      content: string
+      timestamp: string
+    }>
+    total_messages: number
+    last_activity: string
+  }> {
+    return this.request(`/api/streamworks/sessions/${sessionId}/messages`)
+  }
+
   async sendLangExtractMessage(request: LangExtractRequest): Promise<LangExtractResponse> {
     return this.request<LangExtractResponse>(`/api/streamworks/sessions/${request.session_id}/messages`, {
       method: 'POST',

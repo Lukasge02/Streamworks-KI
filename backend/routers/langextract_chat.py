@@ -101,6 +101,50 @@ async def get_session(session_id: str):
 # MESSAGE PROCESSING
 # ================================
 
+@router.get("/sessions/{session_id}/messages", response_model=dict)
+async def get_session_messages(session_id: str):
+    """
+    💬 Get all messages for a session
+
+    Args:
+        session_id: Session identifier
+
+    Returns:
+        List of session messages with metadata
+    """
+    try:
+        session_info = await langextract_service.get_session_info(session_id)
+        if not session_info:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Get session to access messages
+        session = await langextract_service._get_session_async(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Convert messages to serializable format
+        messages = []
+        for msg in session.messages:
+            messages.append({
+                "type": msg.type,
+                "content": msg.content,
+                "timestamp": msg.timestamp.isoformat() if hasattr(msg.timestamp, 'isoformat') else str(msg.timestamp)
+            })
+
+        return {
+            "session_id": session_id,
+            "messages": messages,
+            "total_messages": len(messages),
+            "last_activity": session_info["last_activity"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting messages for session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get messages: {str(e)}")
+
+
 @router.post("/sessions/{session_id}/messages", response_model=LangExtractResponse)
 async def send_message(session_id: str, request: LangExtractRequest):
     """
@@ -256,19 +300,26 @@ async def generate_xml(session_id: str, request: XMLGenerationRequest):
             )
 
         # Generate XML
-        xml_content = await langextract_service.generate_xml(session_id)
+        xml_result = await langextract_service.generate_xml(session_id)
 
-        logger.info(f"✅ XML generated successfully for session {session_id}")
+        if xml_result.get("success"):
+            xml_content = xml_result.get("xml_content", "")
+            logger.info(f"✅ XML generated successfully for session {session_id}")
 
-        return XMLGenerationResponse(
-            session_id=session_id,
-            xml_content=xml_content,
-            generation_successful=True,
-            used_parameters={
-                **session.stream_parameters,
-                **session.job_parameters
-            }
-        )
+            return XMLGenerationResponse(
+                session_id=session_id,
+                xml_content=xml_content,
+                generation_successful=True,
+                used_parameters={
+                    **session.stream_parameters,
+                    **session.job_parameters
+                }
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"XML generation failed: {xml_result.get('error', 'Unknown error')}"
+            )
 
     except HTTPException:
         raise
@@ -334,6 +385,61 @@ async def delete_session(session_id: str):
     except Exception as e:
         logger.error(f"Error deleting session {session_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
+
+
+@router.delete("/sessions", response_model=dict)
+async def delete_all_sessions():
+    """
+    🗑️ Delete ALL sessions (bulk delete)
+
+    Returns:
+        Bulk deletion status with count
+    """
+    try:
+        # Get all sessions first
+        sessions = await langextract_service.list_sessions(limit=1000)
+        session_count = len(sessions)
+
+        if session_count == 0:
+            return {
+                "deleted_count": 0,
+                "message": "No sessions to delete",
+                "timestamp": datetime.now().isoformat()
+            }
+
+        # Delete all sessions
+        deleted_count = 0
+        failed_deletions = []
+
+        for session in sessions:
+            try:
+                success = await langextract_service.delete_session(session["session_id"])
+                if success:
+                    deleted_count += 1
+                else:
+                    failed_deletions.append(session["session_id"])
+            except Exception as e:
+                logger.warning(f"Failed to delete session {session['session_id']}: {e}")
+                failed_deletions.append(session["session_id"])
+
+        logger.info(f"🗑️ Bulk delete completed: {deleted_count}/{session_count} sessions deleted")
+
+        result = {
+            "deleted_count": deleted_count,
+            "total_sessions": session_count,
+            "success_rate": round((deleted_count / session_count) * 100, 1) if session_count > 0 else 100,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        if failed_deletions:
+            result["failed_deletions"] = failed_deletions
+            result["warning"] = f"{len(failed_deletions)} sessions could not be deleted"
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error during bulk session deletion: {e}")
+        raise HTTPException(status_code=500, detail=f"Bulk deletion failed: {str(e)}")
 
 
 # ================================

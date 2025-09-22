@@ -1,1628 +1,494 @@
 {
-  "version": "langextract_v1.0",
-  "generated_at": "2025-09-21T01:04:37.930209",
-  "source_schema": "/Applications/Programmieren/Visual Studio/Bachelorarbeit/Streamworks-KI/backend/templates/unified_stream_schemas.json",
-  "description": "StreamWorks schemas converted for LangExtract integration",
+  "version": "langextract_PERFECT_v3.0",
+  "generated_at": "2025-09-22T12:45:00.000000",
+  "description": "🎯 Perfekte LangExtract Schema - Schlanke Parameter für intelligente Extraktion",
+  "design_philosophy": "Fokus auf 6-8 essentielle Parameter pro Job-Type basierend auf echten Export-Streams",
+
   "job_type_detection": {
-    "prompt": "Identify the StreamWorks job type from German user input",
+    "prompt": "Erkenne den StreamWorks Job-Typ aus deutscher User-Eingabe. Fokus auf klare Business-Indikatoren.",
     "examples": [
       {
-        "input": "Datentransfer zwischen Servern konfigurieren",
+        "input": "Datentransfer von GT123_Server nach BASF_Agent für CSV Dateien",
         "output": "FILE_TRANSFER",
-        "confidence": 0.9,
-        "reasoning": "Keywords: datentransfer, servern"
+        "confidence": 0.95
       },
       {
-        "input": "SAP Export aus GT123 System einrichten",
+        "input": "SAP Export aus System PA1_100 mit Report ZTV_CALENDAR täglich",
         "output": "SAP",
-        "confidence": 0.95,
-        "reasoning": "Keywords: sap, export, system"
+        "confidence": 0.98
       },
       {
-        "input": "Standard Workflow für Datenverarbeitung",
+        "input": "Windows Script ausführen: dir C:\\temp && copy *.log",
         "output": "STANDARD",
-        "confidence": 0.8,
-        "reasoning": "Keywords: standard, workflow"
+        "confidence": 0.92
       }
     ],
-    "available_types": [
-      "FILE_TRANSFER",
-      "SAP",
-      "STANDARD",
-      "CUSTOM"
-    ]
+    "available_types": ["FILE_TRANSFER", "SAP", "STANDARD"]
   },
+
   "parameter_extraction": {
     "FILE_TRANSFER": {
       "job_type": "FILE_TRANSFER",
       "display_name": "File Transfer",
       "description": "Dateiübertragung zwischen Systemen und Servern",
       "complexity": "medium",
-      "extraction_prompt": "Extract file transfer parameters from the German user message.\n\nFocus on identifying:\n- Source and target systems/agents (server names, agent IDs)\n- File patterns, paths, and directories\n- Transfer settings and configurations\n- Stream metadata (name, description, schedule)\n\nLook for keywords like: datentransfer, übertragung, server, agent, dateien, von, nach, zu\n\nSTREAM PARAMETERS (required for all streams):\n- StreamName (string, REQUIRED): Der eindeutige Name des Streams Examples: DataTransfer_v1, SAP_Export_GT123, TestStream_001\n- ShortDescription (string, REQUIRED): Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen) Examples: Transfer GT123-BASF, SAP Export Daily, File Sync Process\n- MaxStreamRuns (integer, optional): Maximale Anzahl der Stream-Ausführungen Examples: 5, 10, 20\n- SchedulingRequiredFlag (boolean, optional): Ob eine zeitliche Planung erforderlich ist Examples: True, False\n- StreamRunDeletionType (enum, optional): Typ der Löschung für Stream-Ausführungen Examples: None, OnCompletion\n- StreamDocumentation (string, optional): Ausführliche Dokumentation des Streams Examples: Täglicher Datenexport zwischen Systemen, Automatisierte Synchronisation\n\nFILE_TRANSFER SPECIFIC PARAMETERS:\n- source_agent (string, REQUIRED): Quell-Agent oder Server für die Datenübertragung Examples: GT123_Server, BASF_Agent, LocalAgent_001\n- target_agent (string, REQUIRED): Ziel-Agent oder Server für die Datenübertragung Examples: BASF_Server, GT123_Agent, TargetAgent_002\n- source_path (string, optional): Quell-Dateipfad oder -verzeichnis Examples: /data/export/*.csv, C:\\Transfer\\Files\\, /home/user/documents/\n- target_path (string, optional): Ziel-Dateipfad oder -verzeichnis Examples: /backup/import/, D:\\Incoming\\, /var/data/processed/\n\nReturn extracted parameters with source grounding information.",
+
+      "extraction_prompt": "Extrahiere File Transfer Parameter aus deutscher User-Nachricht.\n\nFOKUS auf 7 essentielle Parameter:\n1. StreamName (string, REQUIRED) - Eindeutiger Stream-Name\n2. MaxStreamRuns (integer, optional) - Parallele Ausführungen (1,3,5,10,20)\n3. SchedulingRequiredFlag (boolean, optional) - Zeitgesteuert oder manuell\n4. StartTime (string, optional) - Startzeit HH:MM (nur bei Scheduling)\n5. source_agent (string, REQUIRED) - Quell-Agent/Server\n6. target_agent (string, REQUIRED) - Ziel-Agent/Server\n7. source_path (string, optional) - Quell-Dateipfad\n8. target_path (string, optional) - Ziel-Dateipfad\n\nSuche Keywords: datentransfer, übertragung, server, agent, von, nach, dateien, kopieren, sync\n\nReturn JSON mit extrahierten Parametern und source grounding.",
+
       "few_shot_examples": [
         {
-          "input": "Ich brauche einen Datentransfer von GT123_Server nach BASF_Agent für alle CSV Dateien aus dem Export-Verzeichnis",
+          "input": "Datentransfer von GT123_Server nach BASF_Agent für alle CSV Dateien täglich um 08:00",
           "output": {
-            "StreamName": "GT123_BASF_Transfer",
-            "ShortDescription": "CSV Transfer GT123 zu BASF",
+            "StreamName": "GT123_BASF_CSV_Transfer",
+            "MaxStreamRuns": 5,
+            "SchedulingRequiredFlag": true,
+            "StartTime": "08:00",
             "source_agent": "GT123_Server",
             "target_agent": "BASF_Agent",
-            "source_path": "/export/*.csv",
-            "JobCategory": "FILE_TRANSFER"
-          },
-          "source_grounding": {
-            "source_agent": {
-              "text": "GT123_Server",
-              "start": 43,
-              "end": 54
-            },
-            "target_agent": {
-              "text": "BASF_Agent",
-              "start": 60,
-              "end": 70
-            },
-            "source_path": {
-              "text": "CSV Dateien aus dem Export-Verzeichnis",
-              "start": 80,
-              "end": 119
-            }
-          },
-          "job_type": "FILE_TRANSFER",
-          "generated_at": "2025-09-21T01:04:37.930140",
-          "language": "de"
+            "source_path": "*.csv"
+          }
         },
         {
-          "input": "Transfer von LocalAgent_001 zu TargetServer_002: alle PDF Dokumente synchronisieren täglich um 6 Uhr",
+          "input": "File Sync zwischen TestAgent1 und BackupServer für alle wichtigen Dateien",
           "output": {
-            "StreamName": "Daily_PDF_Sync",
-            "ShortDescription": "Tägliche PDF Synchronisation",
-            "source_agent": "LocalAgent_001",
-            "target_agent": "TargetServer_002",
-            "source_path": "*.pdf",
-            "SchedulingRequiredFlag": true,
-            "JobCategory": "FILE_TRANSFER"
-          },
-          "source_grounding": {
-            "source_agent": {
-              "text": "LocalAgent_001",
-              "start": 13,
-              "end": 27
-            },
-            "target_agent": {
-              "text": "TargetServer_002",
-              "start": 31,
-              "end": 47
-            },
-            "source_path": {
-              "text": "PDF Dokumente",
-              "start": 54,
-              "end": 67
-            },
-            "SchedulingRequiredFlag": {
-              "text": "täglich um 6 Uhr",
-              "start": 84,
-              "end": 101
-            }
-          },
-          "job_type": "FILE_TRANSFER",
-          "generated_at": "2025-09-21T01:04:37.930152",
-          "language": "de"
+            "StreamName": "TestAgent_Backup_Sync",
+            "MaxStreamRuns": 3,
+            "SchedulingRequiredFlag": false,
+            "source_agent": "TestAgent1",
+            "target_agent": "BackupServer"
+          }
         },
         {
-          "input": "Dateiübertragung zwischen Server001 und Server002 für Backup-Zwecke mit maximalen 10 Ausführungen",
+          "input": "StrFT_FileTrans_001 soll 10 parallele Läufe haben",
           "output": {
-            "StreamName": "Backup_Transfer_Stream",
-            "ShortDescription": "Backup Transfer Server001->002",
-            "source_agent": "Server001",
-            "target_agent": "Server002",
+            "StreamName": "StrFT_FileTrans_001",
             "MaxStreamRuns": 10,
-            "JobCategory": "FILE_TRANSFER"
-          },
-          "source_grounding": {
-            "source_agent": {
-              "text": "Server001",
-              "start": 25,
-              "end": 34
-            },
-            "target_agent": {
-              "text": "Server002",
-              "start": 40,
-              "end": 49
-            },
-            "MaxStreamRuns": {
-              "text": "maximalen 10 Ausführungen",
-              "start": 73,
-              "end": 99
-            }
-          },
-          "job_type": "FILE_TRANSFER",
-          "generated_at": "2025-09-21T01:04:37.930153",
-          "language": "de"
+            "SchedulingRequiredFlag": true
+          }
+        },
+        {
+          "input": "streamname ist teststream567",
+          "output": {
+            "StreamName": "teststream567"
+          }
+        },
+        {
+          "input": "source agent ist GT123_Server",
+          "output": {
+            "source_agent": "GT123_Server"
+          }
+        },
+        {
+          "input": "ziel server ist BASF_Agent",
+          "output": {
+            "target_agent": "BASF_Agent"
+          }
+        },
+        {
+          "input": "10 parallele läufe",
+          "output": {
+            "MaxStreamRuns": 10
+          }
+        },
+        {
+          "input": "startzeit 14:30",
+          "output": {
+            "StartTime": "14:30"
+          }
+        },
+        {
+          "input": "quellpfad ist /data/export/*.csv",
+          "output": {
+            "source_path": "/data/export/*.csv"
+          }
         }
       ],
+
       "stream_parameters": [
         {
           "name": "StreamName",
           "data_type": "string",
           "required": true,
-          "default_value": null,
-          "description": "Der eindeutige Name des Streams",
-          "validation_pattern": "^[a-zA-Z0-9_-]+$",
-          "enum_values": null,
-          "chat_prompt": "Wie soll der Stream heißen?",
-          "examples": [
-            "DataTransfer_v1",
-            "SAP_Export_GT123",
-            "TestStream_001"
-          ]
-        },
-        {
-          "name": "ShortDescription",
-          "data_type": "string",
-          "required": true,
-          "default_value": null,
-          "description": "Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen)",
-          "validation_pattern": "^.{1,50}$",
-          "enum_values": null,
-          "chat_prompt": "Kurze Beschreibung des Streams (max. 50 Zeichen)?",
-          "examples": [
-            "Transfer GT123-BASF",
-            "SAP Export Daily",
-            "File Sync Process"
-          ]
+          "description": "Eindeutiger Stream-Name basierend auf Kontext",
+          "examples": ["GT123_BASF_Transfer", "Daily_File_Sync", "StrFT_FileTrans_001"]
         },
         {
           "name": "MaxStreamRuns",
           "data_type": "integer",
           "required": false,
           "default_value": 5,
-          "description": "Maximale Anzahl der Stream-Ausführungen",
-          "validation_pattern": "^[1-9][0-9]*$",
-          "enum_values": null,
-          "chat_prompt": "Wie viele maximale Ausführungen (Standard: 5)?",
-          "examples": [
-            5,
-            10,
-            20
-          ]
+          "description": "Maximale parallele Ausführungen",
+          "enum_values": [1, 3, 5, 10, 20],
+          "examples": [5, 10, 3]
         },
         {
           "name": "SchedulingRequiredFlag",
           "data_type": "boolean",
           "required": false,
-          "default_value": false,
-          "description": "Ob eine zeitliche Planung erforderlich ist",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Benötigt der Stream eine zeitliche Planung?",
-          "examples": [
-            true,
-            false
-          ]
+          "default_value": true,
+          "description": "Zeitgesteuert (true) oder manuell (false)",
+          "examples": [true, false]
         },
         {
-          "name": "StreamRunDeletionType",
-          "data_type": "enum",
-          "required": false,
-          "default_value": "None",
-          "description": "Typ der Löschung für Stream-Ausführungen",
-          "validation_pattern": null,
-          "enum_values": [
-            "None",
-            "OnCompletion",
-            "Scheduled"
-          ],
-          "chat_prompt": "Welcher Löschtyp für Stream-Ausführungen?",
-          "examples": [
-            "None",
-            "OnCompletion"
-          ]
-        },
-        {
-          "name": "StreamDocumentation",
+          "name": "StartTime",
           "data_type": "string",
           "required": false,
-          "default_value": "Automatisch generiert",
-          "description": "Ausführliche Dokumentation des Streams",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Möchten Sie eine ausführliche Dokumentation hinzufügen?",
-          "examples": [
-            "Täglicher Datenexport zwischen Systemen",
-            "Automatisierte Synchronisation"
-          ]
+          "description": "Startzeit im Format HH:MM (nur bei SchedulingRequiredFlag=true)",
+          "validation_pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "examples": ["08:00", "14:30", "22:15"]
         }
       ],
+
       "job_parameters": [
         {
           "name": "source_agent",
           "data_type": "string",
           "required": true,
-          "default_value": null,
-          "description": "Quell-Agent oder Server für die Datenübertragung",
-          "validation_pattern": "^[a-zA-Z0-9_.-]+$",
-          "enum_values": null,
-          "chat_prompt": "Von welchem System/Agent sollen die Dateien übertragen werden?",
-          "examples": [
-            "GT123_Server",
-            "BASF_Agent",
-            "LocalAgent_001"
-          ]
+          "description": "Quell-Agent oder Server",
+          "examples": ["GT123_Server", "TestAgent1", "LocalAgent_001"]
         },
         {
           "name": "target_agent",
           "data_type": "string",
           "required": true,
-          "default_value": null,
-          "description": "Ziel-Agent oder Server für die Datenübertragung",
-          "validation_pattern": "^[a-zA-Z0-9_.-]+$",
-          "enum_values": null,
-          "chat_prompt": "Zu welchem System/Agent sollen die Dateien übertragen werden?",
-          "examples": [
-            "BASF_Server",
-            "GT123_Agent",
-            "TargetAgent_002"
-          ]
+          "description": "Ziel-Agent oder Server",
+          "examples": ["BASF_Agent", "BackupServer", "TargetAgent_002"]
         },
         {
           "name": "source_path",
           "data_type": "string",
           "required": false,
-          "default_value": null,
-          "description": "Quell-Dateipfad oder -verzeichnis",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Welche Dateien oder welches Verzeichnis soll übertragen werden?",
-          "examples": [
-            "/data/export/*.csv",
-            "C:\\Transfer\\Files\\",
-            "/home/user/documents/"
-          ]
+          "description": "Quell-Dateipfad oder -pattern",
+          "examples": ["/data/export/*.csv", "C:\\Transfer\\Files\\", "*.pdf"]
         },
         {
           "name": "target_path",
           "data_type": "string",
           "required": false,
-          "default_value": null,
           "description": "Ziel-Dateipfad oder -verzeichnis",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Wohin sollen die Dateien übertragen werden?",
-          "examples": [
-            "/backup/import/",
-            "D:\\Incoming\\",
-            "/var/data/processed/"
-          ]
+          "examples": ["/backup/import/", "D:\\Incoming\\", "/var/data/processed/"]
         }
       ],
-      "detection_config": {
-        "keywords": [
-          "datentransfer",
-          "datenübertragung",
-          "file transfer",
-          "übertragung",
-          "transfer",
-          "dateien",
-          "datei",
-          "copy",
-          "kopieren",
-          "verschieben",
-          "sync",
-          "synchronisation",
-          "agent",
-          "server",
-          "zwischen",
-          "von",
-          "nach",
-          "zu",
-          "datentrasnfer",
-          "datentrasfer",
-          "data transfer",
-          "file-transfer",
-          "filetransfer"
-        ],
-        "patterns": [
-          "zwischen\\s+\\w+\\s+und\\s+\\w+",
-          "von\\s+\\w+\\s+nach\\s+\\w+",
-          "daten[trs]*transfer",
-          "(datei|file).{0,3}transfer",
-          "übertragung.*zwischen"
-        ],
-        "confidence_boost": 0.85,
-        "fallback_keywords": [
-          "bewegung",
-          "transport",
-          "datenfluss"
-        ]
-      },
-      "required_parameters": [
-        "StreamName",
-        "ShortDescription",
-        "source_agent",
-        "target_agent"
-      ],
-      "converted_at": "2025-09-21T01:04:37.930156",
-      "original_schema": {
-        "job_type": "FILE_TRANSFER",
-        "display_name": "File Transfer",
-        "description": "Dateiübertragung zwischen Systemen und Servern",
-        "complexity": "medium",
-        "estimated_time": "5-15 Minuten",
-        "icon": "file-transfer-icon",
-        "category": "DataTransfer",
-        "detection_config": {
-          "keywords": [
-            "datentransfer",
-            "datenübertragung",
-            "file transfer",
-            "übertragung",
-            "transfer",
-            "dateien",
-            "datei",
-            "copy",
-            "kopieren",
-            "verschieben",
-            "sync",
-            "synchronisation",
-            "agent",
-            "server",
-            "zwischen",
-            "von",
-            "nach",
-            "zu",
-            "datentrasnfer",
-            "datentrasfer",
-            "data transfer",
-            "file-transfer",
-            "filetransfer"
-          ],
-          "patterns": [
-            "zwischen\\s+\\w+\\s+und\\s+\\w+",
-            "von\\s+\\w+\\s+nach\\s+\\w+",
-            "daten[trs]*transfer",
-            "(datei|file).{0,3}transfer",
-            "übertragung.*zwischen"
-          ],
-          "confidence_boost": 0.85,
-          "fallback_keywords": [
-            "bewegung",
-            "transport",
-            "datenfluss"
-          ]
-        },
-        "job_parameters": [
-          {
-            "name": "source_agent",
-            "data_type": "string",
-            "required": true,
-            "default_value": null,
-            "description": "Quell-Agent oder Server für die Datenübertragung",
-            "validation_pattern": "^[a-zA-Z0-9_.-]+$",
-            "enum_values": null,
-            "chat_prompt": "Von welchem System/Agent sollen die Dateien übertragen werden?",
-            "examples": [
-              "GT123_Server",
-              "BASF_Agent",
-              "LocalAgent_001"
-            ]
-          },
-          {
-            "name": "target_agent",
-            "data_type": "string",
-            "required": true,
-            "default_value": null,
-            "description": "Ziel-Agent oder Server für die Datenübertragung",
-            "validation_pattern": "^[a-zA-Z0-9_.-]+$",
-            "enum_values": null,
-            "chat_prompt": "Zu welchem System/Agent sollen die Dateien übertragen werden?",
-            "examples": [
-              "BASF_Server",
-              "GT123_Agent",
-              "TargetAgent_002"
-            ]
-          },
-          {
-            "name": "source_path",
-            "data_type": "string",
-            "required": false,
-            "default_value": null,
-            "description": "Quell-Dateipfad oder -verzeichnis",
-            "validation_pattern": null,
-            "enum_values": null,
-            "chat_prompt": "Welche Dateien oder welches Verzeichnis soll übertragen werden?",
-            "examples": [
-              "/data/export/*.csv",
-              "C:\\Transfer\\Files\\",
-              "/home/user/documents/"
-            ]
-          },
-          {
-            "name": "target_path",
-            "data_type": "string",
-            "required": false,
-            "default_value": null,
-            "description": "Ziel-Dateipfad oder -verzeichnis",
-            "validation_pattern": null,
-            "enum_values": null,
-            "chat_prompt": "Wohin sollen die Dateien übertragen werden?",
-            "examples": [
-              "/backup/import/",
-              "D:\\Incoming\\",
-              "/var/data/processed/"
-            ]
-          }
-        ]
-      }
+
+      "required_parameters": ["StreamName", "source_agent", "target_agent"],
+
+      "detection_keywords": [
+        "datentransfer", "übertragung", "transfer", "kopieren", "sync",
+        "synchronisation", "backup", "agent", "server", "dateien", "files",
+        "von", "nach", "zu", "zwischen"
+      ]
     },
+
     "SAP": {
       "job_type": "SAP",
       "display_name": "SAP Job",
-      "description": "SAP Report, Programm oder Transaktion mit Parametern",
+      "description": "SAP Report, Programm oder Transaktion",
       "complexity": "medium",
-      "extraction_prompt": "Extract SAP system parameters from the German user message.\n\nFocus on identifying:\n- SAP system names and mandants (PA1, PT1, GT123, etc.)\n- Report names, transactions, variants\n- Export/import formats and settings\n- Fabrikkalender, table names, system connections\n- Stream metadata (name, description, schedule)\n\nLook for keywords like: sap, export, import, system, kalender, tabelle, mandant\n\nSTREAM PARAMETERS (required for all streams):\n- StreamName (string, REQUIRED): Der eindeutige Name des Streams Examples: DataTransfer_v1, SAP_Export_GT123, TestStream_001\n- ShortDescription (string, REQUIRED): Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen) Examples: Transfer GT123-BASF, SAP Export Daily, File Sync Process\n- MaxStreamRuns (integer, optional): Maximale Anzahl der Stream-Ausführungen Examples: 5, 10, 20\n- SchedulingRequiredFlag (boolean, optional): Ob eine zeitliche Planung erforderlich ist Examples: True, False\n- StreamRunDeletionType (enum, optional): Typ der Löschung für Stream-Ausführungen Examples: None, OnCompletion\n- StreamDocumentation (string, optional): Ausführliche Dokumentation des Streams Examples: Täglicher Datenexport zwischen Systemen, Automatisierte Synchronisation\n\nSAP SPECIFIC PARAMETERS:\n- system (enum, REQUIRED): SAP System (Mandant und Umgebung) Examples: PA1_100, GT123_PRD, PT1_100\n- report (string, optional): Name des SAP Reports oder Programms Examples: ZTV_EXPORT_001, RSUSR003, ZFI_REPORT_DAILY\n- variant (string, optional): Report-Variante für Parameter Examples: DAILY_EXPORT, MONTHLY_REPORT, VARIANT_001\n- batch_user (string, optional): Batch-Benutzer für die Ausführung Examples: BATCH_USER, SAP_AUTOMATION, SYS_BATCH\n\nReturn extracted parameters with source grounding information.",
+
+      "extraction_prompt": "Extrahiere SAP System Parameter aus deutscher User-Nachricht.\n\nFOKUS auf 7 essentielle Parameter:\n1. StreamName (string, REQUIRED) - Eindeutiger Stream-Name\n2. MaxStreamRuns (integer, optional) - Parallele Ausführungen\n3. SchedulingRequiredFlag (boolean, optional) - Zeitgesteuert oder manuell\n4. StartTime (string, optional) - Startzeit HH:MM\n5. system (enum, REQUIRED) - SAP-System mit Mandant\n6. report (string, optional) - Report/Programm-Name\n7. variant (string, optional) - Report-Variante\n\nSuche Keywords: sap, export, import, system, report, transaktion, mandant, pa1, gt123\n\nReturn JSON mit extrahierten Parametern und source grounding.",
+
       "few_shot_examples": [
         {
-          "input": "SAP Kalender Export von System PA1_100 Tabelle ZTV_CALENDAR als Excel Format täglich",
+          "input": "SAP Export aus System PA1_100 mit Report ZTV_CALENDAR täglich um 08:00",
           "output": {
-            "StreamName": "SAP_Calendar_Export",
-            "ShortDescription": "PA1 Kalender Export zu Excel",
-            "system": "PA1_100",
-            "report": "ZTV_CALENDAR",
-            "variant": "EXCEL_DAILY",
+            "StreamName": "SAP_PA1_Calendar_Export",
+            "MaxStreamRuns": 5,
             "SchedulingRequiredFlag": true,
-            "JobCategory": "SAP"
-          },
-          "source_grounding": {
-            "system": {
-              "text": "PA1_100",
-              "start": 32,
-              "end": 39
-            },
-            "report": {
-              "text": "ZTV_CALENDAR",
-              "start": 48,
-              "end": 60
-            },
-            "variant": {
-              "text": "Excel Format",
-              "start": 65,
-              "end": 77
-            },
-            "SchedulingRequiredFlag": {
-              "text": "täglich",
-              "start": 78,
-              "end": 85
-            }
-          },
-          "job_type": "SAP",
-          "generated_at": "2025-09-21T01:04:37.930168",
-          "language": "de"
+            "StartTime": "08:00",
+            "system": "PA1_100",
+            "report": "ZTV_CALENDAR"
+          }
         },
         {
-          "input": "Export aus SAP GT123_PRD mit Report RSUSR003 Variante WEEKLY für Benutzerdaten",
+          "input": "Export aus GT123_PRD System Report RSUSR003 wöchentlich",
           "output": {
-            "StreamName": "GT123_User_Export",
-            "ShortDescription": "GT123 Benutzer Export wöchentlich",
+            "StreamName": "GT123_User_Data_Export",
+            "MaxStreamRuns": 3,
+            "SchedulingRequiredFlag": true,
             "system": "GT123_PRD",
-            "report": "RSUSR003",
-            "variant": "WEEKLY",
-            "JobCategory": "SAP"
-          },
-          "source_grounding": {
-            "system": {
-              "text": "GT123_PRD",
-              "start": 16,
-              "end": 25
-            },
-            "report": {
-              "text": "RSUSR003",
-              "start": 37,
-              "end": 45
-            },
-            "variant": {
-              "text": "WEEKLY",
-              "start": 55,
-              "end": 61
-            }
-          },
-          "job_type": "SAP",
-          "generated_at": "2025-09-21T01:04:37.930169",
-          "language": "de"
+            "report": "RSUSR003"
+          }
         },
         {
-          "input": "SAP-System PT1_100 Fabrikkalender Daten exportieren mit Standard-Variant",
+          "input": "SAP Kalender Export von ZTV System mit Variante EXCEL_DAILY",
           "output": {
-            "StreamName": "PT1_Factory_Calendar",
-            "ShortDescription": "PT1 Fabrikkalender Export",
-            "system": "PT1_100",
-            "report": "FACTORY_CALENDAR",
-            "variant": "STANDARD",
-            "JobCategory": "SAP"
-          },
-          "source_grounding": {
-            "system": {
-              "text": "PT1_100",
-              "start": 11,
-              "end": 18
-            },
-            "report": {
-              "text": "Fabrikkalender",
-              "start": 19,
-              "end": 33
-            },
-            "variant": {
-              "text": "Standard-Variant",
-              "start": 55,
-              "end": 71
-            }
-          },
-          "job_type": "SAP",
-          "generated_at": "2025-09-21T01:04:37.930169",
-          "language": "de"
+            "StreamName": "SAP_ZTV_Calendar_Export",
+            "system": "ZTV",
+            "report": "CALENDAR_EXPORT",
+            "variant": "EXCEL_DAILY"
+          }
+        },
+        {
+          "input": "streamname ist SAP_Daily_Export",
+          "output": {
+            "StreamName": "SAP_Daily_Export"
+          }
+        },
+        {
+          "input": "system ist PA1_100",
+          "output": {
+            "system": "PA1_100"
+          }
+        },
+        {
+          "input": "report ist ZTV_CALENDAR",
+          "output": {
+            "report": "ZTV_CALENDAR"
+          }
+        },
+        {
+          "input": "variante ist EXCEL_DAILY",
+          "output": {
+            "variant": "EXCEL_DAILY"
+          }
+        },
+        {
+          "input": "GT123_PRD system",
+          "output": {
+            "system": "GT123_PRD"
+          }
+        },
+        {
+          "input": "5 parallele läufe",
+          "output": {
+            "MaxStreamRuns": 5
+          }
         }
       ],
+
       "stream_parameters": [
         {
           "name": "StreamName",
           "data_type": "string",
           "required": true,
-          "default_value": null,
-          "description": "Der eindeutige Name des Streams",
-          "validation_pattern": "^[a-zA-Z0-9_-]+$",
-          "enum_values": null,
-          "chat_prompt": "Wie soll der Stream heißen?",
-          "examples": [
-            "DataTransfer_v1",
-            "SAP_Export_GT123",
-            "TestStream_001"
-          ]
-        },
-        {
-          "name": "ShortDescription",
-          "data_type": "string",
-          "required": true,
-          "default_value": null,
-          "description": "Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen)",
-          "validation_pattern": "^.{1,50}$",
-          "enum_values": null,
-          "chat_prompt": "Kurze Beschreibung des Streams (max. 50 Zeichen)?",
-          "examples": [
-            "Transfer GT123-BASF",
-            "SAP Export Daily",
-            "File Sync Process"
-          ]
+          "description": "Eindeutiger Stream-Name basierend auf SAP-Kontext",
+          "examples": ["SAP_PA1_Export", "GT123_Daily_Report", "Factory_Calendar_Sync"]
         },
         {
           "name": "MaxStreamRuns",
           "data_type": "integer",
           "required": false,
           "default_value": 5,
-          "description": "Maximale Anzahl der Stream-Ausführungen",
-          "validation_pattern": "^[1-9][0-9]*$",
-          "enum_values": null,
-          "chat_prompt": "Wie viele maximale Ausführungen (Standard: 5)?",
-          "examples": [
-            5,
-            10,
-            20
-          ]
+          "description": "Maximale parallele Ausführungen",
+          "enum_values": [1, 3, 5, 10],
+          "examples": [5, 3, 1]
         },
         {
           "name": "SchedulingRequiredFlag",
           "data_type": "boolean",
           "required": false,
-          "default_value": false,
-          "description": "Ob eine zeitliche Planung erforderlich ist",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Benötigt der Stream eine zeitliche Planung?",
-          "examples": [
-            true,
-            false
-          ]
+          "default_value": true,
+          "description": "Zeitgesteuert (true) oder manuell (false)",
+          "examples": [true, false]
         },
         {
-          "name": "StreamRunDeletionType",
-          "data_type": "enum",
-          "required": false,
-          "default_value": "None",
-          "description": "Typ der Löschung für Stream-Ausführungen",
-          "validation_pattern": null,
-          "enum_values": [
-            "None",
-            "OnCompletion",
-            "Scheduled"
-          ],
-          "chat_prompt": "Welcher Löschtyp für Stream-Ausführungen?",
-          "examples": [
-            "None",
-            "OnCompletion"
-          ]
-        },
-        {
-          "name": "StreamDocumentation",
+          "name": "StartTime",
           "data_type": "string",
           "required": false,
-          "default_value": "Automatisch generiert",
-          "description": "Ausführliche Dokumentation des Streams",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Möchten Sie eine ausführliche Dokumentation hinzufügen?",
-          "examples": [
-            "Täglicher Datenexport zwischen Systemen",
-            "Automatisierte Synchronisation"
-          ]
+          "description": "Startzeit im Format HH:MM",
+          "validation_pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "examples": ["08:00", "14:30", "22:00"]
         }
       ],
+
       "job_parameters": [
         {
           "name": "system",
           "data_type": "enum",
           "required": true,
-          "default_value": null,
-          "description": "SAP System (Mandant und Umgebung)",
-          "validation_pattern": null,
-          "enum_values": [
-            "PA1_100",
-            "PA1_200",
-            "PT1_100",
-            "PD1_100",
-            "GT123_PRD",
-            "GT123_DEV"
-          ],
-          "chat_prompt": "Welches SAP-System soll verwendet werden?",
-          "examples": [
-            "PA1_100",
-            "GT123_PRD",
-            "PT1_100"
-          ]
+          "description": "SAP System mit Mandant",
+          "enum_values": ["PA1_100", "PA1_200", "PT1_100", "PD1_100", "GT123_PRD", "GT123_DEV", "GT123_TST", "ZTV"],
+          "examples": ["PA1_100", "GT123_PRD", "ZTV"]
         },
         {
           "name": "report",
           "data_type": "string",
           "required": false,
-          "default_value": null,
-          "description": "Name des SAP Reports oder Programms",
-          "validation_pattern": "^[A-Za-z0-9_/]+$",
-          "enum_values": null,
-          "chat_prompt": "Welcher SAP Report oder welches Programm soll ausgeführt werden?",
-          "examples": [
-            "ZTV_EXPORT_001",
-            "RSUSR003",
-            "ZFI_REPORT_DAILY"
-          ]
+          "description": "SAP Report oder Programm-Name",
+          "examples": ["ZTV_CALENDAR", "RSUSR003", "ZFI_REPORT_DAILY", "FACTORY_CALENDAR"]
         },
         {
           "name": "variant",
           "data_type": "string",
           "required": false,
-          "default_value": null,
-          "description": "Report-Variante für Parameter",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Welche Report-Variante soll verwendet werden?",
-          "examples": [
-            "DAILY_EXPORT",
-            "MONTHLY_REPORT",
-            "VARIANT_001"
-          ]
-        },
-        {
-          "name": "batch_user",
-          "data_type": "string",
-          "required": false,
-          "default_value": "BATCH_USER",
-          "description": "Batch-Benutzer für die Ausführung",
-          "validation_pattern": "^[A-Za-z0-9_]+$",
-          "enum_values": null,
-          "chat_prompt": "Welcher Batch-User soll für die Ausführung verwendet werden?",
-          "examples": [
-            "BATCH_USER",
-            "SAP_AUTOMATION",
-            "SYS_BATCH"
-          ]
+          "description": "Report-Variante",
+          "examples": ["EXCEL_DAILY", "MONTHLY_REPORT", "STANDARD", "WEEKLY"]
         }
       ],
-      "detection_config": {
-        "keywords": [
-          "sap",
-          "report",
-          "transaktion",
-          "transaction",
-          "mandant",
-          "system",
-          "export",
-          "import",
-          "jexa",
-          "fabrik",
-          "kalender",
-          "variant",
-          "gt123",
-          "pa1",
-          "pt1",
-          "pd1",
-          "prd",
-          "dev",
-          "tst",
-          "sap-system",
-          "sap system",
-          "fabrikkalender",
-          "batch",
-          "abap",
-          "rfc"
-        ],
-        "patterns": [
-          "sap\\s+\\w+",
-          "aus\\s+sap",
-          "sap-system\\s+\\w+",
-          "export.*sap",
-          "sap.*export"
-        ],
-        "confidence_boost": 0.9,
-        "fallback_keywords": [
-          "erp",
-          "business",
-          "enterprise"
-        ]
-      },
-      "required_parameters": [
-        "StreamName",
-        "ShortDescription",
-        "system"
-      ],
-      "converted_at": "2025-09-21T01:04:37.930171",
-      "original_schema": {
-        "job_type": "SAP",
-        "display_name": "SAP Job",
-        "description": "SAP Report, Programm oder Transaktion mit Parametern",
-        "complexity": "medium",
-        "estimated_time": "10-20 Minuten",
-        "icon": "sap-icon",
-        "category": "SAP",
-        "detection_config": {
-          "keywords": [
-            "sap",
-            "report",
-            "transaktion",
-            "transaction",
-            "mandant",
-            "system",
-            "export",
-            "import",
-            "jexa",
-            "fabrik",
-            "kalender",
-            "variant",
-            "gt123",
-            "pa1",
-            "pt1",
-            "pd1",
-            "prd",
-            "dev",
-            "tst",
-            "sap-system",
-            "sap system",
-            "fabrikkalender",
-            "batch",
-            "abap",
-            "rfc"
-          ],
-          "patterns": [
-            "sap\\s+\\w+",
-            "aus\\s+sap",
-            "sap-system\\s+\\w+",
-            "export.*sap",
-            "sap.*export"
-          ],
-          "confidence_boost": 0.9,
-          "fallback_keywords": [
-            "erp",
-            "business",
-            "enterprise"
-          ]
-        },
-        "job_parameters": [
-          {
-            "name": "system",
-            "data_type": "enum",
-            "required": true,
-            "default_value": null,
-            "description": "SAP System (Mandant und Umgebung)",
-            "validation_pattern": null,
-            "enum_values": [
-              "PA1_100",
-              "PA1_200",
-              "PT1_100",
-              "PD1_100",
-              "GT123_PRD",
-              "GT123_DEV"
-            ],
-            "chat_prompt": "Welches SAP-System soll verwendet werden?",
-            "examples": [
-              "PA1_100",
-              "GT123_PRD",
-              "PT1_100"
-            ]
-          },
-          {
-            "name": "report",
-            "data_type": "string",
-            "required": false,
-            "default_value": null,
-            "description": "Name des SAP Reports oder Programms",
-            "validation_pattern": "^[A-Za-z0-9_/]+$",
-            "enum_values": null,
-            "chat_prompt": "Welcher SAP Report oder welches Programm soll ausgeführt werden?",
-            "examples": [
-              "ZTV_EXPORT_001",
-              "RSUSR003",
-              "ZFI_REPORT_DAILY"
-            ]
-          },
-          {
-            "name": "variant",
-            "data_type": "string",
-            "required": false,
-            "default_value": null,
-            "description": "Report-Variante für Parameter",
-            "validation_pattern": null,
-            "enum_values": null,
-            "chat_prompt": "Welche Report-Variante soll verwendet werden?",
-            "examples": [
-              "DAILY_EXPORT",
-              "MONTHLY_REPORT",
-              "VARIANT_001"
-            ]
-          },
-          {
-            "name": "batch_user",
-            "data_type": "string",
-            "required": false,
-            "default_value": "BATCH_USER",
-            "description": "Batch-Benutzer für die Ausführung",
-            "validation_pattern": "^[A-Za-z0-9_]+$",
-            "enum_values": null,
-            "chat_prompt": "Welcher Batch-User soll für die Ausführung verwendet werden?",
-            "examples": [
-              "BATCH_USER",
-              "SAP_AUTOMATION",
-              "SYS_BATCH"
-            ]
-          }
-        ]
-      }
+
+      "required_parameters": ["StreamName", "system"],
+
+      "detection_keywords": [
+        "sap", "system", "report", "export", "import", "mandant", "transaktion",
+        "variant", "pa1", "pt1", "gt123", "ztv", "fabrikkalender", "batch"
+      ]
     },
+
     "STANDARD": {
       "job_type": "STANDARD",
       "display_name": "Standard Job",
-      "description": "Allgemeiner Job für Scripts, Programme und Standardprozesse",
+      "description": "Script-Jobs und allgemeine Verarbeitungsprozesse",
       "complexity": "simple",
-      "extraction_prompt": "Extract standard process parameters from the German user message.\n\nFocus on identifying:\n- Process types and workflow settings\n- Input/output formats and configurations\n- Scheduling and automation settings\n- General stream parameters\n- Stream metadata (name, description, schedule)\n\nLook for keywords like: prozess, verarbeitung, standard, workflow, automatisch\n\nSTREAM PARAMETERS (required for all streams):\n- StreamName (string, REQUIRED): Der eindeutige Name des Streams Examples: DataTransfer_v1, SAP_Export_GT123, TestStream_001\n- ShortDescription (string, REQUIRED): Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen) Examples: Transfer GT123-BASF, SAP Export Daily, File Sync Process\n- MaxStreamRuns (integer, optional): Maximale Anzahl der Stream-Ausführungen Examples: 5, 10, 20\n- SchedulingRequiredFlag (boolean, optional): Ob eine zeitliche Planung erforderlich ist Examples: True, False\n- StreamRunDeletionType (enum, optional): Typ der Löschung für Stream-Ausführungen Examples: None, OnCompletion\n- StreamDocumentation (string, optional): Ausführliche Dokumentation des Streams Examples: Täglicher Datenexport zwischen Systemen, Automatisierte Synchronisation\n\nSTANDARD SPECIFIC PARAMETERS:\n- JobName (string, REQUIRED): Name des Jobs innerhalb des Streams Examples: MainProcess, DataProcessor, CleanupJob\n- JobCategory (enum, optional): Kategorie des Jobs für bessere Organisation Examples: Standard, DataProcessing, Maintenance\n- IsNotificationRequired (boolean, optional): Ob Benachrichtigungen bei Job-Ausführung erforderlich sind Examples: True, False\n\nReturn extracted parameters with source grounding information.",
+
+      "extraction_prompt": "Extrahiere Standard Script Parameter aus deutscher User-Nachricht.\n\nFOKUS auf 6 essentielle Parameter:\n1. StreamName (string, REQUIRED) - Eindeutiger Stream-Name\n2. MaxStreamRuns (integer, optional) - Parallele Ausführungen\n3. SchedulingRequiredFlag (boolean, optional) - Zeitgesteuert oder manuell\n4. StartTime (string, optional) - Startzeit HH:MM\n5. MainScript (string, REQUIRED) - Script-Inhalt oder Command\n6. JobType (enum, optional) - Windows/Unix (auto-detect aus Script)\n\nSuche Keywords: script, programm, command, befehl, ausführen, python, batch, shell, windows, unix\n\nReturn JSON mit extrahierten Parametern und source grounding.",
+
       "few_shot_examples": [
         {
-          "input": "Standard Prozess für Datenverarbeitung automatisch alle 4 Stunden mit Fehlerbehandlung",
+          "input": "Python-Script ausführen täglich um 08:00: python analyze_data.py --input=/data",
           "output": {
-            "StreamName": "Auto_Data_Processing",
-            "ShortDescription": "4h Datenverarbeitung automatisch",
-            "process_type": "DataProcessing",
-            "schedule_interval": "4hours",
-            "error_handling": true,
+            "StreamName": "Daily_Data_Analysis",
+            "MaxStreamRuns": 5,
             "SchedulingRequiredFlag": true,
-            "JobCategory": "STANDARD"
-          },
-          "source_grounding": {
-            "process_type": {
-              "text": "Datenverarbeitung",
-              "start": 20,
-              "end": 37
-            },
-            "schedule_interval": {
-              "text": "alle 4 Stunden",
-              "start": 51,
-              "end": 66
-            },
-            "error_handling": {
-              "text": "Fehlerbehandlung",
-              "start": 71,
-              "end": 87
-            }
-          },
-          "job_type": "STANDARD",
-          "generated_at": "2025-09-21T01:04:37.930183",
-          "language": "de"
+            "StartTime": "08:00",
+            "MainScript": "python analyze_data.py --input=/data",
+            "JobType": "Unix"
+          }
         },
         {
-          "input": "Workflow für Batch-Verarbeitung mit Input-Format CSV und Output als JSON, maximal 20 Läufe",
+          "input": "Windows Batch-Verarbeitung: dir C:\\temp && copy *.log D:\\backup",
           "output": {
-            "StreamName": "CSV_to_JSON_Batch",
-            "ShortDescription": "CSV zu JSON Batch-Verarbeitung",
-            "process_type": "BatchProcessing",
-            "input_format": "CSV",
-            "output_format": "JSON",
-            "MaxStreamRuns": 20,
-            "JobCategory": "STANDARD"
-          },
-          "source_grounding": {
-            "process_type": {
-              "text": "Batch-Verarbeitung",
-              "start": 13,
-              "end": 31
-            },
-            "input_format": {
-              "text": "CSV",
-              "start": 53,
-              "end": 56
-            },
-            "output_format": {
-              "text": "JSON",
-              "start": 72,
-              "end": 76
-            },
-            "MaxStreamRuns": {
-              "text": "maximal 20 Läufe",
-              "start": 78,
-              "end": 95
-            }
-          },
-          "job_type": "STANDARD",
-          "generated_at": "2025-09-21T01:04:37.930184",
-          "language": "de"
+            "StreamName": "Windows_Log_Backup",
+            "MaxStreamRuns": 3,
+            "SchedulingRequiredFlag": false,
+            "MainScript": "dir C:\\temp && copy *.log D:\\backup",
+            "JobType": "Windows"
+          }
+        },
+        {
+          "input": "Export-Import-Beispiel-Stream mit env Command",
+          "output": {
+            "StreamName": "Export-Import-Beispiel-Stream",
+            "MaxStreamRuns": 5,
+            "SchedulingRequiredFlag": false,
+            "MainScript": "env",
+            "JobType": "Windows"
+          }
+        },
+        {
+          "input": "streamname ist teststream567",
+          "output": {
+            "StreamName": "teststream567"
+          }
+        },
+        {
+          "input": "script ist python main.py",
+          "output": {
+            "MainScript": "python main.py"
+          }
+        },
+        {
+          "input": "command ist dir C:\\temp",
+          "output": {
+            "MainScript": "dir C:\\temp"
+          }
+        },
+        {
+          "input": "windows job",
+          "output": {
+            "JobType": "Windows"
+          }
+        },
+        {
+          "input": "unix script",
+          "output": {
+            "JobType": "Unix"
+          }
+        },
+        {
+          "input": "3 parallele läufe",
+          "output": {
+            "MaxStreamRuns": 3
+          }
+        },
+        {
+          "input": "scheduling täglich",
+          "output": {
+            "SchedulingRequiredFlag": true
+          }
         }
       ],
+
       "stream_parameters": [
         {
           "name": "StreamName",
           "data_type": "string",
           "required": true,
-          "default_value": null,
-          "description": "Der eindeutige Name des Streams",
-          "validation_pattern": "^[a-zA-Z0-9_-]+$",
-          "enum_values": null,
-          "chat_prompt": "Wie soll der Stream heißen?",
-          "examples": [
-            "DataTransfer_v1",
-            "SAP_Export_GT123",
-            "TestStream_001"
-          ]
-        },
-        {
-          "name": "ShortDescription",
-          "data_type": "string",
-          "required": true,
-          "default_value": null,
-          "description": "Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen)",
-          "validation_pattern": "^.{1,50}$",
-          "enum_values": null,
-          "chat_prompt": "Kurze Beschreibung des Streams (max. 50 Zeichen)?",
-          "examples": [
-            "Transfer GT123-BASF",
-            "SAP Export Daily",
-            "File Sync Process"
-          ]
+          "description": "Eindeutiger Stream-Name basierend auf Script-Kontext",
+          "examples": ["Daily_Data_Analysis", "Backup_Process", "Export-Import-Beispiel-Stream"]
         },
         {
           "name": "MaxStreamRuns",
           "data_type": "integer",
           "required": false,
           "default_value": 5,
-          "description": "Maximale Anzahl der Stream-Ausführungen",
-          "validation_pattern": "^[1-9][0-9]*$",
-          "enum_values": null,
-          "chat_prompt": "Wie viele maximale Ausführungen (Standard: 5)?",
-          "examples": [
-            5,
-            10,
-            20
-          ]
+          "description": "Maximale parallele Ausführungen",
+          "enum_values": [1, 3, 5, 10],
+          "examples": [5, 3, 1]
         },
         {
           "name": "SchedulingRequiredFlag",
           "data_type": "boolean",
           "required": false,
           "default_value": false,
-          "description": "Ob eine zeitliche Planung erforderlich ist",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Benötigt der Stream eine zeitliche Planung?",
-          "examples": [
-            true,
-            false
-          ]
+          "description": "Zeitgesteuert (true) oder manuell (false)",
+          "examples": [false, true]
         },
         {
-          "name": "StreamRunDeletionType",
-          "data_type": "enum",
-          "required": false,
-          "default_value": "None",
-          "description": "Typ der Löschung für Stream-Ausführungen",
-          "validation_pattern": null,
-          "enum_values": [
-            "None",
-            "OnCompletion",
-            "Scheduled"
-          ],
-          "chat_prompt": "Welcher Löschtyp für Stream-Ausführungen?",
-          "examples": [
-            "None",
-            "OnCompletion"
-          ]
-        },
-        {
-          "name": "StreamDocumentation",
+          "name": "StartTime",
           "data_type": "string",
           "required": false,
-          "default_value": "Automatisch generiert",
-          "description": "Ausführliche Dokumentation des Streams",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Möchten Sie eine ausführliche Dokumentation hinzufügen?",
-          "examples": [
-            "Täglicher Datenexport zwischen Systemen",
-            "Automatisierte Synchronisation"
-          ]
+          "description": "Startzeit im Format HH:MM",
+          "validation_pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "examples": ["08:00", "14:30", "22:00"]
         }
       ],
+
       "job_parameters": [
         {
-          "name": "JobName",
+          "name": "MainScript",
           "data_type": "string",
           "required": true,
-          "default_value": null,
-          "description": "Name des Jobs innerhalb des Streams",
-          "validation_pattern": "^[a-zA-Z0-9_-]+$",
-          "enum_values": null,
-          "chat_prompt": "Wie soll der Job genannt werden?",
-          "examples": [
-            "MainProcess",
-            "DataProcessor",
-            "CleanupJob"
-          ]
+          "description": "Script-Inhalt oder Command",
+          "examples": ["python analyze_data.py --input=/data", "dir C:\\temp && copy *.log", "env", "REM"]
         },
         {
-          "name": "JobCategory",
+          "name": "JobType",
           "data_type": "enum",
           "required": false,
-          "default_value": "Standard",
-          "description": "Kategorie des Jobs für bessere Organisation",
-          "validation_pattern": null,
-          "enum_values": [
-            "Standard",
-            "DataProcessing",
-            "Maintenance",
-            "Reporting",
-            "Backup"
-          ],
-          "chat_prompt": "Welche Kategorie beschreibt den Job am besten?",
-          "examples": [
-            "Standard",
-            "DataProcessing",
-            "Maintenance"
-          ]
-        },
-        {
-          "name": "IsNotificationRequired",
-          "data_type": "boolean",
-          "required": false,
-          "default_value": false,
-          "description": "Ob Benachrichtigungen bei Job-Ausführung erforderlich sind",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Sollen Benachrichtigungen bei der Job-Ausführung gesendet werden?",
-          "examples": [
-            true,
-            false
-          ]
+          "default_value": "Windows",
+          "description": "Script-Ausführungstyp (auto-detect aus Script)",
+          "enum_values": ["Windows", "Unix"],
+          "auto_detect_rules": {
+            "Windows": ["dir ", "copy ", "del ", "cmd", "bat", "c:\\", "d:\\", "REM"],
+            "Unix": ["ls ", "cp ", "rm ", "sh", "bash", "/usr/", "/bin/", "python"]
+          },
+          "examples": ["Windows", "Unix"]
         }
       ],
-      "detection_config": {
-        "keywords": [
-          "standard",
-          "standard job",
-          "job",
-          "script",
-          "programm",
-          "command",
-          "befehl",
-          "process",
-          "prozess",
-          "task",
-          "aufgabe",
-          "ausführung",
-          "run",
-          "batch",
-          "shell",
-          "executable",
-          "exe",
-          "python",
-          "java",
-          "backup"
-        ],
-        "patterns": [
-          "standard\\s+job",
-          "script.*ausführ",
-          "programm.*start",
-          "command.*run"
-        ],
-        "confidence_boost": 0.7,
-        "fallback_keywords": [
-          "allgemein",
-          "basic",
-          "einfach"
-        ]
-      },
-      "required_parameters": [
-        "StreamName",
-        "ShortDescription",
-        "JobName"
-      ],
-      "converted_at": "2025-09-21T01:04:37.930185",
-      "original_schema": {
-        "job_type": "STANDARD",
-        "display_name": "Standard Job",
-        "description": "Allgemeiner Job für Scripts, Programme und Standardprozesse",
-        "complexity": "simple",
-        "estimated_time": "5-10 Minuten",
-        "icon": "standard-job-icon",
-        "category": "Standard",
-        "detection_config": {
-          "keywords": [
-            "standard",
-            "standard job",
-            "job",
-            "script",
-            "programm",
-            "command",
-            "befehl",
-            "process",
-            "prozess",
-            "task",
-            "aufgabe",
-            "ausführung",
-            "run",
-            "batch",
-            "shell",
-            "executable",
-            "exe",
-            "python",
-            "java",
-            "backup"
-          ],
-          "patterns": [
-            "standard\\s+job",
-            "script.*ausführ",
-            "programm.*start",
-            "command.*run"
-          ],
-          "confidence_boost": 0.7,
-          "fallback_keywords": [
-            "allgemein",
-            "basic",
-            "einfach"
-          ]
-        },
-        "job_parameters": [
-          {
-            "name": "JobName",
-            "data_type": "string",
-            "required": true,
-            "default_value": null,
-            "description": "Name des Jobs innerhalb des Streams",
-            "validation_pattern": "^[a-zA-Z0-9_-]+$",
-            "enum_values": null,
-            "chat_prompt": "Wie soll der Job genannt werden?",
-            "examples": [
-              "MainProcess",
-              "DataProcessor",
-              "CleanupJob"
-            ]
-          },
-          {
-            "name": "JobCategory",
-            "data_type": "enum",
-            "required": false,
-            "default_value": "Standard",
-            "description": "Kategorie des Jobs für bessere Organisation",
-            "validation_pattern": null,
-            "enum_values": [
-              "Standard",
-              "DataProcessing",
-              "Maintenance",
-              "Reporting",
-              "Backup"
-            ],
-            "chat_prompt": "Welche Kategorie beschreibt den Job am besten?",
-            "examples": [
-              "Standard",
-              "DataProcessing",
-              "Maintenance"
-            ]
-          },
-          {
-            "name": "IsNotificationRequired",
-            "data_type": "boolean",
-            "required": false,
-            "default_value": false,
-            "description": "Ob Benachrichtigungen bei Job-Ausführung erforderlich sind",
-            "validation_pattern": null,
-            "enum_values": null,
-            "chat_prompt": "Sollen Benachrichtigungen bei der Job-Ausführung gesendet werden?",
-            "examples": [
-              true,
-              false
-            ]
-          }
-        ]
-      }
-    },
-    "CUSTOM": {
-      "job_type": "CUSTOM",
-      "display_name": "Benutzerdefinierter Job",
-      "description": "Hochkonfigurierbarer Job mit erweiterten Ressourcen-Parametern",
-      "complexity": "complex",
-      "extraction_prompt": "Extract CUSTOM stream parameters from user message.\n\nSTREAM PARAMETERS (required for all streams):\n- StreamName (string, REQUIRED): Der eindeutige Name des Streams Examples: DataTransfer_v1, SAP_Export_GT123, TestStream_001\n- ShortDescription (string, REQUIRED): Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen) Examples: Transfer GT123-BASF, SAP Export Daily, File Sync Process\n- MaxStreamRuns (integer, optional): Maximale Anzahl der Stream-Ausführungen Examples: 5, 10, 20\n- SchedulingRequiredFlag (boolean, optional): Ob eine zeitliche Planung erforderlich ist Examples: True, False\n- StreamRunDeletionType (enum, optional): Typ der Löschung für Stream-Ausführungen Examples: None, OnCompletion\n- StreamDocumentation (string, optional): Ausführliche Dokumentation des Streams Examples: Täglicher Datenexport zwischen Systemen, Automatisierte Synchronisation\n\nCUSTOM SPECIFIC PARAMETERS:\n- ResourceName (string, REQUIRED): Name der benutzerdefinierten Ressource Examples: CustomResource_001, SpecialProcessor, AdvancedHandler\n- Status (enum, optional): Status der Ressource Examples: Active, Testing, Maintenance\n- MaxParallelAllocations (integer, optional): Maximale Anzahl paralleler Zuweisungen Examples: 1, 2, 5\n- AutoReleaseFlag (boolean, optional): Ob die Ressource automatisch freigegeben werden soll Examples: True, False\n\nReturn extracted parameters with source grounding information.",
-      "few_shot_examples": [],
-      "stream_parameters": [
-        {
-          "name": "StreamName",
-          "data_type": "string",
-          "required": true,
-          "default_value": null,
-          "description": "Der eindeutige Name des Streams",
-          "validation_pattern": "^[a-zA-Z0-9_-]+$",
-          "enum_values": null,
-          "chat_prompt": "Wie soll der Stream heißen?",
-          "examples": [
-            "DataTransfer_v1",
-            "SAP_Export_GT123",
-            "TestStream_001"
-          ]
-        },
-        {
-          "name": "ShortDescription",
-          "data_type": "string",
-          "required": true,
-          "default_value": null,
-          "description": "Prägnante Kurzbeschreibung des Streams (max. 50 Zeichen)",
-          "validation_pattern": "^.{1,50}$",
-          "enum_values": null,
-          "chat_prompt": "Kurze Beschreibung des Streams (max. 50 Zeichen)?",
-          "examples": [
-            "Transfer GT123-BASF",
-            "SAP Export Daily",
-            "File Sync Process"
-          ]
-        },
-        {
-          "name": "MaxStreamRuns",
-          "data_type": "integer",
-          "required": false,
-          "default_value": 5,
-          "description": "Maximale Anzahl der Stream-Ausführungen",
-          "validation_pattern": "^[1-9][0-9]*$",
-          "enum_values": null,
-          "chat_prompt": "Wie viele maximale Ausführungen (Standard: 5)?",
-          "examples": [
-            5,
-            10,
-            20
-          ]
-        },
-        {
-          "name": "SchedulingRequiredFlag",
-          "data_type": "boolean",
-          "required": false,
-          "default_value": false,
-          "description": "Ob eine zeitliche Planung erforderlich ist",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Benötigt der Stream eine zeitliche Planung?",
-          "examples": [
-            true,
-            false
-          ]
-        },
-        {
-          "name": "StreamRunDeletionType",
-          "data_type": "enum",
-          "required": false,
-          "default_value": "None",
-          "description": "Typ der Löschung für Stream-Ausführungen",
-          "validation_pattern": null,
-          "enum_values": [
-            "None",
-            "OnCompletion",
-            "Scheduled"
-          ],
-          "chat_prompt": "Welcher Löschtyp für Stream-Ausführungen?",
-          "examples": [
-            "None",
-            "OnCompletion"
-          ]
-        },
-        {
-          "name": "StreamDocumentation",
-          "data_type": "string",
-          "required": false,
-          "default_value": "Automatisch generiert",
-          "description": "Ausführliche Dokumentation des Streams",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Möchten Sie eine ausführliche Dokumentation hinzufügen?",
-          "examples": [
-            "Täglicher Datenexport zwischen Systemen",
-            "Automatisierte Synchronisation"
-          ]
-        }
-      ],
-      "job_parameters": [
-        {
-          "name": "ResourceName",
-          "data_type": "string",
-          "required": true,
-          "default_value": null,
-          "description": "Name der benutzerdefinierten Ressource",
-          "validation_pattern": "^[a-zA-Z0-9_-]+$",
-          "enum_values": null,
-          "chat_prompt": "Wie soll die benutzerdefinierte Ressource heißen?",
-          "examples": [
-            "CustomResource_001",
-            "SpecialProcessor",
-            "AdvancedHandler"
-          ]
-        },
-        {
-          "name": "Status",
-          "data_type": "enum",
-          "required": false,
-          "default_value": "Active",
-          "description": "Status der Ressource",
-          "validation_pattern": null,
-          "enum_values": [
-            "Active",
-            "Inactive",
-            "Maintenance",
-            "Testing"
-          ],
-          "chat_prompt": "Welcher Status soll für die Ressource gesetzt werden?",
-          "examples": [
-            "Active",
-            "Testing",
-            "Maintenance"
-          ]
-        },
-        {
-          "name": "MaxParallelAllocations",
-          "data_type": "integer",
-          "required": false,
-          "default_value": 1,
-          "description": "Maximale Anzahl paralleler Zuweisungen",
-          "validation_pattern": "^[1-9][0-9]*$",
-          "enum_values": null,
-          "chat_prompt": "Wie viele parallele Zuweisungen sind maximal erlaubt?",
-          "examples": [
-            1,
-            2,
-            5,
-            10
-          ]
-        },
-        {
-          "name": "AutoReleaseFlag",
-          "data_type": "boolean",
-          "required": false,
-          "default_value": true,
-          "description": "Ob die Ressource automatisch freigegeben werden soll",
-          "validation_pattern": null,
-          "enum_values": null,
-          "chat_prompt": "Soll die Ressource automatisch freigegeben werden?",
-          "examples": [
-            true,
-            false
-          ]
-        }
-      ],
-      "detection_config": {
-        "keywords": [
-          "custom",
-          "benutzerdefiniert",
-          "erweitert",
-          "spezial",
-          "individual",
-          "resource",
-          "ressource",
-          "allocation",
-          "zuweisung",
-          "parallel",
-          "konfigurierbar",
-          "advanced",
-          "flexible"
-        ],
-        "patterns": [
-          "custom.*job",
-          "benutzerdefiniert.*",
-          "ressource.*alloc",
-          "erweitert.*parameter"
-        ],
-        "confidence_boost": 0.75,
-        "fallback_keywords": [
-          "komplex",
-          "special",
-          "unique"
-        ]
-      },
-      "required_parameters": [
-        "StreamName",
-        "ShortDescription",
-        "ResourceName"
-      ],
-      "converted_at": "2025-09-21T01:04:37.930195",
-      "original_schema": {
-        "job_type": "CUSTOM",
-        "display_name": "Benutzerdefinierter Job",
-        "description": "Hochkonfigurierbarer Job mit erweiterten Ressourcen-Parametern",
-        "complexity": "complex",
-        "estimated_time": "15-30 Minuten",
-        "icon": "custom-job-icon",
-        "category": "Custom",
-        "detection_config": {
-          "keywords": [
-            "custom",
-            "benutzerdefiniert",
-            "erweitert",
-            "spezial",
-            "individual",
-            "resource",
-            "ressource",
-            "allocation",
-            "zuweisung",
-            "parallel",
-            "konfigurierbar",
-            "advanced",
-            "flexible"
-          ],
-          "patterns": [
-            "custom.*job",
-            "benutzerdefiniert.*",
-            "ressource.*alloc",
-            "erweitert.*parameter"
-          ],
-          "confidence_boost": 0.75,
-          "fallback_keywords": [
-            "komplex",
-            "special",
-            "unique"
-          ]
-        },
-        "job_parameters": [
-          {
-            "name": "ResourceName",
-            "data_type": "string",
-            "required": true,
-            "default_value": null,
-            "description": "Name der benutzerdefinierten Ressource",
-            "validation_pattern": "^[a-zA-Z0-9_-]+$",
-            "enum_values": null,
-            "chat_prompt": "Wie soll die benutzerdefinierte Ressource heißen?",
-            "examples": [
-              "CustomResource_001",
-              "SpecialProcessor",
-              "AdvancedHandler"
-            ]
-          },
-          {
-            "name": "Status",
-            "data_type": "enum",
-            "required": false,
-            "default_value": "Active",
-            "description": "Status der Ressource",
-            "validation_pattern": null,
-            "enum_values": [
-              "Active",
-              "Inactive",
-              "Maintenance",
-              "Testing"
-            ],
-            "chat_prompt": "Welcher Status soll für die Ressource gesetzt werden?",
-            "examples": [
-              "Active",
-              "Testing",
-              "Maintenance"
-            ]
-          },
-          {
-            "name": "MaxParallelAllocations",
-            "data_type": "integer",
-            "required": false,
-            "default_value": 1,
-            "description": "Maximale Anzahl paralleler Zuweisungen",
-            "validation_pattern": "^[1-9][0-9]*$",
-            "enum_values": null,
-            "chat_prompt": "Wie viele parallele Zuweisungen sind maximal erlaubt?",
-            "examples": [
-              1,
-              2,
-              5,
-              10
-            ]
-          },
-          {
-            "name": "AutoReleaseFlag",
-            "data_type": "boolean",
-            "required": false,
-            "default_value": true,
-            "description": "Ob die Ressource automatisch freigegeben werden soll",
-            "validation_pattern": null,
-            "enum_values": null,
-            "chat_prompt": "Soll die Ressource automatisch freigegeben werden?",
-            "examples": [
-              true,
-              false
-            ]
-          }
-        ]
-      }
+
+      "required_parameters": ["StreamName", "MainScript"],
+
+      "detection_keywords": [
+        "script", "programm", "command", "befehl", "ausführen", "python",
+        "java", "batch", "shell", "exe", "env", "rem", "backup", "process"
+      ]
     }
   },
-  "common_examples": {
-    "stream_names": [
-      {
-        "input": "für den DataExport_v2 Stream",
-        "output": "DataExport_v2"
-      },
-      {
-        "input": "neuer Transfer namens BASF_Daily",
-        "output": "BASF_Daily"
-      },
-      {
-        "input": "Stream heißt SAP_Weekly_Export",
-        "output": "SAP_Weekly_Export"
-      }
-    ],
-    "descriptions": [
-      {
-        "input": "täglicher Export zwischen Systemen",
-        "output": "Täglicher Export zwischen Systemen"
-      },
-      {
-        "input": "automatische Synchronisation",
-        "output": "Automatische Synchronisation"
-      },
-      {
-        "input": "backup prozess für daten",
-        "output": "Backup Prozess für Daten"
-      }
-    ],
-    "scheduling": [
-      {
-        "input": "täglich um 6 Uhr",
-        "output": true,
-        "schedule": "daily_6am"
-      },
-      {
-        "input": "alle 4 Stunden",
-        "output": true,
-        "schedule": "every_4h"
-      },
-      {
-        "input": "manuell ausführen",
-        "output": false,
-        "schedule": "manual"
-      }
-    ]
+
+  "extraction_rules": {
+    "parameter_focus": "Nur essentielle 6-8 Parameter pro Job-Type extrahieren",
+    "no_auto_generation": "Keine auto-generierten Felder wie JobCategory, ShortDescription",
+    "german_keywords": "Deutsche Begriffe aus User-Eingaben erkennen und verarbeiten",
+    "source_grounding": "Immer character offsets für extrahierte Parameter bereitstellen",
+    "confidence_scoring": "Confidence-Werte für jede Extraktion berechnen"
   },
-  "edge_cases": [
-    {
-      "input": "irgendwas mit daten machen",
-      "output": "UNCLEAR",
-      "reasoning": "Zu vage, keine spezifischen Keywords"
-    },
-    {
-      "input": "SAP Transfer zwischen Server001 und Agent002",
-      "output": "MIXED_KEYWORDS",
-      "reasoning": "SAP + Transfer Keywords gemischt"
-    }
-  ],
-  "language": "de",
-  "domain": "streamworks_configuration",
-  "extraction_method": "source_grounded"
+
+  "langextract_integration": {
+    "model_id": "gpt-4o",
+    "temperature": 0.1,
+    "enable_source_grounding": true,
+    "fence_output": true,
+    "use_schema_constraints": true,
+    "example_format": "Google LangExtract ExampleData objects mit Extraction classes"
+  }
 }

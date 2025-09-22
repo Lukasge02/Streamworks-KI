@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from models.core import Base
+from supabase import create_client, Client
 
 # Load environment variables
 load_dotenv()
@@ -20,9 +21,14 @@ logger = logging.getLogger(__name__)
 
 # Supabase Database Configuration
 SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_DB_URL:
     raise ValueError("SUPABASE_DB_URL environment variable is required")
+
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
 
 # For async operations, use asyncpg driver
 SUPABASE_ASYNC_URL = SUPABASE_DB_URL.replace("postgresql://", "postgresql+asyncpg://")
@@ -167,3 +173,16 @@ async def check_database_health() -> dict:
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
         }
+
+
+# Supabase Client for direct table operations
+_supabase_client: Client = None
+
+def get_supabase_client() -> Client:
+    """Get Supabase client for direct table operations"""
+    global _supabase_client
+
+    if _supabase_client is None:
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+    return _supabase_client

@@ -9,6 +9,8 @@ import { SettingsModal } from '@/components/settings/SettingsModal'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { UserAvatar } from '@/components/auth/UserAvatar'
 import { PermissionGuard } from '@/components/auth/PermissionGuard'
+import { FloatingChatWidget } from '@/components/chat/FloatingChatWidget'
+import { ChatProvider } from '@/components/chat/ChatProvider'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -202,13 +204,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Don't render sidebar on homepage and auth pages
+  // Don't render sidebar and floating chat on homepage and auth pages
   if (pathname === '/' || pathname === '/home' || pathname.startsWith('/auth')) {
     return <>{children}</>
   }
 
   return (
-    <>
+    <ChatProvider>
       <div className="h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
         <CleanHeader />
 
@@ -228,12 +230,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-      
+
+      {/* Floating Chat Widget */}
+      <FloatingChatWidget />
+
       {/* Settings Modal */}
-      <SettingsModal 
-        isOpen={settingsOpen} 
-        onClose={() => setSettingsOpen(false)} 
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
-    </>
+    </ChatProvider>
   )
 }

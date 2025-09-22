@@ -31,6 +31,7 @@ interface EnterpriseResponseProps {
   }
   onCopyResponse?: (content: string) => void
   onSourceClick?: (source: any) => void
+  compact?: boolean
 }
 
 export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
@@ -41,7 +42,8 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
   model_info,
   retrieval_context,
   onCopyResponse,
-  onSourceClick
+  onSourceClick,
+  compact = false
 }) => {
   const [showMetrics, setShowMetrics] = useState(false)
   const getConfidenceColor = (score?: number) => {

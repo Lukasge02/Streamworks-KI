@@ -11,7 +11,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
-from services.ai.unified_parameter_extractor import UnifiedParameterExtractor, get_unified_parameter_extractor
+from services.ai.enhanced_unified_parameter_extractor import EnhancedUnifiedParameterExtractor, get_enhanced_unified_parameter_extractor
 from services.ai.unified_dialog_manager import UnifiedDialogManager, create_unified_dialog_manager
 from services.ai.parameter_state_manager import HierarchicalParameterStateManager
 from config import settings
@@ -43,9 +43,12 @@ class ChatMessageResponse(BaseModel):
     state: str = Field(..., description="Dialog-State")
     priority: str = Field(..., description="Priorität")
     detected_job_type: Optional[str] = Field(None, description="Erkannter Job-Type")
+    detection_confidence: float = Field(0.0, description="Job-Type Detection Confidence")
+    detection_method: str = Field("unknown", description="Verwendete Detection-Methode")
     completion_percentage: float = Field(..., description="Vervollständigung")
     suggested_questions: List[str] = Field(default_factory=list, description="Vorgeschlagene Fragen")
     extracted_parameters: Dict[str, Any] = Field(default_factory=dict, description="Extrahierte Parameter")
+    alternative_job_types: List[Dict[str, Any]] = Field(default_factory=list, description="Alternative Job-Type-Kandidaten")
     ready_for_xml: bool = Field(False, description="Bereit für XML-Generierung")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Zusätzliche Metadaten")
 
@@ -83,7 +86,7 @@ class JobTypesResponse(BaseModel):
 # ================================
 
 # Globale Instanzen für Services
-_unified_extractor: Optional[UnifiedParameterExtractor] = None
+_unified_extractor: Optional[EnhancedUnifiedParameterExtractor] = None
 _state_manager: Optional[HierarchicalParameterStateManager] = None
 _dialog_manager: Optional[UnifiedDialogManager] = None
 
@@ -93,8 +96,8 @@ def get_unified_services():
 
     # Initialisiere Services bei Bedarf
     if _unified_extractor is None:
-        _unified_extractor = get_unified_parameter_extractor(settings.OPENAI_API_KEY)
-        logger.info("UnifiedParameterExtractor initialisiert")
+        _unified_extractor = get_enhanced_unified_parameter_extractor(settings.OPENAI_API_KEY)
+        logger.info("EnhancedUnifiedParameterExtractor initialisiert")
 
     if _state_manager is None:
         _state_manager = HierarchicalParameterStateManager()
@@ -186,15 +189,30 @@ async def process_message(
         # Prüfe XML-Bereitschaft
         ready_for_xml = response.state == "confirmation" or response.completion_percentage >= 1.0
 
+        # Enhanced Response Felder
+        detection_confidence = getattr(response, 'detection_confidence', 0.0)
+        detection_method = getattr(response, 'detection_method', 'unknown')
+        alternative_job_types = []
+
+        # Konvertiere alternative_job_types falls vorhanden
+        if hasattr(response, 'alternative_job_types') and response.alternative_job_types:
+            alternative_job_types = [
+                {"job_type": jt, "confidence": conf}
+                for jt, conf in response.alternative_job_types
+            ]
+
         return ChatMessageResponse(
             session_id=session_id,
             message=response.message,
             state=response.state,
             priority=response.priority,
             detected_job_type=response.detected_job_type,
+            detection_confidence=detection_confidence,
+            detection_method=detection_method,
             completion_percentage=response.completion_percentage,
             suggested_questions=response.suggested_questions,
             extracted_parameters=all_parameters,
+            alternative_job_types=alternative_job_types,
             ready_for_xml=ready_for_xml,
             metadata=response.metadata
         )

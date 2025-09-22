@@ -39,6 +39,9 @@ class StreamWorksSession(BaseModel):
     # Missing Parameters
     critical_missing: List[str] = Field(default_factory=list)
 
+    # Progress tracking
+    completion_percentage: float = Field(default=0.0, description="Completion percentage (0.0 to 100.0)")
+
     # Messages
     messages: List[ChatMessage] = Field(default_factory=list)
 

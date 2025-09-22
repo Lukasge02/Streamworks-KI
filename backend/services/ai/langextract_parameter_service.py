@@ -582,39 +582,36 @@ class StreamWorksSchemaLoader:
         if schema_path:
             self.schema_path = Path(schema_path)
         else:
-            self.schema_path = Path(__file__).parent.parent.parent / "templates" / "unified_stream_schemas.json"
+            self.schema_path = Path(__file__).parent.parent.parent / "templates" / "langextract_schemas.json"
 
     def load_all_schemas(self) -> Dict[str, StreamWorksSchema]:
-        """Load all StreamWorks schemas"""
+        """Load all StreamWorks schemas from langextract_schemas.json"""
 
         try:
             with open(self.schema_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             schemas = {}
-            job_type_schemas = data.get('job_type_schemas', {})
-            common_stream_params = data.get('common_stream_parameters', [])
+            # New structure: parameter_extraction -> job_type -> schema_data
+            parameter_extraction = data.get('parameter_extraction', {})
 
-            for job_type, schema_data in job_type_schemas.items():
+            for job_type, schema_data in parameter_extraction.items():
                 schemas[job_type] = StreamWorksSchema(
                     schema_name=schema_data.get('display_name', job_type),
                     schema_version=data.get('version', '2.0'),
                     job_type=job_type,
-                    stream_parameters=common_stream_params,
+                    stream_parameters=schema_data.get('stream_parameters', []),
                     job_parameters=schema_data.get('job_parameters', []),
-                    few_shot_examples=self._generate_few_shot_examples(job_type, schema_data),
+                    few_shot_examples=schema_data.get('few_shot_examples', []),
                     detection_config=schema_data.get('detection_config', {}),
-                    required_parameters=self._extract_required_parameters(
-                        common_stream_params,
-                        schema_data.get('job_parameters', [])
-                    )
+                    required_parameters=schema_data.get('required_parameters', [])
                 )
 
-            logger.info(f"Loaded {len(schemas)} StreamWorks schemas")
+            logger.info(f"✅ Loaded {len(schemas)} LangExtract schemas v{data.get('version', '2.0')}")
             return schemas
 
         except Exception as e:
-            logger.error(f"Failed to load schemas: {e}")
+            logger.error(f"❌ Failed to load langextract schemas: {e}")
             return {}
 
     def _generate_few_shot_examples(self, job_type: str, schema_data: Dict[str, Any]) -> List[Dict[str, Any]]:

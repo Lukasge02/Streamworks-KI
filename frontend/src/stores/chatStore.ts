@@ -52,6 +52,10 @@ interface ChatState {
 
   // AI Provider
   aiProvider: 'local' | 'cloud'
+
+  // Floating Chat Widget
+  isFloatingChatOpen: boolean
+  hasUnreadMessages: boolean
 }
 
 // ================================
@@ -80,6 +84,11 @@ interface ChatActions {
   setError: (error: string | null) => void
   setSendingMessage: (sending: boolean) => void
 
+  // Floating Chat Widget
+  setFloatingChatOpen: (open: boolean) => void
+  setHasUnreadMessages: (hasUnread: boolean) => void
+  toggleFloatingChat: () => void
+
   // Utils
   getCurrentSession: () => ChatSession | null
   getCurrentMessages: () => ChatMessage[]
@@ -104,6 +113,8 @@ export const useChatStore = create<ChatState & ChatActions>()(
         error: null,
         sendingMessage: false,
         aiProvider: 'local',
+        isFloatingChatOpen: false,
+        hasUnreadMessages: false,
 
         // Session management
         setSessions: (sessions) =>
@@ -211,6 +222,28 @@ export const useChatStore = create<ChatState & ChatActions>()(
             state.sendingMessage = sending
           }),
 
+        // Floating Chat Widget
+        setFloatingChatOpen: (open) =>
+          set((state) => {
+            state.isFloatingChatOpen = open
+            if (open) {
+              state.hasUnreadMessages = false
+            }
+          }),
+
+        setHasUnreadMessages: (hasUnread) =>
+          set((state) => {
+            state.hasUnreadMessages = hasUnread
+          }),
+
+        toggleFloatingChat: () =>
+          set((state) => {
+            state.isFloatingChatOpen = !state.isFloatingChatOpen
+            if (state.isFloatingChatOpen) {
+              state.hasUnreadMessages = false
+            }
+          }),
+
         // Utils
         getCurrentSession: () => {
           const state = get()
@@ -233,6 +266,8 @@ export const useChatStore = create<ChatState & ChatActions>()(
           currentSessionId: state.currentSessionId,
           messages: state.messages,
           aiProvider: state.aiProvider,
+          isFloatingChatOpen: state.isFloatingChatOpen,
+          hasUnreadMessages: state.hasUnreadMessages,
         }),
       }
     ),
@@ -261,6 +296,10 @@ export const useChatSelectors = () => {
     sendingMessage: store.sendingMessage,
     isSendingMessage: store.sendingMessage,
     aiProvider: store.aiProvider,
+
+    // Floating Chat Widget selectors
+    isFloatingChatOpen: store.isFloatingChatOpen,
+    hasUnreadMessages: store.hasUnreadMessages,
 
     // Computed selectors
     hasActiveSessions: store.sessions.length > 0,

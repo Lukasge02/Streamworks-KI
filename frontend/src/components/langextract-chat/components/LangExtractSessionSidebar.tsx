@@ -24,6 +24,7 @@ interface LangExtractSessionSidebarProps {
   onCreateSession: () => Promise<void>
   onSwitchSession: (sessionId: string) => Promise<void>
   onDeleteSession: (sessionId: string) => Promise<void>
+  onDeleteAllSessions: () => Promise<void>
   className?: string
 }
 
@@ -34,10 +35,12 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
   onCreateSession,
   onSwitchSession,
   onDeleteSession,
+  onDeleteAllSessions,
   className = ""
 }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [isDeletingSession, setIsDeletingSession] = useState<string | null>(null)
+  const [isDeletingAll, setIsDeletingAll] = useState(false)
 
   // Filter sessions based on search
   const filteredSessions = searchQuery
@@ -72,6 +75,19 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
         console.error('Failed to delete session:', error)
       } finally {
         setIsDeletingSession(null)
+      }
+    }
+  }
+
+  const handleDeleteAllSessions = async () => {
+    if (confirm(`⚠️ Möchtest du wirklich ALLE ${sessions.length} LangExtract Sessions löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!`)) {
+      try {
+        setIsDeletingAll(true)
+        await onDeleteAllSessions()
+      } catch (error) {
+        console.error('Failed to delete all sessions:', error)
+      } finally {
+        setIsDeletingAll(false)
       }
     }
   }
@@ -250,11 +266,35 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
         )}
       </div>
 
-      {/* Footer with Stats */}
+      {/* Footer with Stats and Actions */}
       <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-        <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+        {/* Stats */}
+        <div className="text-xs text-gray-500 dark:text-gray-400 text-center mb-3">
           {sessions.length} Session{sessions.length !== 1 ? 's' : ''} • LangExtract v2.0
         </div>
+
+        {/* Delete All Button */}
+        {sessions.length > 0 && (
+          <Button
+            onClick={handleDeleteAllSessions}
+            disabled={isDeletingAll || isLoading}
+            variant="outline"
+            size="sm"
+            className="w-full flex items-center justify-center space-x-2 text-xs py-2 h-auto text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30"
+          >
+            {isDeletingAll ? (
+              <>
+                <Loader className="w-3 h-3 animate-spin" />
+                <span>Lösche alle...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3 h-3" />
+                <span>Alle Sessions löschen</span>
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   )
