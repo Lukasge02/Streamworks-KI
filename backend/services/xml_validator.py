@@ -1,5 +1,5 @@
 """
-XML Validator Service for StreamWorks XML Generation
+XML Validator Service for Streamworks XML Generation
 Provides XSD schema validation and error reporting
 """
 import logging
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class XSDValidator:
-    """XSD Schema validator for StreamWorks XML files"""
+    """XSD Schema validator for Streamworks XML files"""
     
     def __init__(self, schema_path: Optional[str] = None):
         self.schema_path = schema_path or self._find_schema_file()
@@ -23,7 +23,7 @@ class XSDValidator:
         self._load_schema()
     
     def _find_schema_file(self) -> Optional[str]:
-        """Try to find StreamWorks XSD schema file in common locations"""
+        """Try to find Streamworks XSD schema file in common locations"""
         possible_paths = [
             "schemas/streamworks.xsd",
             "../schemas/streamworks.xsd",
@@ -55,7 +55,7 @@ class XSDValidator:
     
     def validate_xml_string(self, xml_content: str) -> ValidationResult:
         """
-        Validate XML string against StreamWorks schema
+        Validate XML string against Streamworks schema
         
         Args:
             xml_content: XML content as string
@@ -122,10 +122,10 @@ class XSDValidator:
             warnings.append(ValidationError(
                 severity=ValidationSeverity.WARNING,
                 message="No XSD schema available - only basic XML validation performed",
-                suggestion="Provide StreamWorks XSD schema for complete validation"
+                suggestion="Provide Streamworks XSD schema for complete validation"
             ))
         
-        # StreamWorks-specific validation rules
+        # Streamworks-specific validation rules
         streamworks_errors = self._validate_streamworks_structure(xml_doc)
         errors.extend(streamworks_errors)
         
@@ -141,7 +141,7 @@ class XSDValidator:
     
     def _validate_streamworks_structure(self, xml_doc) -> List[ValidationError]:
         """
-        Validate StreamWorks-specific structure and requirements
+        Validate Streamworks-specific structure and requirements
         Based on analysis of existing XML templates
         """
         errors: List[ValidationError] = []
@@ -284,7 +284,7 @@ class XSDValidator:
         elif "attribute" in error_msg_lower:
             return "Check attribute name and value format"
         else:
-            return "Review XML structure against StreamWorks schema"
+            return "Review XML structure against Streamworks schema"
     
     def validate_xml_file(self, file_path: str) -> ValidationResult:
         """

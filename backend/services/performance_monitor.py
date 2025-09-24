@@ -1,5 +1,5 @@
 """
-Advanced Performance Monitoring Service for StreamWorks RAG
+Advanced Performance Monitoring Service for Streamworks RAG
 Real-time metrics, bottleneck detection, and auto-optimization
 """
 

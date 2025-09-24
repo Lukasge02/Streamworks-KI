@@ -22,6 +22,7 @@ interface LangExtractResponse {
   extracted_job_parameters: Record<string, any>
   completion_percentage?: number
   critical_missing?: string[]
+  job_type?: string
   source_grounding_data?: Array<{
     parameter: string
     source_text: string
@@ -51,7 +52,9 @@ export const useLangExtractChat = () => {
   const [streamParameters, setStreamParameters] = useState<Record<string, any>>({})
   const [jobParameters, setJobParameters] = useState<Record<string, any>>({})
   const [completionPercentage, setCompletionPercentage] = useState(0)
-  const [criticalMissing, setCriticalMissing] = useState<string[]>([])
+  const [criticalMissing, setCriticalMissing] = useState<string[] | null>(null)
+  const [parametersLoaded, setParametersLoaded] = useState(false)
+  const [detectedJobType, setDetectedJobType] = useState<string | null>(null)
 
   // Load sessions on component mount
   const loadSessions = useCallback(async () => {
@@ -87,7 +90,9 @@ export const useLangExtractChat = () => {
       setStreamParameters({})
       setJobParameters({})
       setCompletionPercentage(0)
-      setCriticalMissing([])
+      setCriticalMissing(null)
+      setParametersLoaded(false)
+      setDetectedJobType(null)
 
       // 🎯 FIX: DANN API-Call für neue Session
       const response = await apiService.createLangExtractSession(jobType)
@@ -126,7 +131,9 @@ export const useLangExtractChat = () => {
       setStreamParameters({})      // ✅ Parameter UI wird sofort geleert
       setJobParameters({})         // ✅ Parameter UI wird sofort geleert
       setCompletionPercentage(0)   // ✅ Completion wird sofort zurückgesetzt
-      setCriticalMissing([])
+      setCriticalMissing(null)     // ✅ Nicht leer, sondern null (lädt noch)
+      setParametersLoaded(false)   // ✅ Markiere als "lädt noch"
+      setDetectedJobType(null)     // ✅ Job Type zurücksetzen
 
       // Switch to new session
       setSession(sessionId)
@@ -158,11 +165,20 @@ export const useLangExtractChat = () => {
         setStreamParameters(cleanedStreamParams)
         setJobParameters(cleanedJobParams)
         setCompletionPercentage(parametersResponse.completion_percentage || 0)
-        setCriticalMissing(parametersResponse.critical_missing || [])
-        console.log(`✅ Loaded parameters for session ${sessionId}`)
+        setCriticalMissing(parametersResponse.critical_missing || ['PARAMETERS_NOT_LOADED'])
+        setDetectedJobType(parametersResponse.job_type || null)
+        setParametersLoaded(true)
+        console.log(`✅ Loaded parameters for session ${sessionId}`, {
+          streamParams: Object.keys(cleanedStreamParams),
+          jobParams: Object.keys(cleanedJobParams),
+          criticalMissing: parametersResponse.critical_missing || ['PARAMETERS_NOT_LOADED'],
+          detectedJobType: parametersResponse.job_type
+        })
       } catch (error) {
         console.error('Failed to load session parameters:', error)
-        // Continue with empty parameters if loading fails
+        // Mark as loaded but with error state
+        setCriticalMissing(['LOADING_ERROR'])
+        setParametersLoaded(true)
       }
 
       return sessionId
@@ -203,7 +219,9 @@ export const useLangExtractChat = () => {
         setStreamParameters({})
         setJobParameters({})
         setCompletionPercentage(0)
-        setCriticalMissing([])
+        setCriticalMissing(null)
+        setParametersLoaded(false)
+        setDetectedJobType(null)
       }
 
       return true
@@ -226,7 +244,9 @@ export const useLangExtractChat = () => {
       setStreamParameters({})
       setJobParameters({})
       setCompletionPercentage(0)
-      setCriticalMissing([])
+      setCriticalMissing(null)
+      setParametersLoaded(false)
+      setDetectedJobType(null)
 
       console.log(`✅ Deleted ${result.deleted_count}/${result.total_sessions} sessions`)
 
@@ -280,9 +300,21 @@ export const useLangExtractChat = () => {
         }))
       }
 
-      // Update completion and missing
+      // Update completion, missing, and job type
       setCompletionPercentage(response.completion_percentage || 0)
       setCriticalMissing(response.critical_missing || [])
+
+      // 🎯 Update Job Type from Backend Detection (88.9% Accuracy)
+      if (response.job_type && response.job_type !== detectedJobType) {
+        console.log('🎯 Job Type updated from Backend:', {
+          previous: detectedJobType,
+          new: response.job_type,
+          source: 'Message Response'
+        })
+        setDetectedJobType(response.job_type)
+      }
+
+      // Keep parametersLoaded true during message processing
 
       // Add assistant response
       const assistantMessage: Message = {
@@ -325,7 +357,7 @@ export const useLangExtractChat = () => {
     }
   }, [session])
 
-  const generateXML = useCallback(async (forceGeneration = false) => {
+  const generateXML = useCallback(async (forceGeneration = false, jobType?: string) => {
     if (!session) {
       console.error('No active session')
       return
@@ -334,12 +366,13 @@ export const useLangExtractChat = () => {
     try {
       setIsLoading(true)
 
-      const response = await apiService.post(
-        `/api/streamworks/sessions/${session}/generate-xml`,
-        { force_generation: forceGeneration }
-      )
+      const response = await apiService.generateLangExtractXML({
+        session_id: session,
+        job_type: jobType,
+        force_generation: forceGeneration
+      })
 
-      return response.data
+      return response
     } catch (error) {
       console.error('Failed to generate XML:', error)
       throw error
@@ -429,7 +462,9 @@ export const useLangExtractChat = () => {
     streamParameters,
     jobParameters,
     completionPercentage,
+    parametersLoaded,
     criticalMissing,
+    detectedJobType,
     createSession,
     switchSession,
     deleteSession,

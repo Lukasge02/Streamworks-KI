@@ -1,5 +1,5 @@
 """
-Router Package for StreamWorks Backend
+Router Package for Streamworks Backend
 Exports all API routers for main.py imports
 """
 

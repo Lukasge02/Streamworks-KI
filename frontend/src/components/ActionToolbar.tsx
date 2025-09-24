@@ -75,7 +75,7 @@ export function ActionToolbar({
               
               <button
                 onClick={onBulkMove}
-                className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
               >
                 <FolderArrowDownIcon className="w-4 h-4 mr-1.5" />
                 {t('documents.bulkMove', { count: selectedCount })}
@@ -103,7 +103,7 @@ export function ActionToolbar({
                 <div className="h-4 w-px bg-gray-300 dark:bg-gray-600" />
                 <button
                   onClick={onSelectAll}
-                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded transition-colors"
+                  className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded transition-colors"
                   aria-label={t('documents.selectAll')}
                 >
                   {t('documents.selectAll')}
@@ -117,7 +117,7 @@ export function ActionToolbar({
                 <div className="h-4 w-px bg-gray-300 dark:bg-gray-600" />
                 <button
                   onClick={onOpenUploadModal}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 bg-primary-600 hover:bg-primary-700 text-white border border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                   title="Upload-Fenster öffnen"
                 >
                   <CloudArrowUpIcon className="w-4 h-4 mr-1.5" />

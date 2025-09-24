@@ -224,7 +224,7 @@ async def generate_xml_from_wizard(
     template_engine: XMLTemplateEngine = Depends(get_template_engine_dep)
 ) -> XMLGenerationResult:
     """
-    Generate StreamWorks XML from wizard form data using Template Engine (default) or RAG pipeline
+    Generate Streamworks XML from wizard form data using Template Engine (default) or RAG pipeline
     """
     try:
         logger.info(f"Starting XML generation for job type: {wizard_data.job_type}")
@@ -265,7 +265,7 @@ async def generate_xml_template_only(
     template_engine: XMLTemplateEngine = Depends(get_template_engine_dep)
 ) -> XMLGenerationResult:
     """
-    Generate StreamWorks XML using only the Template Engine (fast, lightweight)
+    Generate Streamworks XML using only the Template Engine (fast, lightweight)
     """
     try:
         logger.info(f"Starting template-only XML generation for job type: {wizard_data.job_type}")
@@ -447,7 +447,7 @@ async def validate_xml_content(
     validator: XSDValidator = Depends(get_validator_dep)
 ) -> ValidationResponse:
     """
-    Validate XML content against StreamWorks schema
+    Validate XML content against Streamworks schema
     """
     try:
         start_time = time.time()
@@ -483,7 +483,7 @@ async def parse_natural_schedule(
     rag_service = Depends(get_rag_service_dep)
 ) -> ScheduleParsingResponse:
     """
-    Convert natural language description to StreamWorks ScheduleRuleXml
+    Convert natural language description to Streamworks ScheduleRuleXml
     """
     try:
         start_time = time.time()
@@ -1007,13 +1007,13 @@ async def generate_template_xml(
     langextract_service: Any = Depends(get_unified_langextract_service)
 ):
     """
-    🚀 Generate StreamWorks XML from extracted LangExtract parameters
+    🚀 Generate Streamworks XML from extracted LangExtract parameters
 
     This endpoint uses the template-based approach:
     1. Retrieves extracted parameters from LangExtract session
     2. Maps parameters to XML template format
     3. Generates XML using Jinja2 templates
-    4. Returns complete StreamWorks XML
+    4. Returns complete Streamworks XML
 
     **Template Types:**
     - STANDARD: General job automation
@@ -1116,7 +1116,7 @@ async def get_template_info():
     """
     📋 Get information about available XML templates
 
-    Returns metadata about all available StreamWorks XML templates including:
+    Returns metadata about all available Streamworks XML templates including:
     - Supported job types
     - Template file locations
     - Required and optional parameters
@@ -1160,7 +1160,7 @@ async def get_template_info():
             "total_templates": len(available_templates),
             "template_engine": "Jinja2-based XML generation",
             "parameter_mapping": "Intelligent field mapping with transformations",
-            "supported_formats": ["StreamWorks XML v2.0"],
+            "supported_formats": ["Streamworks XML v2.0"],
             "documentation": "Template-first approach with 361 real-world examples"
         }
 
@@ -1392,7 +1392,7 @@ async def download_xml_file(
     - Content-Length: file size in bytes
 
     **Use Cases:**
-    - Download XML for StreamWorks import
+    - Download XML for Streamworks import
     - Save XML to local filesystem
     - Integrate with external tools
     - Backup XML files

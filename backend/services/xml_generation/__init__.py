@@ -1,7 +1,7 @@
 """
 XML Generation Services Package
 
-Template-based XML generation for StreamWorks with:
+Template-based XML generation for Streamworks with:
 - Jinja2 template engine for XML rendering
 - Parameter mapping system for LangExtract integration
 - Support for STANDARD, FILE_TRANSFER, and SAP job types

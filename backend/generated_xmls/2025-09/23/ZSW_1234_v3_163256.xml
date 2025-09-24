@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>ZSW_1234</StreamName>
+    <StreamDocumentation><![CDATA[None]]></StreamDocumentation>
+    <AgentDetail>None</AgentDetail>
+    <AccountNoId>None</AccountNoId>
+    <CalendarId>UATDefaultCalendar</CalendarId>
+    <StreamType>Normal</StreamType>
+    <MaxStreamRuns>100</MaxStreamRuns>
+    <ShortDescription><![CDATA[None]]></ShortDescription>
+    <SchedulingRequiredFlag>True</SchedulingRequiredFlag>
+    <ScheduleRuleObject>None</ScheduleRuleObject>
+    <RuntimeDataStorageDays IsNull="True" />
+    <RuntimeDataStorageDaySource IsNull="True" />
+    <StreamRunDeletionSource IsNull="True" />
+    <StreamRunDeletionType>None</StreamRunDeletionType>
+    <StreamRunDeletionTime IsNull="True" />
+    <StreamRunDeletionDays IsNull="True" />
+    <StreamRunDeletionDayType IsNull="True" />
+    <DeletionTimeTimeZoneId />
+    <DeletionTimeValidFlag IsNull="True" />
+    <DeletionTimeValidSource IsNull="True" />
+    <StreamRunTimeStatisticsDays IsNull="True" />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityGroup />
+    <MaxStreamRunDuration IsNull="True" />
+    <MinStreamRunDuration IsNull="True" />
+    <CentralJobLogAreaFlag IsNull="True" />
+    <CentralJobLogSource IsNull="True" />
+    <CentralJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDays IsNull="True" />
+    <AgentJobLogStorageDaySource IsNull="True" />
+    <StreamRunInterval IsNull="True" />
+    <MaxJobLogSize IsNull="True" />
+    <ReorgType IsNull="True" />
+    <ExternalJobScriptRequired IsNull="True" />
+    <KeepPreparedRuns IsNull="True" />
+    <InteractivePslFlag>False</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled />
+    <UncatExclusion IsNull="True" />
+    <Jobs>
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Start Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeRelativeJob />
+            <RelatedJob />
+            <WaitForJobStatus IsNull="True" />
+            <StreamRunJobCostCenterApplications />
+            <StreamRunJobArguments />
+            <StreamRunJobVariables />
+            <StreamRunJobEnvironmentVariables />
+            <StreamRunJobWorkloadApplicationObject />
+            <RelatedJobCategory IsNull="True" />
+            <WorkloadApplicationObjectFlag>False</WorkloadApplicationObjectFlag>
+            <WorkloadApplicationObjectId IsNull="True" />
+            <WorkloadApplicationObjectDisplayOrder IsNull="True" />
+            <RelatedWorkloadApplicationObject />
+            <UseWorkloadApplicationObjectFlag>False</UseWorkloadApplicationObjectFlag>
+            <WorkloadApplicationObjectTemplateExecution IsNull="True" />
+            <WorkloadApplicationObjectTemplateArguments />
+            <RuntimeDataStorageDays IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <StreamRunJobApplicationReferences />
+        <ReportToIncidentManagementRule />
+        <UseCostCenterFromStreamFlag>True</UseCostCenterFromStreamFlag>
+        <UseWorkloadApplicationObjectFromStreamFlag>False</UseWorkloadApplicationObjectFromStreamFlag>
+      </Job>
+      <Job>
+        <JobName>FileTransferJob</JobName>
+        <JobDocumentation><![CDATA[None]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject>None</LoginObject>
+        <ShortDescription><![CDATA[None]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>Normal</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>JobType.FILE_TRANSFER</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType>FileTransfer</TemplateType>
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <JobInternalSuccessorRunCondition>OnSuccess</JobInternalSuccessorRunCondition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <JobFileTransferProperty>
+          <SourceAgent>a</SourceAgent>
+          <TargetAgent>b</TargetAgent>
+          <FileTransferDefinitions>
+            <FileTransferDefinition>
+              <SourcePath>test1</SourcePath>
+              <TargetPath>test2</TargetPath>
+              <FileExtension>*</FileExtension>
+              <FileFilter>*</FileFilter>
+              <TransferMode>Copy</TransferMode>
+              <PreserveTimestamp>True</PreserveTimestamp>
+              <CreateTargetDirectory>True</CreateTargetDirectory>
+              <OverwriteExistingFiles>True</OverwriteExistingFiles>
+              <DeleteSourceFiles>False</DeleteSourceFiles>
+              <CompressFiles>False</CompressFiles>
+              <EncryptFiles>False</EncryptFiles>
+              <ChecksumValidation>False</ChecksumValidation>
+              <RetryCount>3</RetryCount>
+              <RetryInterval>60</RetryInterval>
+            </FileTransferDefinition>
+          </FileTransferDefinitions>
+        </JobFileTransferProperty>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime>08:00</StartTime>
+            <StartTimeDayType>Normal</StartTimeDayType>
+            <StartTimeType>Absolute</StartTimeType>
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeRelativeJob />
+            <RelatedJob />
+            <WaitForJobStatus IsNull="True" />
+            <StreamRunJobCostCenterApplications />
+            <StreamRunJobArguments />
+            <StreamRunJobVariables />
+            <StreamRunJobEnvironmentVariables />
+            <StreamRunJobWorkloadApplicationObject />
+            <RelatedJobCategory IsNull="True" />
+            <WorkloadApplicationObjectFlag>False</WorkloadApplicationObjectFlag>
+            <WorkloadApplicationObjectId IsNull="True" />
+            <WorkloadApplicationObjectDisplayOrder IsNull="True" />
+            <RelatedWorkloadApplicationObject />
+            <UseWorkloadApplicationObjectFlag>False</UseWorkloadApplicationObjectFlag>
+            <WorkloadApplicationObjectTemplateExecution IsNull="True" />
+            <WorkloadApplicationObjectTemplateArguments />
+            <RuntimeDataStorageDays IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <StreamRunJobApplicationReferences />
+        <ReportToIncidentManagementRule />
+        <UseCostCenterFromStreamFlag>True</UseCostCenterFromStreamFlag>
+        <UseWorkloadApplicationObjectFromStreamFlag>False</UseWorkloadApplicationObjectFromStreamFlag>
+      </Job>
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation IsNull="True" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[End Point for the Stream]]></ShortDescription>
+        <StatusFlag>True</StatusFlag>
+        <JobCategory>EndPoint</JobCategory>
+        <NormalJobFlag>True</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="True" />
+        <CentralJobLogStorageDays IsNull="True" />
+        <ReportToIncidentManagementFlag IsNull="True" />
+        <ExternalJobScriptRequired IsNull="True" />
+        <MainScript IsNull="True" />
+        <DisplayOrder IsNull="True" />
+        <JobShortName IsNull="True" />
+        <TemplateType IsNull="True" />
+        <ControlFilePath IsNull="True" />
+        <IsNotificationRequired>False</IsNotificationRequired>
+        <CoordinateX IsNull="True" />
+        <CoordinateY IsNull="True" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="True" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="True" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="True" />
+            <RelativeStartTime IsNull="True" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize IsNull="True" />
+            <MaxJobDuration IsNull="True" />
+            <LatestStartTime IsNull="True" />
+            <LatestStartTimeType IsNull="True" />
+            <LatestStartTimeRelative IsNull="True" />
+            <LatestStartTimeRelativeJob />
+            <RelatedJob />
+            <WaitForJobStatus IsNull="True" />
+            <StreamRunJobCostCenterApplications />
+            <StreamRunJobArguments />
+            <StreamRunJobVariables />
+            <StreamRunJobEnvironmentVariables />
+            <StreamRunJobWorkloadApplicationObject />
+            <RelatedJobCategory IsNull="True" />
+            <WorkloadApplicationObjectFlag>False</WorkloadApplicationObjectFlag>
+            <WorkloadApplicationObjectId IsNull="True" />
+            <WorkloadApplicationObjectDisplayOrder IsNull="True" />
+            <RelatedWorkloadApplicationObject />
+            <UseWorkloadApplicationObjectFlag>False</UseWorkloadApplicationObjectFlag>
+            <WorkloadApplicationObjectTemplateExecution IsNull="True" />
+            <WorkloadApplicationObjectTemplateArguments />
+            <RuntimeDataStorageDays IsNull="True" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <StreamRunJobApplicationReferences />
+        <ReportToIncidentManagementRule />
+        <UseCostCenterFromStreamFlag>True</UseCostCenterFromStreamFlag>
+        <UseWorkloadApplicationObjectFromStreamFlag>False</UseWorkloadApplicationObjectFromStreamFlag>
+      </Job>
+    </Jobs>
+    <StreamInternalSuccessors />
+    <StreamRunTimeStatistics />
+    <StreamRunProperties />
+    <StreamCostCenterApplications />
+    <StreamCostCenterApplicationInternalSuccessors />
+    <ReportToIncidentManagementRule />
+    <StreamVariables />
+    <StreamEnvironmentVariables />
+    <StreamInternalSuccessorStreamCommunications />
+    <StreamCalendars />
+    <StreamApplicationReferences />
+    <StreamWorkloadApplicationObject />
+    <UseWorkloadApplicationObjectFlag>False</UseWorkloadApplicationObjectFlag>
+    <WorkloadApplicationObjectTemplateExecution IsNull="True" />
+    <WorkloadApplicationObjectTemplateArguments />
+  </Stream>
+</ExportableStream>

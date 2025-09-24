@@ -59,9 +59,9 @@ function getFileTypeTheme(mimeType: string) {
   }
   if (mimeType.startsWith('video/')) {
     return {
-      bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      borderColor: 'border-blue-200/50 dark:border-blue-800/50'
+      bgColor: 'bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20',
+      iconColor: 'text-primary-600 dark:text-primary-400',
+      borderColor: 'border-primary-200/50 dark:border-primary-800/50'
     }
   }
   if (mimeType.includes('sheet') || mimeType.includes('excel')) {
@@ -197,7 +197,7 @@ function DocumentInfoModal({ isOpen, onClose, document: doc }: DocumentInfoModal
                     {doc.tags.map(tag => (
                       <span 
                         key={tag} 
-                        className="inline-flex px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 rounded"
+                        className="inline-flex px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/20 text-primary-800 dark:text-primary-400 rounded"
                       >
                         {tag}
                       </span>
@@ -302,7 +302,7 @@ function getStatusColor(status: string) {
   switch (status) {
     case 'ready': return 'bg-green-100 text-green-800'
     case 'processing': return 'bg-yellow-100 text-yellow-800'
-    case 'uploading': return 'bg-blue-100 text-blue-800'
+    case 'uploading': return 'bg-primary-100 text-primary-800'
     case 'error': return 'bg-red-100 text-red-800'
     default: return 'bg-gray-100 text-gray-800'
   }
@@ -333,7 +333,7 @@ function DocumentCard({ document, isSelected, onSelect, onOpen, onDelete, onShow
       <div 
         className={`
           flex items-center p-3 rounded-lg border transition-all duration-150
-          ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
+          ${isSelected ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
           cursor-pointer
         `}
         onClick={onSelect}
@@ -344,7 +344,7 @@ function DocumentCard({ document, isSelected, onSelect, onOpen, onDelete, onShow
             type="checkbox"
             checked={isSelected}
             onChange={onSelect}
-            className="w-4 h-4 text-blue-600 dark:text-blue-400 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:bg-gray-700"
+            className="w-4 h-4 text-primary-600 dark:text-primary-400 rounded border-gray-300 dark:border-gray-600 focus:ring-primary-500 dark:bg-gray-700"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -365,7 +365,7 @@ function DocumentCard({ document, isSelected, onSelect, onOpen, onDelete, onShow
               {formatUploadDate(document.created_at)}
             </span>
             {showFolderInfo && document.folder && (
-              <span className="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">📁 {document.folder.name}</span>
+              <span className="text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded">📁 {document.folder.name}</span>
             )}
           </div>
         </div>

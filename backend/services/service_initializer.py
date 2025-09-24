@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 async def initialize_services():
     """Initialize all services on application startup"""
     try:
-        logger.info("🚀 Initializing StreamWorks services...")
+        logger.info("🚀 Initializing Streamworks services...")
         
         # Initialize dependency injection container
         await initialize_container()
@@ -30,7 +30,7 @@ async def initialize_services():
 async def shutdown_services():
     """Cleanup all services on application shutdown"""
     try:
-        logger.info("🛑 Shutting down StreamWorks services...")
+        logger.info("🛑 Shutting down Streamworks services...")
         
         # Cleanup dependency injection container
         await cleanup_container()

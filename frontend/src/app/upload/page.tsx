@@ -336,7 +336,7 @@ export default function UnifiedUploadPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Storage</span>
-                    <Badge variant="secondary">StreamWorks Unified</Badge>
+                    <Badge variant="secondary">Streamworks Unified</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Processing</span>

@@ -1,6 +1,6 @@
 """
 Enhanced Schema Converter für LangExtract Integration
-Konvertiert StreamWorks Schemas in optimierte Few-Shot Examples für LangExtract
+Konvertiert Streamworks Schemas in optimierte Few-Shot Examples für LangExtract
 """
 
 import json
@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 class EnhancedSchemaConverter:
     """
-    Konvertiert StreamWorks unified_stream_schemas.json in LangExtract-optimierte Examples
+    Konvertiert Streamworks unified_stream_schemas.json in LangExtract-optimierte Examples
 
     Features:
     - Generiert realistische Few-Shot Examples
-    - Optimiert für deutsche Sprache und StreamWorks Domäne
+    - Optimiert für deutsche Sprache und Streamworks Domäne
     - Integriert Source Grounding Information
     - Erstellt Job-Type spezifische Prompts
     """
@@ -39,7 +39,7 @@ class EnhancedSchemaConverter:
             with open(self.schema_path, 'r', encoding='utf-8') as f:
                 original_schemas = json.load(f)
 
-            logger.info("🔄 Converting StreamWorks schemas to LangExtract format...")
+            logger.info("🔄 Converting Streamworks schemas to LangExtract format...")
 
             # Extract base data
             common_stream_params = original_schemas.get('common_stream_parameters', [])
@@ -453,11 +453,11 @@ Return extracted parameters with source grounding information.
             "version": "langextract_v1.0",
             "generated_at": datetime.now().isoformat(),
             "source_schema": str(self.schema_path),
-            "description": "StreamWorks schemas converted for LangExtract integration",
+            "description": "Streamworks schemas converted for LangExtract integration",
 
             # Job Type Detection
             "job_type_detection": {
-                "prompt": "Identify the StreamWorks job type from German user input",
+                "prompt": "Identify the Streamworks job type from German user input",
                 "examples": self.few_shot_examples.get("job_type_detection", []),
                 "available_types": list(self.converted_schemas.keys())
             },

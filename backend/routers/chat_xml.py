@@ -641,7 +641,7 @@ async def create_smart_chat_session(
         )
 
         # Alle Sessions sind hierarchische Stream-Sessions
-        message = session.last_message if session.last_message else "Willkommen beim StreamWorks Konfigurations-Assistenten! 🚀\n\nJeder Stream benötigt grundlegende Eigenschaften. Wie soll Ihr Stream heißen?"
+        message = session.last_message if session.last_message else "Willkommen beim Streamworks Konfigurations-Assistenten! 🚀\n\nJeder Stream benötigt grundlegende Eigenschaften. Wie soll Ihr Stream heißen?"
         suggested_questions = session.suggested_questions if session.suggested_questions else [
             "Der Stream soll 'Datentransfer_Test' heißen",
             "Ich möchte einen FILE_TRANSFER Stream erstellen",

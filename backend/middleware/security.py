@@ -65,7 +65,7 @@ class SecurityMiddleware:
             "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
             
             # Server info
-            "Server": "StreamWorks-API"
+            "Server": "Streamworks-API"
         })
         
         # Remove server header leak

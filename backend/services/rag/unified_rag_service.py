@@ -8,6 +8,7 @@ import time
 import logging
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
+from uuid import UUID
 
 from . import RAGMode, RAGResponse, DocumentSource
 from ..qdrant_rag_service import get_rag_service
@@ -17,6 +18,8 @@ from .adaptive_retrieval import get_adaptive_retriever
 from ..performance_monitor import performance_monitor, PerformanceTracker
 from ..ai_response_cache import get_cached_ai_response, cache_ai_response
 from ..advanced_cache_system import get_advanced_cache
+from ..document.crud_operations import DocumentCrudOperations
+from ..rag_metrics_service import get_rag_metrics_service
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +334,7 @@ ANTWORT:"""
                 rag_response = RAGResponse(
                     answer=enhanced_answer,
                     confidence_score=confidence_score,
-                    sources=[source.__dict__ for source in processed_sources],
+                    sources=await self._format_sources_for_frontend(processed_sources),
                     metadata=metadata,
                     processing_time_ms=processing_time,
                     mode_used=mode
@@ -366,6 +369,56 @@ ANTWORT:"""
                         "pipeline": "phase2" if use_phase2 else "phase1"
                     }
                 )
+
+                # Track RAG query metrics for enhanced analytics
+                try:
+                    rag_metrics_service = await get_rag_metrics_service()
+
+                    # Convert processed sources to SourceReference format
+                    from ..rag_metrics_service import SourceReference
+                    source_references = []
+                    for source in processed_sources:
+                        source_ref = SourceReference(
+                            document_id=source.document_id,
+                            filename=(
+                                source.metadata.get("original_filename")
+                                or source.metadata.get("file_name")
+                                or source.metadata.get("filename")
+                                or "Unknown Document"
+                            ),
+                            page_number=source.page_number,
+                            section=source.metadata.get("section"),
+                            relevance_score=source.metadata.get("relevance_score", source.score),
+                            snippet=(
+                                source.content[:200] + "..."
+                                if len(source.content) > 200
+                                else source.content
+                            ),
+                            chunk_index=source.metadata.get("chunk_index", 0),
+                            confidence=confidence_score,
+                            doc_type=(
+                                source.metadata.get("mime_type")
+                                or source.metadata.get("doctype")
+                                or "unknown"
+                            ),
+                            chunk_id=source.chunk_id
+                        )
+                        source_references.append(source_ref)
+
+                    # Track the query
+                    await rag_metrics_service.track_rag_query(
+                        query=query,
+                        sources=source_references,
+                        response_time_ms=processing_time,
+                        cache_hit=cached_response is not None,
+                        mode=mode.value,
+                        session_id=session_id
+                    )
+                    logger.debug(f"✅ RAG query metrics tracked successfully")
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to track RAG metrics: {str(e)}")
+                    # Don't fail the query if metrics tracking fails
 
                 logger.info(f"✅ Query processed successfully in {processing_time}ms (confidence: {confidence_score:.2f})")
                 return rag_response
@@ -450,6 +503,9 @@ ANTWORT:"""
                 metadata=source.get("metadata", {})
             )
 
+            # Enrich with database metadata for complete document information
+            doc_source = await self._enrich_source_metadata(doc_source)
+
             # Add relevance scoring
             doc_source.metadata["relevance_score"] = await self._calculate_relevance(
                 doc_source.content, query
@@ -464,6 +520,123 @@ ANTWORT:"""
         )
 
         return processed_sources[:max_sources]
+
+    async def _enrich_source_metadata(self, doc_source: DocumentSource) -> DocumentSource:
+        """Enrich DocumentSource with metadata from database"""
+        try:
+            # Get database session
+            from database import AsyncSessionLocal
+
+            async with AsyncSessionLocal() as db:
+                crud = DocumentCrudOperations()
+
+                document_uuid = self._normalize_document_id(doc_source.document_id)
+
+                if not document_uuid:
+                    logger.debug(
+                        "Skipping metadata enrichment for document %s: invalid identifier",
+                        doc_source.document_id,
+                    )
+                    return self._apply_source_fallback_metadata(doc_source)
+
+                # Try to get document by ID
+                document = await crud.get_document_by_id(db, document_uuid)
+
+                if document:
+                    # Add database metadata to source metadata
+                    doc_source.document_id = str(document_uuid)
+                    doc_source.metadata["doc_id"] = str(document_uuid)
+                    doc_source.metadata.update({
+                        "original_filename": document.original_filename,
+                        "filename": document.filename,
+                        "file_size": document.file_size,
+                        "mime_type": document.mime_type,
+                        "created_at": document.created_at.isoformat() if document.created_at else None,
+                        "updated_at": document.updated_at.isoformat() if document.updated_at else None,
+                        "status": document.status.value if hasattr(document.status, 'value') else str(document.status)
+                    })
+                    logger.debug(f"✅ Enriched source metadata for document {doc_source.document_id}")
+                else:
+                    logger.warning(f"⚠️ Document {doc_source.document_id} not found in database")
+                    self._apply_source_fallback_metadata(doc_source)
+
+        except Exception as e:
+            logger.error(f"❌ Failed to enrich source metadata for {doc_source.document_id}: {str(e)}")
+            self._apply_source_fallback_metadata(doc_source)
+
+        return doc_source
+
+    @staticmethod
+    def _apply_source_fallback_metadata(doc_source: DocumentSource) -> DocumentSource:
+        """Ensure source carries minimally useful metadata for UI and metrics."""
+        fallback_name = (
+            doc_source.metadata.get("original_filename")
+            or doc_source.metadata.get("file_name")
+            or doc_source.metadata.get("filename")
+            or "Unknown Document"
+        )
+
+        doc_source.metadata.setdefault("original_filename", fallback_name)
+        doc_source.metadata.setdefault("filename", fallback_name)
+        doc_source.metadata.setdefault("file_size", doc_source.metadata.get("file_size", 0))
+        doc_source.metadata.setdefault(
+            "mime_type",
+            doc_source.metadata.get("mime_type") or doc_source.metadata.get("doctype", "application/octet-stream"),
+        )
+
+        return doc_source
+
+    @staticmethod
+    def _normalize_document_id(document_id: Any) -> Optional[UUID]:
+        """Convert document identifier to UUID if possible."""
+        if isinstance(document_id, UUID):
+            return document_id
+
+        if isinstance(document_id, str):
+            value = document_id.strip()
+            if not value or value.lower() == "unknown":
+                return None
+
+            try:
+                return UUID(value)
+            except ValueError:
+                return None
+
+        return None
+
+    async def _format_sources_for_frontend(self, sources: List[DocumentSource]) -> List[Dict[str, Any]]:
+        """Format sources for frontend consumption with proper structure"""
+        formatted_sources = []
+
+        for source in sources:
+            # Create frontend-compatible source format
+            formatted_source = {
+                "id": source.chunk_id,
+                "content": source.content,
+                "metadata": {
+                    "doc_id": source.document_id,
+                    "original_filename": source.metadata.get("original_filename", "Unknown Document"),
+                    "filename": source.metadata.get("filename", "unknown"),
+                    "page_number": source.page_number,
+                    "heading": source.metadata.get("heading"),
+                    "section": source.metadata.get("section"),
+                    "file_size": source.metadata.get("file_size", 0),
+                    "mime_type": source.metadata.get("mime_type", "application/octet-stream"),
+                    "created_at": source.metadata.get("created_at"),
+                    "updated_at": source.metadata.get("updated_at"),
+                    "status": source.metadata.get("status"),
+                    "chunk_id": source.chunk_id,
+                    "chunk_index": source.metadata.get("chunk_index"),
+                },
+                "relevance_score": source.metadata.get("relevance_score", source.score),
+                "score": source.score,
+                # Additional fields for enhanced UI
+                "distance": 1.0 - source.score if source.score <= 1.0 else 0.0
+            }
+
+            formatted_sources.append(formatted_source)
+
+        return formatted_sources
 
     async def _calculate_relevance(self, content: str, query: str) -> float:
         """Calculate content relevance to query using simple metrics"""

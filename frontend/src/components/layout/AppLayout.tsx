@@ -9,7 +9,7 @@ import { SettingsModal } from '@/components/settings/SettingsModal'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { UserAvatar } from '@/components/auth/UserAvatar'
 import { PermissionGuard } from '@/components/auth/PermissionGuard'
-import { FloatingChatWidget } from '@/components/chat/FloatingChatWidget'
+import { SuperFloatingChatV2 } from '@/components/chat/SuperFloatingChatV2'
 import { ChatProvider } from '@/components/chat/ChatProvider'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -105,7 +105,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {!isAuthenticated && (
           <Link
             href="/auth/login"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
           >
             Anmelden
           </Link>
@@ -156,7 +156,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   className={`sidebar-item w-full flex items-start space-x-3 p-4 rounded-xl text-left group ${
                     isActive
-                      ? 'bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/30 dark:to-blue-900/30 text-primary-600 dark:text-primary-400 shadow-lg border border-primary-200 dark:border-primary-800'
+                      ? 'bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 text-primary-600 dark:text-primary-400 shadow-lg border border-primary-200 dark:border-primary-800'
                       : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 dark:hover:from-gray-700 dark:hover:to-gray-600 text-gray-700 dark:text-gray-300 hover:shadow-md'
                   }`}
                 >
@@ -231,8 +231,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Floating Chat Widget */}
-      <FloatingChatWidget />
+      {/* Floating Chat Widget - Hide on dedicated chat page */}
+      {pathname !== '/chat' && <SuperFloatingChatV2 />}
 
       {/* Settings Modal */}
       <SettingsModal

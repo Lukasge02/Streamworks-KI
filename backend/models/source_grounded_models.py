@@ -194,8 +194,8 @@ class ExtractionMetrics(BaseModel):
     recorded_at: datetime = Field(default_factory=datetime.now)
 
 
-class StreamWorksSchema(BaseModel):
-    """Schema-Definition für StreamWorks Parameter"""
+class StreamworksSchema(BaseModel):
+    """Schema-Definition für Streamworks Parameter"""
 
     # Schema Metadata
     schema_name: str

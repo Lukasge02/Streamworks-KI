@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Performance optimizations (swcMinify is now default in Next.js 15)
-  swcMinify: true,
   compress: true,
   
   // Cache optimization for development stability
@@ -10,11 +9,9 @@ const nextConfig = {
     pagesBufferLength: 2,
   },
   
-  // Experimental features (simplified)
+  // Experimental features (simplified) - NO CACHE for instant changes
   experimental: {
     optimizePackageImports: ['lucide-react', '@heroicons/react'],
-    // Stable incremental cache for development
-    incrementalCacheHandlerPath: require.resolve('./cache-handler.js'),
   },
   
   // API Proxy for Development

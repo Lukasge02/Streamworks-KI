@@ -1,5 +1,5 @@
 """
-Performance Monitoring Middleware für StreamWorks
+Performance Monitoring Middleware für Streamworks
 Erfasst API-Performance-Metriken und optimiert Response-Times
 """
 

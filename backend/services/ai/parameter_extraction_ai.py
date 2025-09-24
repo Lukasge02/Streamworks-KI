@@ -84,7 +84,7 @@ class ParameterExtractionAI:
             }
         }
 
-        # StreamWorks-spezifische Parameter Recognition Patterns
+        # Streamworks-spezifische Parameter Recognition Patterns
         self.streamworks_patterns = {
             "agents": [
                 "gtlnmiwvm1636", "gtasswvv15778", "prodagent001", "testagent",
@@ -101,7 +101,7 @@ class ParameterExtractionAI:
             }
         }
 
-        # StreamWorks Content Keywords für bessere Erkennung
+        # Streamworks Content Keywords für bessere Erkennung
         self.content_keywords = {
             "sap_indicators": ["sap", "jexa4s", "mandant", "client", "report", "variant", "transaction"],
             "transfer_indicators": ["copy", "transfer", "file", "ftp", "sftp", "source", "target", "agent"],
@@ -186,9 +186,9 @@ class ParameterExtractionAI:
             )
 
     async def _analyze_extraction_context(self, context: ExtractionContext) -> Dict[str, Any]:
-        """Analysiert den Kontext für optimale StreamWorks-Extraktion"""
+        """Analysiert den Kontext für optimale Streamworks-Extraktion"""
 
-        # Use new StreamWorks schemas
+        # Use new Streamworks schemas
         try:
             stream_type = StreamType(context.job_type)
             schema = get_schema_for_type(stream_type)
@@ -288,12 +288,12 @@ class ParameterExtractionAI:
             return self._fallback_extraction(user_message, context)
 
     def _build_extraction_prompt(self, context: ExtractionContext, analysis: Dict[str, Any]) -> str:
-        """Baut hochpräzisen StreamWorks-spezifischen Prompt"""
+        """Baut hochpräzisen Streamworks-spezifischen Prompt"""
 
         stream_type = analysis.get("stream_type", StreamType.STANDARD)
         streamworks_patterns = analysis.get("streamworks_patterns", {})
 
-        base_prompt = f"""Du bist ein StreamWorks-Experte für PRÄZISE Parameter-Extraktion aus natürlichen User-Nachrichten.
+        base_prompt = f"""Du bist ein Streamworks-Experte für PRÄZISE Parameter-Extraktion aus natürlichen User-Nachrichten.
 
 STREAM-TYP: {stream_type.value}
 
@@ -424,10 +424,10 @@ STANDARD-PATTERN-ERKENNUNG:
 
         for param_name, param_value in result.extracted_parameters.items():
 
-            # Pattern Validation using StreamWorks patterns
+            # Pattern Validation using Streamworks patterns
             pattern = None
 
-            # Check for StreamWorks-specific validation patterns
+            # Check for Streamworks-specific validation patterns
             streamworks_patterns = analysis.get("streamworks_patterns", {})
 
             if param_name == "agent_detail" and streamworks_patterns.get("agents"):
@@ -639,7 +639,7 @@ Antworte nur mit JSON im gleichen Format.
         elif context.job_type == "SAP":
             result = self._postprocess_sap(result)
 
-        # Generate suggestions for missing required parameters using StreamWorks schemas
+        # Generate suggestions for missing required parameters using Streamworks schemas
         try:
             stream_type = StreamType(context.job_type)
             missing_params = get_missing_parameters(result.extracted_parameters, stream_type)

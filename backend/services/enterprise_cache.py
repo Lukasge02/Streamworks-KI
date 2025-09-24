@@ -1,12 +1,11 @@
 """
-Enterprise Response Cache Service für StreamWorks RAG MVP
+Enterprise Response Cache Service für Streamworks RAG MVP
 Redis-basiertes Caching mit TTL und Cache-Invalidation
 """
 
 import asyncio
 import json
 import hashlib
-import redis.asyncio as aioredis
 from typing import Any, Dict, Optional, Union, List
 from datetime import datetime, timedelta
 import logging
@@ -15,6 +14,12 @@ import gzip
 from contextlib import asynccontextmanager
 
 from config import settings
+
+# Optional Redis dependency
+try:
+    import redis.asyncio as aioredis
+except ImportError:  # pragma: no cover - handled at runtime if redis is missing
+    aioredis = None
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,11 @@ class EnterpriseCacheService:
         
     async def initialize(self):
         """Initialize Redis connection mit enterprise features"""
+        if aioredis is None:
+            logger.warning("⚠️ redis.asyncio nicht verfügbar – Enterprise Cache läuft im In-Memory-Fallback.")
+            self.redis_client = None
+            return
+
         try:
             # Redis connection pool für enterprise performance
             self.connection_pool = aioredis.ConnectionPool(

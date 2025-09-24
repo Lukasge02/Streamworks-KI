@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class SessionState(str, Enum):
-    """StreamWorks Session States"""
+    """Streamworks Session States"""
     STREAM_CONFIGURATION = "stream_configuration"
     PARAMETER_COLLECTION = "parameter_collection"
     VALIDATION = "validation"
@@ -25,8 +25,8 @@ class ChatMessage(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
-class StreamWorksSession(BaseModel):
-    """🎯 StreamWorks Session - Clean & Simple"""
+class StreamworksSession(BaseModel):
+    """🎯 Streamworks Session - Clean & Simple"""
 
     session_id: str
     job_type: Optional[str] = None
@@ -311,7 +311,7 @@ class ValidationResult(BaseModel):
 __all__ = [
     "SessionState",
     "ChatMessage",
-    "StreamWorksSession",
+    "StreamworksSession",
     "StreamParameter",
     "JobParameter",
     "ExtractionResult",

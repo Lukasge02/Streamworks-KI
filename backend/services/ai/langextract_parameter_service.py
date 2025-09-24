@@ -21,7 +21,7 @@ from models.source_grounded_models import (
     SourceGroundedExtractionResult,
     LangExtractConfig,
     ExtractionMetrics,
-    StreamWorksSchema,
+    StreamworksSchema,
     calculate_highlight_coverage,
     merge_overlapping_ranges,
     validate_character_offsets
@@ -51,7 +51,7 @@ class LangExtractParameterService:
         self.config = config
 
         # Initialize schema loader
-        self.schema_loader = StreamWorksSchemaLoader()
+        self.schema_loader = StreamworksSchemaLoader()
         self.schemas = self.schema_loader.load_all_schemas()
 
         # Performance tracking
@@ -198,7 +198,7 @@ class LangExtractParameterService:
     async def _extract_parameters_langextract(
         self,
         user_message: str,
-        schema: StreamWorksSchema,
+        schema: StreamworksSchema,
         existing_stream_params: Dict[str, Any],
         existing_job_params: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -239,7 +239,7 @@ class LangExtractParameterService:
     def _build_job_type_detection_prompt(self) -> str:
         """Build prompt for job type detection"""
         return """
-        Identify the type of StreamWorks stream configuration from the user message.
+        Identify the type of Streamworks stream configuration from the user message.
 
         Available stream types:
         - FILE_TRANSFER: Data transfer between servers, file copying, synchronization
@@ -251,7 +251,7 @@ class LangExtractParameterService:
 
     def _build_parameter_extraction_prompt(
         self,
-        schema: StreamWorksSchema,
+        schema: StreamworksSchema,
         existing_stream_params: Dict[str, Any],
         existing_job_params: Dict[str, Any]
     ) -> str:
@@ -309,7 +309,7 @@ class LangExtractParameterService:
     async def _parse_extraction_result(
         self,
         langextract_result: Any,
-        schema: StreamWorksSchema,
+        schema: StreamworksSchema,
         original_text: str
     ) -> Dict[str, Any]:
         """Parse LangExtract result into our format"""
@@ -371,7 +371,7 @@ class LangExtractParameterService:
             "extraction_quality": self._assess_quality(stream_parameters + job_parameters)
         }
 
-    def _determine_parameter_scope(self, param_name: str, schema: StreamWorksSchema) -> str:
+    def _determine_parameter_scope(self, param_name: str, schema: StreamworksSchema) -> str:
         """Determine if parameter is stream or job scope"""
         stream_param_names = [p['name'] for p in schema.stream_parameters]
         if param_name in stream_param_names:
@@ -382,7 +382,7 @@ class LangExtractParameterService:
         self,
         stream_params: List[SourceGroundedParameter],
         job_params: List[SourceGroundedParameter],
-        schema: StreamWorksSchema
+        schema: StreamworksSchema
     ) -> Dict[str, Any]:
         """Calculate completion percentage and missing parameters"""
 
@@ -575,8 +575,8 @@ class LangExtractParameterService:
             )
 
 
-class StreamWorksSchemaLoader:
-    """Lädt und konvertiert StreamWorks Schemas für LangExtract"""
+class StreamworksSchemaLoader:
+    """Lädt und konvertiert Streamworks Schemas für LangExtract"""
 
     def __init__(self, schema_path: Optional[str] = None):
         if schema_path:
@@ -584,8 +584,8 @@ class StreamWorksSchemaLoader:
         else:
             self.schema_path = Path(__file__).parent.parent.parent / "templates" / "langextract_schemas.json"
 
-    def load_all_schemas(self) -> Dict[str, StreamWorksSchema]:
-        """Load all StreamWorks schemas from langextract_schemas.json"""
+    def load_all_schemas(self) -> Dict[str, StreamworksSchema]:
+        """Load all Streamworks schemas from langextract_schemas.json"""
 
         try:
             with open(self.schema_path, 'r', encoding='utf-8') as f:
@@ -596,7 +596,7 @@ class StreamWorksSchemaLoader:
             parameter_extraction = data.get('parameter_extraction', {})
 
             for job_type, schema_data in parameter_extraction.items():
-                schemas[job_type] = StreamWorksSchema(
+                schemas[job_type] = StreamworksSchema(
                     schema_name=schema_data.get('display_name', job_type),
                     schema_version=data.get('version', '2.0'),
                     job_type=job_type,

@@ -20,7 +20,6 @@ import {
   Maximize2,
   Minimize2
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -84,9 +83,9 @@ export default function XMLPreview({
 
     try {
       await navigator.clipboard.writeText(localXmlContent)
-      toast.success('XML in Zwischenablage kopiert!')
+      console.log('XML copied to clipboard')
     } catch (error) {
-      toast.error('Kopieren fehlgeschlagen')
+      console.error('Failed to copy XML:', error)
     }
   }
 
@@ -99,10 +98,10 @@ export default function XMLPreview({
       if (result?.xml_content) {
         setLocalXmlContent(result.xml_content)
         setXmlLines(result.xml_content.split('\n'))
-        toast.success('XML erfolgreich generiert!')
+        console.log('XML generated successfully')
       }
     } catch (error) {
-      toast.error('XML-Generierung fehlgeschlagen')
+      console.error('XML generation failed:', error)
       console.error('Generate XML error:', error)
     } finally {
       setLocalIsGenerating(false)
@@ -122,9 +121,9 @@ export default function XMLPreview({
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      toast.success('XML-Datei heruntergeladen!')
+      console.log('XML file downloaded')
     } catch (error) {
-      toast.error('Download fehlgeschlagen')
+      console.error('Download failed:', error)
     }
 
     onDownload?.()
@@ -140,7 +139,7 @@ export default function XMLPreview({
     // XML tags
     highlighted = highlighted.replace(
       /(<\/?)([a-zA-Z][a-zA-Z0-9-]*)(.*?)(\/?>)/g,
-      '<span class="text-blue-600">$1</span><span class="text-purple-600 font-semibold">$2</span><span class="text-blue-600">$3$4</span>'
+      '<span class="text-blue-600">$1</span><span class="text-primary-600 font-semibold">$2</span><span class="text-blue-600">$3$4</span>'
     )
 
     // Attributes
@@ -175,8 +174,8 @@ export default function XMLPreview({
       <div className="bg-gray-50 border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-              <FileCode className="w-4 h-4 text-purple-600" />
+            <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+              <FileCode className="w-4 h-4 text-primary-600" />
             </div>
             <div>
               <h3 className="font-semibold text-gray-900">XML Vorschau</h3>
@@ -200,7 +199,7 @@ export default function XMLPreview({
             ) : (
               <Badge variant="outline" className="text-xs">
                 <AlertTriangle className="w-3 h-3 mr-1" />
-                Unvollständig
+                Nicht bereit
               </Badge>
             )}
 
@@ -299,7 +298,7 @@ export default function XMLPreview({
                 </p>
                 <ul className="text-yellow-700 text-xs space-y-0.5">
                   {localCompletionPercentage < 60 && (
-                    <li>• Mindestens 60% Parameter erforderlich (aktuell: {localCompletionPercentage}%)</li>
+                    <li>• Weitere Parameter erforderlich</li>
                   )}
                   {criticalMissing.length > 0 && (
                     <li>• {criticalMissing.length} kritische Parameter fehlen</li>
@@ -371,7 +370,7 @@ export default function XMLPreview({
                 <p className="text-gray-400 text-sm">
                   {canGenerate
                     ? 'Klicken Sie auf "XML generieren" um zu beginnen'
-                    : `Parameter vervollständigen (${localCompletionPercentage}% von 60% erforderlich)`
+                    : 'Parameter vervollständigen für XML-Generierung'
                   }
                 </p>
               </div>

@@ -1,5 +1,5 @@
 """
-Core Database Models for StreamWorks Document Management
+Core Database Models for Streamworks Document Management
 Enterprise-grade SQLAlchemy models with Supabase integration
 """
 

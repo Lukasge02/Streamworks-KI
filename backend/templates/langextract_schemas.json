@@ -5,7 +5,7 @@
   "design_philosophy": "Fokus auf 6-8 essentielle Parameter pro Job-Type basierend auf echten Export-Streams",
 
   "job_type_detection": {
-    "prompt": "Erkenne den StreamWorks Job-Typ aus deutscher User-Eingabe. Fokus auf klare Business-Indikatoren.",
+    "prompt": "Erkenne den Streamworks Job-Typ aus deutscher User-Eingabe. Fokus auf klare Business-Indikatoren.",
     "examples": [
       {
         "input": "Datentransfer von GT123_Server nach BASF_Agent für CSV Dateien",
@@ -33,7 +33,7 @@
       "description": "Dateiübertragung zwischen Systemen und Servern",
       "complexity": "medium",
 
-      "extraction_prompt": "Extrahiere File Transfer Parameter aus deutscher User-Nachricht.\n\nFOKUS auf 7 essentielle Parameter:\n1. StreamName (string, REQUIRED) - Eindeutiger Stream-Name\n2. MaxStreamRuns (integer, optional) - Parallele Ausführungen (1,3,5,10,20)\n3. SchedulingRequiredFlag (boolean, optional) - Zeitgesteuert oder manuell\n4. StartTime (string, optional) - Startzeit HH:MM (nur bei Scheduling)\n5. source_agent (string, REQUIRED) - Quell-Agent/Server\n6. target_agent (string, REQUIRED) - Ziel-Agent/Server\n7. source_path (string, optional) - Quell-Dateipfad\n8. target_path (string, optional) - Ziel-Dateipfad\n\nSuche Keywords: datentransfer, übertragung, server, agent, von, nach, dateien, kopieren, sync\n\nReturn JSON mit extrahierten Parametern und source grounding.",
+      "extraction_prompt": "Extrahiere File Transfer Parameter aus deutscher User-Nachricht.\n\nFOKUS auf 8 essentielle Parameter:\n1. StreamName (string, REQUIRED) - Eindeutiger Stream-Name\n2. Agent (string, optional) - Agent-Name\n3. MaxStreamRuns (integer, optional) - Parallele Ausführungen (1-999)\n4. SchedulingRequiredFlag (boolean, optional) - Zeitgesteuert oder manuell\n5. StartTime (string, optional) - Startzeit HH:MM (nur bei Scheduling)\n6. source_agent (string, REQUIRED) - Quell-Agent/Server\n7. target_agent (string, REQUIRED) - Ziel-Agent/Server\n8. source_path (string, optional) - Quell-Dateipfad\n9. target_path (string, optional) - Ziel-Dateipfad\n\nSuche Keywords: datentransfer, übertragung, server, agent, von, nach, dateien, kopieren, sync\nNummern-Pattern: max X läufe, maximal Y parallel, bis zu Z ausführungen\n\nReturn JSON mit extrahierten Parametern und source grounding.",
 
       "few_shot_examples": [
         {
@@ -91,6 +91,30 @@
           }
         },
         {
+          "input": "max 99 läufe",
+          "output": {
+            "MaxStreamRuns": 99
+          }
+        },
+        {
+          "input": "maximal 50 parallel",
+          "output": {
+            "MaxStreamRuns": 50
+          }
+        },
+        {
+          "input": "max 20 läufe täglich",
+          "output": {
+            "MaxStreamRuns": 20
+          }
+        },
+        {
+          "input": "bis zu 100 ausführungen",
+          "output": {
+            "MaxStreamRuns": 100
+          }
+        },
+        {
           "input": "startzeit 14:30",
           "output": {
             "StartTime": "14:30"
@@ -113,13 +137,25 @@
           "examples": ["GT123_BASF_Transfer", "Daily_File_Sync", "StrFT_FileTrans_001"]
         },
         {
+          "name": "Agent",
+          "data_type": "string",
+          "required": false,
+          "description": "Agent-Name auf dem der Stream ausgeführt wird",
+          "examples": ["gtlnmiwvm1636", "TestAgent1", "gtasswvk05445", "gtlifswvm0863"]
+        },
+        {
           "name": "MaxStreamRuns",
           "data_type": "integer",
           "required": false,
           "default_value": 5,
-          "description": "Maximale parallele Ausführungen",
-          "enum_values": [1, 3, 5, 10, 20],
-          "examples": [5, 10, 3]
+          "description": "Maximale parallele Ausführungen (1-999)",
+          "min_value": 1,
+          "max_value": 999,
+          "examples": [5, 10, 20, 50, 99, 100],
+          "pattern_examples": [
+            "max 99 läufe", "maximal 50 parallel", "bis zu 20 Ausführungen",
+            "höchstens 100 runs", "max stream runs 25", "parallel läufe 30"
+          ]
         },
         {
           "name": "SchedulingRequiredFlag",
@@ -181,41 +217,47 @@
 
     "SAP": {
       "job_type": "SAP",
-      "display_name": "SAP Job",
+      "display_name": "SAP Parameter",
       "description": "SAP Report, Programm oder Transaktion",
       "complexity": "medium",
 
-      "extraction_prompt": "Extrahiere SAP System Parameter aus deutscher User-Nachricht.\n\nFOKUS auf 7 essentielle Parameter:\n1. StreamName (string, REQUIRED) - Eindeutiger Stream-Name\n2. MaxStreamRuns (integer, optional) - Parallele Ausführungen\n3. SchedulingRequiredFlag (boolean, optional) - Zeitgesteuert oder manuell\n4. StartTime (string, optional) - Startzeit HH:MM\n5. system (enum, REQUIRED) - SAP-System mit Mandant\n6. report (string, optional) - Report/Programm-Name\n7. variant (string, optional) - Report-Variante\n\nSuche Keywords: sap, export, import, system, report, transaktion, mandant, pa1, gt123\n\nReturn JSON mit extrahierten Parametern und source grounding.",
+      "extraction_prompt": "Extrahiere SAP System Parameter aus deutscher User-Nachricht.\n\nFOKUS auf 12 essentielle Parameter:\n1. StreamName (string, REQUIRED) - Eindeutiger Stream-Name\n2. Agent (string, optional) - Agent-Name\n3. MaxStreamRuns (integer, optional) - Parallele Ausführungen\n4. SchedulingRequiredFlag (boolean, optional) - Zeitgesteuert oder manuell\n5. StartTime (string, optional) - Startzeit HH:MM\n6. system (enum, REQUIRED) - SAP-System\n7. client (string, optional) - SAP-Mandant\n8. program (string, optional) - SAP Programm/Report\n9. user (string, optional) - SAP-User\n10. variant (string, optional) - Report-Variante\n11. job_name (string, optional) - Job-Name\n12. parameters (string, optional) - Zusätzliche SAP-Parameter\n13. output_settings (string, optional) - Output/Spool-Konfiguration\n\nSuche Keywords: sap, export, import, system, report, transaktion, mandant, pa1, gt123, jexa4s, execute\n\nReturn JSON mit extrahierten Parametern und source grounding.",
 
       "few_shot_examples": [
         {
-          "input": "SAP Export aus System PA1_100 mit Report ZTV_CALENDAR täglich um 08:00",
+          "input": "SAP Export aus System ZTV Client 300 mit Report EXE_CAL_EXPORT auf Agent gtlnmiwvm1636 täglich um 08:00",
           "output": {
-            "StreamName": "SAP_PA1_Calendar_Export",
+            "StreamName": "SAP_ZTV_Calendar_Export",
+            "Agent": "gtlnmiwvm1636",
             "MaxStreamRuns": 5,
             "SchedulingRequiredFlag": true,
             "StartTime": "08:00",
-            "system": "PA1_100",
-            "report": "ZTV_CALENDAR"
+            "system": "ZTV",
+            "client": "300",
+            "program": "EXE_CAL_EXPORT",
+            "user": "SAPCOMM"
           }
         },
         {
-          "input": "Export aus GT123_PRD System Report RSUSR003 wöchentlich",
+          "input": "Export aus ZTJ System Client 514 mit EXECUTE Command und User SAPCOMM wöchentlich",
           "output": {
-            "StreamName": "GT123_User_Data_Export",
+            "StreamName": "ZTJ_Execute_Export",
             "MaxStreamRuns": 3,
             "SchedulingRequiredFlag": true,
-            "system": "GT123_PRD",
-            "report": "RSUSR003"
+            "system": "ZTJ",
+            "client": "514",
+            "program": "EXECUTE",
+            "user": "SAPCOMM"
           }
         },
         {
-          "input": "SAP Kalender Export von ZTV System mit Variante EXCEL_DAILY",
+          "input": "SAP Kalender Export von ZTV System mit Variante ZTEST_VAR01 und Output nach c:\\temp",
           "output": {
             "StreamName": "SAP_ZTV_Calendar_Export",
             "system": "ZTV",
-            "report": "CALENDAR_EXPORT",
-            "variant": "EXCEL_DAILY"
+            "program": "ZTEST_VARIANT",
+            "variant": "ZTEST_VAR01",
+            "output_settings": "OUT_DIR:c:\\temp"
           }
         },
         {
@@ -269,9 +311,10 @@
           "data_type": "integer",
           "required": false,
           "default_value": 5,
-          "description": "Maximale parallele Ausführungen",
-          "enum_values": [1, 3, 5, 10],
-          "examples": [5, 3, 1]
+          "description": "Maximale parallele Ausführungen (1-999)",
+          "min_value": 1,
+          "max_value": 999,
+          "examples": [5, 10, 20, 50, 99, 100]
         },
         {
           "name": "SchedulingRequiredFlag",
@@ -296,23 +339,58 @@
           "name": "system",
           "data_type": "enum",
           "required": true,
-          "description": "SAP System mit Mandant",
-          "enum_values": ["PA1_100", "PA1_200", "PT1_100", "PD1_100", "GT123_PRD", "GT123_DEV", "GT123_TST", "ZTV"],
-          "examples": ["PA1_100", "GT123_PRD", "ZTV"]
+          "description": "SAP System",
+          "enum_values": ["PA1", "PT1", "PD1", "GT123", "ZTV", "ZTJ", "HSV"],
+          "examples": ["ZTV", "ZTJ", "GT123"]
         },
         {
-          "name": "report",
+          "name": "client",
           "data_type": "string",
           "required": false,
-          "description": "SAP Report oder Programm-Name",
-          "examples": ["ZTV_CALENDAR", "RSUSR003", "ZFI_REPORT_DAILY", "FACTORY_CALENDAR"]
+          "description": "SAP-Mandant/Client",
+          "examples": ["300", "514", "100", "200"]
+        },
+        {
+          "name": "program",
+          "data_type": "string",
+          "required": false,
+          "description": "SAP Programm/Report/Kommando",
+          "examples": ["EXE_CAL_EXPORT", "EXECUTE", "BTCSPOOL", "ZTEST_VARIANT"]
+        },
+        {
+          "name": "user",
+          "data_type": "string",
+          "required": false,
+          "description": "SAP-User für Anmeldung",
+          "examples": ["SAPCOMM", "BATCHUSER", "ADMINUSER"]
         },
         {
           "name": "variant",
           "data_type": "string",
           "required": false,
           "description": "Report-Variante",
-          "examples": ["EXCEL_DAILY", "MONTHLY_REPORT", "STANDARD", "WEEKLY"]
+          "examples": ["EXCEL_DAILY", "ZTEST_VAR01", "STANDARD"]
+        },
+        {
+          "name": "job_name",
+          "data_type": "string",
+          "required": false,
+          "description": "SAP Job-Name für Monitoring",
+          "examples": ["FA_EXPORT_DAILY", "CALENDAR_SYNC", "REPORT_MONTHLY"]
+        },
+        {
+          "name": "parameters",
+          "data_type": "string",
+          "required": false,
+          "description": "Zusätzliche SAP-Parameter (Key:Value Format)",
+          "examples": ["I_CALENDER_ID_W:09", "OUT_FILE:calendar_01", "TVC_LOW:20130120"]
+        },
+        {
+          "name": "output_settings",
+          "data_type": "string",
+          "required": false,
+          "description": "Output/Spool-Konfiguration",
+          "examples": ["-SPOOL", "OUT_DIR:c:\\temp", "PP_PDEST:LOCAL"]
         }
       ],
 
@@ -320,7 +398,8 @@
 
       "detection_keywords": [
         "sap", "system", "report", "export", "import", "mandant", "transaktion",
-        "variant", "pa1", "pt1", "gt123", "ztv", "fabrikkalender", "batch"
+        "variant", "pa1", "pt1", "gt123", "ztv", "ztj", "hsv", "fabrikkalender", "batch",
+        "jexa4s", "execute", "client", "user", "sapcomm", "output", "spool", "agent"
       ]
     },
 
@@ -417,13 +496,21 @@
           "examples": ["Daily_Data_Analysis", "Backup_Process", "Export-Import-Beispiel-Stream"]
         },
         {
+          "name": "Agent",
+          "data_type": "string",
+          "required": false,
+          "description": "Agent-Name auf dem der Script ausgeführt wird",
+          "examples": ["gtlnmiwvm1636", "TestAgent1", "LocalAgent"]
+        },
+        {
           "name": "MaxStreamRuns",
           "data_type": "integer",
           "required": false,
           "default_value": 5,
-          "description": "Maximale parallele Ausführungen",
-          "enum_values": [1, 3, 5, 10],
-          "examples": [5, 3, 1]
+          "description": "Maximale parallele Ausführungen (1-999)",
+          "min_value": 1,
+          "max_value": 999,
+          "examples": [5, 10, 20, 50, 99, 100]
         },
         {
           "name": "SchedulingRequiredFlag",

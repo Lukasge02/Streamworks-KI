@@ -1,5 +1,5 @@
 """
-StreamWorks Parameter Schemas - Separate für jeden Stream-Typ
+Streamworks Parameter Schemas - Separate für jeden Stream-Typ
 Definiert die erwartete Struktur für SAP, Transfer und Standard Streams
 """
 

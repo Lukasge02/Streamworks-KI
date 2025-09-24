@@ -1,5 +1,5 @@
 """
-Modern Database Configuration for StreamWorks
+Modern Database Configuration for Streamworks
 Clean Supabase integration with enterprise-grade connection pooling
 """
 

@@ -1,5 +1,5 @@
 """
-Advanced Multi-Level Cache System for StreamWorks RAG
+Advanced Multi-Level Cache System for Streamworks RAG
 Performance-optimized caching with semantic similarity and intelligent TTL
 """
 

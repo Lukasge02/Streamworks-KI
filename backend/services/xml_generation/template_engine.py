@@ -1,6 +1,6 @@
 """
 XML Template Engine
-Jinja2-based template rendering for StreamWorks XML generation
+Jinja2-based template rendering for Streamworks XML generation
 """
 
 import os
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class JobType(str, Enum):
-    """Supported StreamWorks job types"""
+    """Supported Streamworks job types"""
     STANDARD = "STANDARD"
     FILE_TRANSFER = "FILE_TRANSFER"
     SAP = "SAP"
@@ -83,11 +83,15 @@ class TemplateContext(BaseModel):
     run_number_1_required: bool = False
 
     def model_post_init(self, __context: Any) -> None:
-        """Post-initialization logic"""
+        """
+        Post-initialization logic
+
+        ⚠️ STREAM PREFIX: Auto-generates stream names with 'zsw_' prefix
+        See documentation/XML_STREAM_CONFIGURATION.md for prefix changes
+        """
         # Auto-generate names if not provided
         if not self.stream_name:
-            prefix = self.job_type.value
-            self.stream_name = f"{prefix}_STREAM_{self.timestamp}"
+            self.stream_name = f"zsw_{self.timestamp}"  # ⚠️ STREAM PREFIX: Change 'zsw_' here
 
         if not self.job_name:
             if self.job_type == JobType.FILE_TRANSFER:
@@ -114,7 +118,7 @@ class XMLTemplateEngine:
     """
     🚀 XML Template Engine
 
-    Jinja2-based XML generation for StreamWorks templates with:
+    Jinja2-based XML generation for Streamworks templates with:
     - Type-safe parameter validation
     - Smart defaults and auto-generation
     - Template caching for performance
@@ -142,6 +146,9 @@ class XMLTemplateEngine:
             lstrip_blocks=True
         )
 
+        # Add custom filters
+        self.env.filters['xml_boolean'] = self._xml_boolean_filter
+
         # Template mapping
         self.template_mapping = {
             JobType.STANDARD: "standard_job_template.xml",
@@ -153,6 +160,21 @@ class XMLTemplateEngine:
         self._validate_templates()
 
         logger.info(f"🚀 XMLTemplateEngine initialized with templates from: {self.template_dir}")
+
+    def _xml_boolean_filter(self, value):
+        """Jinja2 filter to convert Python boolean to XML boolean"""
+        if value is None:
+            return "false"
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, str):
+            if value.lower() in ['true', '1', 'yes']:
+                return "true"
+            elif value.lower() in ['false', '0', 'no']:
+                return "false"
+            else:
+                return "false"
+        return "true" if value else "false"
 
     def _validate_templates(self):
         """Validate all required templates exist"""

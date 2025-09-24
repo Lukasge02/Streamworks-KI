@@ -5,7 +5,9 @@ import ReactMarkdown from 'react-markdown'
 import { CheckCircle, AlertTriangle, Info, Copy, ExternalLink } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ConfidenceIndicator } from '../ui/StatusIndicator'
-import { RAGMetrics } from './RAGMetrics'
+import { EnhancedRAGMetrics } from './EnhancedRAGMetrics'
+import { SourcesDisplay } from './SourcesDisplay'
+import { useDocumentNavigation } from '../../hooks/useDocumentNavigation'
 
 interface EnterpriseResponseProps {
   content: string
@@ -46,6 +48,7 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
   compact = false
 }) => {
   const [showMetrics, setShowMetrics] = useState(false)
+  const { navigateToSource } = useDocumentNavigation()
   const getConfidenceColor = (score?: number) => {
     if (!score) return 'text-gray-500'
     if (score >= 0.8) return 'text-emerald-600'
@@ -85,14 +88,29 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
 
       {/* Enhanced RAG Metrics Panel */}
       {(confidence_score || processing_time || sources.length > 0) && (
-        <RAGMetrics
-          confidence_score={confidence_score}
-          processing_time={processing_time}
-          model_info={model_info}
-          sources={sources}
-          retrieval_context={retrieval_context}
+        <EnhancedRAGMetrics
+          sources={sources.map(source => ({
+            document_id: source.metadata.doc_id || source.id,
+            filename: source.metadata.original_filename || 'Unknown Document',
+            page_number: source.metadata.page_number,
+            section: source.metadata.section || source.metadata.heading,
+            relevance_score: source.relevance_score || 0,
+            snippet: '', // Would need to be added to the source data
+            chunk_index: 0, // Would need to be added to the source data
+            confidence: source.relevance_score || 0,
+            doc_type: undefined,
+            chunk_id: source.id
+          }))}
           expanded={showMetrics}
           onToggleExpand={() => setShowMetrics(!showMetrics)}
+          showSources={true}
+          onSourceClick={async (source) => {
+            if (onSourceClick) {
+              onSourceClick(source)
+            } else {
+              await navigateToSource(source)
+            }
+          }}
         />
       )}
 
@@ -267,7 +285,7 @@ export const EnterpriseResponseFormatter: React.FC<EnterpriseResponseProps> = ({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mt-6 card-enterprise-elevated bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-700 p-5 border-blue-100 dark:border-gray-600"
+          className="mt-6 card-enterprise-elevated bg-gradient-to-br from-blue-50 via-indigo-50 to-primary-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-700 p-5 border-blue-100 dark:border-gray-600"
         >
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 flex items-center">

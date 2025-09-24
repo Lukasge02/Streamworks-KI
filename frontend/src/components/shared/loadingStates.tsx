@@ -1,5 +1,5 @@
 /**
- * Unified Loading States for StreamWorks
+ * Unified Loading States for Streamworks
  * Provides consistent loading experiences across all components
  */
 
@@ -401,7 +401,7 @@ function InlineLoading({
 // ================================
 
 function PageLoading({ 
-  message = 'Loading StreamWorks...',
+  message = 'Loading Streamworks...',
   subtitle = 'Please wait a moment'
 }: { 
   message?: string

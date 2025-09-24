@@ -159,7 +159,7 @@ class ChatXMLValidator:
         logger.info("Enhanced Chat XML Validator with Real-Time Intelligence initialized")
 
     def _load_streamworks_business_rules(self) -> Dict[str, Any]:
-        """Lädt StreamWorks-spezifische Business Rules"""
+        """Lädt Streamworks-spezifische Business Rules"""
         return {
             "required_elements": {
                 "StreamName": {"max_length": 50, "pattern": r"^[a-zA-Z0-9_]+$"},
@@ -211,7 +211,7 @@ class ChatXMLValidator:
             placeholder_issues = self._check_placeholders(xml_content, root)
             issues.extend(placeholder_issues)
 
-            # StreamWorks Business Rules
+            # Streamworks Business Rules
             business_rule_issues = self._check_business_rules(root, context)
             issues.extend(business_rule_issues)
 
@@ -319,7 +319,7 @@ class ChatXMLValidator:
         return issues
 
     def _check_business_rules(self, root: etree.Element, context: Optional[Dict[str, Any]]) -> List[ChatValidationIssue]:
-        """Prüft StreamWorks-spezifische Business Rules"""
+        """Prüft Streamworks-spezifische Business Rules"""
         issues = []
 
         # Prüfe required elements
@@ -695,7 +695,7 @@ class ChatXMLValidator:
         is_valid = True
         confidence = 1.0
 
-        # Check against StreamWorks business rules
+        # Check against Streamworks business rules
         if parameter_name in self.streamworks_rules["required_elements"]:
             rules = self.streamworks_rules["required_elements"][parameter_name]
 
@@ -759,7 +759,7 @@ class ChatXMLValidator:
         try:
             llm_service = await self._get_llm_service()
 
-            suggestion_prompt = f"""Analysiere diesen StreamWorks Parameter und gib intelligente Verbesserungsvorschläge:
+            suggestion_prompt = f"""Analysiere diesen Streamworks Parameter und gib intelligente Verbesserungsvorschläge:
 
 Parameter: {parameter_name}
 Aktueller Wert: {parameter_value}
@@ -774,7 +774,7 @@ Erstelle 2-3 konkrete Verbesserungsvorschläge für diesen Parameter:
 
 Antworte mit JSON: {{"suggestions": ["vorschlag1", "vorschlag2", "vorschlag3"]}}
 
-Fokussiere auf praktische, umsetzbare Vorschläge für StreamWorks XML-Generierung."""
+Fokussiere auf praktische, umsetzbare Vorschläge für Streamworks XML-Generierung."""
 
             response = await llm_service.generate(suggestion_prompt)
 
@@ -827,7 +827,7 @@ Fokussiere auf praktische, umsetzbare Vorschläge für StreamWorks XML-Generieru
         try:
             llm_service = await self._get_llm_service()
 
-            warning_prompt = f"""Prüfe diesen StreamWorks Parameter auf potentielle Probleme:
+            warning_prompt = f"""Prüfe diesen Streamworks Parameter auf potentielle Probleme:
 
 Parameter: {parameter_name}
 Wert: {parameter_value}
@@ -883,7 +883,7 @@ Nur relevante Warnungen ausgeben, keine allgemeinen Tipps."""
         try:
             llm_service = await self._get_llm_service()
 
-            recommendation_prompt = f"""Gib kontextbezogene Empfehlungen für diesen StreamWorks Parameter:
+            recommendation_prompt = f"""Gib kontextbezogene Empfehlungen für diesen Streamworks Parameter:
 
 Parameter: {parameter_name}
 Wert: {parameter_value}

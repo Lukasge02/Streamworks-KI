@@ -4,6 +4,7 @@
  */
 
 import { apiService } from './api.service'
+import { RagLiveMetricsResponse } from '../types/ragMetrics'
 
 export interface PerformanceMetrics {
   timestamp: string
@@ -64,6 +65,7 @@ export interface PerformanceMetrics {
       initialized: boolean
     }
   }
+  rag_metrics: RagLiveMetricsResponse
   system_status: string
 }
 
@@ -139,6 +141,30 @@ class PerformanceApiService {
       console.error('Failed to fetch realtime metrics:', error)
       // Return fallback data to prevent UI crashes
       return this.getFallbackMetrics()
+    }
+  }
+
+  /**
+   * Get unified RAG metrics (compatible with both systems)
+   */
+  async getUnifiedRAGMetrics(): Promise<any> {
+    try {
+      const response = await apiService.get(`${this.baseUrl}/metrics/rag-unified`)
+      return response.data
+    } catch (error) {
+      console.error('Failed to fetch unified RAG metrics:', error)
+      // Return fallback data structure
+      return {
+        timestamp: new Date().toISOString(),
+        live_metrics: this.getFallbackMetrics().rag_metrics,
+        performance: { status: 'no_data' },
+        cache: { hit_rate: 0, hits: 0, misses: 0 },
+        rag_services: {},
+        system_status: 'error',
+        is_connected: false,
+        last_activity: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
     }
   }
 
@@ -287,6 +313,28 @@ class PerformanceApiService {
    * Fallback metrics for offline/error states
    */
   private getFallbackMetrics(): PerformanceMetrics {
+    const ragMetricsFallback: RagLiveMetricsResponse = {
+      status: 'error',
+      window_minutes: 15,
+      updated_at: new Date().toISOString(),
+      totals: {
+        queries: 0,
+        successful: 0,
+        failed: 0,
+        cache_hit_rate: 0,
+      },
+      latency: {
+        average_ms: 0,
+        p95_ms: 0,
+        p99_ms: 0,
+      },
+      quality: {
+        avg_relevance: 0,
+        avg_sources_per_query: 0,
+        unique_sources: 0,
+      },
+    }
+
     return {
       timestamp: new Date().toISOString(),
       performance: {
@@ -329,6 +377,7 @@ class PerformanceApiService {
           initialized: false
         }
       },
+      rag_metrics: ragMetricsFallback,
       system_status: 'unknown'
     }
   }

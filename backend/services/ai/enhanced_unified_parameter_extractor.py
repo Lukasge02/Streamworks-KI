@@ -590,7 +590,7 @@ class EnhancedUnifiedParameterExtractor:
 """)
 
         prompt = ChatPromptTemplate.from_template("""
-Du bist ein Experte für die Extraktion von StreamWorks Stream-Parametern.
+Du bist ein Experte für die Extraktion von Streamworks Stream-Parametern.
 
 VERFÜGBARE STREAM-PARAMETER:
 {parameters}

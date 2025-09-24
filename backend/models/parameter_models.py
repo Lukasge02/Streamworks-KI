@@ -8,7 +8,6 @@ from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field, validator
-from langchain_core.pydantic_v1 import BaseModel as LangChainBaseModel
 
 # ================================
 # ENUMS FÜR PARAMETER VALUES
@@ -106,7 +105,7 @@ class StandardJobParametersModel(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "StreamName": "geck003_ft",
                 "StreamDocumentation": "Export und Import des Streams",
@@ -160,7 +159,7 @@ class SAPJobParametersModel(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "system": "PA1_100",
                 "report": "RBDAGAIN",
@@ -210,7 +209,7 @@ class FileTransferParametersModel(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "source_agent": "gtasswvv15778",
                 "target_agent": "gtasswvw15779",
@@ -288,7 +287,7 @@ class CustomJobParametersModel(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "ResourceName": "DEMOST01",
                 "ShortDescription": "RESOURCE FUER STREAM DEMOST01",
@@ -339,7 +338,7 @@ class ParameterExtractionHistory(BaseModel):
 # LANGCHAIN-COMPATIBLE MODELS
 # ================================
 
-class StandardJobParametersLangChain(LangChainBaseModel):
+class StandardJobParametersLangChain(BaseModel):
     """LangChain-kompatible Version für STANDARD Job Parameters"""
     StreamName: Optional[str] = Field(None, description="Der Name des Streams")
     StreamDocumentation: Optional[str] = Field(None, description="Dokumentation für den Stream")
@@ -351,21 +350,21 @@ class StandardJobParametersLangChain(LangChainBaseModel):
     JobCategory: Optional[str] = Field(None, description="Kategorie des Jobs")
     IsNotificationRequired: Optional[bool] = Field(None, description="Ob eine Benachrichtigung erforderlich ist")
 
-class SAPJobParametersLangChain(LangChainBaseModel):
+class SAPJobParametersLangChain(BaseModel):
     """LangChain-kompatible Version für SAP Job Parameters"""
     system: Optional[str] = Field(None, description="SAP System")
     report: Optional[str] = Field(None, description="SAP Report Name")
     variant: Optional[str] = Field(None, description="Report-Variante")
     batch_user: Optional[str] = Field(None, description="Batch-Benutzer")
 
-class FileTransferParametersLangChain(LangChainBaseModel):
+class FileTransferParametersLangChain(BaseModel):
     """LangChain-kompatible Version für FILE_TRANSFER Job Parameters"""
     source_agent: Optional[str] = Field(None, description="Quell-Agent")
     target_agent: Optional[str] = Field(None, description="Ziel-Agent")
     source_path: Optional[str] = Field(None, description="Quell-Dateipfad")
     target_path: Optional[str] = Field(None, description="Ziel-Dateipfad")
 
-class CustomJobParametersLangChain(LangChainBaseModel):
+class CustomJobParametersLangChain(BaseModel):
     """LangChain-kompatible Version für CUSTOM Job Parameters"""
     ResourceName: Optional[str] = Field(None, description="Der Name der Ressource")
     ShortDescription: Optional[str] = Field(None, description="Eine kurze Beschreibung der Ressource")
@@ -398,7 +397,7 @@ def get_parameter_model(job_type: str) -> BaseModel:
     """Gibt das Pydantic Model für einen Job-Type zurück"""
     return JOB_TYPE_MODEL_MAPPING.get(job_type.upper())
 
-def get_langchain_model(job_type: str) -> LangChainBaseModel:
+def get_langchain_model(job_type: str) -> BaseModel:
     """Gibt das LangChain-kompatible Model für einen Job-Type zurück"""
     return LANGCHAIN_MODEL_MAPPING.get(job_type.upper())
 
@@ -437,7 +436,7 @@ class JobConfiguration(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.now, description="Letzte Aktualisierung")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "job_id": "job_001",
                 "job_type": "FILE_TRANSFER",
@@ -614,7 +613,7 @@ class HierarchicalStreamSession(BaseModel):
             return self.completion_status
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "session_id": "session_123",
                 "session_type": "STREAM_CONFIGURATION",

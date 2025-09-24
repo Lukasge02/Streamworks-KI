@@ -219,7 +219,7 @@ export function StreamChatInput({ onStreamGenerated }: StreamChatInputProps) {
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-purple-600" />
                   <h3 className="text-gray-900 dark:text-white font-medium">
-                    StreamWorks XML generiert
+                    Streamworks XML generiert
                   </h3>
                 </div>
                 <button

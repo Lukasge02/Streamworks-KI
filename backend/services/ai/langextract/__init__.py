@@ -1,6 +1,6 @@
 """
 LangExtract Package
-Modern LangExtract-First System for StreamWorks
+Modern LangExtract-First System for Streamworks
 """
 
 from .unified_langextract_service import (

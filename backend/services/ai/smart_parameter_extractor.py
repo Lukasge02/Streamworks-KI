@@ -767,7 +767,7 @@ Wichtig:
         try:
             # Stream Parameter Extraction Prompt (Deutsch optimiert)
             extraction_prompt = ChatPromptTemplate.from_template("""
-Du bist ein Experte für die Extraktion von StreamWorks-Parametern aus natürlicher deutscher Sprache.
+Du bist ein Experte für die Extraktion von Streamworks-Parametern aus natürlicher deutscher Sprache.
 
 AUFGABE: Extrahiere Stream-Level Parameter aus der folgenden Benutzernachricht.
 

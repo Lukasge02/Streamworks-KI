@@ -109,7 +109,7 @@ export const ChatInterface = () => {
   const welcomeMessage = {
     id: 'welcome',
     type: 'assistant' as const,
-    content: 'Hallo! Ich bin der StreamWorks RAG Assistant. Ich kann Fragen zu deinen Dokumenten beantworten und dir bei StreamWorks-spezifischen Konfigurationen helfen. Was möchtest du wissen?',
+    content: 'Hallo! Ich bin der Streamworks RAG Assistant. Ich kann Fragen zu deinen Dokumenten beantworten und dir bei Streamworks-spezifischen Konfigurationen helfen. Was möchtest du wissen?',
     timestamp: new Date()
   }
   
@@ -290,7 +290,7 @@ export const ChatInterface = () => {
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                  StreamWorks Assistant
+                  Streamworks Assistant
                   <span className="ml-2 w-2 h-2 bg-green-500 rounded-full"></span>
                 </h1>
               </div>
@@ -427,7 +427,7 @@ export const ChatInterface = () => {
             isLoading={isLoading}
             onSubmit={sendMessage}
             onSuggestionClick={setInput}
-            placeholder="Stelle eine Frage zu deinen StreamWorks Dokumenten..."
+            placeholder="Stelle eine Frage zu deinen Streamworks Dokumenten..."
             showSuggestions={!hasUserMessages}
           />
         </div>

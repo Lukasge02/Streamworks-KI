@@ -55,6 +55,7 @@ class XMLParameterMapper:
         self.transformations = {
             'normalize_stream_name': self._normalize_stream_name,
             'normalize_agent_name': self._normalize_agent_name,
+            'create_streamworks_job_name': self._create_streamworks_job_name,
             'format_time': self._format_time,
             'extract_script': self._extract_script,
             'extract_file_path': self._extract_file_path,
@@ -72,16 +73,22 @@ class XMLParameterMapper:
             # Core stream parameters
             ParameterMapping(source_field="StreamName", target_field="stream_name", transform="normalize_stream_name"),
             ParameterMapping(source_field="stream_name", target_field="stream_name", transform="normalize_stream_name"),
-            ParameterMapping(source_field="MaxStreamRuns", target_field="max_stream_runs", transform="integer_from_string", default=100),
-            ParameterMapping(source_field="max_stream_runs", target_field="max_stream_runs", transform="integer_from_string", default=100),
+
+            # MaxStreamRuns - Enhanced mappings (no defaults to allow actual values)
+            ParameterMapping(source_field="MaxStreamRuns", target_field="max_stream_runs", transform="integer_from_string"),
+            ParameterMapping(source_field="max_stream_runs", target_field="max_stream_runs", transform="integer_from_string"),
+            ParameterMapping(source_field="maxstreamruns", target_field="max_stream_runs", transform="integer_from_string"),
+            ParameterMapping(source_field="max_runs", target_field="max_stream_runs", transform="integer_from_string"),
+            ParameterMapping(source_field="anzahl_läufe", target_field="max_stream_runs", transform="integer_from_string"),
+            ParameterMapping(source_field="max_läufe", target_field="max_stream_runs", transform="integer_from_string"),
             ParameterMapping(source_field="SchedulingRequiredFlag", target_field="scheduling_required_flag", transform="boolean_from_string", default=True),
             ParameterMapping(source_field="scheduling_required_flag", target_field="scheduling_required_flag", transform="boolean_from_string", default=True),
             ParameterMapping(source_field="StartTime", target_field="start_time", transform="format_time"),
             ParameterMapping(source_field="start_time", target_field="start_time", transform="format_time"),
 
-            # Job parameters
-            ParameterMapping(source_field="JobName", target_field="job_name"),
-            ParameterMapping(source_field="job_name", target_field="job_name"),
+            # Job parameters - Streamworks format: 0100_(stream_name)
+            ParameterMapping(source_field="stream_name", target_field="job_name", transform="create_streamworks_job_name"),
+            ParameterMapping(source_field="StreamName", target_field="job_name", transform="create_streamworks_job_name"),
             ParameterMapping(source_field="MainScript", target_field="main_script", transform="extract_script"),
             ParameterMapping(source_field="main_script", target_field="main_script", transform="extract_script"),
             ParameterMapping(source_field="script", target_field="main_script", transform="extract_script"),
@@ -94,10 +101,13 @@ class XMLParameterMapper:
             ParameterMapping(source_field="stream_documentation", target_field="stream_documentation"),
             ParameterMapping(source_field="description", target_field="stream_documentation"),
 
-            # Agent details
+            # Agent details - Map to main agent (usually source_agent for file transfers)
             ParameterMapping(source_field="AgentDetail", target_field="agent_detail", transform="normalize_agent_name"),
             ParameterMapping(source_field="agent_detail", target_field="agent_detail", transform="normalize_agent_name"),
+            ParameterMapping(source_field="Agent", target_field="agent_detail", transform="normalize_agent_name"),
             ParameterMapping(source_field="agent", target_field="agent_detail", transform="normalize_agent_name"),
+            ParameterMapping(source_field="source_agent", target_field="agent_detail", transform="normalize_agent_name"),
+            ParameterMapping(source_field="servera", target_field="agent_detail", transform="normalize_agent_name"),
         ]
 
     def _get_file_transfer_mappings(self) -> List[ParameterMapping]:
@@ -106,16 +116,27 @@ class XMLParameterMapper:
             # Include standard mappings
             *self._get_standard_mappings(),
 
-            # File transfer specific
+            # File transfer specific - Enhanced German mappings
+            # Explicit Agent mapping for file transfers (should go to agent_detail, not source_agent)
+            ParameterMapping(source_field="Agent", target_field="agent_detail", transform="normalize_agent_name"),
+
             ParameterMapping(source_field="source_agent", target_field="source_agent", transform="normalize_agent_name"),
             ParameterMapping(source_field="SourceAgent", target_field="source_agent", transform="normalize_agent_name"),
             ParameterMapping(source_field="quell_agent", target_field="source_agent", transform="normalize_agent_name"),
             ParameterMapping(source_field="von_agent", target_field="source_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="servera", target_field="source_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="ServerA", target_field="source_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="server_a", target_field="source_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="agent_a", target_field="source_agent", transform="normalize_agent_name"),
 
             ParameterMapping(source_field="target_agent", target_field="target_agent", transform="normalize_agent_name"),
             ParameterMapping(source_field="TargetAgent", target_field="target_agent", transform="normalize_agent_name"),
             ParameterMapping(source_field="ziel_agent", target_field="target_agent", transform="normalize_agent_name"),
             ParameterMapping(source_field="nach_agent", target_field="target_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="serverb", target_field="target_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="ServerB", target_field="target_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="server_b", target_field="target_agent", transform="normalize_agent_name"),
+            ParameterMapping(source_field="agent_b", target_field="target_agent", transform="normalize_agent_name"),
 
             ParameterMapping(source_field="source_path", target_field="source_path", transform="extract_file_path"),
             ParameterMapping(source_field="SourcePath", target_field="source_path", transform="extract_file_path"),
@@ -246,7 +267,14 @@ class XMLParameterMapper:
 
     # Transformation functions
     def _normalize_stream_name(self, value: str) -> str:
-        """Normalize stream name to valid format"""
+        """
+        Normalize stream name to valid format
+
+        ⚠️ IMPORTANT: This function defines the STREAM PREFIX for XML generation
+        Current prefix: 'zsw_' (changed from 'STREAM_')
+
+        See documentation/XML_STREAM_CONFIGURATION.md for prefix change instructions
+        """
         if not value:
             return value
 
@@ -256,24 +284,26 @@ class XMLParameterMapper:
         normalized = re.sub(r'_+', '_', normalized)  # Remove duplicate underscores
         normalized = normalized.strip('_')  # Remove leading/trailing underscores
 
-        # Ensure it starts with letter
-        if normalized and not normalized[0].isalpha():
-            normalized = f"STREAM_{normalized}"
+        # ALWAYS add zsw_ prefix if not already present
+        if normalized and not normalized.startswith('zsw_'):
+            normalized = f"zsw_{normalized}"  # ⚠️ STREAM PREFIX: Change 'zsw_' for different prefix
 
         return normalized.upper()
 
     def _normalize_agent_name(self, value: str) -> str:
-        """Normalize agent name"""
+        """
+        Normalize agent name - PRESERVES original case and full names for Streamworks
+
+        ⚠️ IMPORTANT: Streamworks expects full agent names like 'servera', 'serverb'
+        This function preserves original case and complete agent names.
+        """
         if not value:
             return value
 
-        # Basic cleanup
+        # Basic cleanup only - preserve original case
         normalized = str(value).strip()
 
-        # Remove common prefixes/suffixes
-        normalized = re.sub(r'^(agent_?|server_?)', '', normalized, flags=re.IGNORECASE)
-        normalized = re.sub(r'(_?agent|_?server)$', '', normalized, flags=re.IGNORECASE)
-
+        logger.debug(f"Normalized agent name: '{value}' -> '{normalized}' (case preserved)")
         return normalized
 
     def _format_time(self, value: Union[str, int]) -> Optional[str]:
@@ -397,6 +427,31 @@ class XMLParameterMapper:
         except (ValueError, AttributeError):
             logger.warning(f"Could not convert to integer: {value}")
             return 0
+
+    def _create_streamworks_job_name(self, stream_name: str) -> str:
+        """
+        Create Streamworks job name format: 0100_(stream_name)
+
+        ⚠️ IMPORTANT: Streamworks naming convention for job names
+        Format: "0100_" + normalized stream name
+
+        Args:
+            stream_name: The stream name to use for job name
+
+        Returns:
+            Job name in format "0100_STREAM_NAME"
+        """
+        if not stream_name:
+            return "0100_DEFAULT_JOB"
+
+        # Normalize the stream name first
+        normalized_stream = self._normalize_stream_name(stream_name)
+
+        # Create job name with 0100_ prefix
+        job_name = f"0100_{normalized_stream}"
+
+        logger.debug(f"Created Streamworks job name: {job_name}")
+        return job_name
 
 
 # Singleton instance

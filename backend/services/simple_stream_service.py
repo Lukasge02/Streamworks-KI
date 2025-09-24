@@ -1,5 +1,5 @@
 """
-Simple Stream Service for StreamWorks Self-Service Portal
+Simple Stream Service for Streamworks Self-Service Portal
 Focuses on practical stream creation with minimal complexity
 """
 
@@ -11,7 +11,7 @@ from openai import AsyncOpenAI
 import os
 
 class SimpleStreamService:
-    """Service for creating StreamWorks streams from simple forms"""
+    """Service for creating Streamworks streams from simple forms"""
     
     def __init__(self):
         self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -65,7 +65,7 @@ class SimpleStreamService:
             response = await self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a parser for StreamWorks requirements. Extract structured data from German or English text."},
+                    {"role": "system", "content": "You are a parser for Streamworks requirements. Extract structured data from German or English text."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
@@ -160,7 +160,7 @@ class SimpleStreamService:
         # Add defaults
         prepared = {
             "stream_name": form_data.get("stream_name", f"STREAM_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
-            "description": form_data.get("description", "StreamWorks Self-Service Stream"),
+            "description": form_data.get("description", "Streamworks Self-Service Stream"),
             "agent": form_data.get("agent", "TestAgent1"),
             "contact": form_data.get("contact", ""),
             "jobs": [],

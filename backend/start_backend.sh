@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# StreamWorks Backend Startup Script
+# Streamworks Backend Startup Script
 # Ensures reliable startup with Python 3.10 and proper dependency checks
 
 set -e  # Exit on error
@@ -11,7 +11,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}🚀 Starting StreamWorks Backend...${NC}"
+echo -e "${GREEN}🚀 Starting Streamworks Backend...${NC}"
 
 # Check Python 3.10
 if ! command -v /opt/homebrew/bin/python3.10 &> /dev/null; then
@@ -84,7 +84,7 @@ echo -e "${YELLOW}Waiting for backend to be ready...${NC}"
 for i in {1..30}; do
     if curl -s http://localhost:8000/health > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Backend is ready!${NC}"
-        echo -e "${GREEN}🎉 StreamWorks Backend running at http://localhost:8000${NC}"
+        echo -e "${GREEN}🎉 Streamworks Backend running at http://localhost:8000${NC}"
         echo -e "${GREEN}📚 API Docs: http://localhost:8000/docs${NC}"
         echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
 

@@ -8,7 +8,7 @@ import { DocumentSyncProvider } from '@/providers/DocumentSyncProvider'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { enableMapSet } from 'immer'
 import {
-  StreamWorksErrorBoundary,
+  StreamworksErrorBoundary,
   setupGlobalErrorHandlers
 } from '@/components/shared/errorBoundaries'
 import { LoadingOverlay } from '@/components/shared/loadingStates'
@@ -33,7 +33,7 @@ function AppProviders({ children }: ProvidersProps) {
     setupGlobalErrorHandlers()
     
     // Initialize app
-    startLoading('Initializing StreamWorks...')
+    startLoading('Initializing Streamworks...')
     
     // Simulate app initialization
     const timer = setTimeout(() => {
@@ -44,7 +44,7 @@ function AppProviders({ children }: ProvidersProps) {
   }, [startLoading, stopLoading])
 
   return (
-    <StreamWorksErrorBoundary>
+    <StreamworksErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ThemeProvider
@@ -57,7 +57,7 @@ function AppProviders({ children }: ProvidersProps) {
               <ThemeEnhancer />
               <LoadingOverlay
                 isLoading={isLoading}
-                text="Initializing StreamWorks..."
+                text="Initializing Streamworks..."
                 size="lg"
               />
               {children}
@@ -66,7 +66,7 @@ function AppProviders({ children }: ProvidersProps) {
           </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
-    </StreamWorksErrorBoundary>
+    </StreamworksErrorBoundary>
   )
 }
 

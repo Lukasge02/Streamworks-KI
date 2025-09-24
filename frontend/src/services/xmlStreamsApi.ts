@@ -123,12 +123,12 @@ function serializeError(error: any): string {
 class XMLStreamsApi {
   private baseUrl: string
 
-  constructor(baseUrl = '/api/xml-streams') {
+  constructor(baseUrl = '/api/streamworks/sessions') {
     this.baseUrl = baseUrl
   }
 
   /**
-   * Get list of XML streams with filtering and pagination
+   * Get list of LangExtract sessions formatted as XML streams
    */
   async listStreams(
     filters: StreamFilters = {},
@@ -137,60 +137,109 @@ class XMLStreamsApi {
     offset: number = 0
   ): Promise<StreamListResponse> {
     const params = new URLSearchParams()
-    
+
     if (filters.search) params.append('search', filters.search)
-    if (filters.job_types) filters.job_types.forEach(type => params.append('job_types', type))
-    if (filters.statuses) filters.statuses.forEach(status => params.append('statuses', status))
-    if (filters.tags) filters.tags.forEach(tag => params.append('tags', tag))
-    if (filters.is_favorite !== undefined) params.append('is_favorite', String(filters.is_favorite))
-    if (filters.created_after) params.append('created_after', filters.created_after)
-    if (filters.created_before) params.append('created_before', filters.created_before)
-    
+    if (filters.job_types) params.append('job_types', filters.job_types.join(','))
+    if (filters.statuses) params.append('statuses', filters.statuses.join(','))
+    // Note: LangExtract sessions don't have tags/favorites, so we skip those filters
+
     params.append('sort_by', sortBy)
     params.append('limit', String(limit))
     params.append('offset', String(offset))
 
-    const response = await fetch(`${this.baseUrl}?${params}`)
+    const response = await fetch(`${this.baseUrl}/as-streams?${params}`)
     if (!response.ok) {
-      throw new Error(`Failed to fetch streams: ${response.statusText}`)
+      throw new Error(`Failed to fetch sessions as streams: ${response.statusText}`)
     }
-    
+
     return response.json()
   }
 
   /**
-   * Get a specific stream by ID
+   * Get a specific session formatted as stream by ID
    */
   async getStream(streamId: string): Promise<XMLStream> {
     const response = await fetch(`${this.baseUrl}/${streamId}`)
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error('Stream not found')
+        throw new Error('Session not found')
       }
-      throw new Error(`Failed to fetch stream: ${response.statusText}`)
+      throw new Error(`Failed to fetch session: ${response.statusText}`)
     }
-    
-    return response.json()
+
+    const sessionData = await response.json()
+
+    // Convert session data to stream format for consistency
+    const sessionParams = sessionData.session_data?.stream_parameters || {}
+    const jobParams = sessionData.session_data?.jobs?.[0]?.parameters || {}
+
+    return {
+      id: sessionData.session_id,
+      stream_name: sessionParams.StreamName || sessionParams.streamName || `Session ${sessionData.session_id.slice(0, 8)}`,
+      description: sessionParams.ShortDescription || sessionParams.description || "LangExtract Session",
+      xml_content: null,
+      wizard_data: {
+        stream_parameters: sessionParams,
+        job_parameters: jobParams,
+        session_source: "langextract"
+      },
+      job_type: sessionData.job_type || 'standard',
+      status: (Object.keys(sessionParams).length + Object.keys(jobParams).length) >= 2 ? 'complete' : 'draft',
+      created_by: "langextract_system",
+      created_at: sessionData.created_at || new Date().toISOString(),
+      updated_at: sessionData.last_message_at || sessionData.created_at || new Date().toISOString(),
+      last_generated_at: null,
+      tags: [`job-${sessionData.job_type || 'standard'}`, "langextract"],
+      is_favorite: false,
+      version: 1,
+      template_id: null
+    }
   }
 
   /**
-   * Create a new XML stream
+   * Create a new LangExtract session (formatted as stream)
    */
   async createStream(data: CreateStreamRequest): Promise<XMLStream> {
+    // Create new LangExtract session instead of XML stream
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        job_type: data.job_type || 'standard'
+      }),
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || `Failed to create stream: ${response.statusText}`)
+      throw new Error(errorData.detail || `Failed to create session: ${response.statusText}`)
     }
 
-    return response.json()
+    const sessionResponse = await response.json()
+
+    // Return in stream format
+    return {
+      id: sessionResponse.session_id,
+      stream_name: data.stream_name || "New Session",
+      description: data.description || "New LangExtract Session",
+      xml_content: null,
+      wizard_data: {
+        stream_parameters: {},
+        job_parameters: {},
+        session_source: "langextract"
+      },
+      job_type: sessionResponse.job_type || 'standard',
+      status: 'draft',
+      created_by: "langextract_system",
+      created_at: sessionResponse.created_at || new Date().toISOString(),
+      updated_at: sessionResponse.created_at || new Date().toISOString(),
+      last_generated_at: null,
+      tags: [`job-${sessionResponse.job_type || 'standard'}`, "langextract"],
+      is_favorite: false,
+      version: 1,
+      template_id: null
+    }
   }
 
   /**
@@ -305,17 +354,12 @@ class XMLStreamsApi {
   }
 
   /**
-   * Delete a stream
+   * Delete a LangExtract session (formatted as stream deletion)
    */
   async deleteStream(streamId: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/${streamId}`, {
-      method: 'DELETE',
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || `Failed to delete stream: ${response.statusText}`)
-    }
+    // For now, we'll throw an error since LangExtract sessions deletion
+    // should be handled through the LangExtract interface
+    throw new Error('Deletion of LangExtract sessions is not supported through stream interface. Please use the LangExtract chat interface.')
   }
 
   /**

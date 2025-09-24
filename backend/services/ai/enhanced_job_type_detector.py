@@ -1,5 +1,5 @@
 """
-Enhanced Job-Type Detector für StreamWorks-KI
+Enhanced Job-Type Detector für Streamworks-KI
 Verbesserte deutsche Spracherkennung mit Multi-Layer-Analyse
 """
 

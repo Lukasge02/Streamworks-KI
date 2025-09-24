@@ -37,7 +37,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, subtitle, icon: Icon, color, trend, loading }: MetricCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+    blue: 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400',
     green: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',
     yellow: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400',
     red: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400',
@@ -99,14 +99,14 @@ function ProgressBar({ title, value, max, color, subtitle }: ProgressBarProps) {
   const percentage = Math.min((value / max) * 100, 100)
   
   const colorClasses = {
-    blue: 'bg-blue-500',
+    blue: 'bg-primary-500',
     green: 'bg-green-500',
     yellow: 'bg-yellow-500',
     red: 'bg-red-500'
   }
 
   const bgColorClasses = {
-    blue: 'bg-blue-100 dark:bg-blue-900/20',
+    blue: 'bg-primary-100 dark:bg-primary-900/20',
     green: 'bg-green-100 dark:bg-green-900/20',
     yellow: 'bg-yellow-100 dark:bg-yellow-900/20',
     red: 'bg-red-100 dark:bg-red-900/20'
@@ -359,7 +359,7 @@ export function SystemMetrics() {
             {historicalData.slice(-5).reverse().map((data, index) => (
               <div key={index} className="flex items-center justify-between text-sm">
                 <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
                   <span>
                     {data.active_uploads} aktive, {data.processing_queue_size} wartend
                   </span>

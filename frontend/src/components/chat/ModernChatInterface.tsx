@@ -185,7 +185,7 @@ export const ModernChatInterface: React.FC = () => {
   const welcomeMessage = {
     id: 'welcome',
     type: 'assistant' as const,
-    content: 'Hallo! Ich bin der StreamWorks RAG Assistant. Ich kann Fragen zu deinen Dokumenten beantworten und dir bei StreamWorks-spezifischen Konfigurationen helfen. Was möchtest du wissen?',
+    content: 'Hallo! Ich bin der Streamworks RAG Assistant. Ich kann Fragen zu deinen Dokumenten beantworten und dir bei Streamworks-spezifischen Konfigurationen helfen. Was möchtest du wissen?',
     created_at: welcomeTimestamp,
     session_id: currentSessionId || '',
     sequence_number: 0,
@@ -254,7 +254,7 @@ export const ModernChatInterface: React.FC = () => {
                   placeholder="Chats durchsuchen..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
                 {searchQuery && (
                   <button
@@ -270,7 +270,7 @@ export const ModernChatInterface: React.FC = () => {
               <button
                 onClick={handleNewChat}
                 disabled={isAnyLoading}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>Neuer Chat</span>
@@ -327,7 +327,7 @@ export const ModernChatInterface: React.FC = () => {
                       }}
                       className={`w-full text-left p-3 rounded-lg transition-colors group cursor-pointer ${
                         session.id === currentSessionId
-                          ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
+                          ? 'bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700'
                           : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
                     >
@@ -393,13 +393,13 @@ export const ModernChatInterface: React.FC = () => {
               >
                 <History className="w-5 h-5 text-gray-600 dark:text-gray-300" />
               </button>
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                <Bot className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                  StreamWorks Assistant
-                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded">
+                  Streamworks Assistant
+                  <span className="ml-2 text-xs bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-400 px-2 py-1 rounded">
                     LlamaIndex RAG
                   </span>
                   <span className="ml-2 w-2 h-2 bg-green-500 rounded-full"></span>
@@ -409,7 +409,7 @@ export const ModernChatInterface: React.FC = () => {
 
             {/* Mode Display */}
             <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2">
-              <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <Zap className="w-4 h-4 text-primary-600 dark:text-primary-400" />
               <span className="ml-2 text-sm font-medium text-gray-900 dark:text-white">
                 Modern RAG
               </span>
@@ -436,17 +436,17 @@ export const ModernChatInterface: React.FC = () => {
                     <div className="flex flex-col items-center gap-1 flex-shrink-0">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-lg ${
                         message.type === 'user'
-                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600'
-                          : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                          ? 'bg-gradient-to-br from-primary-600 to-primary-700'
+                          : 'bg-gradient-to-br from-primary-500 to-primary-700'
                       }`}>
                         {message.type === 'user' ? (
-                          <span className="text-sm font-bold text-white">Sie</span>
+                          <span className="text-sm font-bold text-white">Du</span>
                         ) : (
                           <Sparkles className="w-5 h-5 text-white" />
                         )}
                       </div>
                       <span className="text-xs text-gray-500 font-medium">
-                        {message.type === 'user' ? 'Sie' : 'SKI'}
+                        {message.type === 'user' ? 'Du' : 'SKI'}
                       </span>
                     </div>
 
@@ -461,7 +461,7 @@ export const ModernChatInterface: React.FC = () => {
 
                       <div className={`p-4 rounded-xl shadow-sm ${
                         message.type === 'user'
-                          ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white'
+                          ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white'
                           : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
                       }`}>
                         {message.type === 'assistant' ? (
@@ -514,10 +514,10 @@ export const ModernChatInterface: React.FC = () => {
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Stelle eine Frage zu deinen StreamWorks Dokumenten..."
+                placeholder="Stelle eine Frage zu deinen Streamworks Dokumenten..."
                 disabled={!canSendMessage}
                 rows={1}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 disabled:opacity-50"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 disabled:opacity-50"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()

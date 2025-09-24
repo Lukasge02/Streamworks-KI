@@ -8,7 +8,7 @@ import json
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-from models.langextract_models import StreamWorksSession, SessionState
+from models.langextract_models import StreamworksSession, SessionState
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class MCPSessionPersistenceService:
         self.enabled = True  # Immer enabled da MCP verfügbar ist
         logger.info("✅ MCP Session Persistence Service initialized")
 
-    async def save_session(self, session: StreamWorksSession, retry_count: int = 3) -> bool:
+    async def save_session(self, session: StreamworksSession, retry_count: int = 3) -> bool:
         """
         Save session to Supabase using direct SQL via MCP
         """
@@ -158,7 +158,7 @@ class MCPSessionPersistenceService:
                 logger.error(f"❌ Fallback save also failed for {session.session_id}: {str(fallback_error)}")
                 return False
 
-    async def load_session(self, session_id: str, retry_count: int = 3) -> Optional[StreamWorksSession]:
+    async def load_session(self, session_id: str, retry_count: int = 3) -> Optional[StreamworksSession]:
         """
         Load session from Supabase using direct SQL via MCP
         """
@@ -172,8 +172,8 @@ class MCPSessionPersistenceService:
                 session_data = result[0]
                 logger.info(f"📥 Session loaded from MCP: {session_id}")
 
-                # Convert back to StreamWorksSession
-                session = StreamWorksSession(
+                # Convert back to StreamworksSession
+                session = StreamworksSession(
                     session_id=session_data["session_id"],
                     job_type=session_data.get("job_type"),
                     stream_parameters=session_data.get("stream_parameters", {}),

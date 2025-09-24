@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 # Models
 from models.langextract_models import (
-    StreamWorksSession,
+    StreamworksSession,
     LangExtractRequest,
     LangExtractResponse,
     StreamParameter,
@@ -48,7 +48,7 @@ class UnifiedLangExtractService:
 
     Features:
     - ✨ Pure LangExtract Integration
-    - 🎯 StreamWorks-optimierte Prompts
+    - 🎯 Streamworks-optimierte Prompts
     - 📊 Real-time Source Grounding
     - 🔄 Session Management
     - ⚡ Performance Optimiert
@@ -61,12 +61,12 @@ class UnifiedLangExtractService:
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.model_id = "gpt-4o"
 
-        # StreamWorks Schema Loader
-        self.schema_loader = StreamWorksSchemaLoader()
+        # Streamworks Schema Loader
+        self.schema_loader = StreamworksSchemaLoader()
         self.schemas = self.schema_loader.load_all_schemas()
 
         # Session Management (Hybrid: Memory + Persistence)
-        self.sessions: Dict[str, StreamWorksSession] = {}
+        self.sessions: Dict[str, StreamworksSession] = {}
         self.persistence_service = get_sqlalchemy_session_persistence_service()
 
         # XML Generation Components
@@ -86,12 +86,12 @@ class UnifiedLangExtractService:
         logger.info(f"💾 Session persistence: {'enabled' if self.persistence_service.is_enabled() else 'disabled'}")
         logger.info(f"🎯 Enhanced job-type detection enabled with 88.9% accuracy")
 
-    async def create_session(self, job_type: Optional[str] = None) -> StreamWorksSession:
-        """Create new StreamWorks session with automatic persistence"""
+    async def create_session(self, job_type: Optional[str] = None) -> StreamworksSession:
+        """Create new Streamworks session with automatic persistence"""
 
         session_id = f"streamworks_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{id(self) % 10000}"
 
-        session = StreamWorksSession(
+        session = StreamworksSession(
             session_id=session_id,
             job_type=job_type,
             state=SessionState.STREAM_CONFIGURATION,
@@ -247,7 +247,7 @@ class UnifiedLangExtractService:
     async def _extract_parameters_langextract(
         self,
         user_message: str,
-        session: StreamWorksSession
+        session: StreamworksSession
     ) -> ExtractionResult:
         """🎯 Core LangExtract Parameter Extraction"""
 
@@ -256,7 +256,7 @@ class UnifiedLangExtractService:
             logger.warning(f"No schema found for job type: {session.job_type}")
             return ExtractionResult()
 
-        # Build StreamWorks-optimized prompt
+        # Build Streamworks-optimized prompt
         extraction_prompt = self._build_streamworks_prompt(schema, session)
 
         # Get examples for this job type
@@ -274,7 +274,7 @@ class UnifiedLangExtractService:
                 extraction_errors=[f"Extraction failed: {str(e)}"]
             )
 
-    async def _extract_with_langextract(self, user_message: str, extraction_prompt: str, examples: List[Dict], session: StreamWorksSession) -> ExtractionResult:
+    async def _extract_with_langextract(self, user_message: str, extraction_prompt: str, examples: List[Dict], session: StreamworksSession) -> ExtractionResult:
         """Enhanced LangExtract call for parameter extraction with source grounding"""
 
         try:
@@ -350,7 +350,7 @@ class UnifiedLangExtractService:
             logger.error(f"❌ Failed to convert examples to LangExtract format: {e}")
             return []
 
-    async def _extract_with_openai_direct(self, user_message: str, extraction_prompt: str, examples: List[Dict], session: StreamWorksSession) -> ExtractionResult:
+    async def _extract_with_openai_direct(self, user_message: str, extraction_prompt: str, examples: List[Dict], session: StreamworksSession) -> ExtractionResult:
         """Direct OpenAI call for parameter extraction (bypass LangExtract issues)"""
 
         try:
@@ -393,8 +393,8 @@ Return ONLY a valid JSON object with the extracted parameters. No explanations.
                 extraction_errors=[f"Direct OpenAI extraction failed: {str(e)}"]
             )
 
-    def _build_streamworks_prompt(self, schema: Dict[str, Any], session: StreamWorksSession) -> str:
-        """🎯 Build StreamWorks-optimized prompt from LangExtract schema v2.0"""
+    def _build_streamworks_prompt(self, schema: Dict[str, Any], session: StreamworksSession) -> str:
+        """🎯 Build Streamworks-optimized prompt from LangExtract schema v2.0"""
 
         job_type = session.job_type or "UNKNOWN"
 
@@ -739,9 +739,9 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
         langextract_result: Any,
         schema: Dict[str, Any],
         original_text: str,
-        session: Optional[StreamWorksSession] = None
+        session: Optional[StreamworksSession] = None
     ) -> ExtractionResult:
-        """Parse LangExtract result into StreamWorks format with flexible parameter handling"""
+        """Parse LangExtract result into Streamworks format with flexible parameter handling"""
 
         stream_parameters = {}
         job_parameters = {}
@@ -785,7 +785,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
                             param_value = extraction.extraction_text
 
                             # Apply PERFECT Schema parameter mapping
-                            if param_name in ["StreamName", "MaxStreamRuns", "SchedulingRequiredFlag", "StartTime"]:
+                            if param_name in ["StreamName", "Agent", "MaxStreamRuns", "SchedulingRequiredFlag", "StartTime"]:
                                 # These are stream parameters in PERFECT schema
                                 if param_name == "SchedulingRequiredFlag":
                                     # Convert string to boolean
@@ -809,7 +809,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
                     logger.warning(f"🚨 No extractions found in LangExtract result - using minimal fallback")
 
                     # Only process result_data if it has PERFECT schema parameters
-                    perfect_stream_params = ["StreamName", "MaxStreamRuns", "SchedulingRequiredFlag", "StartTime"]
+                    perfect_stream_params = ["StreamName", "Agent", "MaxStreamRuns", "SchedulingRequiredFlag", "StartTime"]
                     perfect_job_params = {
                         "FILE_TRANSFER": ["source_agent", "target_agent", "source_path", "target_path"],
                         "SAP": ["system", "report", "variant"],
@@ -974,7 +974,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
 
     async def _build_response(
         self,
-        session: StreamWorksSession,
+        session: StreamworksSession,
         extraction_result: ExtractionResult,
         original_message: str,
         processing_time: float
@@ -1022,7 +1022,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
             session_state=session.state.value
         )
 
-    def _generate_next_question(self, session: StreamWorksSession, extraction_result: ExtractionResult) -> str:
+    def _generate_next_question(self, session: StreamworksSession, extraction_result: ExtractionResult) -> str:
         """Generate intelligent next question based on extracted parameters"""
 
         # Get extracted parameters count for response customization
@@ -1044,7 +1044,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
 
             # Check if StreamName is still missing (most critical)
             if "StreamName" not in session.stream_parameters:
-                return acknowledgment + "Wie soll Ihr StreamWorks-Stream heißen?"
+                return acknowledgment + "Wie soll Ihr Streamworks-Stream heißen?"
 
             # Check for missing critical parameters based on job type
             if session.job_type == "SAP":
@@ -1062,7 +1062,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
             # If we have good completion, offer next steps
             total_params = len(extraction_result.stream_parameters) + len(extraction_result.job_parameters)
             if total_params >= 5:
-                return acknowledgment + "Ihre StreamWorks-Konfiguration sieht gut aus! Soll ich das XML generieren oder benötigen Sie weitere Parameter?"
+                return acknowledgment + "Ihre Streamworks-Konfiguration sieht gut aus! Soll ich das XML generieren oder benötigen Sie weitere Parameter?"
 
             # Ask for more details
             return acknowledgment + "Können Sie weitere Details zu Ihrem Stream angeben?"
@@ -1070,12 +1070,12 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
         # No parameters extracted yet - check if StreamName is missing
         if "StreamName" not in session.stream_parameters:
             # Be less demanding if they provided any name-like input
-            return "Wie soll Ihr StreamWorks-Stream heißen? Dieser Name identifiziert Ihren Stream eindeutig."
+            return "Wie soll Ihr Streamworks-Stream heißen? Dieser Name identifiziert Ihren Stream eindeutig."
 
         # Fallback
         return "Können Sie weitere Details zu Ihrem Stream angeben?"
 
-    def _generate_suggestions(self, session: StreamWorksSession, extraction_result: ExtractionResult) -> List[str]:
+    def _generate_suggestions(self, session: StreamworksSession, extraction_result: ExtractionResult) -> List[str]:
         """Generate smart suggestions based on current state"""
 
         suggestions = []
@@ -1105,7 +1105,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
         )
 
 
-    async def _get_session_async(self, session_id: str) -> Optional[StreamWorksSession]:
+    async def _get_session_async(self, session_id: str) -> Optional[StreamworksSession]:
         """Get session from memory or load from persistence"""
 
         # First check memory cache
@@ -1126,7 +1126,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
 
         return None
 
-    async def _save_session_async(self, session: StreamWorksSession) -> bool:
+    async def _save_session_async(self, session: StreamworksSession) -> bool:
         """Save session to persistence asynchronously"""
 
         logger.info(f"🔄 ATTEMPTING to save session: {session.session_id}")
@@ -1215,7 +1215,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
         job_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        🎯 Generate StreamWorks XML from extracted parameters
+        🎯 Generate Streamworks XML from extracted parameters
 
         Args:
             session_id: Session ID containing extracted parameters
@@ -1281,7 +1281,8 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
             # 🗄️ Store XML in dual storage (Supabase + Local)
             storage_request = XMLStorageRequest(
                 session_id=session_id,
-                stream_name=mapped_parameters.get("stream_name", f"STREAM_{target_job_type}"),
+                # ⚠️ STREAM PREFIX: Fallback stream name with 'zsw_' prefix
+                stream_name=mapped_parameters.get("stream_name", f"zsw_{target_job_type}"),
                 job_type=target_job_type,
                 xml_content=xml_content,
                 parameters_used=mapped_parameters,
@@ -1558,7 +1559,7 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
         logger.info(f"🧹 Cleaned {len(parameters)} → {len(cleaned)} parameters for frontend")
         return cleaned
 
-    def _calculate_completion_percentage(self, session: StreamWorksSession) -> float:
+    def _calculate_completion_percentage(self, session: StreamworksSession) -> float:
         """Calculate session completion percentage based on extracted parameters"""
         try:
             # Clean parameters before counting
@@ -1584,8 +1585,8 @@ ANTWORT FORMAT: JSON mit extrahierten Parametern"""
             return 0.0
 
 
-class StreamWorksSchemaLoader:
-    """Load StreamWorks schemas for LangExtract"""
+class StreamworksSchemaLoader:
+    """Load Streamworks schemas for LangExtract"""
 
     def __init__(self):
         self.schema_path = Path(__file__).parent.parent.parent.parent / "templates" / "langextract_schemas.json"
@@ -1598,7 +1599,7 @@ class StreamWorksSchemaLoader:
                 data = json.load(f)
 
             schemas = data.get('parameter_extraction', {})
-            logger.info(f"✅ StreamWorksSchemaLoader loaded {len(schemas)} schemas v{data.get('version', '2.0')}")
+            logger.info(f"✅ StreamworksSchemaLoader loaded {len(schemas)} schemas v{data.get('version', '2.0')}")
             return schemas
 
         except Exception as e:

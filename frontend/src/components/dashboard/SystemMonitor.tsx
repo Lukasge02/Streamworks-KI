@@ -152,7 +152,7 @@ export function SystemMonitor() {
         // Mock recent activity
         const activities: RecentActivity[] = [
           { timestamp: new Date(Date.now() - 120000).toISOString(), type: 'qa', message: 'Q&A request processed successfully', user: 'admin', duration: 1.1, status: 'success' },
-          { timestamp: new Date(Date.now() - 180000).toISOString(), type: 'upload', message: 'Document processed: "StreamWorks Manual.pdf"', duration: 8.5, status: 'success' },
+          { timestamp: new Date(Date.now() - 180000).toISOString(), type: 'upload', message: 'Document processed: "Streamworks Manual.pdf"', duration: 8.5, status: 'success' },
           { timestamp: new Date(Date.now() - 240000).toISOString(), type: 'xml', message: 'XML workflow generated for ETL pipeline', duration: 4.2, status: 'success' },
           { timestamp: new Date(Date.now() - 300000).toISOString(), type: 'qa', message: 'Q&A request processed successfully', user: 'user1', duration: 0.9, status: 'success' },
           { timestamp: new Date(Date.now() - 360000).toISOString(), type: 'error', message: 'Vector database connection timeout', status: 'error' }

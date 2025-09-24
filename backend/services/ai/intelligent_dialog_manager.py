@@ -120,7 +120,7 @@ class IntelligentDialogManager:
 
         # Template für Session-Type Auswahl (Stream vs Job)
         templates["session_type_selection"] = ChatPromptTemplate.from_template("""
-Du bist ein intelligenter Assistent für StreamWorks-Konfiguration.
+Du bist ein intelligenter Assistent für Streamworks-Konfiguration.
 
 Der User hat eine Anfrage gestellt. Analysiere, ob er einen vollständigen Stream oder nur einen einzelnen Job konfigurieren möchte.
 
@@ -396,7 +396,7 @@ Stil: Ermutigend, klar, handlungsorientiert. Maximal 3 Sätze.
         else:
             # Starte mit Stream-Parameter Sammlung
             return DialogResponse(
-                message="Willkommen! Ich helfe Ihnen bei der Konfiguration eines StreamWorks-Streams. 🚀\n\nJeder Stream benötigt zuerst grundlegende Eigenschaften. Wie soll Ihr Stream heißen?",
+                message="Willkommen! Ich helfe Ihnen bei der Konfiguration eines Streamworks-Streams. 🚀\n\nJeder Stream benötigt zuerst grundlegende Eigenschaften. Wie soll Ihr Stream heißen?",
                 state=DialogState.STREAM_CONFIGURATION,
                 priority=DialogPriority.CRITICAL,
                 next_parameter="StreamName",

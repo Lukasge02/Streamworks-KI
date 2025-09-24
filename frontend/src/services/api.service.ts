@@ -1,5 +1,5 @@
 /**
- * Modern API Service for StreamWorks Document Management
+ * Modern API Service for Streamworks Document Management
  * Enterprise-grade HTTP client with TypeScript support
  */
 
@@ -438,6 +438,30 @@ class ApiService {
     })
   }
 
+  async createLangExtractSessionFromStream(streamId: string): Promise<{
+    session_id: string;
+    message: string;
+    suggested_questions: string[];
+    source_stream: {
+      id: string;
+      name: string;
+      description: string;
+    }
+  }> {
+    return this.request<{
+      session_id: string;
+      message: string;
+      suggested_questions: string[];
+      source_stream: {
+        id: string;
+        name: string;
+        description: string;
+      }
+    }>(`/api/streamworks/sessions/from-stream/${streamId}`, {
+      method: 'POST'
+    })
+  }
+
   async getLangExtractSession(sessionId: string): Promise<LangExtractSession> {
     return this.request<LangExtractSession>(`/api/streamworks/sessions/${sessionId}`)
   }
@@ -511,11 +535,12 @@ class ApiService {
 
   // XML Generation
   async generateLangExtractXML(request: LangExtractXMLGenerationRequest): Promise<LangExtractXMLGenerationResponse> {
-    return this.request<LangExtractXMLGenerationResponse>(`/api/streamworks/sessions/${request.session_id}/generate-xml`, {
+    return this.request<LangExtractXMLGenerationResponse>(`/api/xml-generator/template/generate`, {
       method: 'POST',
       body: JSON.stringify({
-        force_generation: request.force_generation,
-        custom_template: request.custom_template
+        session_id: request.session_id,
+        job_type: request.job_type,
+        force_regenerate: request.force_generation || false
       })
     })
   }

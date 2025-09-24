@@ -13,6 +13,8 @@ from services.ai_response_cache import get_ai_cache_stats
 from services.rag.unified_rag_service import get_unified_rag_service
 from services.qdrant_rag_service import get_rag_service
 from services.advanced_cache_system import get_advanced_cache
+from services.rag_metrics_service import get_rag_metrics_service
+from models.rag_metrics import LiveMetricsResponse
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,35 @@ async def get_realtime_metrics() -> Dict[str, Any]:
         base_rag = await get_rag_service()
         base_health = await base_rag.health_check()
 
+        # Get enhanced RAG metrics
+        try:
+            rag_metrics_service = await get_rag_metrics_service()
+            rag_live_metrics = await rag_metrics_service.get_live_metrics()
+            rag_enhanced_data = LiveMetricsResponse(**rag_live_metrics).dict()
+        except Exception as e:
+            logger.warning(f"RAG metrics service not available: {str(e)}")
+            rag_enhanced_data = {
+                "status": "initializing",
+                "window_minutes": 15,
+                "updated_at": datetime.now().isoformat(),
+                "totals": {
+                    "queries": 0,
+                    "successful": 0,
+                    "failed": 0,
+                    "cache_hit_rate": 0.0,
+                },
+                "latency": {
+                    "average_ms": 0.0,
+                    "p95_ms": 0.0,
+                    "p99_ms": 0.0,
+                },
+                "quality": {
+                    "avg_relevance": 0.0,
+                    "avg_sources_per_query": 0.0,
+                    "unique_sources": 0,
+                },
+            }
+
         return {
             "timestamp": datetime.now().isoformat(),
             "performance": performance_stats,
@@ -61,6 +92,7 @@ async def get_realtime_metrics() -> Dict[str, Any]:
                 "unified_rag_performance": rag_performance,
                 "base_rag": base_health
             },
+            "rag_metrics": rag_enhanced_data,
             "system_status": _determine_system_status(performance_stats, cache_stats)
         }
 
@@ -85,29 +117,47 @@ async def get_dashboard_metrics(
         # Get base metrics
         realtime_data = await get_realtime_metrics()
         performance_stats = realtime_data["performance"]
+        rag_metrics = realtime_data.get("rag_metrics", {})
+
+        rag_latency = rag_metrics.get("latency", {})
+        rag_quality = rag_metrics.get("quality", {})
+        rag_totals = rag_metrics.get("totals", {})
+
+        # Use RAG metrics if available, otherwise fall back to performance stats
+        current_response_time = rag_latency.get("average_ms", 0) or performance_stats.get("overall", {}).get("avg_response_time_ms", 0)
+        source_quality_percentage = (
+            rag_quality.get("avg_relevance", 0) * 100
+            if rag_quality.get("avg_relevance", 0) > 0
+            else _calculate_source_quality(performance_stats)
+        )
+        cache_hit_rate = (
+            rag_totals.get("cache_hit_rate", 0) * 100
+            if rag_totals.get("cache_hit_rate", 0) > 0
+            else realtime_data["cache"].get("hit_rate", 0)
+        )
 
         # Calculate dashboard-specific metrics
         dashboard_metrics = {
             "processing_time": {
-                "current_ms": performance_stats.get("overall", {}).get("avg_response_time_ms", 0),
+                "current_ms": current_response_time,
                 "target_ms": 2000,
-                "status": _get_performance_status(performance_stats.get("overall", {}).get("avg_response_time_ms", 0)),
+                "status": _get_performance_status(current_response_time),
                 "trend": "stable"  # TODO: Implement trend calculation
             },
             "source_quality": {
-                "percentage": _calculate_source_quality(performance_stats),
+                "percentage": source_quality_percentage,
                 "target_percentage": 80,
-                "status": "good",  # TODO: Calculate based on actual quality metrics
-                "total_sources": _get_total_sources_count(performance_stats)
+                "status": _get_quality_status(source_quality_percentage),
+                "total_sources": rag_quality.get("unique_sources", _get_total_sources_count(performance_stats))
             },
             "cache_performance": {
-                "hit_rate_percentage": realtime_data["cache"].get("hit_rate", 0),
+                "hit_rate_percentage": cache_hit_rate,
                 "target_percentage": 95,
-                "status": _get_cache_status(realtime_data["cache"].get("hit_rate", 0)),
-                "total_requests": realtime_data["cache"].get("total_requests", 0)
+                "status": _get_cache_status(cache_hit_rate),
+                "total_requests": rag_totals.get("queries", realtime_data["cache"].get("total_requests", 0))
             },
             "system_health": {
-                "overall_status": realtime_data["system_status"],
+                "overall_status": rag_metrics.get("status", realtime_data.get("system_status", "unknown")),
                 "components": _get_component_health(performance_stats.get("components", {})),
                 "bottlenecks": performance_stats.get("bottlenecks", []),
                 "alerts": performance_stats.get("recent_alerts", [])
@@ -280,6 +330,71 @@ async def get_cache_statistics() -> Dict[str, Any]:
         logger.error(f"Failed to get cache statistics: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve cache statistics: {str(e)}")
 
+@router.get("/metrics/rag-unified")
+async def get_unified_rag_metrics() -> Dict[str, Any]:
+    """
+    Get unified RAG metrics compatible with both RAGMetrics and EnhancedRAGMetrics components
+
+    Returns:
+        Unified metrics format that works with both frontend systems
+    """
+    try:
+        # Get realtime data
+        realtime_data = await get_realtime_metrics()
+        rag_metrics = realtime_data.get("rag_metrics", {})
+
+        unified_response = {
+            "timestamp": datetime.now().isoformat(),
+            "live_metrics": rag_metrics,
+            "performance": realtime_data.get("performance", {}),
+            "cache": realtime_data.get("cache", {}),
+            "rag_services": realtime_data.get("rag_services", {}),
+            "system_status": realtime_data.get("system_status", "unknown"),
+            "is_connected": rag_metrics.get("status") in {"ok", "degraded"},
+            "last_activity": datetime.now().isoformat(),
+        }
+
+        logger.info(
+            "Unified RAG metrics served - status %s",
+            rag_metrics.get("status", "unknown"),
+        )
+        return unified_response
+
+    except Exception as e:
+        logger.error(f"❌ Failed to get unified RAG metrics: {str(e)}")
+        # Return empty but valid structure
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "live_metrics": {
+                "status": "error",
+                "window_minutes": 15,
+                "updated_at": datetime.now().isoformat(),
+                "totals": {
+                    "queries": 0,
+                    "successful": 0,
+                    "failed": 0,
+                    "cache_hit_rate": 0.0,
+                },
+                "latency": {
+                    "average_ms": 0.0,
+                    "p95_ms": 0.0,
+                    "p99_ms": 0.0,
+                },
+                "quality": {
+                    "avg_relevance": 0.0,
+                    "avg_sources_per_query": 0.0,
+                    "unique_sources": 0,
+                },
+            },
+            "performance": {"status": "no_data"},
+            "cache": {"hit_rate": 0, "hits": 0, "misses": 0},
+            "rag_services": {},
+            "system_status": "error",
+            "is_connected": False,
+            "last_activity": datetime.now().isoformat(),
+            "error": str(e),
+        }
+
 @router.post("/reset-stats")
 async def reset_performance_stats() -> Dict[str, str]:
     """
@@ -349,6 +464,17 @@ def _get_cache_status(hit_rate: float) -> str:
     elif hit_rate >= 85:
         return "good"
     elif hit_rate >= 70:
+        return "acceptable"
+    else:
+        return "poor"
+
+def _get_quality_status(quality_percentage: float) -> str:
+    """Get quality status based on source quality percentage"""
+    if quality_percentage >= 85:
+        return "excellent"
+    elif quality_percentage >= 75:
+        return "good"
+    elif quality_percentage >= 60:
         return "acceptable"
     else:
         return "poor"

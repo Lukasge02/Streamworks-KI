@@ -121,7 +121,7 @@ class ChatSessionService:
         # Willkommensnachricht hinzufügen
         welcome_message = self._create_message(
             MessageType.SYSTEM_PROMPT,
-            "Willkommen beim XML-Generator! Ich helfe Ihnen dabei, eine StreamWorks XML-Konfiguration zu erstellen. "
+            "Willkommen beim XML-Generator! Ich helfe Ihnen dabei, eine Streamworks XML-Konfiguration zu erstellen. "
             "Welchen Job-Type möchten Sie erstellen?",
             session
         )

@@ -1,5 +1,5 @@
 /**
- * Enterprise-grade resilience utilities for StreamWorks RAG System
+ * Enterprise-grade resilience utilities for Streamworks RAG System
  * Implements retry, circuit breaker, and exponential backoff patterns
  */
 

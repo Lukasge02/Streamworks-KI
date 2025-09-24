@@ -33,13 +33,13 @@ const STATUS_CONFIG = {
   },
   uploading: {
     label: 'Wird hochgeladen',
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    color: 'bg-primary-100 text-primary-800 border-primary-200',
     icon: CloudArrowUpIcon,
     pulse: true
   },
   analyzing: {
     label: 'Wird analysiert',
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    color: 'bg-primary-100 text-primary-800 border-primary-200',
     icon: MagnifyingGlassIcon,
     pulse: true
   },

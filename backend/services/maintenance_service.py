@@ -1,5 +1,5 @@
 """
-Maintenance Service for StreamWorks
+Maintenance Service for Streamworks
 Qdrant Vector Store architecture
 Handles cleanup operations, consistency checks, and system maintenance tasks
 """

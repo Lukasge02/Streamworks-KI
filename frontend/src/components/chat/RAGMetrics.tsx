@@ -46,7 +46,7 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
 }) => {
   const [showDetails, setShowDetails] = useState(false)
 
-  // Use real performance metrics
+  // Use real performance metrics with unified API
   const {
     dashboardMetrics,
     metrics,
@@ -64,7 +64,11 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
 
   // Use real-time performance data with fallbacks to props
   const realProcessingTime = dashboardMetrics?.dashboard_metrics.processing_time.current_ms ||
-                            (processing_time ? parseFloat(processing_time.replace('ms', '').replace('s', '000')) : 0)
+                            (processing_time ? (
+                              typeof processing_time === 'string'
+                                ? parseFloat(processing_time.replace('ms', '').replace('s', '000'))
+                                : processing_time
+                            ) : 0)
 
   const realSourceQuality = performanceSourceQuality ||
                            (sources.length > 0 ? ((1 - (sources.reduce((sum, source) =>
@@ -143,10 +147,10 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                RAG Performance Metriken
+                Enhanced RAG Metriken
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Echtzeit-Analyse der Abruf- und Verarbeitungsqualität
+                {isConnected ? 'Live Performance & Source Tracking' : 'Verbindung wird aufgebaut...'}
               </p>
             </div>
           </div>
@@ -297,22 +301,42 @@ export const RAGMetrics: React.FC<RAGMetricsProps> = ({
                     {sources.length > 0 && (
                       <div className="space-y-2">
                         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Top Quellen
+                          Verwendete Quellen ({sources.length})
                         </div>
-                        {sources.slice(0, 3).map((source, index) => (
-                          <div key={index} className="flex items-center justify-between text-xs">
-                            <span className="text-gray-600 dark:text-gray-400 truncate flex-1 mr-2">
-                              {source.metadata.original_filename || `Quelle ${index + 1}`}
-                            </span>
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {source.relevance_score !== undefined
-                                ? `${Math.round((1 - source.relevance_score) * 100)}%`
-                                : 'N/A'}
-                            </span>
-                          </div>
-                        ))}
+                        {sources.slice(0, 3).map((source, index) => {
+                          const filename = source.metadata?.original_filename || 'Unknown Document'
+                          const relevanceScore = source.relevance_score || source.score || 0
+                          const relevancePercentage = Math.round(relevanceScore * 100)
+
+                          return (
+                            <div key={source.id || index} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                              <div className="flex-1 mr-2">
+                                <div className="text-gray-600 dark:text-gray-400 truncate font-medium">
+                                  {filename}
+                                </div>
+                                {source.metadata?.page_number && (
+                                  <div className="text-gray-500 text-xs">
+                                    Seite {source.metadata.page_number}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className={`font-medium ${
+                                  relevancePercentage >= 80 ? 'text-emerald-600' :
+                                  relevancePercentage >= 60 ? 'text-amber-600' :
+                                  'text-red-600'
+                                }`}>
+                                  {relevancePercentage}%
+                                </div>
+                                <div className="text-gray-400 text-xs">
+                                  Relevanz
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                         {sources.length > 3 && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-1">
                             +{sources.length - 3} weitere Quellen
                           </div>
                         )}

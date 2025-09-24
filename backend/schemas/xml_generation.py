@@ -1,5 +1,5 @@
 """
-XML Generation Schemas for StreamWorks XML Generator
+XML Generation Schemas for Streamworks XML Generator
 """
 from typing import List, Optional, Any, Dict, Union
 from pydantic import BaseModel, Field

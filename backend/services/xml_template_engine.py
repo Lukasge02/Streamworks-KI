@@ -1,5 +1,5 @@
 """
-XML Template Engine for StreamWorks XML Generation
+XML Template Engine for Streamworks XML Generation
 Simple template-based generation using predefined templates with placeholders
 """
 import json
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class XMLTemplateEngine:
-    """Simple template engine for generating StreamWorks XML from templates"""
+    """Simple template engine for generating Streamworks XML from templates"""
     
     def __init__(self, templates_dir: str = "backend/templates"):
         # Use absolute path from project root
@@ -176,7 +176,7 @@ class XMLTemplateEngine:
     
     def generate_xml(self, wizard_data: WizardFormData, preview_mode: bool = False) -> XMLGenerationResult:
         """
-        Generate StreamWorks XML from wizard form data using templates
+        Generate Streamworks XML from wizard form data using templates
         
         Args:
             wizard_data: Form data from wizard (can be incomplete)

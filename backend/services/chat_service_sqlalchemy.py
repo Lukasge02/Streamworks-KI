@@ -25,6 +25,10 @@ class RAGMode(Enum):
     COMPREHENSIVE = "comprehensive"
 from .di_container import get_service
 from .chat_title_generator import chat_title_generator
+from services.rag_metrics_service import (
+    get_rag_metrics_service,
+    SourceReference as MetricsSourceReference,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +123,257 @@ class ChatServiceSQLAlchemy:
     async def _execute_rag_operation_with_retry(self, operation, operation_name: str):
         """Execute RAG operation with retry logic and longer timeout"""
         return await self._execute_with_retry(operation, operation_name, timeout=60.0)
+
+    @staticmethod
+    def _handle_background_task_result(task: asyncio.Task, label: str) -> None:
+        """Log unexpected exceptions from background tasks."""
+        if task.cancelled():
+            logger.debug(f"Background task {label} was cancelled")
+            return
+
+        exception = task.exception()
+        if exception:
+            logger.warning(f"Background task {label} failed: {exception}")
+
+    def _schedule_title_generation(self, *, session_id: str, user_message: str) -> None:
+        """Trigger chat title generation without blocking the main request."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.debug("No running event loop available for title generation task")
+            return
+
+        async def _generate_and_store_title() -> None:
+            try:
+                title = await chat_title_generator.generate_title_from_user_message(user_message)
+                if not title or title.strip() == "" or title == "Neue Unterhaltung":
+                    return
+
+                async with AsyncSessionLocal() as session:
+                    result = await session.execute(
+                        text("""
+                            UPDATE chat_sessions
+                            SET title = :title, updated_at = now()
+                            WHERE id = :session_id AND title = 'Neue Unterhaltung'
+                        """),
+                        {"session_id": session_id, "title": title}
+                    )
+
+                    await session.commit()
+
+                    if result.rowcount:
+                        logger.info(f"Auto-generated title '{title}' for session {session_id}")
+                    else:
+                        logger.debug(
+                            "Skipped title update for session %s because it already changed",
+                            session_id,
+                        )
+            except Exception as exc:
+                logger.warning(f"Failed to auto-generate title for session {session_id}: {exc}")
+
+        task = loop.create_task(
+            _generate_and_store_title(),
+            name=f"generate_chat_title:{session_id}"
+        )
+        task.add_done_callback(
+            lambda completed: self._handle_background_task_result(
+                completed, f"title_generation:{session_id}"
+            )
+        )
+
+    async def _record_rag_metrics(
+        self,
+        *,
+        query: str,
+        processing_mode: str,
+        session_id: str,
+        sources_payload,
+        response_time_ms: int,
+        cache_hit: bool = False,
+        error: Optional[str] = None,
+    ) -> None:
+        """Normalize RAG response metadata and forward it to the metrics service."""
+        try:
+            metrics_service = await get_rag_metrics_service()
+
+            source_refs: List[MetricsSourceReference] = []
+            for source in sources_payload or []:
+                parsed_ref = self._convert_to_metrics_source(source)
+                if parsed_ref:
+                    source_refs.append(parsed_ref)
+
+            await metrics_service.track_rag_query(
+                query=query,
+                sources=source_refs,
+                response_time_ms=max(response_time_ms, 0),
+                cache_hit=cache_hit,
+                mode=processing_mode,
+                session_id=session_id,
+                error=error,
+            )
+
+        except Exception as metrics_error:
+            logger.warning(f"Failed to track RAG metrics: {metrics_error}")
+
+    # ================================
+    # METRICS NORMALIZATION HELPERS
+    # ================================
+
+    @staticmethod
+    def _safe_float(value: Any) -> Optional[float]:
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _safe_int(value: Any) -> Optional[int]:
+        try:
+            if value is None:
+                return None
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _convert_to_metrics_source(self, source: Any) -> Optional[MetricsSourceReference]:
+        """Convert various RAG source payloads into a metrics reference."""
+        if isinstance(source, MetricsSourceReference):
+            return source
+
+        if not isinstance(source, dict):
+            return None
+
+        metadata = source.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        def first_value(*candidates: Any) -> Optional[Any]:
+            for candidate in candidates:
+                if candidate is None:
+                    continue
+                if isinstance(candidate, str) and not candidate.strip():
+                    continue
+                return candidate
+            return None
+
+        doc_id = first_value(
+            source.get("document_id"),
+            source.get("doc_id"),
+            metadata.get("document_id"),
+            metadata.get("doc_id"),
+            metadata.get("source_id"),
+            metadata.get("id"),
+        )
+        document_id = str(doc_id) if doc_id is not None else "unknown"
+
+        filename = first_value(
+            source.get("filename"),
+            metadata.get("filename"),
+            metadata.get("original_filename"),
+            metadata.get("document_name"),
+            metadata.get("title"),
+        ) or "Unknown Document"
+
+        page_number = self._safe_int(
+            first_value(
+                source.get("page_number"),
+                source.get("page"),
+                metadata.get("page_number"),
+                metadata.get("page"),
+                metadata.get("page_num"),
+            )
+        )
+
+        chunk_index = self._safe_int(
+            first_value(
+                source.get("chunk_index"),
+                source.get("index"),
+                metadata.get("chunk_index"),
+                metadata.get("chunk"),
+            )
+        )
+        if chunk_index is None:
+            chunk_index = 0
+
+        chunk_id = first_value(
+            source.get("chunk_id"),
+            metadata.get("chunk_id"),
+            metadata.get("id"),
+        )
+
+        section = first_value(
+            source.get("section"),
+            source.get("heading"),
+            metadata.get("section"),
+            metadata.get("heading"),
+            metadata.get("title"),
+        )
+
+        snippet = first_value(
+            source.get("snippet"),
+            metadata.get("snippet"),
+            metadata.get("text_preview"),
+            metadata.get("content_preview"),
+        )
+        if snippet is None:
+            snippet = source.get("content") or metadata.get("text") or ""
+        snippet = str(snippet)
+        if len(snippet) > 200:
+            snippet = snippet[:200]
+
+        relevance = self._safe_float(
+            first_value(
+                source.get("relevance_score"),
+                metadata.get("relevance_score"),
+                metadata.get("quality_score"),
+                source.get("score"),
+                metadata.get("score"),
+            )
+        )
+        if relevance is None:
+            relevance = 0.0
+        else:
+            if relevance < 0:
+                relevance = 0.0
+            if relevance > 1.0:
+                relevance = min(relevance, 1.0)
+
+        confidence = self._safe_float(
+            first_value(
+                source.get("confidence"),
+                metadata.get("confidence"),
+                metadata.get("quality_score"),
+            )
+        )
+        if confidence is None:
+            confidence = relevance
+        else:
+            if confidence < 0:
+                confidence = 0.0
+            if confidence > 1.0:
+                confidence = min(confidence, 1.0)
+
+        doc_type = first_value(
+            source.get("doc_type"),
+            metadata.get("doc_type"),
+            metadata.get("mime_type"),
+            metadata.get("document_type"),
+        )
+
+        return MetricsSourceReference(
+            document_id=document_id,
+            filename=str(filename),
+            page_number=page_number,
+            section=section,
+            relevance_score=relevance,
+            snippet=snippet,
+            chunk_index=chunk_index,
+            confidence=confidence,
+            doc_type=doc_type,
+            chunk_id=chunk_id,
+        )
 
     # ================================
     # SESSION MANAGEMENT
@@ -423,21 +678,8 @@ class ChatServiceSQLAlchemy:
                         """), {"session_id": session_id})
 
                         if result.fetchone():
-                            # Generate title immediately from this message
-                            title = await chat_title_generator.generate_title_from_user_message(content)
-
-                            # Update session title
-                            await session.execute(text("""
-                                UPDATE chat_sessions
-                                SET title = :title, updated_at = now()
-                                WHERE id = :session_id
-                            """), {
-                                "session_id": session_id,
-                                "title": title
-                            })
-
-                            await session.commit()
-                            logger.info(f"Auto-generated title '{title}' for session {session_id}")
+                            # Defer expensive title generation so we don't block the response
+                            self._schedule_title_generation(session_id=session_id, user_message=content)
                     except Exception as e:
                         logger.warning(f"Failed to auto-generate title: {str(e)}")
 
@@ -546,6 +788,15 @@ class ChatServiceSQLAlchemy:
             assistant_message_id = await self._execute_db_operation_with_retry(
                 _add_assistant_message,
                 "add_assistant_message"
+            )
+
+            await self._record_rag_metrics(
+                query=query,
+                processing_mode=processing_mode,
+                session_id=session_id,
+                sources_payload=rag_response_dict.get("sources", []),
+                response_time_ms=processing_time_ms,
+                cache_hit=bool(rag_response_dict.get("metadata", {}).get("cache_hit", False)),
             )
 
             # Title is now auto-generated in add_message when first user message is added
@@ -1071,6 +1322,8 @@ class ChatServiceSQLAlchemy:
         """
         await self._initialize()
 
+        start_time = time.time()
+
         try:
             # 1. Add user message to session
             user_message_id = await self.add_message(
@@ -1151,6 +1404,16 @@ class ChatServiceSQLAlchemy:
                         }
                     )
 
+                    processing_time_ms = int((time.time() - start_time) * 1000)
+                    await self._record_rag_metrics(
+                        query=query,
+                        processing_mode=processing_mode,
+                        session_id=session_id,
+                        sources_payload=rag_response.get("metadata", {}).get("sources", []),
+                        response_time_ms=processing_time_ms,
+                        cache_hit=bool(rag_response.get("metadata", {}).get("cache_hit", False)),
+                    )
+
                     yield {
                         "type": "done",
                         "session_id": session_id,
@@ -1170,6 +1433,16 @@ class ChatServiceSQLAlchemy:
                             "sources": rag_response.get("metadata", {}).get("sources", []),
                             "streaming": False
                         }
+                    )
+
+                    processing_time_ms = int((time.time() - start_time) * 1000)
+                    await self._record_rag_metrics(
+                        query=query,
+                        processing_mode=processing_mode,
+                        session_id=session_id,
+                        sources_payload=rag_response.get("metadata", {}).get("sources", []),
+                        response_time_ms=processing_time_ms,
+                        cache_hit=bool(rag_response.get("metadata", {}).get("cache_hit", False)),
                     )
 
                     yield {
@@ -1194,6 +1467,17 @@ class ChatServiceSQLAlchemy:
                     content=fallback_response
                 )
 
+                processing_time_ms = int((time.time() - start_time) * 1000)
+                await self._record_rag_metrics(
+                    query=query,
+                    processing_mode=processing_mode,
+                    session_id=session_id,
+                    sources_payload=[],
+                    response_time_ms=processing_time_ms,
+                    cache_hit=False,
+                    error="rag_service_unavailable",
+                )
+
                 yield {
                     "type": "content",
                     "content": fallback_response,
@@ -1208,6 +1492,16 @@ class ChatServiceSQLAlchemy:
 
         except Exception as e:
             logger.error(f"Streaming chat error: {str(e)}")
+            processing_time_ms = int((time.time() - start_time) * 1000)
+            await self._record_rag_metrics(
+                query=query,
+                processing_mode=processing_mode,
+                session_id=session_id,
+                sources_payload=[],
+                response_time_ms=processing_time_ms,
+                cache_hit=False,
+                error=str(e),
+            )
             yield {
                 "type": "error",
                 "content": f"Chat-Fehler: {str(e)}",

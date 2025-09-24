@@ -167,6 +167,13 @@ export const useChatStore = create<ChatState & ChatActions>()(
 
             state.messages[sessionId].push(newMessage)
 
+            // Set hasUnreadMessages to true if:
+            // 1. It's an assistant message (new AI response)
+            // 2. The floating chat is closed
+            if (messageData.type === 'assistant' && !state.isFloatingChatOpen) {
+              state.hasUnreadMessages = true
+            }
+
             // Update session if it exists
             const session = state.sessions.find((s) => s.id === sessionId)
             if (session) {

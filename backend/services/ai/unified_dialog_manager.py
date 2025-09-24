@@ -105,7 +105,7 @@ class UnifiedDialogManager:
 
         # Job-Type-Erkennung Template
         templates["job_type_detected"] = ChatPromptTemplate.from_template("""
-Du bist ein freundlicher StreamWorks-Assistent.
+Du bist ein freundlicher Streamworks-Assistent.
 
 Ich habe den Job-Type '{job_type}' ({display_name}) erkannt! 🎯
 
@@ -122,7 +122,7 @@ Antworte mit einer kurzen, freundlichen Bestätigung (max. 2-3 Sätze) und stell
 
         # Parameter-Sammlung Template
         templates["parameter_collection"] = ChatPromptTemplate.from_template("""
-Du bist ein hilfsreicher StreamWorks-Assistent.
+Du bist ein hilfsreicher Streamworks-Assistent.
 
 Status:
 - Job-Type: {job_type}
@@ -139,7 +139,7 @@ Maximal 2 Sätze, freundlich und klar.
 
         # Completion Template
         templates["completion"] = ChatPromptTemplate.from_template("""
-Du bist ein erfolgreicher StreamWorks-Assistent.
+Du bist ein erfolgreicher Streamworks-Assistent.
 
 Perfekt! Die Konfiguration ist vollständig! ✅
 

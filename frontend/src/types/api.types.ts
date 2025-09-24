@@ -1,5 +1,5 @@
 /**
- * API Types for StreamWorks Document Management
+ * API Types for Streamworks Document Management
  * Modern TypeScript definitions matching backend schema
  */
 
@@ -451,7 +451,7 @@ export type LangExtractSessionState =
   | 'ready_for_xml'
   | 'completed'
 
-// StreamWorks Session
+// Streamworks Session
 export interface LangExtractSession {
   session_id: string
   job_type?: string
@@ -533,17 +533,18 @@ export interface ParameterCorrectionResponse {
 // XML Generation
 export interface LangExtractXMLGenerationRequest {
   session_id: string
+  job_type?: string
   force_generation?: boolean
   custom_template?: string
 }
 
 export interface LangExtractXMLGenerationResponse {
-  session_id: string
-  xml_content: string
-  generation_successful: boolean
-  validation_errors: string[]
-  used_parameters: Record<string, any>
-  missing_parameters: string[]
+  success: boolean
+  xml_content?: string
+  metadata?: Record<string, any>
+  parameters_used?: Record<string, any>
+  original_parameters?: Record<string, any>
+  error?: string
 }
 
 // Session Analytics

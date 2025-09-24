@@ -1,5 +1,5 @@
 """
-StreamWorks Document Management System
+Streamworks Document Management System
 Enterprise-grade FastAPI backend with clean architecture
 """
 
@@ -22,8 +22,10 @@ from routers.langextract_chat import router as langextract_chat  # NEW: LangExtr
 from routers.debug import router as debug
 from routers.auth import router as auth  # RBAC Auth Router
 from routers.performance import router as performance  # Performance Analytics
+from routers.rag_metrics import router as rag_metrics  # Enhanced RAG Metrics
 from middleware.performance import PerformanceMiddleware
 from middleware.cors_error_handler import CORSErrorHandlerMiddleware
+from middleware.rag_metrics_middleware import rag_metrics_middleware_func
 
 # Setup logging
 logging.basicConfig(
@@ -38,7 +40,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     try:
         # Startup
-        logger.info("🚀 Starting StreamWorks Document Management System")
+        logger.info("🚀 Starting Streamworks Document Management System")
         
         # Initialize database
         await init_database()
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI):
         raise
     finally:
         # Shutdown
-        logger.info("🛑 Shutting down StreamWorks")
+        logger.info("🛑 Shutting down Streamworks")
         from services.service_initializer import shutdown_services
         await shutdown_services()
         await close_database()
@@ -91,7 +93,7 @@ async def create_default_folder_if_needed():
 
 # Create FastAPI app
 app = FastAPI(
-    title="StreamWorks Document Management",
+    title="Streamworks Document Management",
     description="Enterprise-grade document management system with hierarchical folders",
     version="2.0.0",
     lifespan=lifespan,
@@ -113,6 +115,9 @@ app.add_middleware(
 
 # Add performance monitoring middleware
 app.add_middleware(PerformanceMiddleware)
+
+# Add RAG metrics tracking middleware
+app.middleware("http")(rag_metrics_middleware_func)
 
 # Add response compression middleware
 app.add_middleware(
@@ -136,6 +141,7 @@ app.include_router(xml_streams)
 app.include_router(feature_flags)
 app.include_router(health)
 app.include_router(performance, prefix="/api", tags=["performance"])  # Performance Analytics API
+app.include_router(rag_metrics, prefix="/api", tags=["rag-metrics"])  # Enhanced RAG Metrics API
 app.include_router(debug, prefix="/debug", tags=["debug"])
 
 
@@ -143,7 +149,7 @@ app.include_router(debug, prefix="/debug", tags=["debug"])
 @app.get("/health")
 async def health_check():
     """Basic health check"""
-    return {"status": "healthy", "service": "StreamWorks Document Management"}
+    return {"status": "healthy", "service": "Streamworks Document Management"}
 
 
 @app.get("/health/database")
@@ -210,7 +216,7 @@ async def system_info():
             db_version = db_version_result.scalar()
             
             return {
-                "service": "StreamWorks Document Management",
+                "service": "Streamworks Document Management",
                 "version": "2.0.0",
                 "database": {
                     "type": "PostgreSQL (Supabase)",
@@ -233,7 +239,7 @@ async def system_info():
     except Exception as e:
         logger.error(f"System info failed: {str(e)}")
         return {
-            "service": "StreamWorks Document Management",
+            "service": "Streamworks Document Management",
             "version": "2.0.0",
             "error": str(e)
         }

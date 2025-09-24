@@ -1,5 +1,5 @@
 """
-Dependency Injection Container for StreamWorks Backend
+Dependency Injection Container for Streamworks Backend
 Provides centralized service management and proper dependency injection
 """
 

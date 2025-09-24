@@ -19,7 +19,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = ''
     >
       {/* AI Avatar with Pulse */}
       <motion.div
-        className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0"
+        className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0"
         animate={{
           scale: [1, 1.1, 1],
           boxShadow: [
@@ -63,7 +63,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = ''
 
         {/* Optional subtle animation bar */}
         <motion.div
-          className="mt-2 h-1 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full overflow-hidden"
+          className="mt-2 h-1 bg-gradient-to-r from-primary-200 to-primary-300 rounded-full overflow-hidden"
           initial={{ width: 0 }}
           animate={{ width: "100%" }}
           transition={{
@@ -73,7 +73,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = ''
           }}
         >
           <motion.div
-            className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"
+            className="h-full bg-gradient-to-r from-primary-500 to-primary-700 rounded-full"
             animate={{ x: ["-100%", "100%"] }}
             transition={{
               duration: 2,

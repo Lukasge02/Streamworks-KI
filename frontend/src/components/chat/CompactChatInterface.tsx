@@ -14,6 +14,7 @@ import { useChatContext } from './ChatProvider'
 import { formatTimeForDisplay } from '@/utils/timeUtils'
 import { EnterpriseResponseFormatter } from './EnterpriseResponseFormatter'
 import TypingIndicator from './TypingIndicator'
+import { ContextualSuggestions } from './ContextualSuggestions'
 
 interface CompactChatInterfaceProps {
   onClose?: () => void
@@ -93,11 +94,22 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
     }
   }
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion)
+    // Auto-send the suggestion
+    if (canSendMessage) {
+      sendMessage(suggestion).catch(error => {
+        console.error('Failed to send suggestion:', error)
+        setInput(suggestion) // Restore input if sending fails
+      })
+    }
+  }
+
   // Welcome message for empty sessions
   const welcomeMessage = {
     id: 'welcome-compact',
     type: 'assistant' as const,
-    content: '👋 Hallo! Ich bin Ihr StreamWorks Assistant. Wie kann ich Ihnen helfen?',
+    content: '👋 Hallo! Ich bin dein Streamworks Assistant. Wie kann ich dir helfen?',
     created_at: welcomeTimestamp,
     session_id: currentSessionId || '',
     sequence_number: 0,
@@ -110,13 +122,6 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
 
   const displayMessages = currentMessages.length > 0 ? currentMessages : [welcomeMessage]
   const hasUserMessages = currentMessages.some(msg => msg.type === 'user')
-
-  // Quick suggestion buttons
-  const quickSuggestions = [
-    'Was ist StreamWorks?',
-    'Job Scheduling?',
-    'XML Templates?'
-  ]
 
   return (
     <div className="flex flex-col h-full" style={{ height: containerHeight }}>
@@ -148,7 +153,7 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
             >
               {/* Avatar */}
               {message.type === 'assistant' && (
-                <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-7 h-7 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
               )}
@@ -163,7 +168,7 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
                 {/* Message Bubble */}
                 <div className={`p-3 rounded-2xl text-sm ${
                   message.type === 'user'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                    ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                 }`}>
                   {message.type === 'assistant' ? (
@@ -186,7 +191,7 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
 
               {/* User Avatar */}
               {message.type === 'user' && (
-                <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-7 h-7 bg-gradient-to-br from-primary-600 to-primary-700 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                   <User className="w-4 h-4 text-white" />
                 </div>
               )}
@@ -202,21 +207,13 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Suggestions */}
+      {/* Contextual Suggestions */}
       {!hasUserMessages && (
-        <div className="px-3 pb-2">
-          <div className="flex flex-wrap gap-1">
-            {quickSuggestions.map((suggestion, index) => (
-              <button
-                key={index}
-                onClick={() => setInput(suggestion)}
-                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        </div>
+        <ContextualSuggestions
+          onSuggestionClick={handleSuggestionClick}
+          showHeader={false}
+          className="border-t-0"
+        />
       )}
 
       {/* Input Area */}
@@ -228,7 +225,7 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
             onChange={(e) => setInput(e.target.value)}
             placeholder="Nachricht eingeben..."
             disabled={!canSendMessage}
-            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 disabled:opacity-50"
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 disabled:opacity-50"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -239,7 +236,7 @@ export const CompactChatInterface: React.FC<CompactChatInterfaceProps> = ({
           <button
             type="submit"
             disabled={!canSendMessage || !input.trim()}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
+            className="px-3 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
           >
             {isSendingMessage ? (
               <Loader className="w-4 h-4 animate-spin" />

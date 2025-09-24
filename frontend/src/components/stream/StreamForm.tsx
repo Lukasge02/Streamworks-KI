@@ -171,10 +171,10 @@ export function StreamForm({ onStreamGenerated }: StreamFormProps = {}) {
         {/* Header */}
         <div className="border-b border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            StreamWorks Stream Generator
+            Streamworks Stream Generator
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Erstellen Sie StreamWorks-konforme XML-Streams über ein einfaches Formular
+            Erstellen Sie Streamworks-konforme XML-Streams über ein einfaches Formular
           </p>
         </div>
 

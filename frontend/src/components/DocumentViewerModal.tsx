@@ -439,7 +439,7 @@ function DocumentPreview({ document }: { document: DocumentWithFolder }) {
           </h3>
           <button
             onClick={handleDownload}
-            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            className="px-3 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
           >
             Herunterladen
           </button>
@@ -466,7 +466,7 @@ function DocumentPreview({ document }: { document: DocumentWithFolder }) {
               <div className="text-center">
                 <div className="text-4xl mb-2">🖼️</div>
                 <p className="text-gray-600 mb-2">{previewError}</p>
-                <button onClick={handleDownload} className="px-4 py-2 bg-blue-600 text-white rounded">
+                <button onClick={handleDownload} className="px-4 py-2 bg-primary-600 text-white rounded">
                   Datei herunterladen
                 </button>
               </div>
@@ -486,7 +486,7 @@ function DocumentPreview({ document }: { document: DocumentWithFolder }) {
               </p>
               <button
                 onClick={handleDownload}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
               >
                 Datei herunterladen
               </button>
@@ -531,8 +531,8 @@ function ChunkContent({ chunk }: { chunk: DocumentChunk }) {
               </code>
             </pre>
           ) : contentType === 'table' ? (
-            <div className="text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border-l-4 border-blue-400">
-              <div className="font-medium text-blue-800 dark:text-blue-300 mb-2">Tabellendaten:</div>
+            <div className="text-sm bg-primary-50 dark:bg-primary-900/20 p-3 rounded-lg border-l-4 border-primary-400">
+              <div className="font-medium text-primary-800 dark:text-primary-300 mb-2">Tabellendaten:</div>
               <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                 {displayContent}
               </div>
@@ -552,7 +552,7 @@ function ChunkContent({ chunk }: { chunk: DocumentChunk }) {
           {isLongContent && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+              className="mt-2 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
             >
               {isExpanded ? 'Weniger anzeigen' : 'Mehr anzeigen'}
             </button>
@@ -593,7 +593,7 @@ function ChunksPanel({
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 dark:border-primary-400 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Chunks werden geladen...</p>
         </div>
       </div>
@@ -629,7 +629,7 @@ function ChunksPanel({
             <div className="space-y-3">
               <button
                 onClick={onRetry}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors"
               >
                 🔄 Erneut versuchen
               </button>
@@ -705,7 +705,7 @@ function ChunksPanel({
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                  <span className="text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded">
                     {chunk.chunk_type || chunk.content_type || 'text'}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -753,7 +753,7 @@ function AiSummarySection({
 
   if (loading) {
     return (
-      <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
+      <div className="px-6 py-4 bg-primary-50 dark:bg-primary-900/20 border-t border-primary-200 dark:border-primary-800">
         <div className="flex items-center space-x-3">
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
           <div className="flex-1">

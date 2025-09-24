@@ -10,7 +10,7 @@ import json
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-from models.langextract_models import StreamWorksSession, SessionState
+from models.langextract_models import StreamworksSession, SessionState
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +47,12 @@ class LangExtractSessionPersistenceService:
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize Supabase client for session persistence: {str(e)}")
 
-    async def save_session(self, session: StreamWorksSession, retry_count: int = 3) -> bool:
+    async def save_session(self, session: StreamworksSession, retry_count: int = 3) -> bool:
         """
         Save session to Supabase with automatic retry
 
         Args:
-            session: StreamWorksSession to save
+            session: StreamworksSession to save
             retry_count: Number of retry attempts
 
         Returns:
@@ -109,7 +109,7 @@ class LangExtractSessionPersistenceService:
 
         return False
 
-    async def load_session(self, session_id: str, retry_count: int = 3) -> Optional[StreamWorksSession]:
+    async def load_session(self, session_id: str, retry_count: int = 3) -> Optional[StreamworksSession]:
         """
         Load session from Supabase with automatic retry
 
@@ -118,7 +118,7 @@ class LangExtractSessionPersistenceService:
             retry_count: Number of retry attempts
 
         Returns:
-            StreamWorksSession or None if not found
+            StreamworksSession or None if not found
         """
         if not self.enabled:
             logger.debug("Session persistence disabled - skipping load")
@@ -133,8 +133,8 @@ class LangExtractSessionPersistenceService:
                     session_data = result.data[0]
                     logger.info(f"📥 Session loaded from Supabase: {session_id}")
 
-                    # Convert back to StreamWorksSession
-                    session = StreamWorksSession(
+                    # Convert back to StreamworksSession
+                    session = StreamworksSession(
                         session_id=session_data["session_id"],
                         job_type=session_data.get("job_type"),
                         stream_parameters=session_data.get("stream_parameters", {}),
@@ -307,13 +307,13 @@ def get_session_persistence_service() -> LangExtractSessionPersistenceService:
 
 
 # Convenience functions
-async def save_session(session: StreamWorksSession, retry_count: int = 3) -> bool:
+async def save_session(session: StreamworksSession, retry_count: int = 3) -> bool:
     """Convenience function to save session"""
     service = get_session_persistence_service()
     return await service.save_session(session, retry_count)
 
 
-async def load_session(session_id: str, retry_count: int = 3) -> Optional[StreamWorksSession]:
+async def load_session(session_id: str, retry_count: int = 3) -> Optional[StreamworksSession]:
     """Convenience function to load session"""
     service = get_session_persistence_service()
     return await service.load_session(session_id, retry_count)

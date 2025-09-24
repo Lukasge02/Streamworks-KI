@@ -64,7 +64,6 @@ import {
   usePublishStream
 } from '@/hooks/useXMLStreams'
 import { XMLStream, StreamFilters } from '@/services/xmlStreamsApi'
-import { CreateStreamModal } from './CreateStreamModal'
 import { StreamCard } from './StreamCard'
 import { StreamFiltersPanel } from './StreamFiltersPanel'
 import { cn } from '@/lib/utils'
@@ -87,7 +86,6 @@ export const StreamList: React.FC<StreamListProps> = ({ className }) => {
   const [viewMode, setViewMode] = usePersistedViewMode('grid')
   const [selectedStreams, setSelectedStreams] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = usePersistedFiltersVisible(false)
-  const [createModalOpen, setCreateModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   
   // Background search callback 
@@ -155,37 +153,72 @@ export const StreamList: React.FC<StreamListProps> = ({ className }) => {
   }
 
   const jobTypeLabels = {
-    standard: 'Standard',
-    sap: 'SAP',
-    file_transfer: 'File Transfer',
-    custom: 'Custom',
+    STANDARD: '⚙️ Standard Job',
+    SAP: '🏢 SAP Integration',
+    FILE_TRANSFER: '📁 Datentransfer',
+    UNKNOWN: '❓ Typ nicht erkannt',
+    // Legacy support
+    standard: '⚙️ Standard Job',
+    sap: '🏢 SAP Integration',
+    file_transfer: '📁 Datentransfer',
+    custom: '❓ Typ nicht erkannt',
   }
 
   const statusColors = {
-    draft: 'bg-gray-500',
-    complete: 'bg-blue-500',
-    published: 'bg-green-500',
+    parameter_complete: 'bg-green-600',
+    parameter_partial: 'bg-blue-500',
+    parameter_minimal: 'bg-yellow-500',
+    parameter_empty: 'bg-gray-400',
+    // Legacy support
+    draft: 'bg-gray-400',
+    complete: 'bg-green-600',
+    published: 'bg-green-600',
   }
 
   const statusLabels = {
-    draft: 'Entwurf',
-    complete: 'Vollständig',
-    published: 'Veröffentlicht',
+    parameter_complete: 'Parameter vollständig',
+    parameter_partial: 'Grundkonfiguration',
+    parameter_minimal: 'Erste Parameter',
+    parameter_empty: 'Neue Session',
+    // Legacy support
+    draft: 'Neue Session',
+    complete: 'Parameter vollständig',
+    published: 'Parameter vollständig',
   }
 
   // Event handlers
-  const handleCreateStream = () => {
-    setCreateModalOpen(true)
+  const handleCreateStream = async () => {
+    try {
+      // Neue LangExtract Session erstellen
+      const response = await fetch('/api/streamworks/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}) // Ohne spezifischen job_type, lässt AI erkennen
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const newSession = await response.json()
+
+      // Direkt zu LangExtract mit neuer Session weiterleiten
+      router.push(`/langextract?sessionId=${newSession.session_id}`)
+    } catch (error) {
+      console.error('Fehler beim Erstellen einer neuen Session:', error)
+      // Fallback: Gehe zu LangExtract ohne Session-ID (erstellt neue Session dort)
+      router.push('/langextract')
+    }
   }
 
   const handleEditStream = (stream: XMLStream) => {
-    // Redirect to new XML Chat Generator instead of legacy editor
-    router.push('/xml/chat')
+    // Redirect to LangExtract with stream ID for parameter editing
+    router.push(`/langextract?streamId=${stream.id}`)
   }
 
   const handleViewStream = (stream: XMLStream) => {
-    // Redirect to new XML Chat Generator instead of legacy viewer
-    router.push('/xml/chat')
+    // Redirect to XML Stream viewer for read-only display
+    router.push(`/xml/stream/${stream.id}`)
   }
 
   const handleDeleteStream = async (stream: XMLStream) => {
@@ -356,7 +389,7 @@ export const StreamList: React.FC<StreamListProps> = ({ className }) => {
           
           <Button onClick={handleCreateStream} className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Neuer Stream
+            Stream erstellen
           </Button>
         </div>
       </div>
@@ -524,7 +557,7 @@ export const StreamList: React.FC<StreamListProps> = ({ className }) => {
           </p>
           <Button onClick={handleCreateStream}>
             <Plus className="w-4 h-4 mr-2" />
-            Ersten Stream erstellen
+            Stream erstellen
           </Button>
         </div>
       ) : (
@@ -586,11 +619,6 @@ export const StreamList: React.FC<StreamListProps> = ({ className }) => {
         </>
       )}
 
-      {/* Create Stream Modal */}
-      <CreateStreamModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-      />
     </div>
   )
 }

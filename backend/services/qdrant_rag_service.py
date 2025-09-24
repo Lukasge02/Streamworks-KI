@@ -268,6 +268,7 @@ class QdrantRAGService:
                     "chunk_type": self._classify_chunk_type(node.text),
                     "doc_id": doc_id,
                     "doctype": doctype,
+                    "chunk_id": f"{doc_id}_chunk_{i}",
                     **node.metadata
                 }
 
@@ -796,7 +797,7 @@ Answer based on the context above:"""
 
     async def generate_xml(self, wizard_data) -> Dict[str, Any]:
         """
-        Generate StreamWorks XML using LLM with structured JSON output
+        Generate Streamworks XML using LLM with structured JSON output
         Uses OpenAI JSON mode for better structured generation
         """
         try:
@@ -830,7 +831,7 @@ Answer based on the context above:"""
             start_time = time.time()
 
             # Create structured prompt for JSON mode
-            system_prompt = """You are an expert in StreamWorks XML generation. Generate a valid StreamWorks XML structure based on the provided wizard data.
+            system_prompt = """You are an expert in Streamworks XML generation. Generate a valid Streamworks XML structure based on the provided wizard data.
 
 Return your response as JSON with this structure:
 {
@@ -839,7 +840,7 @@ Return your response as JSON with this structure:
     "generation_notes": "any notes about the generation process"
 }"""
 
-            user_prompt = f"""Generate a StreamWorks XML based on this wizard data:
+            user_prompt = f"""Generate a Streamworks XML based on this wizard data:
 
 Stream Name: {getattr(wizard_data.stream_properties, 'name', 'Unknown Stream')}
 Description: {getattr(wizard_data.stream_properties, 'description', 'No description')}
@@ -847,12 +848,12 @@ Job Type: {getattr(wizard_data.job_properties, 'job_type', 'STANDARD')}
 
 Requirements:
 1. Valid XML syntax
-2. Complete StreamWorks structure
+2. Complete Streamworks structure
 3. Proper CDATA sections for scripts and descriptions
 4. Default agent: gtasswvk05445
 5. Include all required elements for a functional stream
 
-Generate complete, valid StreamWorks XML."""
+Generate complete, valid Streamworks XML."""
 
             # Generate JSON response
             result = await llm_service.generate_json(
@@ -890,7 +891,7 @@ Generate complete, valid StreamWorks XML."""
             import time
             start_time = time.time()
 
-            prompt = f"""Generate a complete StreamWorks XML based on this data:
+            prompt = f"""Generate a complete Streamworks XML based on this data:
 
 Stream Name: {getattr(wizard_data.stream_properties, 'name', 'Unknown Stream')}
 Description: {getattr(wizard_data.stream_properties, 'description', 'No description')}

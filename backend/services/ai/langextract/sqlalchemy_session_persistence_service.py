@@ -11,7 +11,7 @@ from sqlalchemy import text, insert, update, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import AsyncSessionLocal
-from models.langextract_models import StreamWorksSession, SessionState
+from models.langextract_models import StreamworksSession, SessionState
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class SQLAlchemySessionPersistenceService:
         self.enabled = True
         logger.info("✅ SQLAlchemy LangExtract Session Persistence Service initialized")
 
-    async def save_session(self, session: StreamWorksSession, retry_count: int = 3) -> bool:
+    async def save_session(self, session: StreamworksSession, retry_count: int = 3) -> bool:
         """
         Save session to PostgreSQL using SQLAlchemy
         """
@@ -120,7 +120,7 @@ class SQLAlchemySessionPersistenceService:
 
         return False
 
-    async def load_session(self, session_id: str, retry_count: int = 3) -> Optional[StreamWorksSession]:
+    async def load_session(self, session_id: str, retry_count: int = 3) -> Optional[StreamworksSession]:
         """
         Load session from PostgreSQL using SQLAlchemy
         """
@@ -142,8 +142,8 @@ class SQLAlchemySessionPersistenceService:
                         # Convert row to dict
                         session_dict = dict(session_data._mapping)
 
-                        # Convert back to StreamWorksSession with JSON deserialization
-                        session = StreamWorksSession(
+                        # Convert back to StreamworksSession with JSON deserialization
+                        session = StreamworksSession(
                             session_id=session_dict["session_id"],
                             job_type=session_dict.get("job_type"),
                             stream_parameters=json.loads(session_dict.get("stream_parameters", "{}")) if isinstance(session_dict.get("stream_parameters"), str) else session_dict.get("stream_parameters", {}),

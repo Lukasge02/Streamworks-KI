@@ -66,7 +66,7 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
           filename += '.txt'
           break
         case 'markdown':
-          exportContent = `# StreamWorks AI Response\n\n${message.content}`
+          exportContent = `# Streamworks AI Response\n\n${message.content}`
           if (message.sources && message.sources.length > 0) {
             exportContent += '\n\n## Quellen\n'
             message.sources.forEach((source, index) => {

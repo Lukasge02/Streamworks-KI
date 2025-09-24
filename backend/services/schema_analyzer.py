@@ -225,7 +225,7 @@ class SchemaAnalyzer:
     def _create_analysis_prompt(self, job_type: str, xml_examples: List[Dict]) -> str:
         """Erstellt den KI-Prompt für die Schema-Analyse"""
 
-        prompt = f"""Du bist ein StreamWorks XML-Experte. Analysiere die folgenden XML-Beispiele für Job-Type "{job_type}" und extrahiere ein Parameter-Schema für ein Chat-Interface.
+        prompt = f"""Du bist ein Streamworks XML-Experte. Analysiere die folgenden XML-Beispiele für Job-Type "{job_type}" und extrahiere ein Parameter-Schema für ein Chat-Interface.
 
 AUFGABE:
 1. Identifiziere alle konfigurierbaren Parameter für {job_type} Jobs
@@ -268,7 +268,7 @@ ANTWORT-FORMAT (JSON):
 
 WICHTIG:
 - Fokus auf Parameter, die ein Benutzer im Chat konfigurieren würde
-- Ignore interne StreamWorks-Metadaten (DisplayOrder, CoordinateX, etc.)
+- Ignore interne Streamworks-Metadaten (DisplayOrder, CoordinateX, etc.)
 - Chat-Prompts sollen natürlich und benutzerfreundlich sein
 - Beispiele sollen realistische Werte aus den XMLs verwenden
 

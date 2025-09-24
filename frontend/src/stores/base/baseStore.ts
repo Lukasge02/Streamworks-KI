@@ -1,5 +1,5 @@
 /**
- * Unified Base Store Pattern for StreamWorks Frontend
+ * Unified Base Store Pattern for Streamworks Frontend
  * Provides consistent structure, TypeScript patterns, and common utilities
  */
 

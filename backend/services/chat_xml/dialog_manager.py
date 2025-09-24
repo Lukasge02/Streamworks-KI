@@ -194,7 +194,7 @@ class DialogManager:
 
     def _initialize_intelligent_prompts(self) -> IntelligentPromptTemplate:
         """Initialize advanced prompt templates for OpenAI intelligence"""
-        base_system_prompt = """Du bist ein Experte für StreamWorks XML-Generierung. Du hilfst Benutzern dabei, perfekte XML-Konfigurationen durch natürliche Konversation zu erstellen.
+        base_system_prompt = """Du bist ein Experte für Streamworks XML-Generierung. Du hilfst Benutzern dabei, perfekte XML-Konfigurationen durch natürliche Konversation zu erstellen.
 
 Deine Aufgaben:
 1. Verstehe den Kontext und die Absichten des Benutzers
@@ -536,7 +536,7 @@ Erstelle eine verbesserte Extraktionsstrategie und eine höfliche Nachfrage."""
             llm_service = await self._get_llm_service()
             conversation_context = memory.get_conversation_context()
 
-            intent_prompt = f"""Analysiere die Benutzer-Absicht in dieser StreamWorks XML-Dialog-Situation:
+            intent_prompt = f"""Analysiere die Benutzer-Absicht in dieser Streamworks XML-Dialog-Situation:
 
 Aktuelle Nachricht: "{user_message}"
 Dialog-Kontext: {context.value}
@@ -764,7 +764,7 @@ Antworte nur mit JSON: {{"intent": "INTENT_NAME", "confidence": 0.8, "reasoning"
                 requires_user_input=False
             )
 
-        # Enhanced StreamWorks parameter collection with smart missing detection
+        # Enhanced Streamworks parameter collection with smart missing detection
         job_type = getattr(session, 'job_type', 'STANDARD')
         try:
             stream_type = StreamType(job_type)
@@ -783,7 +783,7 @@ Antworte nur mit JSON: {{"intent": "INTENT_NAME", "confidence": 0.8, "reasoning"
                 if success:
                     logger.info(f"✅ Collected: {param_name} = {param_value}")
 
-        # Check for missing required parameters using StreamWorks schemas
+        # Check for missing required parameters using Streamworks schemas
         missing_params = get_missing_parameters(collected_params, stream_type)
 
         if not missing_params:
@@ -793,7 +793,7 @@ Antworte nur mit JSON: {{"intent": "INTENT_NAME", "confidence": 0.8, "reasoning"
         # Get next missing parameter to ask for
         next_param = missing_params[0]
 
-        # Generate smart question using StreamWorks schema
+        # Generate smart question using Streamworks schema
         next_question = await self._generate_streamworks_question(
             next_param, stream_type, collected_params, memory
         )
@@ -1225,7 +1225,7 @@ Berücksichtige auch indirekte Hinweise aus dem Konversationsverlauf."""
             job_prompts = self.intelligent_prompts.job_type_prompts
             context_keywords = ', '.join(memory.context_keywords) if memory.context_keywords else 'keine'
 
-            welcome_prompt = f"""Erstelle eine freundliche Begrüßung für einen {job_type} Job in StreamWorks XML-Generator.
+            welcome_prompt = f"""Erstelle eine freundliche Begrüßung für einen {job_type} Job in Streamworks XML-Generator.
 
 Job-Type: {job_type}
 Job-Fokus: {job_prompts.get(job_type, 'Allgemeine Konfiguration')}
@@ -1259,7 +1259,7 @@ Beispiel: "Perfekt! Ich helfe Ihnen bei der Erstellung eines SAP Jobs. Lassen Si
 Antworte im JSON-Format mit Parameter-Namen und 2-3 wahrscheinlichen Werten:
 {{"parameter_name": ["wert1", "wert2", "wert3"]}}
 
-Fokussiere auf realistische StreamWorks-Werte für {job_type}."""
+Fokussiere auf realistische Streamworks-Werte für {job_type}."""
 
             response = await llm_service.generate(prediction_prompt)
 
@@ -1277,18 +1277,18 @@ Fokussiere auf realistische StreamWorks-Werte für {job_type}."""
         self, parameter_name: str, stream_type: StreamType, collected_params: Dict[str, Any],
         memory: ConversationMemory
     ) -> str:
-        """Generate StreamWorks-specific intelligent question for parameter"""
+        """Generate Streamworks-specific intelligent question for parameter"""
 
         try:
             llm_service = await self._get_llm_service()
 
-            # Get parameter info from StreamWorks schema
+            # Get parameter info from Streamworks schema
             schema_prompt = generate_prompt_for_parameter(parameter_name, stream_type)
             examples = get_parameter_examples(parameter_name, stream_type)
             conversation_context = memory.get_conversation_context()
 
             # Build context-aware question prompt
-            question_prompt = f"""Du bist ein StreamWorks-Experte. Erstelle eine präzise, hilfreiche Frage für Parameter '{parameter_name}':
+            question_prompt = f"""Du bist ein Streamworks-Experte. Erstelle eine präzise, hilfreiche Frage für Parameter '{parameter_name}':
 
 STREAM-TYP: {stream_type.value}
 SCHEMA-PROMPT: {schema_prompt}
@@ -1301,7 +1301,7 @@ KONVERSATIONSKONTEXT:
 {conversation_context}
 
 ERSTELLE EINE FRAGE DIE:
-1. StreamWorks-spezifisch und technisch korrekt ist
+1. Streamworks-spezifisch und technisch korrekt ist
 2. Passende Beispiele für {stream_type.value} enthält
 3. Den Kontext der bereits gesammelten Parameter berücksichtigt
 4. Kurz und präzise ist (1-2 Sätze)
@@ -1318,14 +1318,14 @@ ANTWORTE NUR mit der Frage, keine weiteren Erklärungen."""
             return response.strip()
 
         except Exception as e:
-            logger.warning(f"Failed to generate StreamWorks question: {e}")
+            logger.warning(f"Failed to generate Streamworks question: {e}")
             # Fallback to schema-based prompt
             return generate_prompt_for_parameter(parameter_name, stream_type)
 
     async def _generate_intelligent_question(
         self, parameter_name: str, session, memory: ConversationMemory
     ) -> str:
-        """Legacy method - redirects to StreamWorks-specific version"""
+        """Legacy method - redirects to Streamworks-specific version"""
 
         job_type = getattr(session, 'job_type', 'STANDARD')
         try:
@@ -1353,7 +1353,7 @@ Bereits gesammelte Parameter: {extracted_params}
 
 Antworte mit JSON: {{"suggestions": ["wert1", "wert2", "wert3"]}}
 
-Fokussiere auf realistische, häufig verwendete Werte für StreamWorks."""
+Fokussiere auf realistische, häufig verwendete Werte für Streamworks."""
 
             response = await llm_service.generate(prediction_prompt)
 
@@ -1468,7 +1468,7 @@ Halte die Antwort kurz aber informativ (2-3 Sätze)."""
             interpretation_prompt = f"""Analysiere diese Benutzer-Nachricht und erstelle 2-3 alternative Interpretationen:
 
 Nachricht: "{user_message}"
-Kontext: StreamWorks XML-Generierung
+Kontext: Streamworks XML-Generierung
 
 Mögliche Interpretationen könnten sein:
 - Verschiedene Job-Types
@@ -1857,7 +1857,7 @@ Halte die Antwort präzise und actionable."""
     def _load_dialog_prompts(self) -> Dict[str, str]:
         """Lädt Dialog-Prompt-Templates"""
         return {
-            "welcome": "Willkommen beim StreamWorks XML-Generator! Ich helfe Ihnen bei der Erstellung von XML-Konfigurationen.",
+            "welcome": "Willkommen beim Streamworks XML-Generator! Ich helfe Ihnen bei der Erstellung von XML-Konfigurationen.",
             "job_type_selection": "Welchen Job-Type möchten Sie erstellen?",
             "parameter_collection": "Bitte geben Sie den Wert für {parameter} an:",
             "validation_error": "Der eingegebene Wert ist ungültig: {error}",

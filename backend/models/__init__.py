@@ -1,5 +1,5 @@
 """
-Models Package for StreamWorks Backend
+Models Package for Streamworks Backend
 Exports all database models including RBAC auth models
 """
 

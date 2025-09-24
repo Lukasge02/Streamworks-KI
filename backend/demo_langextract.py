@@ -18,7 +18,7 @@ def display_demo_header():
     print("=" * 80)
     print("🚀 LANGEXTRACT INTEGRATION DEMO")
     print("=" * 80)
-    print("✨ Source-Grounded Parameter Extraction für StreamWorks-KI")
+    print("✨ Source-Grounded Parameter Extraction für Streamworks-KI")
     print("🎯 Revolutionäre Genauigkeit durch Text-zu-Parameter Mapping")
     print("=" * 80)
     print()
@@ -294,7 +294,7 @@ def run_demo():
     print("   • 🎨 Interaktive Frontend-Visualisierung")
     print("   • ⚡ Real-time Parameter Correction")
     print()
-    print("🚀 StreamWorks-KI ist bereit für die Zukunft der Parameter-Extraktion!")
+    print("🚀 Streamworks-KI ist bereit für die Zukunft der Parameter-Extraktion!")
     print("=" * 80)
 
 if __name__ == "__main__":

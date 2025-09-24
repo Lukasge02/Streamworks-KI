@@ -277,7 +277,7 @@ class ContextManager:
             elif word.isupper() and len(word) >= 3:
                 entities["systems"].append(word)
 
-            # StreamWorks components (XML, Job, Agent, etc.)
+            # Streamworks components (XML, Job, Agent, etc.)
             elif any(comp in word.lower() for comp in ["job", "stream", "agent", "xml"]):
                 entities["streamworks_components"].append(word)
 

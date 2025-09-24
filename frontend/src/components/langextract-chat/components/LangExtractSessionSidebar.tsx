@@ -118,9 +118,9 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
 
   const getJobTypeColor = (jobType?: string) => {
     switch (jobType?.toUpperCase()) {
-      case 'SAP': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      case 'SAP': return 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-400'
       case 'FILE_TRANSFER': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      case 'PROCESSING': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+      case 'PROCESSING': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
     }
   }
@@ -155,7 +155,7 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
             placeholder="Sessions durchsuchen..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
           {searchQuery && (
             <button
@@ -171,7 +171,7 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
         <Button
           onClick={handleCreateSession}
           disabled={isLoading}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
+          className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>Neue Session</span>
@@ -209,7 +209,7 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
                 }}
                 className={`w-full text-left p-3 rounded-lg transition-colors group cursor-pointer relative ${
                   session.session_id === currentSessionId
-                    ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
+                    ? 'bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700'
                     : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -240,7 +240,7 @@ export const LangExtractSessionSidebar: React.FC<LangExtractSessionSidebarProps>
                   {/* Actions */}
                   <div className="flex items-center space-x-1 ml-2">
                     {session.session_id === currentSessionId && (
-                      <ChevronRight className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                      <ChevronRight className="w-3 h-3 text-primary-600 dark:text-primary-400" />
                     )}
 
                     <button

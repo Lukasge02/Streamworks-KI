@@ -1,5 +1,5 @@
 /**
- * Comprehensive Error Boundaries for StreamWorks
+ * Comprehensive Error Boundaries for Streamworks
  * Provides centralized error handling and recovery mechanisms
  */
 
@@ -51,7 +51,7 @@ interface ErrorBoundaryProps {
   allowedErrorTypes?: ErrorType[]
 }
 
-class StreamWorksErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class StreamworksErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props)
     this.state = {
@@ -62,7 +62,7 @@ class StreamWorksErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-    const normalizedError = StreamWorksErrorBoundary.staticNormalizeError(error)
+    const normalizedError = StreamworksErrorBoundary.staticNormalizeError(error)
     return {
       hasError: true,
       error: normalizedError,
@@ -90,15 +90,15 @@ class StreamWorksErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
 
   static staticNormalizeError(error: Error): AppError {
     // Extract error type from error message or stack
-    const errorType = StreamWorksErrorBoundary.staticExtractErrorType(error)
+    const errorType = StreamworksErrorBoundary.staticExtractErrorType(error)
     
     return {
       type: errorType,
       message: error.message || 'An unexpected error occurred',
-      code: StreamWorksErrorBoundary.staticExtractErrorCode(error),
+      code: StreamworksErrorBoundary.staticExtractErrorCode(error),
       timestamp: new Date().toISOString(),
       stack: error.stack,
-      recoverable: StreamWorksErrorBoundary.staticIsRecoverable(errorType)
+      recoverable: StreamworksErrorBoundary.staticIsRecoverable(errorType)
     }
   }
 
@@ -325,40 +325,40 @@ function ErrorFallback({
 
 function NetworkErrorBoundary({ children }: { children: ReactNode }) {
   return (
-    <StreamWorksErrorBoundary 
+    <StreamworksErrorBoundary 
       allowedErrorTypes={[ErrorType.NETWORK, ErrorType.API]}
       fallback={
         <NetworkErrorFallback />
       }
     >
       {children}
-    </StreamWorksErrorBoundary>
+    </StreamworksErrorBoundary>
   )
 }
 
 function ChatErrorBoundary({ children }: { children: ReactNode }) {
   return (
-    <StreamWorksErrorBoundary 
+    <StreamworksErrorBoundary 
       allowedErrorTypes={[ErrorType.CHAT, ErrorType.API, ErrorType.NETWORK]}
       fallback={
         <ChatErrorFallback />
       }
     >
       {children}
-    </StreamWorksErrorBoundary>
+    </StreamworksErrorBoundary>
   )
 }
 
 function DocumentErrorBoundary({ children }: { children: ReactNode }) {
   return (
-    <StreamWorksErrorBoundary 
+    <StreamworksErrorBoundary 
       allowedErrorTypes={[ErrorType.FILE_UPLOAD, ErrorType.API, ErrorType.NETWORK]}
       fallback={
         <DocumentErrorFallback />
       }
     >
       {children}
-    </StreamWorksErrorBoundary>
+    </StreamworksErrorBoundary>
   )
 }
 
@@ -637,7 +637,7 @@ function setupGlobalErrorHandlers() {
 // ================================
 
 export {
-  StreamWorksErrorBoundary,
+  StreamworksErrorBoundary,
   NetworkErrorBoundary,
   ChatErrorBoundary,
   DocumentErrorBoundary,

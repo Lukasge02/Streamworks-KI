@@ -60,16 +60,17 @@ export function usePerformanceMetrics({
     try {
       setError(null)
 
-      const [realtimeData, dashboardData] = await Promise.all([
-        performanceApi.getRealtimeMetrics(),
+      const [unifiedData, dashboardData] = await Promise.all([
+        performanceApi.getUnifiedRAGMetrics(),
         performanceApi.getDashboardMetrics(timeWindowMinutes)
       ])
 
       if (mounted.current) {
-        setMetrics(realtimeData)
+        // Use unified data which includes both formats
+        setMetrics(unifiedData.performance || unifiedData)
         setDashboardMetrics(dashboardData)
-        setIsConnected(true)
-        setLastUpdated(new Date())
+        setIsConnected(unifiedData.is_connected)
+        setLastUpdated(new Date(unifiedData.timestamp))
       }
     } catch (err) {
       if (mounted.current) {
@@ -89,17 +90,32 @@ export function usePerformanceMetrics({
       pollingRef.current() // Stop existing polling
     }
 
-    const cleanup = performanceApi.startRealtimePolling(
-      (newMetrics) => {
+    // Use our own polling with unified API
+    const poll = async () => {
+      try {
+        const unifiedData = await performanceApi.getUnifiedRAGMetrics()
         if (mounted.current) {
-          setMetrics(newMetrics)
-          setIsConnected(true)
-          setLastUpdated(new Date())
+          setMetrics(unifiedData.performance || unifiedData)
+          setIsConnected(unifiedData.is_connected)
+          setLastUpdated(new Date(unifiedData.timestamp))
           setError(null)
         }
-      },
-      refreshInterval
-    )
+      } catch (err) {
+        if (mounted.current) {
+          setError(err instanceof Error ? err.message : 'Polling failed')
+          setIsConnected(false)
+        }
+      }
+    }
+
+    // Initial poll
+    poll()
+
+    // Set up interval
+    const intervalId = setInterval(poll, refreshInterval)
+
+    // Return cleanup function
+    const cleanup = () => clearInterval(intervalId)
 
     pollingRef.current = cleanup
   }, [refreshInterval])

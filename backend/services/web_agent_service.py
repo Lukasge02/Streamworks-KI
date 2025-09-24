@@ -93,7 +93,7 @@ class WebAgentService:
             "arvato_streamworks": {
                 "url": "https://www.arvato-systems.de/loesungen/streamworks",
                 "source_type": "web",
-                "name": "Arvato StreamWorks",
+                "name": "Arvato Streamworks",
                 "selectors": {
                     "content": "main .content, article, .page-content",
                     "title": "h1, .page-title, .main-title",
@@ -108,7 +108,7 @@ class WebAgentService:
             "streamworks_docs": {
                 "url": "https://docs.streamworks.cloud",
                 "source_type": "web", 
-                "name": "StreamWorks Documentation",
+                "name": "Streamworks Documentation",
                 "crawl_depth": 3,
                 "selectors": {
                     "content": ".documentation-content, .doc-content, main",
@@ -155,7 +155,7 @@ class WebAgentService:
             # Create session for HTTP requests
             async with aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=30),
-                headers={"User-Agent": "StreamWorks-KI Agent/1.0"}
+                headers={"User-Agent": "Streamworks-KI Agent/1.0"}
             ) as session:
                 
                 crawled_pages = []

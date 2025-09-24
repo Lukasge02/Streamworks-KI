@@ -27,6 +27,19 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({
   const { sessions, currentSessionId } = useChatStore()
   const { createNewSession } = useChatContext()
 
+  // 🔍 DEBUG: Component Mount Tracking
+  useEffect(() => {
+    const timestamp = new Date().toISOString()
+    console.log('🚀 FloatingChatWidget MOUNTED at:', timestamp)
+    console.log('📐 Widget Size Config: 420px x 550px (NEW VERSION)')
+    console.log('🎯 Header Config: Streamworks Assistant + 3 Buttons')
+    console.log('💫 Version: v2.0 - Enhanced with Debug')
+
+    return () => {
+      console.log('💀 FloatingChatWidget UNMOUNTED at:', new Date().toISOString())
+    }
+  }, [])
+
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -60,9 +73,16 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({
   }, [sessions.length, isOpen])
 
   const toggleChat = () => {
-    setIsOpen(!isOpen)
-    if (!isOpen) {
+    const newState = !isOpen
+    console.log('🔄 Toggle Chat:', newState ? 'OPENING' : 'CLOSING')
+    console.log('📏 Current Widget Dimensions: 420px x 550px')
+
+    setIsOpen(newState)
+    if (newState) {
       setHasUnreadMessages(false)
+      console.log('✅ Chat opened - should show NEW layout')
+    } else {
+      console.log('❌ Chat closed - back to floating button')
     }
   }
 
@@ -89,15 +109,15 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({
             style={{ width: '420px', height: '550px' }}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 text-white">
+            <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-3 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
                     <Bot className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm">StreamWorks Assistant</h3>
-                    <p className="text-xs text-blue-100">Immer für Sie da</p>
+                    <h3 className="font-semibold text-sm">Streamworks Assistant</h3>
+                    <p className="text-xs text-primary-100">Immer für Sie da</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-1">
@@ -144,7 +164,7 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleChat}
-            className="relative w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-200 group"
+            className="relative w-14 h-14 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-200 group"
             title="Chat öffnen"
           >
             <MessageCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
@@ -164,7 +184,7 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({
             </AnimatePresence>
 
             {/* Pulse Effect */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 animate-ping opacity-20"></div>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary-600 to-primary-700 animate-ping opacity-20"></div>
           </motion.button>
         )}
       </AnimatePresence>

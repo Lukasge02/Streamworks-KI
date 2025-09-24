@@ -1,6 +1,6 @@
 """
 XSD Validation Service für Streamworks RAG MVP
-Validiert XML outputs gegen StreamWorks XSD Schema
+Validiert XML outputs gegen Streamworks XSD Schema
 """
 
 import asyncio
@@ -88,7 +88,7 @@ class XSDValidatorService:
                 return {
                     "enabled": True,
                     "valid": True,
-                    "message": "XML is valid according to StreamWorks XSD schema",
+                    "message": "XML is valid according to Streamworks XSD schema",
                     "xml_detected": True
                 }
             else:
@@ -172,10 +172,10 @@ class XSDValidatorService:
             message = error.get("message", "").lower()
             
             if "element" in message and "not allowed" in message:
-                suggestions.append("Check that all XML elements are valid StreamWorks elements")
+                suggestions.append("Check that all XML elements are valid Streamworks elements")
             
             if "attribute" in message:
-                suggestions.append("Verify that all attributes match the StreamWorks schema requirements")
+                suggestions.append("Verify that all attributes match the Streamworks schema requirements")
             
             if "missing" in message:
                 suggestions.append("Add any required elements or attributes specified in the schema")
