@@ -139,6 +139,22 @@ __tests__/
 *.bak
 *.old
 *~
+**/*.backup.*
+**/*.complex.backup.*
+
+# Generated XMLs (should NOT be in Git)
+backend/generated_xmls/
+
+# Qdrant Vector Database
+qdrant_data/
+
+# Session Storage
+backend/storage/hierarchical_sessions/
+backend/storage/parameter_sessions/
+
+# Test/Debug Scripts (outside tests/)
+backend/quick_test_*.py
+backend/debug_*.py
 
 # Documentation drafts and temp files
 *.draft
@@ -146,6 +162,9 @@ __tests__/
 PERFORMANCE_*.md
 *_SUMMARY.md
 *_DOCUMENTATION.md
+backend/FINAL_*.md
+backend/*_test_*.md
+backend/*.json
 
 # Example and demo files
 examples/

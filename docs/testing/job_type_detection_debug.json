@@ -1,0 +1,112 @@
+[
+  {
+    "input": "Datentransfer von GT123_Server nach BASF_Agent",
+    "expected_job_type": "FILE_TRANSFER",
+    "detected_job_type": "FILE_TRANSFER",
+    "is_correct": true,
+    "category": "FILE_TRANSFER",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "source agent ist GT123_Server",
+    "expected_job_type": "FILE_TRANSFER",
+    "detected_job_type": "SAP",
+    "is_correct": false,
+    "category": "FILE_TRANSFER",
+    "extracted_parameters": {
+      "system": "source"
+    }
+  },
+  {
+    "input": "target agent ist BASF_Agent",
+    "expected_job_type": "FILE_TRANSFER",
+    "detected_job_type": null,
+    "is_correct": false,
+    "category": "FILE_TRANSFER",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "von GT123_Server nach BASF_Agent",
+    "expected_job_type": "FILE_TRANSFER",
+    "detected_job_type": "FILE_TRANSFER",
+    "is_correct": true,
+    "category": "FILE_TRANSFER",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "dateien kopieren zwischen servern",
+    "expected_job_type": "FILE_TRANSFER",
+    "detected_job_type": "FILE_TRANSFER",
+    "is_correct": true,
+    "category": "FILE_TRANSFER",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "SAP Export aus System GT123",
+    "expected_job_type": "SAP",
+    "detected_job_type": "SAP",
+    "is_correct": true,
+    "category": "SAP",
+    "extracted_parameters": {
+      "system": "export"
+    }
+  },
+  {
+    "input": "system ist GT123",
+    "expected_job_type": "SAP",
+    "detected_job_type": "SAP",
+    "is_correct": true,
+    "category": "SAP",
+    "extracted_parameters": {
+      "system": "gt123"
+    }
+  },
+  {
+    "input": "report ist ZTV_CALENDAR",
+    "expected_job_type": "SAP",
+    "detected_job_type": null,
+    "is_correct": false,
+    "category": "SAP",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "client 300",
+    "expected_job_type": "SAP",
+    "detected_job_type": null,
+    "is_correct": false,
+    "category": "SAP",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "python script ausführen",
+    "expected_job_type": "STANDARD",
+    "detected_job_type": "STANDARD",
+    "is_correct": true,
+    "category": "STANDARD",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "script ist python analyze_data.py",
+    "expected_job_type": "STANDARD",
+    "detected_job_type": "STANDARD",
+    "is_correct": true,
+    "category": "STANDARD",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "command ist dir C:\\temp",
+    "expected_job_type": "STANDARD",
+    "detected_job_type": null,
+    "is_correct": false,
+    "category": "STANDARD",
+    "extracted_parameters": {}
+  },
+  {
+    "input": "windows batch job",
+    "expected_job_type": "STANDARD",
+    "detected_job_type": "STANDARD",
+    "is_correct": true,
+    "category": "STANDARD",
+    "extracted_parameters": {}
+  }
+]

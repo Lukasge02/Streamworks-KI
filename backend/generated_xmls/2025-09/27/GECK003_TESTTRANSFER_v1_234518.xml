@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ExportableStream>
   <Stream>
-    <StreamName>ZSW_DATENTRANSFER123</StreamName>
+    <StreamName>GECK003_TESTTRANSFER</StreamName>
     <StreamDocumentation><![CDATA[None]]></StreamDocumentation>
     <AgentDetail>None</AgentDetail>
-    <AccountNoId>None</AccountNoId>
+    <AccountNoId>111111111</AccountNoId>
     <CalendarId>UATDefaultCalendar</CalendarId>
     <StreamType>Normal</StreamType>
-    <MaxStreamRuns>3</MaxStreamRuns>
+    <MaxStreamRuns>10</MaxStreamRuns>
     <ShortDescription><![CDATA[None]]></ShortDescription>
     <SchedulingRequiredFlag>True</SchedulingRequiredFlag>
     <ScheduleRuleObject>None</ScheduleRuleObject>
@@ -101,17 +101,17 @@
         <JobContactPersons></JobContactPersons>
         <JobPreparationScript>
           <PreparationScriptJobOrder>0</PreparationScriptJobOrder>
-          <Script><![CDATA[]]></Script>
+          <Script><![CDATA[None]]></Script>
           <ScriptLanguage>Lua</ScriptLanguage>
         </JobPreparationScript>
-        <RecoveryRules></RecoveryRules>
+        <RecoveryRules>*</RecoveryRules>
         <ParserJobDefinitions></ParserJobDefinitions>
         <JobExtensions></JobExtensions>
         <ControlFilePathLoginObject></ControlFilePathLoginObject>
         <ExternalProcedureDependencies></ExternalProcedureDependencies>
       </Job>
       <Job>
-        <JobName>0100_ZSW_DATENTRANSFER123</JobName>
+        <JobName>0100_GECK003_TESTTRANSFER</JobName>
         <JobDocumentation><![CDATA[None]]></JobDocumentation>
         <JobNotificationRules />
         <LoginObject>None</LoginObject>
@@ -142,35 +142,35 @@
         </JobInternalSuccessors>
         <JobFileTransferProperty>
           <SourceAgent>None</SourceAgent>
-          <TargetAgent>None</TargetAgent>
-          <SourceLoginObject></SourceLoginObject>
-          <TargetLoginObject></TargetLoginObject>
+          <TargetAgent>_agent</TargetAgent>
+          <SourceLoginObject>None</SourceLoginObject>
+          <TargetLoginObject>None</TargetLoginObject>
           <FileTransferDefinitions>
             <FileTransferDefinition>
               <PositionNo>1</PositionNo>
               <SourceFilePattern><![CDATA[None]]></SourceFilePattern>
               <ControlFilePathFlag>false</ControlFilePathFlag>
               <TargetFilePath><![CDATA[None]]></TargetFilePath>
-              <TargetFileName><![CDATA[]]></TargetFileName>
+              <TargetFileName><![CDATA[None]]></TargetFileName>
               <SourceUnfulfilledHandling>Abort</SourceUnfulfilledHandling>
               <SourceFileDeleteFlag>false</SourceFileDeleteFlag>
-              <TargetFileExistsHandling>True</TargetFileExistsHandling>
-              <SourceEncodingDetail></SourceEncodingDetail>
-              <TargetEncodingDetail></TargetEncodingDetail>
+              <TargetFileExistsHandling>Overwrite</TargetFileExistsHandling>
+              <SourceEncodingDetail>None</SourceEncodingDetail>
+              <TargetEncodingDetail>None</TargetEncodingDetail>
               <DeleteTrailingBlanksFlag>false</DeleteTrailingBlanksFlag>
               <LinebreakTranslationType>None</LinebreakTranslationType>
-              <UseSourceAttributesFlag>true</UseSourceAttributesFlag>
+              <UseSourceAttributesFlag>false</UseSourceAttributesFlag>
             </FileTransferDefinition>
           </FileTransferDefinitions>
         </JobFileTransferProperty>
         <StreamRunJobProperties>
           <StreamRunJobProperty>
             <RunNumber>0</RunNumber>
-            <StartTime>10:00</StartTime>
-            <StartTimeDayType>Normal</StartTimeDayType>
+            <StartTime IsNull="true" />
+            <StartTimeDayType />
             <StartTimeOffsetDays IsNull="true" />
             <StartTimeTimeZone />
-            <StartTimeType>Absolute</StartTimeType>
+            <StartTimeType IsNull="true" />
             <RelativeStartTime IsNull="true" />
             <StartTimeRelativeJob />
             <MaxJobLogSize IsNull="true" />
@@ -201,10 +201,10 @@
         <JobContactPersons></JobContactPersons>
         <JobPreparationScript>
           <PreparationScriptJobOrder>0</PreparationScriptJobOrder>
-          <Script><![CDATA[]]></Script>
+          <Script><![CDATA[None]]></Script>
           <ScriptLanguage>Lua</ScriptLanguage>
         </JobPreparationScript>
-        <RecoveryRules></RecoveryRules>
+        <RecoveryRules>*</RecoveryRules>
         <ParserJobDefinitions></ParserJobDefinitions>
         <JobExtensions></JobExtensions>
         <ControlFilePathLoginObject></ControlFilePathLoginObject>
@@ -271,10 +271,10 @@
         <JobContactPersons></JobContactPersons>
         <JobPreparationScript>
           <PreparationScriptJobOrder>0</PreparationScriptJobOrder>
-          <Script><![CDATA[]]></Script>
+          <Script><![CDATA[None]]></Script>
           <ScriptLanguage>Lua</ScriptLanguage>
         </JobPreparationScript>
-        <RecoveryRules></RecoveryRules>
+        <RecoveryRules>*</RecoveryRules>
         <ParserJobDefinitions></ParserJobDefinitions>
         <JobExtensions></JobExtensions>
         <ControlFilePathLoginObject></ControlFilePathLoginObject>
@@ -299,16 +299,16 @@
 &amp;lt;/SchedulingRules&amp;gt;]]></ScheduleRuleXml>
     </ScheduleRule>
     <StreamPreparationScript>
-      <Script><![CDATA[]]></Script>
+      <Script><![CDATA[None]]></Script>
       <ScriptLanguage>Lua</ScriptLanguage>
     </StreamPreparationScript>
     <MasterStreamId></MasterStreamId>
     <StreamPath><![CDATA[/FT]]></StreamPath>
-    <StatusFlag>True</StatusFlag>
+    <StatusFlag>False</StatusFlag>
     <StreamVersionDetail>
       <StreamVersionType>Current</StreamVersionType>
       <StreamVersion>1.0</StreamVersion>
-      <DeploymentDateTime>20250924_150637 00:00:00</DeploymentDateTime>
+      <DeploymentDateTime>20250927_234517 00:00:00</DeploymentDateTime>
       <DeployAsActive>True</DeployAsActive>
       <PlannedDeploymentDateTime></PlannedDeploymentDateTime>
       <StorageDateTime></StorageDateTime>
@@ -317,10 +317,10 @@
     </StreamVersionDetail>
     <AutomaticPreparedRuns>0</AutomaticPreparedRuns>
     <BusinessServiceFlag>False</BusinessServiceFlag>
-    <StreamBusinessServiceProperty></StreamBusinessServiceProperty>
+    <StreamBusinessServiceProperty>None</StreamBusinessServiceProperty>
     <AutoPreparationType>Complete</AutoPreparationType>
-    <RunVariables></RunVariables>
-    <ConcurrentStreamRunsEnabled></ConcurrentStreamRunsEnabled>
+    <RunVariables>None</RunVariables>
+    <ConcurrentStreamRunsEnabled>False</ConcurrentStreamRunsEnabled>
     <EnableStreamRunCancelation>False</EnableStreamRunCancelation>
     <Tags></Tags>
     <GitEnabled IsNull="true" />
