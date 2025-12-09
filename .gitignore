@@ -47,6 +47,7 @@ venv/
 ENV/
 env/
 .env
+backend/.env
 .env.local
 .env.development.local
 .env.test.local
@@ -120,8 +121,8 @@ pnpm-lock.yaml
 .next
 
 # Environment specific files
-.env.*
-!.env.example
+# .env.*
+# !.env.example
 
 # Development tools
 .ruff_cache/
@@ -129,10 +130,7 @@ pnpm-lock.yaml
 .pytest_cache/
 
 # Test files
-test_*.py
-*_test.py
-tests/
-__tests__/
+
 
 # Legacy and backup files
 *.backup

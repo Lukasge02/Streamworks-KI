@@ -1,0 +1,35 @@
+
+    def get_user_streams(self, user_id: str = None, limit: int = 50):
+        """Get recent streams (optionally filtered by user)"""
+        if not self.client: return []
+        try:
+            query = self.client.table("streams")\
+                .select("id, filename, created_at, metadata")\
+                .order("created_at", desc=True)\
+                .limit(limit)
+                
+            # If user_id provided (future)
+            if user_id:
+                query = query.eq("user_id", user_id)
+                
+            response = query.execute()
+            return response.data
+        except Exception as e:
+            print(f"Error fetching streams: {e}")
+            return []
+
+    def get_stream(self, stream_id: str):
+        """Get full stream details including content"""
+        if not self.client: return None
+        try:
+            response = self.client.table("streams")\
+                .select("*")\
+                .eq("id", stream_id)\
+                .execute()
+                
+            if response.data:
+                return response.data[0]
+            return None
+        except Exception as e:
+            print(f"Error fetching stream {stream_id}: {e}")
+            return None

@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExportableStream>
+  <Stream>
+    <StreamName>{{ stream_name | default('') }}</StreamName>
+    <StreamDocumentation><![CDATA[{{ stream_documentation | default('Automatisch generierter Standard Stream') }}]]></StreamDocumentation>
+    <AgentDetail>{{ agent_detail | default('') }}</AgentDetail>
+    <AccountNoId>{{ account_no_id | default('111111111') }}</AccountNoId>
+    <CalendarId>{{ calendar_id | default('UATDefaultCalendar') }}</CalendarId>
+    <StreamType>{{ stream_type | default('Normal') }}</StreamType>
+    <StatusFlag>{{ status_flag | default(false) | xml_boolean }}</StatusFlag>
+    <StreamVersion>{{ stream_version | default('1.0') }}</StreamVersion>
+    <MaxStreamRuns>{{ max_stream_runs | default(10) }}</MaxStreamRuns>
+    <ShortDescription><![CDATA[{{ short_description | default(stream_documentation | default('Standard Job Stream')) }}]]></ShortDescription>
+    <SchedulingRequiredFlag>{{ scheduling_required_flag | default(true) | xml_boolean }}</SchedulingRequiredFlag>
+    <ScheduleRuleObject>{{ schedule_rule_object | default('') }}</ScheduleRuleObject>
+    <AutoPreparationType>{{ auto_preparation_type | default('Complete') }}</AutoPreparationType>
+    <AutomaticPreparedRuns>{{ automatic_prepared_runs | default(0) }}</AutomaticPreparedRuns>
+    <RuntimeDataStorageDays>{{ runtime_data_storage_days | default(50) }}</RuntimeDataStorageDays>
+    <RuntimeDataStorageDaySource IsNull="true" />
+    <StreamRunDeletionSource IsNull="true" />
+    <StreamRunDeletionType>{{ stream_run_deletion_type | default('Export') }}</StreamRunDeletionType>
+    <StreamRunDeletionTime>{{ stream_run_deletion_time | default('00:15:00') }}</StreamRunDeletionTime>
+    <StreamRunDeletionDays>{{ stream_run_deletion_days | default(1) }}</StreamRunDeletionDays>
+    <StreamRunDeletionDayType>{{ stream_run_deletion_day_type | default('Calendar day') }}</StreamRunDeletionDayType>
+    <DeletionTimeTimeZoneId>{{ deletion_time_timezone_id | default('UTC+1:00') }}</DeletionTimeTimeZoneId>
+    <DeletionTimeValidFlag IsNull="true" />
+    <DeletionTimeValidSource IsNull="true" />
+    <StreamRunTimeStatisticsDays IsNull="true" />
+    <AvgRunTimeCalcInDays>0</AvgRunTimeCalcInDays>
+    <SeverityGroup>{{ severity_group | default('Low') }}</SeverityGroup>
+    <MaxStreamRunDuration IsNull="true" />
+    <MinStreamRunDuration IsNull="true" />
+    <CentralJobLogAreaFlag>{{ central_job_log_area_flag | default(true) | xml_boolean }}</CentralJobLogAreaFlag>
+    <CentralJobLogSource IsNull="true" />
+    <CentralJobLogStorageDays IsNull="true" />
+    <AgentJobLogStorageDays>{{ agent_job_log_storage_days | default(10) }}</AgentJobLogStorageDays>
+    <AgentJobLogStorageDaySource IsNull="true" />
+    <StreamRunInterval IsNull="true" />
+    <MaxJobLogSize>{{ max_job_log_size | default(5.00) }}</MaxJobLogSize>
+    <ReorgType IsNull="true" />
+    <ExternalJobScriptRequired>{{ external_job_script_required | default(false) | xml_boolean }}</ExternalJobScriptRequired>
+    <KeepPreparedRuns IsNull="true" />
+    <InteractivePslFlag>{{ interactive_psl_flag | default(false) | xml_boolean }}</InteractivePslFlag>
+    <ConcurrentPlanDatesEnabled>{{ concurrent_plan_dates_enabled | default(false) | xml_boolean }}</ConcurrentPlanDatesEnabled>
+    <ConcurrentStreamRunsEnabled>{{ concurrent_stream_runs_enabled | default(false) | xml_boolean }}</ConcurrentStreamRunsEnabled>
+    <BusinessServiceFlag>{{ business_service_flag | default(false) | xml_boolean }}</BusinessServiceFlag>
+    <UncatExclusion>{{ uncat_exclusion | default('') }}</UncatExclusion>
+    <Jobs>
+      <Job>
+        <JobName>StartPoint</JobName>
+        <JobDocumentation IsNull="true" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[Start Point for the Stream]]></ShortDescription>
+        <StatusFlag>true</StatusFlag>
+        <JobCategory>StartPoint</JobCategory>
+        <NormalJobFlag>true</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="true" />
+        <CentralJobLogStorageDays IsNull="true" />
+        <ReportToIncidentManagementFlag IsNull="true" />
+        <ExternalJobScriptRequired IsNull="true" />
+        <MainScript IsNull="true" />
+        <DisplayOrder IsNull="true" />
+        <JobShortName IsNull="true" />
+        <TemplateType IsNull="true" />
+        <ControlFilePath IsNull="true" />
+        <IsNotificationRequired>false</IsNotificationRequired>
+        <CoordinateX IsNull="true" />
+        <CoordinateY IsNull="true" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="true" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="true" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="true" />
+            <RelativeStartTime IsNull="true" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize>{{ max_job_log_size | default(5.00) }}</MaxJobLogSize>
+            <MaxJobDuration>{{ max_job_duration | default('') }}</MaxJobDuration>
+            <LatestStartTime IsNull="true" />
+            <LatestStartTimeType IsNull="true" />
+            <LatestStartTimeRelative IsNull="true" />
+            <LatestStartTimeOffsetDays IsNull="true" />
+            <LatestStartTimeDayType IsNull="true" />
+            <LatestStartTimeConsiderAfterRestart IsNull="true" />
+            <LatestStartTimeAction IsNull="true" />
+            <JobHoldFlag IsNull="true" />
+            <CentralJobLogFlag>{{ central_job_log_flag | default(true) | xml_boolean }}</CentralJobLogFlag>
+            <BypassStatus IsNull="true" />
+            <AgentDetail>{{ agent_detail | default('') }}</AgentDetail>
+            <AgentSource IsNull="true" />
+            <AccountDetail>{{ account_no_id | default('111111111') }}</AccountDetail>
+            <AccountSource IsNull="true" />
+            <SeverityGroup>{{ severity_group | default('Low') }}</SeverityGroup>
+            <AgentJobLogStorageDays>{{ agent_job_log_storage_days | default(10) }}</AgentJobLogStorageDays>
+            <ExternalDependencies>{{ external_dependencies | default('') }}</ExternalDependencies>
+            <FileDependency>{{ file_dependency | default('') }}</FileDependency>
+            <JobCompletionCodeRules>{{ job_completion_code_rules | default('') }}</JobCompletionCodeRules>
+            <LogicalResourceDependencies>{{ logical_resource_dependencies | default('') }}</LogicalResourceDependencies>
+            <Documentation IsNull="true" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons>{{ job_contact_persons | default('') }}</JobContactPersons>
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>{{ preparation_script_job_order | default(0) }}</PreparationScriptJobOrder>
+          <Script><![CDATA[{{ job_preparation_script | default('') }}]]></Script>
+          <ScriptLanguage>{{ job_script_language | default('Lua') }}</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules>{{ recovery_rules | default('*') }}</RecoveryRules>
+        <ParserJobDefinitions>{{ parser_job_definitions | default('') }}</ParserJobDefinitions>
+        <JobExtensions>{{ job_extensions | default('') }}</JobExtensions>
+        <ControlFilePathLoginObject>{{ control_file_path_login_object | default('') }}</ControlFilePathLoginObject>
+        <ExternalProcedureDependencies>{{ external_procedure_dependencies | default('') }}</ExternalProcedureDependencies>
+      </Job>
+      <Job>
+        <JobName>{{ job_name | default('MainJob') }}</JobName>
+        <JobDocumentation><![CDATA[{{ job_documentation | default('Hauptaufgabe des Streams') }}]]></JobDocumentation>
+        <JobNotificationRules />
+        <LoginObject>{{ login_object | default('') }}</LoginObject>
+        <ShortDescription><![CDATA[{{ job_short_description | default('Standard Job Execution') }}]]></ShortDescription>
+        <StatusFlag>{{ job_status_flag | default(false) | xml_boolean }}</StatusFlag>
+        <JobCategory>Normal</JobCategory>
+        <NormalJobFlag>true</NormalJobFlag>
+        <JobType>{{ job_type_system | default('Windows') }}</JobType>
+        <MinJobDuration IsNull="true" />
+        <CentralJobLogStorageDays IsNull="true" />
+        <ReportToIncidentManagementFlag IsNull="true" />
+        <ExternalJobScriptRequired IsNull="true" />
+        <MainScript><![CDATA[{{ main_script | default('echo "Standard Job ausgeführt"') }}]]></MainScript>
+        <DisplayOrder>{{ display_order | default(2) }}</DisplayOrder>
+        <JobShortName IsNull="true" />
+        <TemplateType>{{ template_type | default('Normal') }}</TemplateType>
+        <ControlFilePath IsNull="true" />
+        <IsNotificationRequired>false</IsNotificationRequired>
+        <CoordinateX>{{ coordinate_x | default(145) }}</CoordinateX>
+        <CoordinateY>{{ coordinate_y | default(192) }}</CoordinateY>
+        <JobInternalSuccessors>
+          <JobInternalSuccessor>
+            <JobName>EndPoint</JobName>
+            <EdgeBreaks IsNull="true" />
+            <EdgeEndPosition>{{ edge_end_position | default(2) }}</EdgeEndPosition>
+            <EdgeStartPosition>{{ edge_start_position | default(6) }}</EdgeStartPosition>
+          </JobInternalSuccessor>
+        </JobInternalSuccessors>
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            {% if start_time %}
+            <StartTime>{{ start_time }}</StartTime>
+            <StartTimeDayType>{{ start_time_day_type | default('Normal') }}</StartTimeDayType>
+            <StartTimeOffsetDays IsNull="true" />
+            <StartTimeTimeZone />
+            <StartTimeType>{{ start_time_type | default('Absolute') }}</StartTimeType>
+            {% else %}
+            <StartTime IsNull="true" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="true" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="true" />
+            {% endif %}
+            <RelativeStartTime IsNull="true" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize>{{ max_job_log_size | default(5.00) }}</MaxJobLogSize>
+            <MaxJobDuration>{{ max_job_duration | default('') }}</MaxJobDuration>
+            <LatestStartTime IsNull="true" />
+            <LatestStartTimeType IsNull="true" />
+            <LatestStartTimeRelative IsNull="true" />
+            <LatestStartTimeOffsetDays IsNull="true" />
+            <LatestStartTimeDayType IsNull="true" />
+            <LatestStartTimeConsiderAfterRestart IsNull="true" />
+            <LatestStartTimeAction IsNull="true" />
+            <JobHoldFlag IsNull="true" />
+            <CentralJobLogFlag>{{ central_job_log_flag | default(true) | xml_boolean }}</CentralJobLogFlag>
+            <BypassStatus IsNull="true" />
+            <AgentDetail>{{ agent_detail | default('') }}</AgentDetail>
+            <AgentSource IsNull="true" />
+            <AccountDetail>{{ account_no_id | default('111111111') }}</AccountDetail>
+            <AccountSource IsNull="true" />
+            <SeverityGroup>{{ severity_group | default('Low') }}</SeverityGroup>
+            <AgentJobLogStorageDays>{{ agent_job_log_storage_days | default(10) }}</AgentJobLogStorageDays>
+            <ExternalDependencies>{{ external_dependencies | default('') }}</ExternalDependencies>
+            <FileDependency>{{ file_dependency | default('') }}</FileDependency>
+            <JobCompletionCodeRules>{{ job_completion_code_rules | default('') }}</JobCompletionCodeRules>
+            <LogicalResourceDependencies>{{ logical_resource_dependencies | default('') }}</LogicalResourceDependencies>
+            <Documentation IsNull="true" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons>{{ job_contact_persons | default('') }}</JobContactPersons>
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>{{ preparation_script_job_order | default(0) }}</PreparationScriptJobOrder>
+          <Script><![CDATA[{{ job_preparation_script | default('') }}]]></Script>
+          <ScriptLanguage>{{ job_script_language | default('Lua') }}</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules>{{ recovery_rules | default('*') }}</RecoveryRules>
+        <ParserJobDefinitions>{{ parser_job_definitions | default('') }}</ParserJobDefinitions>
+        <JobExtensions>{{ job_extensions | default('') }}</JobExtensions>
+        <ControlFilePathLoginObject>{{ control_file_path_login_object | default('') }}</ControlFilePathLoginObject>
+        <ExternalProcedureDependencies>{{ external_procedure_dependencies | default('') }}</ExternalProcedureDependencies>
+      </Job>
+      <Job>
+        <JobName>EndPoint</JobName>
+        <JobDocumentation IsNull="true" />
+        <JobNotificationRules />
+        <LoginObject />
+        <ShortDescription><![CDATA[End Point for the Stream]]></ShortDescription>
+        <StatusFlag>true</StatusFlag>
+        <JobCategory>EndPoint</JobCategory>
+        <NormalJobFlag>true</NormalJobFlag>
+        <JobType>None</JobType>
+        <MinJobDuration IsNull="true" />
+        <CentralJobLogStorageDays IsNull="true" />
+        <ReportToIncidentManagementFlag IsNull="true" />
+        <ExternalJobScriptRequired IsNull="true" />
+        <MainScript IsNull="true" />
+        <DisplayOrder IsNull="true" />
+        <JobShortName IsNull="true" />
+        <TemplateType IsNull="true" />
+        <ControlFilePath IsNull="true" />
+        <IsNotificationRequired>false</IsNotificationRequired>
+        <CoordinateX IsNull="true" />
+        <CoordinateY IsNull="true" />
+        <JobInternalSuccessors />
+        <StreamRunJobProperties>
+          <StreamRunJobProperty>
+            <RunNumber>0</RunNumber>
+            <StartTime IsNull="true" />
+            <StartTimeDayType />
+            <StartTimeOffsetDays IsNull="true" />
+            <StartTimeTimeZone />
+            <StartTimeType IsNull="true" />
+            <RelativeStartTime IsNull="true" />
+            <StartTimeRelativeJob />
+            <MaxJobLogSize>{{ max_job_log_size | default(5.00) }}</MaxJobLogSize>
+            <MaxJobDuration>{{ max_job_duration | default('') }}</MaxJobDuration>
+            <LatestStartTime IsNull="true" />
+            <LatestStartTimeType IsNull="true" />
+            <LatestStartTimeRelative IsNull="true" />
+            <LatestStartTimeOffsetDays IsNull="true" />
+            <LatestStartTimeDayType IsNull="true" />
+            <LatestStartTimeConsiderAfterRestart IsNull="true" />
+            <LatestStartTimeAction IsNull="true" />
+            <JobHoldFlag IsNull="true" />
+            <CentralJobLogFlag>{{ central_job_log_flag | default(true) | xml_boolean }}</CentralJobLogFlag>
+            <BypassStatus IsNull="true" />
+            <AgentDetail>{{ agent_detail | default('') }}</AgentDetail>
+            <AgentSource IsNull="true" />
+            <AccountDetail>{{ account_no_id | default('111111111') }}</AccountDetail>
+            <AccountSource IsNull="true" />
+            <SeverityGroup>{{ severity_group | default('Low') }}</SeverityGroup>
+            <AgentJobLogStorageDays>{{ agent_job_log_storage_days | default(10) }}</AgentJobLogStorageDays>
+            <ExternalDependencies>{{ external_dependencies | default('') }}</ExternalDependencies>
+            <FileDependency>{{ file_dependency | default('') }}</FileDependency>
+            <JobCompletionCodeRules>{{ job_completion_code_rules | default('') }}</JobCompletionCodeRules>
+            <LogicalResourceDependencies>{{ logical_resource_dependencies | default('') }}</LogicalResourceDependencies>
+            <Documentation IsNull="true" />
+          </StreamRunJobProperty>
+        </StreamRunJobProperties>
+        <JobContactPersons>{{ job_contact_persons | default('') }}</JobContactPersons>
+        <JobPreparationScript>
+          <PreparationScriptJobOrder>{{ preparation_script_job_order | default(0) }}</PreparationScriptJobOrder>
+          <Script><![CDATA[{{ job_preparation_script | default('') }}]]></Script>
+          <ScriptLanguage>{{ job_script_language | default('Lua') }}</ScriptLanguage>
+        </JobPreparationScript>
+        <RecoveryRules>{{ recovery_rules | default('*') }}</RecoveryRules>
+        <ParserJobDefinitions>{{ parser_job_definitions | default('') }}</ParserJobDefinitions>
+        <JobExtensions>{{ job_extensions | default('') }}</JobExtensions>
+        <ControlFilePathLoginObject>{{ control_file_path_login_object | default('') }}</ControlFilePathLoginObject>
+        <ExternalProcedureDependencies>{{ external_procedure_dependencies | default('') }}</ExternalProcedureDependencies>
+      </Job>
+    </Jobs>
+    <StreamContactPersons>
+      <StreamContactPerson>
+        <FirstName>{{ contact_first_name | default('System') }}</FirstName>
+        <LastName>{{ contact_last_name | default('Generated') }}</LastName>
+        <MiddleName>{{ contact_middle_name | default('') }}</MiddleName>
+        <CompanyName>{{ company_name | default('Streamworks') }}</CompanyName>
+        <Department>{{ department | default('') }}</Department>
+        <Comment IsNull="true" />
+        <ContactType>{{ contact_type | default('None') }}</ContactType>
+        <HierarchyLevelCd>{{ hierarchy_level_cd | default(1) }}</HierarchyLevelCd>
+      </StreamContactPerson>
+    </StreamContactPersons>
+    <ScheduleRule>
+      <ScheduleRuleXml><![CDATA[{{ schedule_rule_xml | default('&lt;SchedulingRules ShiftRule=&quot;3&quot; ScheduleRuleDialogNotYetVisited=&quot;1&quot; /&gt;') }}]]></ScheduleRuleXml>
+    </ScheduleRule>
+    <StreamPreparationScript>
+      <Script><![CDATA[{{ stream_preparation_script | default('') }}]]></Script>
+      <ScriptLanguage>{{ stream_script_language | default('Lua') }}</ScriptLanguage>
+    </StreamPreparationScript>
+    <MasterStreamId>{{ master_stream_id | default('') }}</MasterStreamId>
+    <StreamPath><![CDATA[{{ stream_path | default('') }}]]></StreamPath>
+    <StatusFlag>{{ status_flag | default(true) | xml_boolean }}</StatusFlag>
+    <StreamVersionDetail>
+      <StreamVersionType>{{ stream_version_type | default('Current') }}</StreamVersionType>
+      <StreamVersion>{{ stream_version | default('1.0') }}</StreamVersion>
+      <DeploymentDateTime>{{ deployment_date_time | default(timestamp | string + ' 00:00:00') }}</DeploymentDateTime>
+      <DeployAsActive>{{ deploy_as_active | default(true) | xml_boolean }}</DeployAsActive>
+      <PlannedDeploymentDateTime>{{ planned_deployment_date_time | default('') }}</PlannedDeploymentDateTime>
+      <StorageDateTime>{{ storage_date_time | default('') }}</StorageDateTime>
+      <AutoDeploymentStatus>{{ auto_deployment_status | default('Finished') }}</AutoDeploymentStatus>
+      <ScheduleRulesMergeType>{{ schedule_rules_merge_type | default('FromNew') }}</ScheduleRulesMergeType>
+    </StreamVersionDetail>
+    <AutomaticPreparedRuns>{{ automatic_prepared_runs | default(0) }}</AutomaticPreparedRuns>
+    <BusinessServiceFlag>{{ business_service_flag | default(false) | xml_boolean }}</BusinessServiceFlag>
+    <StreamBusinessServiceProperty>{{ stream_business_service_property | default('') }}</StreamBusinessServiceProperty>
+    <AutoPreparationType>{{ auto_preparation_type | default('Complete') }}</AutoPreparationType>
+    <RunVariables>{{ run_variables | default('') }}</RunVariables>
+    <ConcurrentStreamRunsEnabled>{{ concurrent_stream_runs_enabled | default('') }}</ConcurrentStreamRunsEnabled>
+    <EnableStreamRunCancelation>{{ enable_stream_run_cancelation | default(false) | xml_boolean }}</EnableStreamRunCancelation>
+    <Tags>{{ tags | default('') }}</Tags>
+    <GitEnabled IsNull="true" />
+  </Stream>
+</ExportableStream>
