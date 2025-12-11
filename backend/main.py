@@ -10,6 +10,7 @@ from domains.chat.router import router as chat_router
 from domains.xml.router import router as xml_router
 from domains.wizard.router import router as wizard_router
 from domains.options.router import router as options_router
+from domains.documents.router import router as documents_router
 
 app = FastAPI(
     title="Streamworks Self Service API",
@@ -31,6 +32,7 @@ app.include_router(chat_router)
 app.include_router(xml_router)
 app.include_router(wizard_router)
 app.include_router(options_router)
+app.include_router(documents_router)
 
 
 @app.get("/")
@@ -38,8 +40,14 @@ async def root():
     return {
         "service": "Streamworks Self Service API",
         "version": "2.0.0",
-        "domains": ["chat", "xml", "wizard"]
+        "domains": ["chat", "xml", "wizard", "documents"]
     }
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint"""
+    return {"status": "healthy"}
 
 
 

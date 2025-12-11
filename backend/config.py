@@ -3,10 +3,12 @@ Configuration module for Streamworks-KI Backend
 Loads environment variables from .env file
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+# Load .env file from project root (one level up from backend/)
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
 
 
 class Config:

@@ -11,7 +11,8 @@ import {
     LayoutDashboard,
     ChevronLeft,
     ChevronRight,
-    Zap
+    Zap,
+    FileText
 } from "lucide-react";
 import { cn } from "@/app/utils/cn";
 
@@ -22,6 +23,8 @@ interface SidebarProps {
 const NAV_ITEMS = [
     { href: "/editor", label: "Stream Editor", icon: Sparkles, description: "Wizard + KI-Chat" },
     { href: "/streams", label: "Meine Streams", icon: LayoutDashboard, description: "Gespeicherte Jobs" },
+    { href: "/documents", label: "Dokumente", icon: FileText, description: "RAG Wissensbasis" },
+    { href: "/chat", label: "Dokumenten-Chat", icon: MessageCircle, description: "Fragen an Dokumente" },
 ];
 
 export default function Sidebar({ sessionId }: SidebarProps) {

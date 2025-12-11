@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<StreamConfiguration>
+    <Header>
+        <Name>Test Stream Konfiguration</Name>
+        <Version>1.0</Version>
+        <CreatedAt>2024-12-10</CreatedAt>
+    </Header>
+    
+    <Section id="1" name="Grundkonfiguration">
+        MARKER_XML_SECTION_1
+        Diese Sektion enthält die Grundkonfiguration des Streams.
+        <Parameter name="timeout" value="30"/>
+        <Parameter name="retries" value="3"/>
+    </Section>
+    
+    <Section id="2" name="Verarbeitung">
+        MARKER_XML_SECTION_2
+        Diese Sektion definiert die Verarbeitungslogik.
+        <Step order="1">Daten laden</Step>
+        <Step order="2">Daten transformieren</Step>
+        <Step order="3">Daten speichern</Step>
+    </Section>
+    
+    <Section id="3" name="Ausgabe">
+        MARKER_XML_SECTION_3
+        Konfiguration der Ausgabe.
+        <Output format="JSON" destination="api"/>
+    </Section>
+</StreamConfiguration>
