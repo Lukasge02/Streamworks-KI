@@ -94,7 +94,7 @@ export default function DocumentsPage() {
 
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
-    const [debugInfo, setDebugInfo] = useState<any>(null);
+    const [debugInfo, setDebugInfo] = useState<{ parentId?: string; docId?: string; filename?: string; error?: string; details?: string } | null>(null);
 
     // Sync state
     const [isSyncing, setIsSyncing] = useState(false);
@@ -298,7 +298,7 @@ export default function DocumentsPage() {
                     } else {
                         // Large file but no presigned URL - show message
                         console.warn("⚠️ Large file without presigned URL");
-                        setDebugInfo(prev => ({ ...prev, error: "Large file - presigned URL not available" }));
+                        setDebugInfo((prev) => ({ ...prev, error: "Large file - presigned URL not available" }));
                     }
                 } else {
                     // Fallback: Try base64 endpoint (works for local storage)
@@ -316,12 +316,12 @@ export default function DocumentsPage() {
                     } else {
                         const errorText = await origRes.text();
                         console.error("❌ Original file not found:", origRes.status, errorText);
-                        setDebugInfo(prev => ({ ...prev, error: `Status: ${origRes.status}`, details: errorText }));
+                        setDebugInfo((prev) => ({ ...prev, error: `Status: ${origRes.status}`, details: errorText }));
                     }
                 }
             } catch (e) {
                 console.error("❌ Original file fetch error:", e);
-                setDebugInfo(prev => ({ ...prev, error: String(e) }));
+                setDebugInfo((prev) => ({ ...prev, error: String(e) }));
             }
 
             // Load all chunks for this document
@@ -952,22 +952,22 @@ export default function DocumentsPage() {
 
                             {/* Metadata Row */}
                             <div className="px-6 py-2 flex items-center gap-6 text-sm text-slate-300 bg-slate-800/50">
-                                {viewerDoc?.metadata?.page_count && (
+                                {viewerDoc?.metadata?.page_count != null ? (
                                     <span className="flex items-center gap-1.5">
                                         <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         {String(viewerDoc.metadata.page_count)} Seiten
                                     </span>
-                                )}
-                                {viewerDoc?.metadata?.word_count && (
+                                ) : null}
+                                {viewerDoc?.metadata?.word_count != null ? (
                                     <span className="flex items-center gap-1.5">
                                         <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                                         </svg>
                                         {Number(viewerDoc.metadata.word_count).toLocaleString()} Wörter
                                     </span>
-                                )}
+                                ) : null}
                                 {chunks.length > 0 && (
                                     <span className="flex items-center gap-1.5">
                                         <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -984,14 +984,14 @@ export default function DocumentsPage() {
                                         {(originalFile.size_bytes / 1024 / 1024).toFixed(2)} MB
                                     </span>
                                 )}
-                                {viewerDoc?.metadata?.created_at && (
+                                {viewerDoc?.metadata?.created_at != null ? (
                                     <span className="flex items-center gap-1.5 text-slate-400">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                         {new Date(String(viewerDoc.metadata.created_at)).toLocaleDateString('de-DE')}
                                     </span>
-                                )}
+                                ) : null}
                             </div>
                         </div>
 

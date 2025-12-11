@@ -7,11 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     MessageCircle,
     Sparkles,
-    FileCode,
     LayoutDashboard,
     ChevronLeft,
     ChevronRight,
-    Zap,
     FileText
 } from "lucide-react";
 import { cn } from "@/app/utils/cn";
@@ -136,7 +134,7 @@ export default function Sidebar({ sessionId }: SidebarProps) {
                             exit={{ opacity: 0 }}
                             className="text-[10px] text-gray-400 text-center"
                         >
-                            v2.0 Phase 3
+                            v2.0.0
                         </motion.div>
                     )}
                 </AnimatePresence>

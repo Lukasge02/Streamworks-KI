@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, User, Settings, Wrench, Calendar, CheckCircle, ArrowLeft, ArrowRight, MessageCircle, SkipForward, Check, X, Send } from "lucide-react";
@@ -38,7 +38,7 @@ const WIZARD_STEPS = [
     { id: "preview", label: "Vorschau", icon: CheckCircle },
 ];
 
-export default function EditorPage() {
+function EditorPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionIdParam = searchParams.get("session");
@@ -548,5 +548,17 @@ export default function EditorPage() {
                 </AnimatePresence>
             </div>
         </AppLayout>
+    );
+}
+
+export default function EditorPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-screen">
+                <div className="w-10 h-10 border-4 border-gray-200 border-t-[#0082D9] rounded-full animate-spin" />
+            </div>
+        }>
+            <EditorPageContent />
+        </Suspense>
     );
 }
