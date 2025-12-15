@@ -1,9 +1,28 @@
 """
 RAG Services Package
-Enterprise-ready Retrieval-Augmented Generation
+Enterprise-ready Retrieval-Augmented Generation v2.0
+
+Enhanced features:
+- Hybrid Search (Semantic + BM25 with RRF)
+- Cross-Encoder Reranking
+- Citation Generation
+- Confidence Scoring
 """
 
 from .vector_store import VectorStore
 from .document_service import DocumentService
 
-__all__ = ["VectorStore", "DocumentService"]
+# Enhanced RAG Components
+from .cache import RAGCache
+from .hybrid_search import HybridSearchEngine
+from .reranker import CrossEncoderReranker
+
+__all__ = [
+    # Core
+    "VectorStore",
+    "DocumentService",
+    # Enhanced
+    "RAGCache",
+    "HybridSearchEngine",
+    "CrossEncoderReranker",
+]

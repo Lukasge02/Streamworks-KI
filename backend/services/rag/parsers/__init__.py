@@ -10,12 +10,12 @@ from .image_parser import ImageParser
 from .registry import ParserRegistry, parser_registry
 
 __all__ = [
-    "BaseParser", 
-    "ParsedDocument", 
+    "BaseParser",
+    "ParsedDocument",
     "DocumentType",
-    "DoclingParser", 
+    "DoclingParser",
     "TextParser",
     "ImageParser",
     "ParserRegistry",
-    "parser_registry"
+    "parser_registry",
 ]

@@ -3,6 +3,7 @@ def test_read_root(client):
     assert response.status_code == 200
     assert response.json()["service"] == "Streamworks Self Service API"
 
+
 def test_health_check(client):
     # Depending on if there is a health check endpoint.
     # The README said http://localhost:8000/health

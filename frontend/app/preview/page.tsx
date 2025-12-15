@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useEffect, useState, Suspense, useCallback } from 'react';
-import Link from 'next/link';
+import { useEffect, useState, Suspense, useCallback } from "react";
+import Link from "next/link";
 
-import { useSearchParams } from 'next/navigation';
-import Editor from '@monaco-editor/react';
-import Header from '../components/Header';
+import { useSearchParams } from "next/navigation";
+import Editor from "@monaco-editor/react";
+import Header from "../components/Header";
 
 interface ValidationIssue {
   message: string;
   line: number;
-  severity: 'error' | 'warning';
+  severity: "error" | "warning";
 }
 
 interface ValidationResult {
@@ -47,53 +47,81 @@ const PARAMETER_SECTIONS: Record<string, SectionConfig> = {
   stream: {
     title: "Stream-Parameter",
     params: [
-      { key: 'stream_name', label: 'Stream Name', required: true },
-      { key: 'stream_documentation', label: 'Dokumentation', required: false },
-      { key: 'stream_path', label: 'Stream Pfad', required: false },
-      { key: 'short_description', label: 'Kurzbeschreibung', required: false },
-    ]
+      { key: "stream_name", label: "Stream Name", required: true },
+      { key: "stream_documentation", label: "Dokumentation", required: false },
+      { key: "stream_path", label: "Stream Pfad", required: false },
+      { key: "short_description", label: "Kurzbeschreibung", required: false },
+    ],
   },
   fileTransfer: {
     title: "File Transfer",
     params: [
-      { key: 'source_agent', label: 'Quell-Server', required: true },
-      { key: 'target_agent', label: 'Ziel-Server', required: true },
-      { key: 'source_file_pattern', label: 'Quell-Datei', required: true },
-      { key: 'target_file_path', label: 'Ziel-Pfad', required: true },
-      { key: 'source_file_delete_flag', label: 'Quelle löschen', required: false, type: 'dropdown', options: ['', 'true', 'false'] },
-      { key: 'target_file_exists_handling', label: 'Überschreiben', required: false, type: 'dropdown', options: ['', 'Overwrite', 'Skip', 'Abort'] },
-    ]
+      { key: "source_agent", label: "Quell-Server", required: true },
+      { key: "target_agent", label: "Ziel-Server", required: true },
+      { key: "source_file_pattern", label: "Quell-Datei", required: true },
+      { key: "target_file_path", label: "Ziel-Pfad", required: true },
+      {
+        key: "source_file_delete_flag",
+        label: "Quelle löschen",
+        required: false,
+        type: "dropdown",
+        options: ["", "true", "false"],
+      },
+      {
+        key: "target_file_exists_handling",
+        label: "Überschreiben",
+        required: false,
+        type: "dropdown",
+        options: ["", "Overwrite", "Skip", "Abort"],
+      },
+    ],
   },
   timing: {
     title: "Timing & Schedule",
     params: [
-      { key: 'schedule', label: 'Zeitplan', required: false, type: 'dropdown', options: ['', 'täglich', 'wöchentlich', 'monatlich', 'stündlich', 'werktags'] },
-      { key: 'start_time', label: 'Startzeit', required: false, type: 'time' },
-    ]
+      {
+        key: "schedule",
+        label: "Zeitplan",
+        required: false,
+        type: "dropdown",
+        options: [
+          "",
+          "täglich",
+          "wöchentlich",
+          "monatlich",
+          "stündlich",
+          "werktags",
+        ],
+      },
+      { key: "start_time", label: "Startzeit", required: false, type: "time" },
+    ],
   },
   contact: {
     title: "Kontakt",
     params: [
-      { key: 'contact_first_name', label: 'Vorname', required: false },
-      { key: 'contact_last_name', label: 'Nachname', required: false },
-      { key: 'company_name', label: 'Firma', required: false },
-    ]
-  }
+      { key: "contact_first_name", label: "Vorname", required: false },
+      { key: "contact_last_name", label: "Nachname", required: false },
+      { key: "company_name", label: "Firma", required: false },
+    ],
+  },
 };
 
 function PreviewContent() {
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get('session_id');
+  const sessionId = searchParams.get("session_id");
 
   const [data, setData] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [xmlContent, setXmlContent] = useState('');
+  const [xmlContent, setXmlContent] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [params, setParams] = useState<Record<string, any>>({});
   const [toast, setToast] = useState<string | null>(null);
-  const [expandedSections, setExpandedSections] = useState<string[]>(['stream', 'fileTransfer']);
+  const [expandedSections, setExpandedSections] = useState<string[]>([
+    "stream",
+    "fileTransfer",
+  ]);
   const [isRegenerating, setIsRegenerating] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editorRef, setEditorRef] = useState<any>(null);
@@ -101,17 +129,17 @@ function PreviewContent() {
   // Load initial data
   useEffect(() => {
     if (!sessionId) {
-      setError('Keine Session-ID angegeben');
+      setError("Keine Session-ID angegeben");
       setLoading(false);
       return;
     }
     fetch(`http://localhost:8000/api/xml/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId }),
     })
-      .then(res => {
-        if (!res.ok) throw new Error('Session nicht gefunden');
+      .then((res) => {
+        if (!res.ok) throw new Error("Session nicht gefunden");
         return res.json();
       })
       .then((data: PreviewData) => {
@@ -120,9 +148,10 @@ function PreviewContent() {
         setParams(data.params);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const errorMessage = (err as any).message || 'Ein Fehler ist aufgetreten';
+        const errorMessage =
+          (err as any).message || "Ein Fehler ist aufgetreten";
         setError(errorMessage);
         setLoading(false);
       });
@@ -135,65 +164,78 @@ function PreviewContent() {
 
   // Regenerate XML when params change (debounced)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const regenerateXML = useCallback(async (updatedParams: Record<string, any>) => {
-    if (!sessionId || isRegenerating) return;
+  const regenerateXML = useCallback(
+    async (updatedParams: Record<string, any>) => {
+      if (!sessionId || isRegenerating) return;
 
-    setIsRegenerating(true);
-    try {
-      const res = await fetch('http://localhost:8000/api/xml/regenerate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, updated_params: updatedParams }),
-      });
-      if (!res.ok) throw new Error('Fehler beim Regenerieren');
-      const newData = await res.json();
-      setXmlContent(newData.xml);
-      setData(prev => prev ? { ...prev, validation: newData.validation } : null);
-    } catch (err) {
-      console.error('Regenerate error:', err);
-    } finally {
-      setIsRegenerating(false);
-    }
-  }, [sessionId, isRegenerating]);
+      setIsRegenerating(true);
+      try {
+        const res = await fetch("http://localhost:8000/api/xml/regenerate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sessionId,
+            updated_params: updatedParams,
+          }),
+        });
+        if (!res.ok) throw new Error("Fehler beim Regenerieren");
+        const newData = await res.json();
+        setXmlContent(newData.xml);
+        setData((prev) =>
+          prev ? { ...prev, validation: newData.validation } : null,
+        );
+      } catch (err) {
+        console.error("Regenerate error:", err);
+      } finally {
+        setIsRegenerating(false);
+      }
+    },
+    [sessionId, isRegenerating],
+  );
 
   // Handle parameter change - updates params and triggers XML regeneration
-  const handleParamChange = useCallback((key: string, value: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newParams: Record<string, any> = { ...params, [key]: value };
-    setParams(newParams);
+  const handleParamChange = useCallback(
+    (key: string, value: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newParams: Record<string, any> = { ...params, [key]: value };
+      setParams(newParams);
 
-    // Debounce the regeneration
-    const timeoutId = setTimeout(() => {
-      regenerateXML(newParams);
-    }, 500);
+      // Debounce the regeneration
+      const timeoutId = setTimeout(() => {
+        regenerateXML(newParams);
+      }, 500);
 
-    return () => clearTimeout(timeoutId);
-  }, [params, regenerateXML]);
+      return () => clearTimeout(timeoutId);
+    },
+    [params, regenerateXML],
+  );
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev =>
+    setExpandedSections((prev) =>
       prev.includes(section)
-        ? prev.filter(s => s !== section)
-        : [...prev, section]
+        ? prev.filter((s) => s !== section)
+        : [...prev, section],
     );
   };
 
   const copyXML = () => {
     navigator.clipboard.writeText(xmlContent);
-    showToast('📋 In Zwischenablage kopiert');
+    showToast("📋 In Zwischenablage kopiert");
   };
 
   const downloadXML = () => {
-    const streamName = params.stream_name || 'stream';
-    const filename = streamName.startsWith('GECK003_') ? streamName : `GECK003_${streamName}`;
-    const blob = new Blob([xmlContent], { type: 'application/xml' });
+    const streamName = params.stream_name || "stream";
+    const filename = streamName.startsWith("GECK003_")
+      ? streamName
+      : `GECK003_${streamName}`;
+    const blob = new Blob([xmlContent], { type: "application/xml" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `${filename}.xml`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('⬇ Download gestartet');
+    showToast("⬇ Download gestartet");
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -208,17 +250,20 @@ function PreviewContent() {
       editorRef.focus();
       // Highlight the line briefly
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const decorations = editorRef.deltaDecorations([], [
-        {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          range: new (window as any).monaco.Range(line, 1, line, 1),
-          options: {
-            isWholeLine: true,
-            className: 'myLineDecoration',
-            glyphMarginClassName: 'myGlyphMarginClass'
-          }
-        }
-      ]);
+      const decorations = editorRef.deltaDecorations(
+        [],
+        [
+          {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            range: new (window as any).monaco.Range(line, 1, line, 1),
+            options: {
+              isWholeLine: true,
+              className: "myLineDecoration",
+              glyphMarginClassName: "myGlyphMarginClass",
+            },
+          },
+        ],
+      );
 
       setTimeout(() => {
         editorRef.deltaDecorations(decorations, []);
@@ -246,7 +291,9 @@ function PreviewContent() {
         <div className="error-container">
           <h2>❌ Fehler</h2>
           <p>{error}</p>
-          <Link href="/" className="btn btn-primary">Zurück zum Chat</Link>
+          <Link href="/" className="btn btn-primary">
+            Zurück zum Chat
+          </Link>
         </div>
         <style jsx>{styles}</style>
       </div>
@@ -262,11 +309,15 @@ function PreviewContent() {
         <aside className="preview-sidebar">
           {/* Validation Status */}
           <div className="sidebar-section">
-            <div className={`status-card ${data?.validation.is_valid ? 'valid' : 'invalid'}`}>
-              <span className="status-icon">{data?.validation.is_valid ? '✓' : '✗'}</span>
+            <div
+              className={`status-card ${data?.validation.is_valid ? "valid" : "invalid"}`}
+            >
+              <span className="status-icon">
+                {data?.validation.is_valid ? "✓" : "✗"}
+              </span>
               <span className="status-text">
                 {data?.validation.is_valid
-                  ? 'XML Validierung erfolgreich'
+                  ? "XML Validierung erfolgreich"
                   : `${data?.validation.issues.length} Fehler`}
               </span>
               {isRegenerating && <span className="regenerating">⟳</span>}
@@ -292,9 +343,25 @@ function PreviewContent() {
           {/* Parameter Sections - Accordion Style like Chat */}
           <div className="params-container">
             <h3 className="params-header">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <svg
+                width="20"
+                height="20"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
               Parameter bearbeiten
             </h3>
@@ -307,43 +374,56 @@ function PreviewContent() {
                 >
                   <span>{section.title}</span>
                   <svg
-                    className={`toggle-icon ${expandedSections.includes(sectionKey) ? 'expanded' : ''}`}
+                    className={`toggle-icon ${expandedSections.includes(sectionKey) ? "expanded" : ""}`}
                     width="16"
                     height="16"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
 
                 {expandedSections.includes(sectionKey) && (
                   <div className="section-content">
-                    {section.params.map(param => {
-                      const value = params[param.key] || '';
+                    {section.params.map((param) => {
+                      const value = params[param.key] || "";
                       return (
                         <div key={param.key} className="param-row">
                           <span className="param-label">
                             {param.label}
-                            {param.required && <span className="required">*</span>}
+                            {param.required && (
+                              <span className="required">*</span>
+                            )}
                           </span>
-                          {param.type === 'dropdown' ? (
+                          {param.type === "dropdown" ? (
                             <select
                               className="param-input"
                               value={value}
-                              onChange={e => handleParamChange(param.key, e.target.value)}
+                              onChange={(e) =>
+                                handleParamChange(param.key, e.target.value)
+                              }
                             >
-                              {param.options?.map(opt => (
-                                <option key={opt} value={opt}>{opt || '—'}</option>
+                              {param.options?.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt || "—"}
+                                </option>
                               ))}
                             </select>
-                          ) : param.type === 'time' ? (
+                          ) : param.type === "time" ? (
                             <input
                               type="time"
                               className="param-input"
                               value={value}
-                              onChange={e => handleParamChange(param.key, e.target.value)}
+                              onChange={(e) =>
+                                handleParamChange(param.key, e.target.value)
+                              }
                             />
                           ) : (
                             <input
@@ -351,7 +431,9 @@ function PreviewContent() {
                               className="param-input"
                               value={value}
                               placeholder="—"
-                              onChange={e => handleParamChange(param.key, e.target.value)}
+                              onChange={(e) =>
+                                handleParamChange(param.key, e.target.value)
+                              }
                             />
                           )}
                         </div>
@@ -369,8 +451,12 @@ function PreviewContent() {
           <div className="editor-toolbar">
             <span className="toolbar-title">XML Vorschau</span>
             <div className="toolbar-actions">
-              <button className="btn btn-outline" onClick={copyXML}>📋 Kopieren</button>
-              <button className="btn btn-success" onClick={downloadXML}>⬇ Herunterladen</button>
+              <button className="btn btn-outline" onClick={copyXML}>
+                📋 Kopieren
+              </button>
+              <button className="btn btn-success" onClick={downloadXML}>
+                ⬇ Herunterladen
+              </button>
             </div>
           </div>
           <div className="editor-container">
@@ -379,13 +465,13 @@ function PreviewContent() {
               height="100%"
               defaultLanguage="xml"
               value={xmlContent}
-              onChange={(value) => setXmlContent(value || '')}
+              onChange={(value) => setXmlContent(value || "")}
               theme="vs-dark"
               options={{
                 minimap: { enabled: true },
                 fontSize: 13,
-                lineNumbers: 'on',
-                wordWrap: 'on',
+                lineNumbers: "on",
+                wordWrap: "on",
                 scrollBeyondLastLine: false,
                 formatOnPaste: true,
                 automaticLayout: true,
@@ -779,28 +865,37 @@ const styles = `
 // Wrap with Suspense for useSearchParams
 export default function PreviewPage() {
   return (
-    <Suspense fallback={
-      <div className="preview-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: '1rem'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid #e2e8f0',
-            borderTopColor: '#004899',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }} />
-          <p>Lade Preview...</p>
+    <Suspense
+      fallback={
+        <div
+          className="preview-page"
+          style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+        >
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              gap: "1rem",
+            }}
+          >
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: "3px solid #e2e8f0",
+                borderTopColor: "#004899",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+            <p>Lade Preview...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <PreviewContent />
     </Suspense>
   );

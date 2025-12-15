@@ -1,20 +1,24 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Zap } from 'lucide-react';
-import { cn } from '@/app/utils/cn';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Zap } from "lucide-react";
+import { cn } from "@/app/utils/cn";
 
 interface HeaderProps {
   sessionId?: string | null;
 }
 
 export default function Header({ sessionId }: HeaderProps) {
-  const [backendStatus, setBackendStatus] = useState<{ online: boolean; aiConfigured: boolean; model: string | null }>({
+  const [backendStatus, setBackendStatus] = useState<{
+    online: boolean;
+    aiConfigured: boolean;
+    model: string | null;
+  }>({
     online: false,
     aiConfigured: false,
-    model: null
+    model: null,
   });
 
   useEffect(() => {
@@ -22,14 +26,14 @@ export default function Header({ sessionId }: HeaderProps) {
       try {
         const response = await fetch("http://localhost:8000/api/chat/health", {
           method: "GET",
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(3000),
         });
         if (response.ok) {
           const data = await response.json();
           setBackendStatus({
             online: true,
             aiConfigured: data.openai_configured || false,
-            model: data.model || null
+            model: data.model || null,
           });
         } else {
           setBackendStatus({ online: false, aiConfigured: false, model: null });
@@ -83,20 +87,26 @@ export default function Header({ sessionId }: HeaderProps) {
               "backdrop-blur-sm border transition-all duration-300",
               backendStatus.online
                 ? "bg-emerald-500/20 border-emerald-400/30 text-white"
-                : "bg-red-500/20 border-red-400/30 text-white"
+                : "bg-red-500/20 border-red-400/30 text-white",
             )}
           >
             <span className="relative flex h-2.5 w-2.5">
-              <span className={cn(
-                "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-                backendStatus.online ? "bg-emerald-400" : "bg-red-400"
-              )} />
-              <span className={cn(
-                "relative inline-flex rounded-full h-2.5 w-2.5",
-                backendStatus.online ? "bg-emerald-400" : "bg-red-400"
-              )} />
+              <span
+                className={cn(
+                  "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                  backendStatus.online ? "bg-emerald-400" : "bg-red-400",
+                )}
+              />
+              <span
+                className={cn(
+                  "relative inline-flex rounded-full h-2.5 w-2.5",
+                  backendStatus.online ? "bg-emerald-400" : "bg-red-400",
+                )}
+              />
             </span>
-            <span>{backendStatus.online ? 'Backend Online' : 'Backend Offline'}</span>
+            <span>
+              {backendStatus.online ? "Backend Online" : "Backend Offline"}
+            </span>
           </motion.div>
         </div>
       </div>

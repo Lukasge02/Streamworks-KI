@@ -1,6 +1,7 @@
 """
 XML Router - API Endpoints für XML Generation und Preview
 """
+
 from fastapi import APIRouter, HTTPException, Form
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -36,33 +37,30 @@ class StreamSummary(BaseModel):
     job_type: Optional[str] = None
 
 
-
-
-
 @router.post("/regenerate")
 async def regenerate_xml(req: RegenerateRequest):
     """Regenerate XML with updated parameters from the editor"""
     session = db.get_session(req.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     job_type = session.get("job_type") or "STANDARD"
-    
+
     # Merge existing params with updates (updates take priority)
     existing_params = session.get("params", {})
     merged_params = {**existing_params, **req.updated_params}
-    
+
     # Filter out empty string values (treat as unset)
     merged_params = {k: v for k, v in merged_params.items() if v != ""}
-    
+
     # Update session with new params
     # Update session with new params
     session["params"] = merged_params
     db.save_session(req.session_id, session)
-    
+
     # Generate new XML and validate
     xml_content, validation = xml_service.generate_and_validate(job_type, merged_params)
-    
+
     # Save to Supabase Stream History if valid
     # Save to Supabase Stream History if valid
     if validation["is_valid"]:
@@ -71,16 +69,12 @@ async def regenerate_xml(req: RegenerateRequest):
                 filename=merged_params.get("stream_name", "Unnamed"),
                 content=xml_content,
                 metadata=merged_params,
-                job_type=job_type
+                job_type=job_type,
             )
         except Exception as e:
             print(f"Supabase stream save error: {e}")
 
-    return {
-        "xml": xml_content,
-        "validation": validation,
-        "params": merged_params
-    }
+    return {"xml": xml_content, "validation": validation, "params": merged_params}
 
 
 @router.post("/generate")
@@ -89,17 +83,17 @@ async def generate_xml(req: GenerateRequest):
     session = db.get_session(req.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     job_type = session.get("job_type") or "STANDARD"
     params = session.get("params", {})
-    
+
     xml_content, validation = xml_service.generate_and_validate(job_type, params)
-    
+
     return {
         "xml": xml_content,
         "job_type": job_type,
         "params": params,
-        "validation": validation
+        "validation": validation,
     }
 
 
@@ -109,34 +103,104 @@ async def preview_xml(session_id: str = Form(...)):
     Generate XML preview with Monaco Editor and editable parameters.
     """
     import json
-    
+
     session = db.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     job_type = session.get("job_type") or "STANDARD"
     params = session.get("params", {})
-    
+
     xml_content, validation = xml_service.generate_and_validate(job_type, params)
-    
+
     # All parameters with metadata for rendering
     all_params = [
-        {"key": "stream_name", "label": "Stream-Name", "type": "text", "required": True},
-        {"key": "source_agent", "label": "Quell-Server", "type": "text", "required": job_type == "FILE_TRANSFER"},
-        {"key": "target_agent", "label": "Ziel-Server", "type": "text", "required": job_type == "FILE_TRANSFER"},
-        {"key": "source_file_pattern", "label": "Quell-Dateipfad", "type": "text", "required": job_type == "FILE_TRANSFER"},
-        {"key": "target_file_path", "label": "Ziel-Verzeichnis", "type": "text", "required": False},
-        {"key": "agent_detail", "label": "Agent", "type": "text", "required": job_type == "STANDARD"},
-        {"key": "main_script", "label": "Haupt-Script", "type": "text", "required": job_type == "STANDARD"},
-        {"key": "schedule", "label": "Zeitplan", "type": "dropdown", "options": ["", "täglich", "wöchentlich", "monatlich", "stündlich", "werktags"], "required": False},
+        {
+            "key": "stream_name",
+            "label": "Stream-Name",
+            "type": "text",
+            "required": True,
+        },
+        {
+            "key": "source_agent",
+            "label": "Quell-Server",
+            "type": "text",
+            "required": job_type == "FILE_TRANSFER",
+        },
+        {
+            "key": "target_agent",
+            "label": "Ziel-Server",
+            "type": "text",
+            "required": job_type == "FILE_TRANSFER",
+        },
+        {
+            "key": "source_file_pattern",
+            "label": "Quell-Dateipfad",
+            "type": "text",
+            "required": job_type == "FILE_TRANSFER",
+        },
+        {
+            "key": "target_file_path",
+            "label": "Ziel-Verzeichnis",
+            "type": "text",
+            "required": False,
+        },
+        {
+            "key": "agent_detail",
+            "label": "Agent",
+            "type": "text",
+            "required": job_type == "STANDARD",
+        },
+        {
+            "key": "main_script",
+            "label": "Haupt-Script",
+            "type": "text",
+            "required": job_type == "STANDARD",
+        },
+        {
+            "key": "schedule",
+            "label": "Zeitplan",
+            "type": "dropdown",
+            "options": [
+                "",
+                "täglich",
+                "wöchentlich",
+                "monatlich",
+                "stündlich",
+                "werktags",
+            ],
+            "required": False,
+        },
         {"key": "start_time", "label": "Startzeit", "type": "time", "required": False},
-        {"key": "source_file_delete_flag", "label": "Quelle löschen", "type": "dropdown", "options": ["", "true", "false"], "required": False},
-        {"key": "target_file_exists_handling", "label": "Ziel existiert", "type": "dropdown", "options": ["", "Overwrite", "Skip", "Abort"], "required": False},
-        {"key": "contact_first_name", "label": "Kontakt Vorname", "type": "text", "required": False},
-        {"key": "contact_last_name", "label": "Kontakt Nachname", "type": "text", "required": False},
+        {
+            "key": "source_file_delete_flag",
+            "label": "Quelle löschen",
+            "type": "dropdown",
+            "options": ["", "true", "false"],
+            "required": False,
+        },
+        {
+            "key": "target_file_exists_handling",
+            "label": "Ziel existiert",
+            "type": "dropdown",
+            "options": ["", "Overwrite", "Skip", "Abort"],
+            "required": False,
+        },
+        {
+            "key": "contact_first_name",
+            "label": "Kontakt Vorname",
+            "type": "text",
+            "required": False,
+        },
+        {
+            "key": "contact_last_name",
+            "label": "Kontakt Nachname",
+            "type": "text",
+            "required": False,
+        },
         {"key": "company_name", "label": "Firma", "type": "text", "required": False},
     ]
-    
+
     # Build editable parameter HTML
     params_html = ""
     for p in all_params:
@@ -144,7 +208,7 @@ async def preview_xml(session_id: str = Form(...)):
         is_empty = not value
         empty_class = "empty" if is_empty else ""
         required_class = "required" if p.get("required") else ""
-        
+
         if p["type"] == "dropdown":
             options_html = "".join(
                 f'<option value="{opt}" {"selected" if opt == value else ""}>{opt if opt else "—"}</option>'
@@ -155,30 +219,42 @@ async def preview_xml(session_id: str = Form(...)):
             input_html = f'<input type="time" class="param-input" data-key="{p["key"]}" value="{value}" onchange="updateParam(this)">'
         else:
             input_html = f'<input type="text" class="param-input" data-key="{p["key"]}" value="{value}" placeholder="—" onchange="updateParam(this)">'
-        
-        params_html += f'''
+
+        params_html += f"""
         <div class="param-row {empty_class} {required_class}">
             <label class="param-label">{p["label"]}</label>
             {input_html}
-        </div>'''
-    
-    job_type_display = {"FILE_TRANSFER": "Dateitransfer", "STANDARD": "Standard Job", "SAP": "SAP Job"}.get(job_type, job_type)
-    
+        </div>"""
+
+    job_type_display = {
+        "FILE_TRANSFER": "Dateitransfer",
+        "STANDARD": "Standard Job",
+        "SAP": "SAP Job",
+    }.get(job_type, job_type)
+
     # Validation status
     status_class = "valid" if validation["is_valid"] else "invalid"
     status_icon = "✓" if validation["is_valid"] else "✗"
-    status_text = "XML Validierung erfolgreich" if validation["is_valid"] else f"{len(validation['issues'])} Fehler"
-    
+    status_text = (
+        "XML Validierung erfolgreich"
+        if validation["is_valid"]
+        else f"{len(validation['issues'])} Fehler"
+    )
+
     issues_html = ""
     if validation["issues"]:
-        issues_html = '<div class="issues">' + "".join(
-            f'<div class="issue">Zeile {issue["line"]}: {issue["message"]}</div>' 
-            for issue in validation["issues"]
-        ) + '</div>'
-    
+        issues_html = (
+            '<div class="issues">'
+            + "".join(
+                f'<div class="issue">Zeile {issue["line"]}: {issue["message"]}</div>'
+                for issue in validation["issues"]
+            )
+            + "</div>"
+        )
+
     # JSON params for JavaScript
     params_json = json.dumps(params)
-    
+
     html_content = f'''<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -472,7 +548,7 @@ async def preview_xml(session_id: str = Form(...)):
     </main>
     
     <footer class="footer">
-        <span class="footer-info">Session: {session_id[:8]}... | Generiert am {__import__('datetime').datetime.now().strftime('%d.%m.%Y um %H:%M')}</span>
+        <span class="footer-info">Session: {session_id[:8]}... | Generiert am {__import__("datetime").datetime.now().strftime("%d.%m.%Y um %H:%M")}</span>
         <button class="btn btn-outline" onclick="window.close()">Schließen</button>
     </footer>
     
@@ -649,7 +725,7 @@ async def preview_xml(session_id: str = Form(...)):
     </script>
 </body>
 </html>'''
-    
+
     return Response(content=html_content, media_type="text/html")
 
 
@@ -666,23 +742,21 @@ async def download_xml(session_id: str):
     session = db.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     job_type = session.get("job_type") or "STANDARD"
     params = session.get("params", {})
-    
+
     xml_content = xml_service.generate(job_type, params)
     stream_name = params.get("stream_name", "stream")
-    
+
     # Add GECK003_ prefix if not present
     if not stream_name.startswith("GECK003_"):
         stream_name = f"GECK003_{stream_name}"
-    
+
     return Response(
         content=xml_content,
         media_type="application/xml",
-        headers={
-            "Content-Disposition": f'attachment; filename="{stream_name}.xml"'
-        }
+        headers={"Content-Disposition": f'attachment; filename="{stream_name}.xml"'},
     )
 
 
@@ -694,12 +768,14 @@ async def list_streams():
     for s in streams:
         meta = s.get("metadata") or {}
         # Parse timestamp safely if needed, but string passthrough is fine for now
-        result.append({
-            "id": s["id"],
-            "filename": s["filename"],
-            "created_at": s["created_at"],
-            "job_type": meta.get("job_type", "UNKNOWN")
-        })
+        result.append(
+            {
+                "id": s["id"],
+                "filename": s["filename"],
+                "created_at": s["created_at"],
+                "job_type": meta.get("job_type", "UNKNOWN"),
+            }
+        )
     return result
 
 

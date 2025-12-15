@@ -32,8 +32,31 @@ help:
 	@echo "make stop       - Stop all services"
 	@echo "make clean      - Clean up containers and volumes"
 	@echo "make logs       - Show logs from all services"
+	@echo "make format     - Format code (Ruff + Prettier)"
+	@echo "make verify-db  - Verify database connection"
 	@echo "make test       - Run tests"
 	@echo "make upload-test - Test document upload"
+
+# Format code
+format:
+	@echo "🎨 Formatting code..."
+	cd backend && $(PYTHON) -m ruff format .
+	cd frontend && npm run format
+
+# Verify DB
+verify-db:
+	@echo "🔍 Verifying DB..."
+	cd backend && $(PYTHON) scripts/verify_db.py
+
+# Clean docs
+clean-docs:
+	@echo "🧹 Cleaning docs..."
+	cd backend && $(PYTHON) scripts/cleanup_docs.py
+
+# Seed data
+seed:
+	@echo "🌱 Seeding data..."
+	cd backend && $(PYTHON) scripts/seed_data.py
 
 # Setup development environment
 setup:

@@ -5,9 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **Streamworks-KI** is an enterprise RAG (Retrieval-Augmented Generation) system with advanced AI-powered parameter extraction:
-- **Backend**: FastAPI with modular service architecture (120+ Python files)
+- **Backend**: FastAPI with modular service architecture (130+ Python files)
 - **Frontend**: Next.js 15 with TypeScript (600+ files)
-- **Core Features**: Document processing, RAG-based Q&A, LangExtract parameter extraction, template-based XML generation
+- **Core Features**: Document processing, **Enhanced RAG v2.0**, LangExtract parameter extraction, template-based XML generation
+
+### Enhanced RAG v2.0 (NEW)
+The RAG system has been upgraded to enterprise level with:
+- **Hybrid Search**: Semantic (Qdrant) + Keyword (BM25) with Reciprocal Rank Fusion
+- **HyDE**: Hypothetical Document Embeddings for better query matching
+- **Cross-Encoder Reranking**: GPT-based relevance scoring
+- **Context Compression**: LLM-powered irrelevant sentence removal
+- **Citation Generation**: Inline `[1]`, `[2]` references
+- **Confidence Scoring**: 0-1 score with warnings for low-confidence answers
+- **Caching Layer**: LRU/TTL caching for embeddings and search results
 
 ## Development Commands
 
@@ -27,6 +37,7 @@ npm run dev:clean               # Start with cache clear (fixes common issues)
 npm run build                   # Production build
 npm run type-check              # TypeScript validation
 npm run lint                    # ESLint validation
+npm run test                    # Run tests (Jest)
 ```
 
 ### Common Issues

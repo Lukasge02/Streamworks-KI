@@ -1,0 +1,104 @@
+version: '3.8'
+
+# =============================================================================
+# Streamworks-KI Docker Compose
+# =============================================================================
+# Unified configuration with profiles for different environments
+#
+# Usage:
+#   docker compose up                    # Default: Qdrant + MinIO (development)
+#   docker compose --profile full up     # Full stack including backend
+#   docker compose --profile db-only up  # Only Qdrant (minimal)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Qdrant - Vector Database for RAG
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: streamworks_qdrant
+    restart: unless-stopped
+    profiles: ["default", "full", "db-only"]
+    ports:
+      - "6333:6333"  # REST API + Web UI
+      - "6334:6334"  # gRPC API
+    expose:
+      - 6333
+      - 6334
+      - 6335
+    volumes:
+      - ./qdrant_data:/qdrant/storage:Z
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # MinIO - S3-compatible Object Storage for Documents
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: streamworks_minio
+    restart: unless-stopped
+    profiles: ["default", "full"]
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Web Console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-streamworks}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-streamworks123}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Backend - FastAPI Application
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: streamworks-backend:latest
+    container_name: streamworks_backend
+    restart: unless-stopped
+    profiles: ["full"]
+    env_file:
+      - .env
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MINIO_ENDPOINT=minio:9000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: ["uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+volumes:
+  qdrant_data:
+    driver: local
+  minio_data:
+    driver: local
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+networks:
+  default:
+    name: streamworks_network

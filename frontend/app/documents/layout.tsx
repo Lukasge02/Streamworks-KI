@@ -3,9 +3,9 @@
 import AppLayout from "../components/AppLayout";
 
 export default function DocumentsLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    return <AppLayout>{children}</AppLayout>;
+  return <AppLayout>{children}</AppLayout>;
 }

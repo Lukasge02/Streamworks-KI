@@ -61,7 +61,25 @@ make dev
 - **Backend:** http://localhost:8000
 - **Frontend:** http://localhost:3000
 
-### 4. Run Tests
+### 4. Docker Services (Qdrant + MinIO)
+```bash
+# Start Qdrant + MinIO (default profile)
+docker compose up -d
+
+# Or start everything including backend
+docker compose --profile full up -d
+
+# Or only Qdrant (minimal)
+docker compose --profile db-only up -d
+```
+
+### 5. Health Checks
+```bash
+curl http://localhost:8000/health           # Quick check
+curl http://localhost:8000/health/detailed  # Component status (Qdrant, MinIO, Supabase)
+```
+
+### 6. Run Tests
 ```bash
 make test
 ```

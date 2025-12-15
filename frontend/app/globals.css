@@ -1,25 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 /* ===== Arvato Systems Modern Theme ===== */
 
 :root {
   /* Arvato Systems Brand Colors */
-  --arvato-blue: #0082D9;
-  --arvato-blue-dark: #006BB3;
-  --arvato-blue-light: #33A0E6;
-  --arvato-gray: #4F4F4F;
-  --arvato-gray-light: #6B6B6B;
+  --arvato-blue: #0082d9;
+  --arvato-blue-dark: #006bb3;
+  --arvato-blue-light: #33a0e6;
+  --arvato-gray: #4f4f4f;
+  --arvato-gray-light: #6b6b6b;
 
   /* Functional colors */
-  --success: #10B981;
-  --warning: #F59E0B;
-  --error: #EF4444;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
 
   /* Neutrals */
   --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
   --bg-white: #ffffff;
   --bg-light: #f9fafb;
   --bg-subtle: #f3f4f6;
@@ -47,7 +47,12 @@ body {
 body {
   background: var(--bg-white);
   color: var(--text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -105,7 +110,6 @@ h6 {
 }
 
 @keyframes pulse-soft {
-
   0%,
   100% {
     opacity: 1;
@@ -161,7 +165,11 @@ h6 {
 
 /* ===== Gradient Text ===== */
 .gradient-text {
-  background: linear-gradient(135deg, var(--arvato-blue) 0%, var(--arvato-blue-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--arvato-blue) 0%,
+    var(--arvato-blue-light) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
