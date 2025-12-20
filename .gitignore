@@ -129,8 +129,22 @@ pnpm-lock.yaml
 .mypy_cache/
 .pytest_cache/
 
-# Test files
+# Test files and data (should NOT be in Git)
+test_data/
+test_documents/
+backend/test_corpus/
+backend/test_corpus_large/
+backend/test_docs/
+backend/testset.csv
 
+# Generated files (should NOT be in Git)
+backend/*.pkl
+backend/*.csv
+
+# Large binary files (store externally)
+*.pdf
+*.docx
+!README.pdf
 
 # Legacy and backup files
 *.backup
