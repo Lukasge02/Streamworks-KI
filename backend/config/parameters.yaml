@@ -1,0 +1,554 @@
+# Streamworks Parameter Configuration
+# Central source of truth for all extractable parameters
+# Used by: ExcelParser, ParameterExtractor, BatchParameterExtractor, Frontend
+
+version: "1.0"
+
+# Job type definitions
+job_types:
+  STANDARD:
+    label: "Standard Job"
+    description: "Scripts, Befehle und allgemeine Automatisierung"
+    keywords: ["script", "python", "shell", "bash", "ausführen", "backup", "befehl"]
+    
+  FILE_TRANSFER:
+    label: "Dateitransfer"
+    description: "Dateien zwischen Servern kopieren/verschieben"
+    keywords: ["kopieren", "transfer", "übertragen", "sync", "datei", "von", "nach"]
+    
+  SAP:
+    label: "SAP Job"
+    description: "SAP Reports und Transaktionen"
+    keywords: ["sap", "report", "transaktion", "abap", "pa1", "p01", "ztv", "zreport"]
+
+# Parameter groups and definitions
+parameter_groups:
+
+  # ============ BASIC INFO ============
+  - id: basic
+    label: "Grundinformationen"
+    order: 1
+    parameters:
+    
+      - key: stream_name
+        label: "Stream-Name"
+        type: string
+        required: true
+        pattern: "^[A-Z0-9_]+$"
+        max_length: 50
+        excel_headers:
+          - StreamName
+          - Name
+          - JobName
+          - Stream
+          - Streamname
+          - Job_Name
+        ai_keywords:
+          - stream
+          - name
+          - job
+          - heißt
+          - genannt
+        example: "FT_BACKUP_DAILY"
+        
+      - key: short_description
+        label: "Kurzbeschreibung"
+        type: text
+        max_length: 200
+        excel_headers:
+          - Description
+          - Beschreibung
+          - Desc
+          - ShortDescription
+          - Kurzbeschreibung
+        ai_keywords:
+          - beschreibung
+          - macht
+          - tut
+          - zweck
+        example: "Tägliches Backup der Export-Dateien"
+        
+      - key: stream_documentation
+        label: "Dokumentation"
+        type: text
+        excel_headers:
+          - Documentation
+          - Dokumentation
+          - Doc
+          - Details
+          - Langbeschreibung
+        ai_keywords:
+          - dokumentation
+          - detail
+          - erklärt
+          
+      - key: stream_priority
+        label: "Priorität"
+        type: integer
+        min: 1
+        max: 10
+        default: 5
+        excel_headers:
+          - Priority
+          - Priorität
+          - Prio
+        ai_keywords:
+          - priorität
+          - wichtig
+          - dringend
+          - kritisch
+
+  # ============ CONTACT ============
+  - id: contact
+    label: "Kontaktinformationen"
+    order: 2
+    parameters:
+    
+      - key: contact_name
+        label: "Ansprechpartner"
+        type: string
+        excel_headers:
+          - Contact
+          - Kontakt
+          - Ansprechpartner
+          - Owner
+          - Verantwortlicher
+          - ContactName
+          - Besitzer
+        ai_keywords:
+          - kontakt
+          - ansprechpartner
+          - verantwortlich
+          - zuständig
+          - owner
+        example: "Max Mustermann"
+        
+      - key: contact_email
+        label: "E-Mail"
+        type: email
+        pattern: "^[\\w.-]+@[\\w.-]+\\.\\w+$"
+        excel_headers:
+          - Email
+          - E-Mail
+          - Mail
+          - ContactEmail
+        ai_keywords:
+          - email
+          - mail
+          - "@"
+        example: "max.mustermann@firma.de"
+        
+      - key: contact_phone
+        label: "Telefon"
+        type: string
+        excel_headers:
+          - Phone
+          - Telefon
+          - Tel
+          - ContactPhone
+        ai_keywords:
+          - telefon
+          - anrufen
+          - nummer
+          
+      - key: team
+        label: "Team"
+        type: string
+        excel_headers:
+          - Team
+          - Abteilung
+          - Department
+          - Gruppe
+        ai_keywords:
+          - team
+          - abteilung
+          - gruppe
+
+  # ============ FILE TRANSFER ============
+  - id: file_transfer
+    label: "Dateitransfer Parameter"
+    order: 3
+    job_types: [FILE_TRANSFER]
+    parameters:
+    
+      - key: source_agent
+        label: "Quell-Agent"
+        type: string
+        required_for: [FILE_TRANSFER]
+        excel_headers:
+          - SourceAgent
+          - Source
+          - Von
+          - From
+          - QuellAgent
+          - Quellserver
+          - SourceServer
+          - FromServer
+        ai_keywords:
+          - von
+          - quelle
+          - source
+          - quellserver
+          - herkunft
+        example: "PROD_SERVER_01"
+        
+      - key: target_agent
+        label: "Ziel-Agent"
+        type: string
+        required_for: [FILE_TRANSFER]
+        excel_headers:
+          - TargetAgent
+          - Target
+          - Nach
+          - To
+          - ZielAgent
+          - Zielserver
+          - TargetServer
+          - ToServer
+        ai_keywords:
+          - nach
+          - ziel
+          - target
+          - zielserver
+          - wohin
+        example: "BACKUP_STORAGE"
+        
+      - key: source_file_pattern
+        label: "Quelldatei-Muster"
+        type: string
+        excel_headers:
+          - SourcePath
+          - SourceFile
+          - Quelldatei
+          - Source_File_Pattern
+          - FilePattern
+          - Dateimuster
+        ai_keywords:
+          - datei
+          - muster
+          - pattern
+          - "*.csv"
+          - pfad
+          - quelle
+        example: "/data/exports/*.csv"
+        
+      - key: target_file_path
+        label: "Zielpfad"
+        type: string
+        excel_headers:
+          - TargetPath
+          - TargetFile
+          - Zielpfad
+          - Target_Path
+          - Destination
+          - Zielverzeichnis
+        ai_keywords:
+          - ziel
+          - pfad
+          - verzeichnis
+          - ordner
+          - speichern
+        example: "/backup/daily/"
+        
+      - key: transfer_mode
+        label: "Transfer-Modus"
+        type: enum
+        options: [binary, text, auto]
+        default: auto
+        excel_headers:
+          - TransferMode
+          - Mode
+          - Modus
+        ai_keywords:
+          - binär
+          - text
+          - modus
+          
+      - key: overwrite_existing
+        label: "Überschreiben"
+        type: boolean
+        default: false
+        excel_headers:
+          - Overwrite
+          - Überschreiben
+          - Replace
+        ai_keywords:
+          - überschreiben
+          - ersetzen
+          - replace
+
+  # ============ STANDARD JOB ============
+  - id: standard
+    label: "Standard Job Parameter"
+    order: 4
+    job_types: [STANDARD]
+    parameters:
+    
+      - key: agent_detail
+        label: "Ausführungs-Agent"
+        type: string
+        required_for: [STANDARD]
+        excel_headers:
+          - Agent
+          - AgentDetail
+          - Server
+          - Host
+          - ExecutionAgent
+          - RunOn
+        ai_keywords:
+          - server
+          - agent
+          - host
+          - ausführen
+          - laufen
+        example: "UNIX_SERVER_01"
+        
+      - key: main_script
+        label: "Hauptskript"
+        type: string
+        excel_headers:
+          - Script
+          - MainScript
+          - Skript
+          - Command
+          - Befehl
+          - Executable
+        ai_keywords:
+          - script
+          - skript
+          - python
+          - bash
+          - sh
+          - befehl
+        example: "/opt/scripts/backup.sh"
+        
+      - key: script_parameters
+        label: "Skript-Parameter"
+        type: string
+        excel_headers:
+          - Parameters
+          - ScriptParams
+          - Args
+          - Arguments
+          - Parameter
+        ai_keywords:
+          - parameter
+          - argument
+          - option
+          - flag
+
+  # ============ SAP ============
+  - id: sap
+    label: "SAP Parameter"
+    order: 5
+    job_types: [SAP]
+    parameters:
+    
+      - key: sap_system
+        label: "SAP-System"
+        type: string
+        excel_headers:
+          - SAPSystem
+          - SAP_System
+          - System
+          - SID
+        ai_keywords:
+          - sap
+          - system
+          - sid
+          - pa1
+          - p01
+        example: "PA1"
+        
+      - key: sap_client
+        label: "Mandant"
+        type: string
+        excel_headers:
+          - Client
+          - Mandant
+          - SAPClient
+        ai_keywords:
+          - mandant
+          - client
+          - "100"
+          - "800"
+        example: "100"
+        
+      - key: sap_report
+        label: "SAP Report"
+        type: string
+        required_for: [SAP]
+        excel_headers:
+          - SAPReport
+          - Report
+          - ReportName
+          - Transaction
+          - Transaktion
+        ai_keywords:
+          - report
+          - transaktion
+          - ztv
+          - zreport
+        example: "ZEXPORT_DAILY"
+        
+      - key: sap_variant
+        label: "Variante"
+        type: string
+        excel_headers:
+          - Variant
+          - Variante
+          - SAPVariant
+        ai_keywords:
+          - variante
+          - variant
+
+  # ============ SCHEDULE ============
+  - id: schedule
+    label: "Zeitplan"
+    order: 6
+    parameters:
+    
+      - key: schedule
+        label: "Frequenz"
+        type: enum
+        options:
+          - täglich
+          - wöchentlich
+          - monatlich
+          - stündlich
+          - einmalig
+        excel_headers:
+          - Schedule
+          - Zeitplan
+          - Frequenz
+          - Frequency
+          - Interval
+        ai_keywords:
+          - täglich
+          - wöchentlich
+          - monatlich
+          - stündlich
+          - jeden
+          - alle
+        example: "täglich"
+        
+      - key: start_time
+        label: "Startzeit"
+        type: time
+        pattern: "^\\d{2}:\\d{2}$"
+        excel_headers:
+          - StartTime
+          - Zeit
+          - Uhrzeit
+          - Time
+          - Start
+          - RunTime
+        ai_keywords:
+          - um
+          - uhr
+          - zeit
+          - morgens
+          - abends
+          - nachts
+        example: "08:00"
+        
+      - key: calendar_id
+        label: "Kalender"
+        type: string
+        excel_headers:
+          - Calendar
+          - Kalender
+          - CalendarID
+        ai_keywords:
+          - kalender
+          - feiertag
+          - werktag
+          
+      - key: run_on_holidays
+        label: "An Feiertagen"
+        type: boolean
+        default: false
+        excel_headers:
+          - Holidays
+          - Feiertage
+          - RunOnHolidays
+        ai_keywords:
+          - feiertag
+          - holiday
+          
+      - key: run_on_weekends
+        label: "Am Wochenende"
+        type: boolean
+        default: true
+        excel_headers:
+          - Weekends
+          - Wochenende
+          - RunOnWeekends
+        ai_keywords:
+          - wochenende
+          - samstag
+          - sonntag
+
+  # ============ ERROR HANDLING ============
+  - id: error_handling
+    label: "Fehlerbehandlung"
+    order: 7
+    parameters:
+    
+      - key: max_retries
+        label: "Max. Wiederholungen"
+        type: integer
+        min: 0
+        max: 10
+        default: 3
+        excel_headers:
+          - Retries
+          - MaxRetries
+          - Wiederholungen
+          - RetryCount
+        ai_keywords:
+          - wiederholen
+          - retry
+          - versuche
+          
+      - key: retry_delay
+        label: "Wartezeit (Sek)"
+        type: integer
+        min: 0
+        default: 60
+        excel_headers:
+          - RetryDelay
+          - Delay
+          - Wartezeit
+        ai_keywords:
+          - warten
+          - pause
+          - delay
+          
+      - key: timeout_seconds
+        label: "Timeout (Sek)"
+        type: integer
+        min: 0
+        default: 3600
+        excel_headers:
+          - Timeout
+          - TimeoutSeconds
+          - MaxDuration
+        ai_keywords:
+          - timeout
+          - maximal
+          - dauer
+          
+      - key: notification_email
+        label: "Benachrichtigung"
+        type: email
+        excel_headers:
+          - NotificationEmail
+          - AlertEmail
+          - NotifyEmail
+          - ErrorMail
+        ai_keywords:
+          - benachrichtigen
+          - alert
+          - fehler
+          - melden

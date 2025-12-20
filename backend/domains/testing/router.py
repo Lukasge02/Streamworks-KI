@@ -6,7 +6,7 @@ import traceback
 
 from domains.testing.service import testing_service
 from services.rag.document_service import document_service
-from services.auth_service import get_current_user, require_role, UserRole
+from services.auth_service import get_current_user, require_role
 
 router = APIRouter(prefix="/api/testing", tags=["Testing"])
 
@@ -80,13 +80,19 @@ async def get_project(project_id: str):
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         return project
+    except HTTPException:
+        raise
     except Exception as e:
+        # Check for UUID validation errors
+        error_str = str(e).lower()
+        if "invalid input syntax for type uuid" in error_str or "invalid uuid" in error_str:
+            raise HTTPException(status_code=400, detail="Invalid project ID format")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete(
-    "/projects/{project_id}", dependencies=[Depends(require_role(["owner", "admin"]))]
+    "/projects/{project_id}", dependencies=[Depends(require_role(["owner", "admin", "internal"]))]
 )
 async def delete_project(project_id: str):
     """Delete a project."""
@@ -97,7 +103,13 @@ async def delete_project(project_id: str):
                 status_code=404, detail="Project not found or failed to delete"
             )
         return {"success": True}
+    except HTTPException:
+        raise
     except Exception as e:
+        # Check for UUID validation errors
+        error_str = str(e).lower()
+        if "invalid input syntax for type uuid" in error_str or "invalid uuid" in error_str:
+            raise HTTPException(status_code=400, detail="Invalid project ID format")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -289,6 +301,33 @@ async def update_test_plan(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.delete(
+    "/projects/{project_id}/plans/{plan_id}",
+    dependencies=[Depends(require_role(["owner", "admin", "internal"]))],
+)
+async def delete_test_plan(project_id: str, plan_id: str):
+    """Delete a test plan and all associated test executions."""
+    try:
+        from services.db import db
+
+        # Verify plan belongs to project
+        plans = testing_service.get_test_plans(project_id)
+        if not any(p["id"] == plan_id for p in plans):
+            raise HTTPException(status_code=404, detail="Test plan not found")
+
+        success = db.delete_test_plan(plan_id)
+        if not success:
+            raise HTTPException(
+                status_code=500, detail="Failed to delete test plan"
+            )
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- DDD Enhancement Endpoints ---
 
 
@@ -378,6 +417,140 @@ async def update_project(project_id: str, request: UpdateProjectRequest):
         if result.data:
             return {"success": True, "project": result.data[0]}
         return {"success": False}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Test Execution Endpoints ---
+
+class TestExecutionRequest(BaseModel):
+    test_id: str
+    status: str  # passed, failed, skipped, pending
+    tester: Optional[str] = None
+    result: Optional[str] = None
+    build_id: Optional[str] = None
+    execution_date: Optional[str] = None
+    comment: Optional[str] = None
+
+
+class BulkTestExecutionRequest(BaseModel):
+    executions: List[TestExecutionRequest]
+
+
+@router.post("/projects/{project_id}/plans/{plan_id}/executions")
+async def save_test_execution(
+    project_id: str,
+    plan_id: str,
+    request: TestExecutionRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Save or update a test execution result."""
+    try:
+        from services.db import db
+
+        # Verify plan belongs to project
+        plans = testing_service.get_test_plans(project_id)
+        if not any(p["id"] == plan_id for p in plans):
+            raise HTTPException(status_code=404, detail="Test plan not found")
+
+        result = db.save_test_execution(
+            plan_id=plan_id,
+            test_id=request.test_id,
+            status=request.status,
+            tester=request.tester or user.get("email", "unknown"),
+            result=request.result,
+            build_id=request.build_id,
+            execution_date=request.execution_date,
+            comment=request.comment,
+        )
+
+        if result and result.data:
+            return {"success": True, "execution": result.data[0] if isinstance(result.data, list) else result.data}
+        raise HTTPException(status_code=500, detail="Failed to save execution")
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/projects/{project_id}/plans/{plan_id}/executions/bulk")
+async def bulk_save_test_executions(
+    project_id: str,
+    plan_id: str,
+    request: BulkTestExecutionRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Bulk save multiple test execution results."""
+    try:
+        from services.db import db
+
+        # Verify plan belongs to project
+        plans = testing_service.get_test_plans(project_id)
+        if not any(p["id"] == plan_id for p in plans):
+            raise HTTPException(status_code=404, detail="Test plan not found")
+
+        executions = []
+        for exec_req in request.executions:
+            executions.append({
+                "plan_id": plan_id,
+                "test_id": exec_req.test_id,
+                "status": exec_req.status,
+                "tester": exec_req.tester or user.get("email", "unknown"),
+                "result": exec_req.result,
+                "build_id": exec_req.build_id,
+                "execution_date": exec_req.execution_date or "now()",
+                "comment": exec_req.comment,
+            })
+
+        result = db.bulk_update_test_executions(plan_id, executions)
+
+        if result:
+            return {"success": True, "count": len(executions)}
+        raise HTTPException(status_code=500, detail="Failed to save executions")
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/projects/{project_id}/plans/{plan_id}/executions")
+async def get_test_executions(project_id: str, plan_id: str):
+    """Get all test executions for a plan."""
+    try:
+        from services.db import db
+
+        # Verify plan belongs to project
+        plans = testing_service.get_test_plans(project_id)
+        if not any(p["id"] == plan_id for p in plans):
+            raise HTTPException(status_code=404, detail="Test plan not found")
+
+        executions = db.get_test_executions(plan_id)
+        return executions
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/projects/{project_id}/plans/{plan_id}/statistics")
+async def get_test_statistics(project_id: str, plan_id: str):
+    """Get aggregated test statistics for a plan."""
+    try:
+        from services.db import db
+
+        # Verify plan belongs to project
+        plans = testing_service.get_test_plans(project_id)
+        if not any(p["id"] == plan_id for p in plans):
+            raise HTTPException(status_code=404, detail="Test plan not found")
+
+        stats = db.get_test_statistics(plan_id)
+        return stats
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import Optional, List
-from services.auth_service import get_current_user, require_role, UserRole
+from typing import Optional
+from services.auth_service import get_current_user, require_role
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

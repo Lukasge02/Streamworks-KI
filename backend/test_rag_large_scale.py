@@ -50,7 +50,7 @@ def wait_for_tasks(task_ids):
                         failed += 1
                         pending.remove(task_id)
                         print(f"   ❌ Task {task_id} failed")
-            except:
+            except Exception:
                 pass
         time.sleep(2)
 
@@ -75,7 +75,7 @@ def run_stress_test():
         results = executor.map(upload_single_file, files)
         task_ids = [t for t in results if t]
 
-    successful_docs = wait_for_tasks(task_ids)
+    wait_for_tasks(task_ids)
 
     # 2. Run Complex Queries
     print("\n🔍 Running Advanced Queries on Large Corpus...")

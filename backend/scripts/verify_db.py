@@ -1,12 +1,11 @@
 import sys
-import os
 from pathlib import Path
 
 # Fix path to include backend root
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(backend_dir))
 
-from services.db import db
+from services.db import db  # noqa: E402
 
 
 def verify():

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Shield, Users, Check, AlertCircle, Save, Lock } from "lucide-react";
 import { Button } from "./ui/button";
 import DocumentAccessBadge, { AccessLevel } from "./DocumentAccessBadge";
-import { cn } from "@/app/utils/cn";
+import { cn } from "@/lib/utils";
 
 interface DocumentAccessModalProps {
   isOpen: boolean;

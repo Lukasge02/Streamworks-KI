@@ -23,6 +23,7 @@ interface ChatMessage {
     content_snippet: string;
     score: number;
   }>;
+  suggested_questions?: string[];
 }
 
 interface DDDChatProps {
@@ -83,6 +84,7 @@ export default function DDDChat({
           role: "assistant",
           content: data.answer,
           sources: data.sources,
+          suggested_questions: data.suggested_questions || [],
         };
         setMessages((prev) => [...prev, assistantMessage]);
       } else {
@@ -192,11 +194,10 @@ export default function DDDChat({
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                msg.role === "user"
-                  ? "bg-indigo-600 text-white rounded-br-md"
-                  : "bg-slate-100 text-slate-800 rounded-bl-md"
-              }`}
+              className={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.role === "user"
+                ? "bg-indigo-600 text-white rounded-br-md"
+                : "bg-slate-100 text-slate-800 rounded-bl-md"
+                }`}
             >
               <div className="text-sm prose prose-sm max-w-none prose-p:my-1">
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -237,6 +238,31 @@ export default function DDDChat({
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Suggested Follow-up Questions */}
+              {msg.role === "assistant" && msg.suggested_questions && msg.suggested_questions.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-slate-200/50">
+                  <p className="text-xs text-slate-400 mb-2">💡 Vorgeschlagene Fragen:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {msg.suggested_questions.map((question, qIdx) => (
+                      <button
+                        key={qIdx}
+                        onClick={() => {
+                          setInput(question);
+                          // Auto-submit after a brief delay for UX
+                          setTimeout(() => {
+                            const fakeEvent = { key: "Enter", shiftKey: false, preventDefault: () => { } } as React.KeyboardEvent;
+                            if (question) sendMessage();
+                          }, 100);
+                        }}
+                        className="text-xs px-2.5 py-1.5 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-lg border border-indigo-100 transition-all hover:shadow-sm"
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

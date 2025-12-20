@@ -4,7 +4,7 @@ Verifies that documents with rag_enabled=False are excluded from RAG context.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 
 class TestRAGEnabledFiltering:
@@ -55,7 +55,7 @@ class TestRAGEnabledFiltering:
             mock_response.choices = [Mock(message=Mock(content="Test answer"))]
             mock_openai.chat.completions.create.return_value = mock_response
 
-            result = service.chat_with_ddd("proj-1", "test query")
+            service.chat_with_ddd("proj-1", "test query")
 
         # Verify vector_store.search was called with only the enabled doc_id
         search_calls = mock_vector_store.search.call_args_list
@@ -91,7 +91,7 @@ class TestRAGEnabledFiltering:
             mock_response.choices = [Mock(message=Mock(content="Test answer"))]
             mock_openai.chat.completions.create.return_value = mock_response
 
-            result = service.chat_with_ddd("proj-1", "test query")
+            service.chat_with_ddd("proj-1", "test query")
 
         # Verify the legacy doc was included
         search_calls = mock_vector_store.search.call_args_list
@@ -130,7 +130,7 @@ class TestRAGToggleEndpoint:
             db = DatabaseService()
             db.client = mock_client
 
-            result = db.update_project_document_rag("proj-1", "doc-1", False)
+            db.update_project_document_rag("proj-1", "doc-1", False)
 
             # Verify the update was called with correct parameters
             mock_table.update.assert_called_once_with({"rag_enabled": False})

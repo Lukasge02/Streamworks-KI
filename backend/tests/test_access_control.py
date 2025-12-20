@@ -22,7 +22,6 @@ def test_public_access(access_service):
     # Test
     assert (
         access_service.check_document_access(doc_id, user_id="anon", user_roles=[])
-        == True
     )
 
 
@@ -35,8 +34,7 @@ def test_internal_access_denied_anon(access_service):
 
     # Test
     assert (
-        access_service.check_document_access(doc_id, user_id=None, user_roles=[])
-        == False
+        not access_service.check_document_access(doc_id, user_id=None, user_roles=[])
     )
 
 
@@ -50,7 +48,6 @@ def test_internal_access_allowed_auth(access_service):
     # Test
     assert (
         access_service.check_document_access(doc_id, user_id="user_1", user_roles=[])
-        == True
     )
 
 
@@ -66,10 +63,9 @@ def test_restricted_access_denied(access_service):
 
     # Test
     assert (
-        access_service.check_document_access(
+        not access_service.check_document_access(
             doc_id, user_id="user_1", user_roles=["user"]
         )
-        == False
     )
 
 
@@ -88,5 +84,4 @@ def test_restricted_access_allowed(access_service):
         access_service.check_document_access(
             doc_id, user_id="admin_user", user_roles=["admin"]
         )
-        == True
     )

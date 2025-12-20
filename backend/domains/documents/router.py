@@ -897,7 +897,7 @@ async def get_stats():
 
 def get_rag_chat_service():
     """Get LlamaIndex ChatService (replaces old EnhancedRAGChatService)"""
-    from services.llamaindex.chat_service import get_chat_service
+    from services.rag.engine.chat_service import get_chat_service
 
     return get_chat_service()
 
@@ -1110,6 +1110,7 @@ async def chat_with_documents(request: ChatRequest):
 
 class StreamChatRequest(BaseModel):
     """Request model for streaming chat"""
+
     query: str
     num_chunks: int = 5
     session_id: Optional[str] = None
@@ -1119,9 +1120,9 @@ class StreamChatRequest(BaseModel):
 async def chat_with_documents_stream(request: StreamChatRequest):
     """
     Streaming Chat mit Dokumenten (RAG)
-    
+
     Verwendet Server-Sent Events (SSE) für Echtzeit-Token-Streaming.
-    
+
     Event-Typen:
     - status: Statusinformationen (Suche, Ranking, etc.)
     - source: Quelldokumente mit Relevanz-Scores
@@ -1129,12 +1130,12 @@ async def chat_with_documents_stream(request: StreamChatRequest):
     - done: Abschluss mit Metadaten (confidence, query_type)
     - error: Fehlermeldungen
     """
-    from services.llamaindex.streaming_service import get_streaming_service
-    
+    from services.rag.engine.streaming_service import get_streaming_service
+
     streaming_service = get_streaming_service()
     session_service = get_chat_session_service()
     session_id = request.session_id
-    
+
     # Auto-create session if not provided
     if not session_id:
         session = session_service.create_session(
@@ -1142,61 +1143,64 @@ async def chat_with_documents_stream(request: StreamChatRequest):
         )
         if session:
             session_id = session["id"]
-    
+
     # Save user message
     if session_id:
         session_service.add_message(
             session_id=session_id, role="user", content=request.query
         )
-    
+
     async def event_stream():
         """Generate SSE events"""
         full_response = ""
         sources = []
-        
+
         async for event in streaming_service.stream_query(
             query_text=request.query,
             top_k=request.num_chunks,
             session_id=session_id,
         ):
             # Collect full response for session storage
-            if '"type": "token"' in event or 'event: token' in event:
+            if '"type": "token"' in event or "event: token" in event:
                 try:
                     import json
+
                     # Parse the SSE event to get content
-                    for line in event.split('\n'):
-                        if line.startswith('data: '):
+                    for line in event.split("\n"):
+                        if line.startswith("data: "):
                             data = json.loads(line[6:])
-                            if 'content' in data:
-                                full_response += data['content']
-                except:
+                            if "content" in data:
+                                full_response += data["content"]
+                except Exception:
                     pass
-            
+
             # Collect sources for session storage
-            if 'event: source' in event:
+            if "event: source" in event:
                 try:
                     import json
-                    for line in event.split('\n'):
-                        if line.startswith('data: '):
+
+                    for line in event.split("\n"):
+                        if line.startswith("data: "):
                             sources.append(json.loads(line[6:]))
-                except:
+                except Exception:
                     pass
-            
+
             # Add session_id to done event
-            if 'event: done' in event:
+            if "event: done" in event:
                 try:
                     import json
-                    lines = event.split('\n')
+
+                    lines = event.split("\n")
                     for i, line in enumerate(lines):
-                        if line.startswith('data: '):
+                        if line.startswith("data: "):
                             data = json.loads(line[6:])
-                            data['session_id'] = session_id
-                            lines[i] = f'data: {json.dumps(data, ensure_ascii=False)}'
-                            event = '\n'.join(lines)
+                            data["session_id"] = session_id
+                            lines[i] = f"data: {json.dumps(data, ensure_ascii=False)}"
+                            event = "\n".join(lines)
                             break
-                except:
+                except Exception:
                     pass
-                
+
                 # Save assistant response
                 if session_id and full_response:
                     session_service.add_message(
@@ -1205,9 +1209,9 @@ async def chat_with_documents_stream(request: StreamChatRequest):
                         content=full_response,
                         sources=sources,
                     )
-            
+
             yield event
-    
+
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
@@ -1215,7 +1219,7 @@ async def chat_with_documents_stream(request: StreamChatRequest):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
+        },
     )
 
 

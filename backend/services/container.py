@@ -3,8 +3,7 @@ Dependency Injection Container
 Lightweight DI container for managing service instances.
 """
 
-from typing import Dict, Any, Optional, TypeVar, Type
-from functools import lru_cache
+from typing import Dict, Any, TypeVar
 
 T = TypeVar("T")
 
@@ -100,8 +99,6 @@ class Container:
 
         return cls._get_or_create("chat_session_service", factory)
 
-
-
     @classmethod
     def override(cls, key: str, instance: Any):
         """
@@ -187,10 +184,6 @@ def get_document_service():
     return Container.get_document_service()
 
 
-
-
-
 def get_chat_session_service():
     """FastAPI dependency for ChatSessionService"""
     return Container.get_chat_session_service()
-

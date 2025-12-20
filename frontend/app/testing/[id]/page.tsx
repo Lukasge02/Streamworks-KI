@@ -22,12 +22,30 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
+  Beaker,
+  Filter,
+  Search,
+  BarChart3,
+  TrendingUp,
+  CheckCircle2,
+  XCircle,
+  SkipForward,
 } from "lucide-react";
 import DocumentViewer from "../../components/DocumentViewer";
 import DocumentSelector from "../../components/DocumentSelector";
 import DDDChat from "../../components/DDDChat";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  useTestExecutions,
+  useTestStatistics,
+  useSaveTestExecution,
+  useBulkSaveTestExecutions,
+  type TestExecution,
+  type TestExecutionRequest,
+} from "../../../lib/api/testing";
 
 const API_URL = "http://localhost:8000";
 
@@ -169,12 +187,18 @@ function processPlanContent(plan: TestPlan): ProcessedTestPlan {
     if (json.status) {
       let cases: TestCase[] = [];
 
+      // Handle both v1 and v2 formats
+      const planData = json.data || json;
+      
       // Map structured cases to UI format
-      if (json.data?.test_cases) {
-        cases = json.data.test_cases.map((tc) => ({
+      if (planData.test_cases) {
+        cases = planData.test_cases.map((tc: any) => ({
           testNr: tc.test_id,
           testinhalt: tc.title,
           beschreibung: tc.description,
+          vorbedingung: tc.preconditions || "",
+          schritte: tc.steps || "",
+          erwartetes_ergebnis: tc.expected_result || "",
           resultat: "",
           testdatum: "",
           buildId: "",
@@ -187,12 +211,16 @@ function processPlanContent(plan: TestPlan): ProcessedTestPlan {
         ...plan,
         isStructured: true,
         status: json.status,
-        generationState: json,
+        generationState: {
+          ...json,
+          data: planData, // Ensure data is accessible
+        },
         testCases: cases,
       };
     }
   } catch (e) {
     // Not JSON, fall back to Markdown
+    console.debug("Plan is not structured JSON, using Markdown parser", e);
   }
 
   return {
@@ -234,6 +262,20 @@ export default function ProjectPage() {
 
   // New: Collapsible sidebar
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Test Execution State
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [filterPriority, setFilterPriority] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTests, setSelectedTests] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<"passed" | "failed" | "skipped" | "pending" | null>(null);
+
+  // Test Execution Hooks
+  const activePlanId = testPlans.length > 0 ? testPlans[0].id : null;
+  const { data: testExecutions = [] } = useTestExecutions(id, activePlanId || "");
+  const { data: testStatistics } = useTestStatistics(id, activePlanId || "");
+  const saveExecutionMutation = useSaveTestExecution(id, activePlanId || "");
+  const bulkSaveMutation = useBulkSaveTestExecutions(id, activePlanId || "");
 
   const loadData = useCallback(async () => {
     try {
@@ -317,9 +359,11 @@ export default function ProjectPage() {
             "POST",
             `${API_URL}/api/testing/projects/${id}/documents?category=${category}`,
           );
+          xhr.withCredentials = true; // Enable cookie-based auth
           xhr.send(formData);
         },
       );
+
 
       const data = await uploadPromise;
 
@@ -717,64 +761,100 @@ export default function ProjectPage() {
   return (
     <AppLayout>
       <div className="flex flex-col h-full gap-4">
-        {/* Header - Compact with Generate Button */}
-        <div className="flex items-center justify-between flex-shrink-0">
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span>Testing</span>
-              <span>/</span>
-              <span>{project.name}</span>
-            </div>
-            <h1 className="text-xl font-semibold text-slate-800">
-              {project.name}
-            </h1>
-            {project.description && (
-              <p className="text-sm text-slate-500 mt-1 line-clamp-2">
-                {project.description}
-              </p>
-            )}
-          </div>
+        {/* Header - Premium Design with Stats */}
+        <div className="relative flex-shrink-0 pb-4">
+          {/* Background decoration */}
+          <div className="absolute -top-16 -left-16 w-56 h-56 bg-gradient-to-br from-blue-100/30 to-teal-100/30 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Actions Group */}
-          <div className="flex items-center gap-3">
-            {/* Excel Export Button */}
-            {testPlans.length > 0 && (
-              <button
-                onClick={() => exportToExcel(testPlans[0])}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg text-sm font-medium transition-all shadow-sm"
-                title="Als Excel exportieren"
+          <div className="relative flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              {/* Gradient Icon */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="p-3 bg-gradient-to-br from-[var(--arvato-blue)] to-[#00D4AA] rounded-xl shadow-lg shadow-blue-500/20 flex-shrink-0"
               >
-                <Download className="w-4 h-4" />
-                Export
-              </button>
-            )}
+                <Beaker className="w-6 h-6 text-white" />
+              </motion.div>
 
-            {/* Generate Button - Top Right */}
-            <button
-              onClick={generatePlan}
-              disabled={isGenerating || !canGenerate}
-              className={`
-                                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
-                                ${!canGenerate
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  : isGenerating
-                    ? "bg-indigo-100 text-indigo-600"
-                    : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                }
-                            `}
-            >
-              {isGenerating ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                  Generiere...
-                </>
-              ) : (
-                <>
-                  <Cpu className="w-4 h-4" />
-                  Testplan generieren
-                </>
+              <div className="max-w-xl">
+                <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+                  <span className="hover:text-[var(--arvato-blue)] cursor-pointer transition-colors">Testing</span>
+                  <span>/</span>
+                  <span className="text-slate-600 font-medium">{project.name}</span>
+                </div>
+                <h1 className="text-xl font-bold text-slate-800">
+                  {project.name}
+                </h1>
+                {project.description && (
+                  <p className="text-sm text-slate-500 mt-1 line-clamp-2">
+                    {project.description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Actions Group */}
+            <div className="flex items-center gap-3">
+              {/* Stats Badges */}
+              <div className="hidden lg:flex items-center gap-2 mr-2">
+                <div className="stat-card !py-2 !px-3 flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-[var(--arvato-blue)]" />
+                  <span className="text-sm font-bold text-slate-700">{documents.length}</span>
+                  <span className="text-xs text-slate-500">Docs</span>
+                </div>
+                {testPlans.length > 0 && testPlans[0]?.testCases?.length > 0 && (
+                  <div className="stat-card !py-2 !px-3 flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-sm font-bold text-slate-700">{testPlans[0].testCases.length}</span>
+                    <span className="text-xs text-slate-500">Tests</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Excel Export Button */}
+              {testPlans.length > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => exportToExcel(testPlans[0])}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl text-sm font-medium transition-all shadow-sm"
+                  title="Als Excel exportieren"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </motion.button>
               )}
-            </button>
+
+              {/* Generate Button - Premium */}
+              <motion.button
+                whileHover={canGenerate && !isGenerating ? { scale: 1.02 } : {}}
+                whileTap={canGenerate && !isGenerating ? { scale: 0.98 } : {}}
+                onClick={generatePlan}
+                disabled={isGenerating || !canGenerate}
+                className={`
+                  flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all
+                  ${!canGenerate
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    : isGenerating
+                      ? "bg-gradient-to-r from-blue-100 to-teal-100 text-[var(--arvato-blue)]"
+                      : "bg-gradient-to-r from-[var(--arvato-blue)] to-[var(--arvato-blue-dark)] text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30"
+                  }
+                `}
+              >
+                {isGenerating ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-[var(--arvato-blue)] border-t-transparent rounded-full animate-spin" />
+                    Generiere...
+                  </>
+                ) : (
+                  <>
+                    <Cpu className="w-4 h-4" />
+                    Testplan generieren
+                  </>
+                )}
+              </motion.button>
+            </div>
           </div>
         </div>
 
@@ -785,19 +865,19 @@ export default function ProjectPage() {
             className={`flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? "w-10" : "w-72"} flex flex-col`}
           >
             {sidebarCollapsed ? (
-              /* Collapsed State - vertical strip with expand button */
-              <div className="h-full bg-white rounded-lg border border-slate-200 flex flex-col items-center pt-3">
+              /* Collapsed State - vertical strip */
+              <div className="h-full glass-card rounded-xl flex flex-col items-center pt-3 shadow-premium">
                 <button
                   onClick={() => setSidebarCollapsed(false)}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-[var(--arvato-blue)]/10 rounded-lg transition-colors"
                   title="Sidebar einblenden"
                 >
-                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                  <ChevronRight className="w-4 h-4 text-[var(--arvato-blue)]" />
                 </button>
                 <div className="mt-2 flex flex-col items-center gap-2">
-                  <FolderOpen className="w-4 h-4 text-slate-400" />
+                  <FolderOpen className="w-4 h-4 text-[var(--arvato-blue)]" />
                   <span
-                    className="text-xs text-slate-400 writing-mode-vertical-lr rotate-180"
+                    className="text-xs text-slate-500 font-medium writing-mode-vertical-lr rotate-180"
                     style={{ writingMode: "vertical-rl" }}
                   >
                     {dddDocs.length + contextDocs.length} Dokumente
@@ -805,22 +885,25 @@ export default function ProjectPage() {
                 </div>
               </div>
             ) : (
-              /* Expanded State - full sidebar */
-              <div className="h-full bg-white rounded-lg border border-slate-200 flex flex-col overflow-hidden">
-                {/* Header with collapse button */}
-                <div className="flex items-center justify-between p-3 border-b border-slate-100">
+              /* Expanded State - full sidebar with glassmorphism */
+              <div className="h-full glass-card rounded-xl flex flex-col overflow-hidden shadow-premium">
+                {/* Header with gradient accent */}
+                <div className="relative flex items-center justify-between p-3 border-b border-slate-100/50">
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[var(--arvato-blue)] to-[#00D4AA]" />
                   <div className="flex items-center gap-2">
-                    <FolderOpen className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-medium text-slate-700">
+                    <div className="p-1.5 bg-gradient-to-br from-[var(--arvato-blue)]/10 to-[#00D4AA]/10 rounded-lg">
+                      <FolderOpen className="w-4 h-4 text-[var(--arvato-blue)]" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-700">
                       Projektdokumente
                     </span>
-                    <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                    <span className="badge-glass !text-xs !py-0.5">
                       {dddDocs.length + contextDocs.length}
                     </span>
                   </div>
                   <button
                     onClick={() => setSidebarCollapsed(true)}
-                    className="p-1 hover:bg-slate-100 rounded transition-colors"
+                    className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                     title="Sidebar einklappen"
                   >
                     <ChevronLeft className="w-4 h-4 text-slate-400" />
@@ -832,7 +915,7 @@ export default function ProjectPage() {
                   {/* DDD Subsection */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-indigo-600 uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[var(--arvato-blue)] uppercase tracking-wider flex items-center gap-1.5">
                         <FileText className="w-3 h-3" />
                         DDD (PDF/MD)
                       </span>
@@ -889,8 +972,8 @@ export default function ProjectPage() {
                                 !isProcessing && openDocument(doc.doc_id)
                               }
                               className={`flex items-center gap-2 p-2 rounded-md transition-colors group ${isProcessing
-                                  ? "bg-amber-50 cursor-wait"
-                                  : "bg-indigo-50 cursor-pointer hover:bg-indigo-100"
+                                ? "bg-amber-50 cursor-wait"
+                                : "bg-indigo-50 cursor-pointer hover:bg-indigo-100"
                                 }`}
                             >
                               {isProcessing ? (
@@ -915,8 +998,8 @@ export default function ProjectPage() {
                                       );
                                     }}
                                     className={`p-0.5 rounded transition-all ${doc.rag_enabled === false
-                                        ? "bg-slate-100 text-slate-400"
-                                        : "bg-indigo-100 text-indigo-600"
+                                      ? "bg-slate-100 text-slate-400"
+                                      : "bg-indigo-100 text-indigo-600"
                                       }`}
                                     title={
                                       doc.rag_enabled === false
@@ -999,8 +1082,8 @@ export default function ProjectPage() {
                                 );
                               }}
                               className={`p-0.5 rounded transition-all ${doc.rag_enabled === false
-                                  ? "bg-slate-100 text-slate-400"
-                                  : "bg-indigo-100 text-indigo-600"
+                                ? "bg-slate-100 text-slate-400"
+                                : "bg-indigo-100 text-indigo-600"
                                 }`}
                               title={
                                 doc.rag_enabled === false
@@ -1068,30 +1151,32 @@ export default function ProjectPage() {
           </div>
 
           {/* Right Column: Tabs for Testplan and Chat */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-white rounded-lg border border-slate-200">
-            {/* Tab Header */}
-            <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-1">
+          <div className="flex-1 flex flex-col overflow-hidden glass-card rounded-xl shadow-premium">
+            {/* Tab Header - Premium Pill Style */}
+            <div className="px-5 py-3 border-b border-slate-100/50 flex items-center justify-between">
+              <div className="flex items-center gap-1 p-1 bg-slate-100/50 rounded-xl">
                 <button
                   onClick={() => setActiveTab("testplan")}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === "testplan"
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "text-slate-600 hover:bg-slate-50"
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === "testplan"
+                    ? "bg-white text-[var(--arvato-blue)] shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                     }`}
                 >
-                  Testplan
-                  {testPlans.length > 0 &&
-                    testPlans[0]?.testCases?.length > 0 && (
-                      <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-indigo-100 text-indigo-600 rounded">
-                        {testPlans[0].testCases.length}
-                      </span>
-                    )}
+                  <span className="flex items-center gap-2">
+                    📋 Testplan
+                    {testPlans.length > 0 &&
+                      testPlans[0]?.testCases?.length > 0 && (
+                        <span className="badge-gradient !text-[10px] !px-2 !py-0.5">
+                          {testPlans[0].testCases.length}
+                        </span>
+                      )}
+                  </span>
                 </button>
                 <button
                   onClick={() => setActiveTab("chat")}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === "chat"
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "text-slate-600 hover:bg-slate-50"
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === "chat"
+                    ? "bg-white text-[var(--arvato-blue)] shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                     }`}
                 >
                   💬 DDD Chat
@@ -1100,14 +1185,16 @@ export default function ProjectPage() {
 
               {/* Context actions for testplan tab */}
               {activeTab === "testplan" && (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleAddTestCase(testPlans[0])}
                   disabled={testPlans.length === 0}
-                  className="p-1 px-2 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-[var(--arvato-blue)]/10 to-[#00D4AA]/10 hover:from-[var(--arvato-blue)]/20 hover:to-[#00D4AA]/20 text-[var(--arvato-blue)] rounded-lg flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-[var(--arvato-blue)]/20"
                 >
-                  <Plus className="w-3 h-3" />
+                  <Plus className="w-3.5 h-3.5" />
                   Testfall
-                </button>
+                </motion.button>
               )}
             </div>
 
@@ -1130,39 +1217,76 @@ export default function ProjectPage() {
                               </span>
                             )}
                           </div>
-                          <button
-                            onClick={() => exportToExcel(plan)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-md transition-colors"
-                            title="Als Excel exportieren"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            Excel
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => exportToExcel(plan)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-md transition-colors"
+                              title="Als Excel exportieren"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Excel
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (confirm("Möchten Sie diesen Testplan wirklich löschen? Alle zugehörigen Test-Ergebnisse werden ebenfalls gelöscht.")) {
+                                  try {
+                                    const response = await fetch(
+                                      `${API_URL}/api/testing/projects/${id}/plans/${plan.id}`,
+                                      { method: "DELETE" }
+                                    );
+                                    if (response.ok) {
+                                      loadData();
+                                    } else {
+                                      alert("Fehler beim Löschen des Testplans");
+                                    }
+                                  } catch (error) {
+                                    console.error("Delete plan error:", error);
+                                    alert("Fehler beim Löschen des Testplans");
+                                  }
+                                }
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                              title="Testplan löschen"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Löschen
+                            </button>
+                          </div>
                         </div>
 
                         {/* Progress Status or Table */}
                         {plan.status === "processing" &&
                           plan.generationState ? (
-                          <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
-                              <h4 className="font-medium text-indigo-900">
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-4 bg-gradient-to-r from-blue-50 via-teal-50/50 to-blue-50 border border-blue-100/50 rounded-xl p-5"
+                          >
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="relative w-6 h-6">
+                                <div className="absolute inset-0 rounded-full border-2 border-[var(--arvato-blue)]/20" />
+                                <div className="absolute inset-0 rounded-full border-2 border-[var(--arvato-blue)] border-t-transparent animate-spin" />
+                              </div>
+                              <h4 className="font-semibold text-slate-800">
                                 Testplan wird generiert...
                               </h4>
                             </div>
-                            <p className="text-sm text-indigo-700 mb-3 ml-8">
+                            <p className="text-sm text-slate-600 mb-4 ml-9">
                               {plan.generationState.message ||
                                 "Einen Moment bitte..."}
                             </p>
-                            <div className="w-full bg-indigo-200 rounded-full h-2 ml-8 max-w-sm">
-                              <div
-                                className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                                style={{
-                                  width: `${plan.generationState.progress || 0}%`,
-                                }}
-                              ></div>
+                            <div className="ml-9 max-w-sm">
+                              <div className="progress-premium">
+                                <div
+                                  className="progress-premium-fill"
+                                  style={{
+                                    width: `${plan.generationState.progress || 0}%`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-xs text-slate-500 mt-2">{plan.generationState.progress || 0}% abgeschlossen</p>
                             </div>
-                          </div>
+                          </motion.div>
                         ) : plan.status === "failed" ? (
                           <div className="mb-4 bg-red-50 border border-red-100 rounded-lg p-4 text-red-800 text-sm">
                             <strong>Fehler bei der Generierung:</strong>
@@ -1171,66 +1295,364 @@ export default function ProjectPage() {
                               "Unbekannter Fehler"}
                           </div>
                         ) : (
-                          /* Completed Plan Table */
+                          /* Completed Plan Table with Enhanced Features */
                           plan.testCases &&
                           plan.testCases.length > 0 && (
-                            <div className="mb-4 border border-slate-200 rounded-lg overflow-hidden">
-                              <table className="w-full text-xs">
-                                <thead className="bg-slate-50">
-                                  <tr>
-                                    <th className="px-3 py-2 text-left font-medium text-slate-600">
-                                      Nr.
-                                    </th>
-                                    <th className="px-3 py-2 text-left font-medium text-slate-600">
-                                      Testinhalt
-                                    </th>
-                                    <th className="px-3 py-2 text-left font-medium text-slate-600">
-                                      Beschreibung
-                                    </th>
-                                    <th className="px-3 py-2 text-left font-medium text-slate-600 w-20">
-                                      Resultat
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                  {plan.testCases
-                                    .slice(0, 10)
-                                    .map((tc, idx) => (
-                                      <tr
-                                        key={idx}
-                                        onClick={() => {
-                                          setSelectedTestCase(tc);
-                                          setShowDetailModal(true);
-                                          setIsEditing(false);
-                                        }}
-                                        className="hover:bg-slate-50 cursor-pointer group transition-colors"
-                                      >
-                                        <td className="px-3 py-2 font-mono text-slate-500 group-hover:text-indigo-600 transition-colors">
-                                          {tc.testNr}
-                                        </td>
-                                        <td className="px-3 py-2 text-slate-700 font-medium">
-                                          {tc.testinhalt}
-                                        </td>
-                                        <td className="px-3 py-2 text-slate-500 truncate max-w-xs">
-                                          {tc.beschreibung}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <span className="px-2 py-0.5 bg-slate-100 text-slate-400 rounded text-xs group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
-                                            Details
-                                          </span>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                </tbody>
-                              </table>
-                              {plan.testCases.length > 10 && (
-                                <div className="px-3 py-2 bg-slate-50 text-xs text-slate-500 text-center border-t border-slate-200">
-                                  + {plan.testCases.length - 10} weitere Tests
-                                  (Excel exportieren für vollständige Liste)
+                            <div className="mb-4 space-y-4">
+                              {/* Statistics Dashboard */}
+                              {testStatistics && (
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                  <div className="stat-card !p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <BarChart3 className="w-4 h-4 text-[var(--arvato-blue)]" />
+                                      <span className="text-xs text-slate-500">Gesamt</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-slate-800">{testStatistics.total}</p>
+                                  </div>
+                                  <div className="stat-card !p-3 bg-emerald-50/50 border-emerald-100">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                      <span className="text-xs text-slate-500">Bestanden</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-emerald-700">{testStatistics.passed}</p>
+                                  </div>
+                                  <div className="stat-card !p-3 bg-red-50/50 border-red-100">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <XCircle className="w-4 h-4 text-red-600" />
+                                      <span className="text-xs text-slate-500">Fehlgeschlagen</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-red-700">{testStatistics.failed}</p>
+                                  </div>
+                                  <div className="stat-card !p-3 bg-amber-50/50 border-amber-100">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <SkipForward className="w-4 h-4 text-amber-600" />
+                                      <span className="text-xs text-slate-500">Übersprungen</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-amber-700">{testStatistics.skipped}</p>
+                                  </div>
+                                  <div className="stat-card !p-3 bg-blue-50/50 border-blue-100">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <TrendingUp className="w-4 h-4 text-blue-600" />
+                                      <span className="text-xs text-slate-500">Pass Rate</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-blue-700">{testStatistics.pass_rate}%</p>
+                                  </div>
                                 </div>
                               )}
+
+                              {/* Filters and Search */}
+                              <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-slate-200/50">
+                                <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                                  <Search className="w-4 h-4 text-slate-400" />
+                                  <input
+                                    type="text"
+                                    placeholder="Testfälle suchen..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="flex-1 text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--arvato-blue)]/20 focus:border-[var(--arvato-blue)]"
+                                  />
+                                </div>
+                                <select
+                                  value={filterStatus || ""}
+                                  onChange={(e) => setFilterStatus(e.target.value || null)}
+                                  className="text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--arvato-blue)]/20"
+                                >
+                                  <option value="">Alle Status</option>
+                                  <option value="passed">Bestanden</option>
+                                  <option value="failed">Fehlgeschlagen</option>
+                                  <option value="skipped">Übersprungen</option>
+                                  <option value="pending">Ausstehend</option>
+                                </select>
+                                {selectedTests.size > 0 && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-600">{selectedTests.size} ausgewählt</span>
+                                    <select
+                                      value={bulkStatus || ""}
+                                      onChange={(e) => {
+                                        const status = e.target.value as any;
+                                        if (status) {
+                                          setBulkStatus(status);
+                                          const executions: TestExecutionRequest[] = Array.from(selectedTests).map(
+                                            (testId) => ({
+                                              test_id: testId,
+                                              status: status,
+                                            })
+                                          );
+                                          bulkSaveMutation.mutate(executions);
+                                          setSelectedTests(new Set());
+                                          setBulkStatus(null);
+                                        }
+                                      }}
+                                      className="text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                                    >
+                                      <option value="">Bulk-Status...</option>
+                                      <option value="passed">✓ Bestanden</option>
+                                      <option value="failed">✗ Fehlgeschlagen</option>
+                                      <option value="skipped">⊘ Übersprungen</option>
+                                      <option value="pending">⏳ Ausstehend</option>
+                                    </select>
+                                    <button
+                                      onClick={() => setSelectedTests(new Set())}
+                                      className="text-xs text-slate-500 hover:text-slate-700"
+                                    >
+                                      Abbrechen
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Enhanced Table */}
+                              <div className="border border-slate-200/50 rounded-xl overflow-hidden shadow-sm">
+                                <table className="w-full text-xs">
+                                  <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50">
+                                    <tr>
+                                      <th className="px-3 py-3 w-8">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedTests.size === plan.testCases.length && plan.testCases.length > 0}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setSelectedTests(new Set(plan.testCases.map((tc) => tc.testNr)));
+                                            } else {
+                                              setSelectedTests(new Set());
+                                            }
+                                          }}
+                                          className="rounded border-slate-300 text-[var(--arvato-blue)] focus:ring-[var(--arvato-blue)]"
+                                        />
+                                      </th>
+                                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Nr.</th>
+                                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
+                                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Testinhalt</th>
+                                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Beschreibung</th>
+                                      <th className="px-4 py-3 text-right font-semibold text-slate-600 w-24">Aktion</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100/50">
+                                    {plan.testCases
+                                      .filter((tc) => {
+                                        if (filterStatus) {
+                                          const execution = testExecutions.find((e) => e.test_id === tc.testNr);
+                                          const status = execution?.status || "pending";
+                                          if (status !== filterStatus) return false;
+                                        }
+                                        if (searchQuery) {
+                                          const query = searchQuery.toLowerCase();
+                                          if (
+                                            !tc.testNr.toLowerCase().includes(query) &&
+                                            !tc.testinhalt.toLowerCase().includes(query) &&
+                                            !tc.beschreibung.toLowerCase().includes(query)
+                                          )
+                                            return false;
+                                        }
+                                        return true;
+                                      })
+                                      .slice(0, 20)
+                                      .map((tc, idx) => {
+                                        const execution = testExecutions.find((e) => e.test_id === tc.testNr);
+                                        const status = execution?.status || "pending";
+                                        const isSelected = selectedTests.has(tc.testNr);
+
+                                        const statusConfig = {
+                                          passed: { icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
+                                          failed: { icon: XCircle, color: "text-red-600", bg: "bg-red-50", border: "border-red-200" },
+                                          skipped: { icon: SkipForward, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
+                                          pending: { icon: Clock, color: "text-slate-400", bg: "bg-slate-50", border: "border-slate-200" },
+                                        }[status];
+
+                                        const StatusIcon = statusConfig.icon;
+
+                                        return (
+                                          <motion.tr
+                                            key={idx}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.02 }}
+                                            className={`table-row-premium group bg-white hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-transparent ${isSelected ? "bg-blue-50/50" : ""}`}
+                                          >
+                                            <td className="px-3 py-3">
+                                              <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                  e.stopPropagation();
+                                                  const newSelected = new Set(selectedTests);
+                                                  if (e.target.checked) {
+                                                    newSelected.add(tc.testNr);
+                                                  } else {
+                                                    newSelected.delete(tc.testNr);
+                                                  }
+                                                  setSelectedTests(newSelected);
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="rounded border-slate-300 text-[var(--arvato-blue)] focus:ring-[var(--arvato-blue)]"
+                                              />
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-slate-500 group-hover:text-[var(--arvato-blue)] transition-colors">
+                                              {tc.testNr}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                              <select
+                                                value={status}
+                                                onChange={(e) => {
+                                                  e.stopPropagation();
+                                                  saveExecutionMutation.mutate({
+                                                    test_id: tc.testNr,
+                                                    status: e.target.value as any,
+                                                  });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className={`text-xs px-2 py-1 rounded-lg border ${statusConfig.border} ${statusConfig.bg} ${statusConfig.color} font-medium focus:outline-none focus:ring-2 focus:ring-[var(--arvato-blue)]/20`}
+                                              >
+                                                <option value="pending">⏳ Ausstehend</option>
+                                                <option value="passed">✓ Bestanden</option>
+                                                <option value="failed">✗ Fehlgeschlagen</option>
+                                                <option value="skipped">⊘ Übersprungen</option>
+                                              </select>
+                                            </td>
+                                            <td
+                                              className="px-4 py-3 text-slate-700 font-medium cursor-pointer"
+                                              onClick={() => {
+                                                setSelectedTestCase(tc);
+                                                setShowDetailModal(true);
+                                                setIsEditing(false);
+                                              }}
+                                            >
+                                              {tc.testinhalt}
+                                            </td>
+                                            <td
+                                              className="px-4 py-3 text-slate-500 truncate max-w-xs cursor-pointer"
+                                              onClick={() => {
+                                                setSelectedTestCase(tc);
+                                                setShowDetailModal(true);
+                                                setIsEditing(false);
+                                              }}
+                                            >
+                                              {tc.beschreibung}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                              <span
+                                                onClick={() => {
+                                                  setSelectedTestCase(tc);
+                                                  setShowDetailModal(true);
+                                                  setIsEditing(false);
+                                                }}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100/80 text-slate-500 rounded-lg text-xs group-hover:bg-gradient-to-r group-hover:from-[var(--arvato-blue)]/10 group-hover:to-[#00D4AA]/10 group-hover:text-[var(--arvato-blue)] transition-all cursor-pointer"
+                                              >
+                                                Details →
+                                              </span>
+                                            </td>
+                                          </motion.tr>
+                                        );
+                                      })}
+                                  </tbody>
+                                </table>
+                                {plan.testCases.length > 20 && (
+                                  <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-slate-100/50 text-xs text-slate-500 text-center border-t border-slate-200/50">
+                                    + {plan.testCases.length - 20} weitere Tests
+                                    (Excel exportieren für vollständige Liste)
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )
+                        )}
+
+                        {/* Coverage Dashboard */}
+                        {plan.isStructured && plan.generationState?.data?.coverage && (
+                          <div className="mb-4 p-4 bg-gradient-to-br from-blue-50/50 via-teal-50/30 to-blue-50/50 rounded-xl border border-blue-100/50">
+                            <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                              <BarChart3 className="w-4 h-4 text-[var(--arvato-blue)]" />
+                              Test Coverage Analyse
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xs font-medium text-slate-600">Use Cases</span>
+                                  <span className="text-xs font-bold text-slate-800">
+                                    {plan.generationState.data.coverage.covered_use_cases?.length || 0}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2">
+                                  <div
+                                    className="bg-gradient-to-r from-blue-500 to-teal-500 h-2 rounded-full transition-all"
+                                    style={{
+                                      width: `${Math.min(
+                                        ((plan.generationState.data.coverage.covered_use_cases?.length || 0) /
+                                          Math.max(
+                                            plan.generationState.data.coverage.covered_use_cases?.length || 1,
+                                            1
+                                          )) *
+                                          100,
+                                        100
+                                      )}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xs font-medium text-slate-600">Business Rules</span>
+                                  <span className="text-xs font-bold text-slate-800">
+                                    {plan.generationState.data.coverage.covered_business_rules?.length || 0}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2">
+                                  <div
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all"
+                                    style={{
+                                      width: `${Math.min(
+                                        ((plan.generationState.data.coverage.covered_business_rules?.length || 0) /
+                                          Math.max(
+                                            plan.generationState.data.coverage.covered_business_rules?.length || 1,
+                                            1
+                                          )) *
+                                          100,
+                                        100
+                                      )}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xs font-medium text-slate-600">Error Codes</span>
+                                  <span className="text-xs font-bold text-slate-800">
+                                    {plan.generationState.data.coverage.covered_error_codes?.length || 0}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2">
+                                  <div
+                                    className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all"
+                                    style={{
+                                      width: `${Math.min(
+                                        ((plan.generationState.data.coverage.covered_error_codes?.length || 0) /
+                                          Math.max(
+                                            plan.generationState.data.coverage.covered_error_codes?.length || 1,
+                                            1
+                                          )) *
+                                          100,
+                                        100
+                                      )}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            {plan.generationState.data.coverage.coverage_gaps &&
+                              plan.generationState.data.coverage.coverage_gaps.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                  <p className="text-xs font-semibold text-amber-700 mb-1">Coverage Gaps:</p>
+                                  <ul className="text-xs text-slate-600 space-y-1">
+                                    {plan.generationState.data.coverage.coverage_gaps.map((gap: string, idx: number) => (
+                                      <li key={idx} className="flex items-start gap-1">
+                                        <span className="text-amber-500">•</span>
+                                        <span>{gap}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                          </div>
                         )}
 
                         {/* Markdown Content - Collapsible */}

@@ -38,6 +38,11 @@ class FileStorageService:
             os.makedirs(self.UPLOAD_DIR, exist_ok=True)
             print(f"📁 FileStorage initialized (local): {self.UPLOAD_DIR}")
 
+    @property
+    def client(self):
+        """Get MinIO client for health checks"""
+        return self._minio_client if self._use_minio else None
+
     def _init_minio(self) -> bool:
         """Initialize MinIO client if configured"""
         endpoint = os.environ.get("MINIO_ENDPOINT")

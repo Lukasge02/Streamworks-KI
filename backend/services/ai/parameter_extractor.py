@@ -9,7 +9,7 @@ from openai import OpenAI
 import instructor
 
 from config import config
-from .schemas import StreamworksParams
+from .schemas import StreamworksParams, UnifiedCommandResult
 
 
 # Improved system prompt with real XML examples

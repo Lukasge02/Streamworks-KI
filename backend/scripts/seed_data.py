@@ -1,5 +1,4 @@
 import sys
-import os
 
 # Add backend to path
 # Add backend to path (robust)
@@ -8,7 +7,7 @@ from pathlib import Path
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(backend_dir))
 
-from services.db import db
+from services.db import db  # noqa: E402
 
 
 def seed_dropdowns():

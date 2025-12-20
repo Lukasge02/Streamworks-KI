@@ -363,6 +363,26 @@ class DatabaseService:
             print(f"Error getting test plans: {e}")
             return []
 
+    def delete_test_plan(self, plan_id: str) -> bool:
+        """Delete a test plan and all associated test executions."""
+        if not self.client:
+            return False
+        try:
+            # Delete associated test executions first
+            self.client.table("test_executions").delete().eq("plan_id", plan_id).execute()
+            
+            # Delete the test plan
+            result = (
+                self.client.table("test_plans")
+                .delete()
+                .eq("id", plan_id)
+                .execute()
+            )
+            return bool(result.data)
+        except Exception as e:
+            print(f"Error deleting test plan {plan_id}: {e}")
+            return False
+
     def unlink_project_document(self, project_id: str, doc_id: str) -> bool:
         """Remove a document link from a project."""
         if not self.client:
@@ -394,6 +414,152 @@ class DatabaseService:
         except Exception as e:
             print(f"Error updating document RAG status: {e}")
             return False
+
+    # --- Test Execution Tracking ---
+
+    def save_test_execution(
+        self,
+        plan_id: str,
+        test_id: str,
+        status: str,
+        tester: str = None,
+        result: str = None,
+        build_id: str = None,
+        execution_date: str = None,
+        comment: str = None,
+    ):
+        """Save or update a test execution result."""
+        if not self.client:
+            return None
+        try:
+            # Check if execution already exists
+            existing = (
+                self.client.table("test_executions")
+                .select("*")
+                .eq("plan_id", plan_id)
+                .eq("test_id", test_id)
+                .execute()
+            )
+
+            execution_data = {
+                "plan_id": plan_id,
+                "test_id": test_id,
+                "status": status,
+                "tester": tester,
+                "result": result,
+                "build_id": build_id,
+                "execution_date": execution_date or "now()",
+                "comment": comment,
+                "updated_at": "now()",
+            }
+
+            if existing.data and len(existing.data) > 0:
+                # Update existing
+                return (
+                    self.client.table("test_executions")
+                    .update(execution_data)
+                    .eq("plan_id", plan_id)
+                    .eq("test_id", test_id)
+                    .execute()
+                )
+            else:
+                # Insert new
+                return (
+                    self.client.table("test_executions")
+                    .insert(execution_data)
+                    .execute()
+                )
+        except Exception as e:
+            print(f"Error saving test execution: {e}")
+            return None
+
+    def get_test_executions(self, plan_id: str):
+        """Get all test executions for a plan."""
+        if not self.client:
+            return []
+        try:
+            return (
+                self.client.table("test_executions")
+                .select("*")
+                .eq("plan_id", plan_id)
+                .order("execution_date", desc=True)
+                .execute()
+                .data
+            )
+        except Exception as e:
+            print(f"Error getting test executions: {e}")
+            return []
+
+    def get_test_execution(self, plan_id: str, test_id: str):
+        """Get a specific test execution."""
+        if not self.client:
+            return None
+        try:
+            result = (
+                self.client.table("test_executions")
+                .select("*")
+                .eq("plan_id", plan_id)
+                .eq("test_id", test_id)
+                .execute()
+            )
+            if result.data and len(result.data) > 0:
+                return result.data[0]
+            return None
+        except Exception as e:
+            print(f"Error getting test execution: {e}")
+            return None
+
+    def bulk_update_test_executions(self, plan_id: str, executions: list):
+        """Bulk update multiple test executions."""
+        if not self.client:
+            return None
+        try:
+            # Upsert all executions
+            return (
+                self.client.table("test_executions")
+                .upsert(executions)
+                .execute()
+            )
+        except Exception as e:
+            print(f"Error bulk updating test executions: {e}")
+            return None
+
+    def get_test_statistics(self, plan_id: str):
+        """Get aggregated test statistics for a plan."""
+        if not self.client:
+            return {}
+        try:
+            executions = self.get_test_executions(plan_id)
+            if not executions:
+                return {
+                    "total": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "skipped": 0,
+                    "pending": 0,
+                    "pass_rate": 0.0,
+                }
+
+            total = len(executions)
+            passed = sum(1 for e in executions if e.get("status") == "passed")
+            failed = sum(1 for e in executions if e.get("status") == "failed")
+            skipped = sum(1 for e in executions if e.get("status") == "skipped")
+            pending = sum(1 for e in executions if e.get("status") == "pending" or not e.get("status"))
+
+            executed = total - pending
+            pass_rate = (passed / executed * 100) if executed > 0 else 0.0
+
+            return {
+                "total": total,
+                "passed": passed,
+                "failed": failed,
+                "skipped": skipped,
+                "pending": pending,
+                "pass_rate": round(pass_rate, 2),
+            }
+        except Exception as e:
+            print(f"Error getting test statistics: {e}")
+            return {}
 
 
 # Global instance

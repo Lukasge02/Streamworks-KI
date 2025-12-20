@@ -17,16 +17,19 @@ import {
   Check,
   X,
   Send,
+  Sparkles,
 } from "lucide-react";
 import AppLayout from "../components/AppLayout";
 import { Button } from "../components/ui/button";
-import { cn } from "../utils/cn";
+import { cn } from "@/lib/utils";
+import WizardStep0Describe from "./components/WizardStep0";
 import WizardStep1BasicInfo from "./components/WizardStep1";
 import WizardStep2Contact from "./components/WizardStep2";
 import WizardStep3JobType from "./components/WizardStep3";
 import WizardStep4JobDetails from "./components/WizardStep4";
 import WizardStep5Schedule from "./components/WizardStep5";
 import WizardStep6Preview from "./components/WizardStep6";
+import { Upload } from "lucide-react";
 
 interface WizardSession {
   session_id: string;
@@ -44,6 +47,7 @@ interface ChatMessage {
 }
 
 const WIZARD_STEPS = [
+  { id: "describe", label: "KI-Analyse", icon: Sparkles },
   { id: "basic_info", label: "Grundinfo", icon: FileText },
   { id: "contact", label: "Kontakt", icon: User },
   { id: "job_type", label: "Job-Typ", icon: Settings },
@@ -328,13 +332,27 @@ function EditorPageContent() {
     };
 
     switch (currentStep.id) {
-      case "basic_info":
+      case "describe":
         return (
-          <WizardStep1BasicInfo
+          <WizardStep0Describe
             {...commonProps}
             onAnalyze={analyzeDescription}
+            onCreateSession={async () => {
+              if (session) return session;
+              const createResponse = await fetch(
+                "http://localhost:8000/api/wizard/sessions",
+                { method: "POST" }
+              );
+              if (!createResponse.ok) return null;
+              const newSession = await createResponse.json();
+              setSession(newSession);
+              setSessionCreated(true);
+              return newSession;
+            }}
           />
         );
+      case "basic_info":
+        return <WizardStep1BasicInfo {...commonProps} />;
       case "contact":
         return <WizardStep2Contact {...commonProps} />;
       case "job_type":
@@ -374,17 +392,17 @@ function EditorPageContent() {
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-left cursor-pointer",
                     isCurrent &&
-                      "bg-[#0082D9] text-white shadow-lg shadow-[#0082D9]/20",
+                    "bg-[#0082D9] text-white shadow-lg shadow-[#0082D9]/20",
                     isCompleted &&
-                      !isCurrent &&
-                      "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-                    isSkipped &&
-                      !isCurrent &&
-                      "bg-gray-50 text-gray-400 hover:bg-gray-100",
                     !isCurrent &&
-                      !isCompleted &&
-                      !isSkipped &&
-                      "text-gray-500 hover:bg-gray-50",
+                    "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                    isSkipped &&
+                    !isCurrent &&
+                    "bg-gray-50 text-gray-400 hover:bg-gray-100",
+                    !isCurrent &&
+                    !isCompleted &&
+                    !isSkipped &&
+                    "text-gray-500 hover:bg-gray-50",
                   )}
                 >
                   <div
@@ -518,8 +536,8 @@ function EditorPageContent() {
             </AnimatePresence>
           </div>
 
-          {/* Fixed Footer Navigation */}
-          <div className="flex-shrink-0 mt-4 bg-white rounded-2xl border border-gray-100 shadow-lg p-4">
+          {/* Fixed Footer Navigation - Premium Style */}
+          <div className="flex-shrink-0 mt-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg p-4">
             <div className="flex items-center justify-between">
               <Button
                 variant="outline"
@@ -527,36 +545,39 @@ function EditorPageContent() {
                   setCurrentStepIndex(Math.max(0, currentStepIndex - 1))
                 }
                 disabled={currentStepIndex === 0}
-                className="gap-2"
+                className="gap-2 px-5 py-2.5 rounded-xl border-2 hover:bg-gray-50 disabled:opacity-40"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Zurück
               </Button>
 
-              {/* Progress indicator */}
-              <div className="flex items-center gap-2">
-                {WIZARD_STEPS.map((_, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "w-2 h-2 rounded-full transition-colors",
-                      index === currentStepIndex
-                        ? "bg-[#0082D9] w-6"
-                        : index < currentStepIndex ||
-                            session?.completed_steps.includes(
-                              WIZARD_STEPS[index].id,
-                            )
-                          ? "bg-emerald-500"
-                          : "bg-gray-200",
-                    )}
-                  />
-                ))}
+              {/* Enhanced Progress indicator with step labels */}
+              <div className="flex items-center gap-1.5">
+                {WIZARD_STEPS.map((step, index) => {
+                  const isActive = index === currentStepIndex;
+                  const isComplete = index < currentStepIndex || session?.completed_steps.includes(step.id);
+
+                  return (
+                    <motion.button
+                      key={index}
+                      whileHover={{ scale: 1.1 }}
+                      onClick={() => goToStep(index)}
+                      className={cn(
+                        "w-3 h-3 rounded-full transition-all duration-300",
+                        isActive && "w-8 bg-gradient-to-r from-[#0082D9] to-blue-600 shadow-md shadow-blue-500/30",
+                        isComplete && !isActive && "bg-emerald-500",
+                        !isComplete && !isActive && "bg-gray-200 hover:bg-gray-300"
+                      )}
+                      title={step.label}
+                    />
+                  );
+                })}
               </div>
 
               <Button
                 onClick={goToNextStep}
                 disabled={currentStepIndex === WIZARD_STEPS.length - 1}
-                className="gap-2 bg-[#0082D9] hover:bg-[#0077C8]"
+                className="gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0082D9] to-blue-600 hover:from-[#0077C8] hover:to-blue-700 shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all disabled:opacity-40 disabled:shadow-none"
               >
                 Weiter
                 <ArrowRight className="w-4 h-4" />

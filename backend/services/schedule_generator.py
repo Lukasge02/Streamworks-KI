@@ -35,7 +35,7 @@ def generate_schedule_xml(
             # Validate time format
             hour, minute = start_time.split(":")
             time_part = f" StartTime=&quot;{start_time}&quot;"
-        except:
+        except Exception:
             pass
 
     # Daily schedule

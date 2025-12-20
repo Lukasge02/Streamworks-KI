@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from supabase import create_client
+from supabase import create_client  # noqa: E402
 
 
 def cleanup_empty_sessions():

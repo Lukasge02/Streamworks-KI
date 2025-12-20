@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
 import { Button } from "../../components/ui/button";
-import { cn } from "../../utils/cn";
+import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 
 // --- Types ---
@@ -40,13 +40,13 @@ interface ParameterConfig {
   type: "text" | "select" | "textarea" | "time" | "boolean" | "number";
   options?: string[];
   category:
-    | "stream"
-    | "job"
-    | "schedule"
-    | "contact"
-    | "advanced"
-    | "system"
-    | "dependency";
+  | "stream"
+  | "job"
+  | "schedule"
+  | "contact"
+  | "advanced"
+  | "system"
+  | "dependency";
   helperText?: string;
 }
 
@@ -877,12 +877,12 @@ export default function StreamDetailPage() {
               </strong>{" "}
               wurde auf{" "}
               <span className="font-semibold text-emerald-600">
-                "{appliedChanges.value}"
+                &quot;{appliedChanges.value}&quot;
               </span>{" "}
               geändert.
             </span>
             <span className="text-blue-500/70">
-              Klicke "Speichern" zum Bestätigen.
+              Klicke &quot;Speichern&quot; zum Bestätigen.
             </span>
           </div>
           <button

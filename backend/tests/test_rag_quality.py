@@ -47,35 +47,59 @@ TEST_CASES = [
     {
         "name": "Error Codes",
         "query": "Welche Fehlercodes gibt es in StreamWorks?",
-        "expected_keywords": ["SW-1001", "SW-1002", "Datenbankverbindung", "Authentifizierung"],
+        "expected_keywords": [
+            "SW-1001",
+            "SW-1002",
+            "Datenbankverbindung",
+            "Authentifizierung",
+        ],
         "category": "accuracy",
     },
-    
     # ========== COMPLETENESS TESTS ==========
     {
         "name": "Installation Steps",
         "query": "Wie installiere ich StreamWorks Schritt für Schritt?",
-        "expected_keywords": ["Repository", "apt install", "Datenbank", "Konfiguration", "systemctl"],
+        "expected_keywords": [
+            "Repository",
+            "apt install",
+            "Datenbank",
+            "Konfiguration",
+            "systemctl",
+        ],
         "category": "completeness",
     },
     {
         "name": "Mandant Explanation",
         "query": "Erkläre das Mandanten-Konzept in StreamWorks",
-        "expected_keywords": ["Multi-Tenancy", "isolierte Daten", "Benutzer", "Administratoren"],
+        "expected_keywords": [
+            "Multi-Tenancy",
+            "isolierte Daten",
+            "Benutzer",
+            "Administratoren",
+        ],
         "category": "completeness",
     },
     {
         "name": "Webhook Events",
         "query": "Welche Webhook-Events gibt es und wie sieht der Payload aus?",
-        "expected_keywords": ["stream.started", "stream.completed", "stream.failed", "Payload", "JSON"],
+        "expected_keywords": [
+            "stream.started",
+            "stream.completed",
+            "stream.failed",
+            "Payload",
+            "JSON",
+        ],
         "category": "completeness",
     },
-    
     # ========== CONFIGURATION TESTS ==========
     {
         "name": "Environment Variables",
         "query": "Welche Umgebungsvariablen muss ich für StreamWorks setzen?",
-        "expected_keywords": ["STREAMWORKS_DB_HOST", "STREAMWORKS_LOG_LEVEL", "MAX_WORKERS"],
+        "expected_keywords": [
+            "STREAMWORKS_DB_HOST",
+            "STREAMWORKS_LOG_LEVEL",
+            "MAX_WORKERS",
+        ],
         "category": "configuration",
     },
     {
@@ -84,7 +108,6 @@ TEST_CASES = [
         "expected_keywords": ["PostgreSQL", "host", "port", "5432", "password"],
         "category": "configuration",
     },
-    
     # ========== TROUBLESHOOTING TESTS ==========
     {
         "name": "Connection Error",
@@ -98,7 +121,6 @@ TEST_CASES = [
         "expected_keywords": ["/var/log/streamworks", "Windows", "ProgramData", "Logs"],
         "category": "troubleshooting",
     },
-    
     # ========== API TESTS ==========
     {
         "name": "Create Stream API",
@@ -112,7 +134,6 @@ TEST_CASES = [
         "expected_keywords": ["100", "Anfragen", "Minute", "X-RateLimit"],
         "category": "api",
     },
-    
     # ========== EDGE CASES ==========
     {
         "name": "Non-Existent Topic",
@@ -142,13 +163,13 @@ def check_keywords(answer: str, keywords: List[str]) -> tuple[int, int, List[str
     found = []
     missing = []
     answer_lower = answer.lower()
-    
+
     for kw in keywords:
         if kw.lower() in answer_lower:
             found.append(kw)
         else:
             missing.append(kw)
-    
+
     return len(found), len(keywords), missing
 
 
@@ -158,7 +179,7 @@ def run_tests():
     print("🧪 RAG QUALITY TEST SUITE")
     print("=" * 70)
     print()
-    
+
     results = {
         "total": 0,
         "passed": 0,
@@ -166,54 +187,60 @@ def run_tests():
         "by_category": {},
         "details": [],
     }
-    
+
     for i, test in enumerate(TEST_CASES, 1):
         print(f"[{i}/{len(TEST_CASES)}] Testing: {test['name']}")
         print(f"    Query: {test['query'][:60]}...")
-        
+
         start_time = time.time()
         response = query_rag(test["query"])
         duration = time.time() - start_time
-        
+
         results["total"] += 1
-        
+
         # Check for errors
         if "error" in response:
             print(f"    ❌ ERROR: {response['error']}")
             results["failed"] += 1
             continue
-        
+
         answer = response.get("answer", "")
         sources = response.get("sources", [])
         confidence = response.get("confidence", 0)
         has_context = response.get("has_context", False)
-        
+
         # Check edge case (expect no context)
         if test.get("expect_no_context"):
             if not has_context or confidence < 0.3:
-                print(f"    ✅ PASS: Correctly indicated no relevant info (confidence: {confidence})")
+                print(
+                    f"    ✅ PASS: Correctly indicated no relevant info (confidence: {confidence})"
+                )
                 results["passed"] += 1
             else:
-                print(f"    ❌ FAIL: Should have indicated no context, but confidence={confidence}")
+                print(
+                    f"    ❌ FAIL: Should have indicated no context, but confidence={confidence}"
+                )
                 results["failed"] += 1
             print()
             continue
-        
+
         # Check keywords
         found, total, missing = check_keywords(answer, test["expected_keywords"])
         score = found / total if total > 0 else 0
-        
+
         test_passed = score >= 0.6 and has_context  # 60% keywords found = pass
-        
+
         if test_passed:
-            print(f"    ✅ PASS: {found}/{total} keywords ({score:.0%}), {len(sources)} sources, {duration:.1f}s")
+            print(
+                f"    ✅ PASS: {found}/{total} keywords ({score:.0%}), {len(sources)} sources, {duration:.1f}s"
+            )
             results["passed"] += 1
         else:
             print(f"    ❌ FAIL: {found}/{total} keywords ({score:.0%})")
             if missing:
                 print(f"       Missing: {', '.join(missing[:3])}...")
             results["failed"] += 1
-        
+
         # Track by category
         cat = test["category"]
         if cat not in results["by_category"]:
@@ -222,49 +249,53 @@ def run_tests():
             results["by_category"][cat]["passed"] += 1
         else:
             results["by_category"][cat]["failed"] += 1
-        
-        results["details"].append({
-            "name": test["name"],
-            "passed": test_passed,
-            "score": score,
-            "confidence": confidence,
-            "duration": duration,
-            "sources_count": len(sources),
-        })
-        
+
+        results["details"].append(
+            {
+                "name": test["name"],
+                "passed": test_passed,
+                "score": score,
+                "confidence": confidence,
+                "duration": duration,
+                "sources_count": len(sources),
+            }
+        )
+
         print()
-    
+
     # Summary
     print("=" * 70)
     print("📊 RESULTS SUMMARY")
     print("=" * 70)
-    print(f"Total: {results['passed']}/{results['total']} passed ({results['passed']/results['total']*100:.0f}%)")
+    print(
+        f"Total: {results['passed']}/{results['total']} passed ({results['passed'] / results['total'] * 100:.0f}%)"
+    )
     print()
     print("By Category:")
     for cat, stats in results["by_category"].items():
         total = stats["passed"] + stats["failed"]
         print(f"  {cat}: {stats['passed']}/{total}")
-    
+
     print()
     print("Performance:")
     durations = [d["duration"] for d in results["details"]]
     if durations:
-        print(f"  Avg response time: {sum(durations)/len(durations):.2f}s")
+        print(f"  Avg response time: {sum(durations) / len(durations):.2f}s")
         print(f"  Max response time: {max(durations):.2f}s")
-    
+
     return results
 
 
 if __name__ == "__main__":
     results = run_tests()
-    
+
     # Save results
     with open("/tmp/rag_test_results.json", "w") as f:
         json.dump(results, f, indent=2)
-    
+
     print()
-    print(f"Results saved to: /tmp/rag_test_results.json")
-    
+    print("Results saved to: /tmp/rag_test_results.json")
+
     # Exit code based on pass rate
     pass_rate = results["passed"] / results["total"] if results["total"] > 0 else 0
     exit(0 if pass_rate >= 0.7 else 1)

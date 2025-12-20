@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/app/utils/cn";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 interface AnimatedCardProps {

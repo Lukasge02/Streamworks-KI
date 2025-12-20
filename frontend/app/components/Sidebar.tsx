@@ -17,7 +17,7 @@ import {
   Wand2,
   MessageSquare,
 } from "lucide-react";
-import { cn } from "@/app/utils/cn";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   sessionId?: string | null;

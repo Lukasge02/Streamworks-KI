@@ -492,7 +492,7 @@ class CategoryService:
                     parent_id = doc.get("parent_doc_id") or doc.get("doc_id")
 
                     # Delete from Qdrant (all chunks)
-                    chunks_deleted = self._vector_store.delete_by_parent_id(parent_id)
+                    self._vector_store.delete_by_parent_id(parent_id)
 
                     # Delete from MinIO
                     file_storage.delete_file(parent_id)

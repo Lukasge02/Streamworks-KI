@@ -109,9 +109,8 @@ class DocumentService:
         created_at = datetime.utcnow().isoformat()
 
         # Save original file
-        file_info = None
         if save_original:
-            file_info = self._file_storage.save_file(file_content, filename, doc_id)
+            self._file_storage.save_file(file_content, filename, doc_id)
 
         # Parse document using appropriate parser
         parsed_doc = self._parser_registry.parse(file_content, filename, **kwargs)

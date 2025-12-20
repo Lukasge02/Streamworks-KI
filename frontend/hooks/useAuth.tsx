@@ -72,10 +72,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const canDeleteProject = useAuthStore(selectCanDeleteProject);
   const canUpload = useAuthStore(selectCanUpload);
 
-  useEffect(() => {
-    checkUser();
-  }, []);
-
   const checkUser = async () => {
     try {
       setLoading(true);
@@ -86,6 +82,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearUser();
     }
   };
+
+  useEffect(() => {
+    checkUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const login = () => {
     router.push("/login");

@@ -21,6 +21,8 @@ class DocumentType(Enum):
     JSON = "json"
     HTML = "html"
     IMAGE = "image"
+    EXCEL = "excel"  # .xlsx, .xls
+    CSV = "csv"  # .csv
     UNKNOWN = "unknown"
 
 
@@ -141,6 +143,9 @@ class BaseParser(ABC):
             "png": DocumentType.IMAGE,
             "jpg": DocumentType.IMAGE,
             "jpeg": DocumentType.IMAGE,
+            "xlsx": DocumentType.EXCEL,
+            "xls": DocumentType.EXCEL,
+            "csv": DocumentType.CSV,
         }
 
         return type_map.get(ext, DocumentType.UNKNOWN)

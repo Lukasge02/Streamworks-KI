@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Zap } from "lucide-react";
-import { cn } from "@/app/utils/cn";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   sessionId?: string | null;

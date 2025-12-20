@@ -8,6 +8,8 @@ import json
 from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 from rank_bm25 import BM25Okapi
+import pickle
+import os
 
 from config import config
 from .cache import rag_cache
@@ -49,6 +51,7 @@ class HybridSearchEngine:
         self._vector_store = vector_store
         self._semantic_weight = config.RAG_SEMANTIC_WEIGHT
         self._keyword_weight = config.RAG_KEYWORD_WEIGHT
+        self._index_path = "bm25_index.pkl"
 
     @property
     def vector_store(self):
@@ -139,7 +142,12 @@ class HybridSearchEngine:
         bm25_index = rag_cache.get_bm25_index()
 
         if bm25_index is None:
-            bm25_index = self._build_bm25_index()
+            # Try loading from disk first
+            bm25_index = self._load_index_from_disk()
+
+            if bm25_index is None:
+                bm25_index = self._build_bm25_index()
+
             if bm25_index is None:
                 return []  # No documents to search
 
@@ -238,6 +246,10 @@ class HybridSearchEngine:
             rag_cache.set_bm25_index(bm25, corpus, doc_ids)
 
             print(f"✅ Built BM25 index with {len(corpus)} documents")
+
+            # Persist to disk
+            self._save_index_to_disk(bm25, corpus, doc_ids)
+
             return bm25
 
         except Exception as e:
@@ -393,6 +405,35 @@ class HybridSearchEngine:
             "rrf_k": self.RRF_K,
             "cache": cache_stats,
         }
+
+    def _save_index_to_disk(self, bm25, corpus, doc_ids):
+        """Save BM25 index to disk"""
+        try:
+            with open(self._index_path, "wb") as f:
+                pickle.dump({"bm25": bm25, "corpus": corpus, "doc_ids": doc_ids}, f)
+            print(f"✅ Saved BM25 index to {self._index_path}")
+        except Exception as e:
+            print(f"❌ Failed to save BM25 index: {e}")
+
+    def _load_index_from_disk(self):
+        """Load BM25 index from disk"""
+        try:
+            if not os.path.exists(self._index_path):
+                return None
+
+            with open(self._index_path, "rb") as f:
+                data = pickle.load(f)
+
+            bm25 = data["bm25"]
+            corpus = data["corpus"]
+            doc_ids = data["doc_ids"]
+
+            rag_cache.set_bm25_index(bm25, corpus, doc_ids)
+            print(f"✅ Loaded BM25 index from {self._index_path}")
+            return bm25
+        except Exception as e:
+            print(f"⚠️ Failed to load BM25 index from disk: {e}")
+            return None
 
 
 # Singleton instance

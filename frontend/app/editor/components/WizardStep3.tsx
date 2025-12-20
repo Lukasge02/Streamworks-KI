@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Sparkles } from "lucide-react";
-import { cn } from "../../utils/cn";
+import { cn } from "@/lib/utils";
 
 interface WizardSession {
   session_id: string;

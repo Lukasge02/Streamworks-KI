@@ -15,7 +15,7 @@ from .document_service import DocumentService
 # Enhanced RAG Components
 from .cache import RAGCache
 from .hybrid_search import HybridSearchEngine
-from .reranker import CrossEncoderReranker
+from .reranker import RerankerService, reranker
 
 __all__ = [
     # Core
@@ -24,5 +24,6 @@ __all__ = [
     # Enhanced
     "RAGCache",
     "HybridSearchEngine",
-    "CrossEncoderReranker",
+    "RerankerService",
+    "reranker",
 ]

@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import AppLayout from "../components/AppLayout";
 import { Button } from "../components/ui/button";
-import { cn } from "../utils/cn";
+import { cn } from "@/lib/utils";
 import {
   useSessions,
   useDeleteSession,

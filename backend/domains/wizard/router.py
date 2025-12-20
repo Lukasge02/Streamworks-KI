@@ -37,6 +37,7 @@ def get_extractor() -> ParameterExtractor:
 class WizardStep(str, Enum):
     """Wizard steps in order"""
 
+    DESCRIBE = "describe"  # NEW: Document upload or text description for AI analysis
     BASIC_INFO = "basic_info"
     CONTACT = "contact"
     JOB_TYPE = "job_type"
@@ -156,7 +157,7 @@ async def create_wizard_session():
 
     initial_data = {
         "session_id": session_id,
-        "current_step": WizardStep.BASIC_INFO,
+        "current_step": WizardStep.DESCRIBE,
         "completed_steps": [],
         "params": {},
         "ai_suggestions": {},
@@ -168,7 +169,7 @@ async def create_wizard_session():
 
     return WizardSessionResponse(
         session_id=session_id,
-        current_step=WizardStep.BASIC_INFO,
+        current_step=WizardStep.DESCRIBE,
         completed_steps=[],
         params={},
         ai_suggestions={},
@@ -304,6 +305,17 @@ async def analyze_description(session_id: str, req: AnalyzeDescriptionRequest):
         # Store suggestions in session
         session["ai_suggestions"] = suggested_params
         session["detected_job_type"] = result.job_type
+        
+        # Also save extracted params directly to params for form pre-filling
+        if "params" not in session:
+            session["params"] = {}
+        for key, value in suggested_params.items():
+            # Only set if not already explicitly set by user
+            if key not in session["params"] or not session["params"][key]:
+                session["params"][key] = value
+        
+        # Save the original AI input separately (not as stream_documentation!)
+        session["params"]["ai_input_text"] = req.description
 
         db.save_session(session_id, session)
 
@@ -337,6 +349,43 @@ async def analyze_description(session_id: str, req: AnalyzeDescriptionRequest):
             explanation=f"Analyse konnte nicht durchgeführt werden: {str(e)}",
         )
 
+
+@router.post("/sessions/{session_id}/generate-descriptions")
+async def generate_descriptions(session_id: str):
+    """Generate short_description and stream_documentation from AI input text"""
+    session = db.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    ai_input = session.get("params", {}).get("ai_input_text", "")
+    if not ai_input:
+        return {"short_description": "", "stream_documentation": ""}
+    
+    # Generate short description (max 200 chars, one line summary)
+    short_desc = ai_input
+    # Find first sentence or truncate
+    if "." in ai_input[:200]:
+        short_desc = ai_input[:ai_input.find(".", 0, 200) + 1]
+    else:
+        short_desc = ai_input[:200] if len(ai_input) > 200 else ai_input
+    
+    # Remove line breaks for short description
+    short_desc = " ".join(short_desc.split())
+    
+    # Stream documentation is the full, cleaned input
+    documentation = ai_input.strip()
+    
+    # Save to session
+    if "params" not in session:
+        session["params"] = {}
+    session["params"]["short_description"] = short_desc
+    session["params"]["stream_documentation"] = documentation
+    db.save_session(session_id, session)
+    
+    return {
+        "short_description": short_desc,
+        "stream_documentation": documentation
+    }
 
 @router.post("/sessions/{session_id}/generate")
 async def generate_xml(session_id: str):
@@ -522,6 +571,185 @@ def calculate_wizard_completion(session: Dict) -> float:
     completed = len(session.get("completed_steps", []))
     total = len(STEP_ORDER)
     return (completed / total) * 100 if total > 0 else 0.0
+
+
+# ============ FILE-BASED PARAMETER EXTRACTION ============
+
+
+class FileExtractionResponse(BaseModel):
+    """Response from file-based parameter extraction"""
+    streams: List[Dict[str, Any]]
+    document_summary: str
+    extraction_method: str  # "tabular", "nlp", or "hybrid"
+    total_streams: int
+    successful_extractions: int
+    file_type: str
+    warnings: List[str] = []
+
+
+class StreamSelectionRequest(BaseModel):
+    """Request to select streams from extraction result"""
+    stream_indices: List[int]  # Which streams to create sessions for
+
+
+@router.post(
+    "/sessions/{session_id}/extract-from-file", 
+    response_model=FileExtractionResponse
+)
+async def extract_parameters_from_file(
+    session_id: str,
+    file: UploadFile = File(...),
+):
+    """
+    Extract stream parameters from uploaded file.
+    
+    Supports:
+    - Excel (.xlsx, .xls): One row = one stream
+    - CSV (.csv): Comma/semicolon separated
+    - PDF (.pdf): NLP extraction from text
+    - DOCX (.docx): NLP extraction from text
+    
+    Returns extracted streams with per-parameter confidence scores.
+    """
+    # Verify session exists
+    session = db.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        from services.ai.batch_parameter_extractor import get_batch_extractor
+        
+        content = await file.read()
+        extractor = get_batch_extractor()
+        
+        result = extractor.extract_from_document(content, file.filename)
+        
+        # Store extraction result in session for later use
+        session["_last_extraction"] = {
+            "filename": file.filename,
+            "streams_count": result.total_streams,
+            "extraction_method": result.extraction_method,
+        }
+        db.save_session(session_id, session)
+        
+        return FileExtractionResponse(
+            streams=[s.to_dict() for s in result.streams],
+            document_summary=result.document_summary,
+            extraction_method=result.extraction_method,
+            total_streams=result.total_streams,
+            successful_extractions=result.successful_extractions,
+            file_type=result.file_type,
+            warnings=result.warnings,
+        )
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Extraction failed: {str(e)}"
+        )
+
+
+@router.post("/extract-from-file", response_model=FileExtractionResponse)
+async def extract_parameters_from_file_standalone(
+    file: UploadFile = File(...),
+):
+    """
+    Extract stream parameters from uploaded file (standalone, no session).
+    
+    Supports:
+    - Excel (.xlsx, .xls): One row = one stream
+    - CSV (.csv): Comma/semicolon separated  
+    - PDF (.pdf): NLP extraction from text
+    - DOCX (.docx): NLP extraction from text
+    
+    Returns extracted streams with per-parameter confidence scores.
+    """
+    try:
+        from services.ai.batch_parameter_extractor import get_batch_extractor
+        
+        content = await file.read()
+        extractor = get_batch_extractor()
+        
+        result = extractor.extract_from_document(content, file.filename)
+        
+        return FileExtractionResponse(
+            streams=[s.to_dict() for s in result.streams],
+            document_summary=result.document_summary,
+            extraction_method=result.extraction_method,
+            total_streams=result.total_streams,
+            successful_extractions=result.successful_extractions,
+            file_type=result.file_type,
+            warnings=result.warnings,
+        )
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Extraction failed: {str(e)}"
+        )
+
+
+@router.post("/sessions/create-from-extraction")
+async def create_sessions_from_extraction(
+    streams_data: List[Dict[str, Any]],
+):
+    """
+    Create wizard sessions from extracted stream data.
+    
+    Takes the output from extract-from-file and creates
+    individual wizard sessions for selected streams.
+    """
+    created_sessions = []
+    
+    for stream_data in streams_data:
+        session_id = str(uuid.uuid4())
+        
+        # Convert parameter data to flat params
+        params = {}
+        if "parameters" in stream_data:
+            for key, param_data in stream_data["parameters"].items():
+                if isinstance(param_data, dict) and "value" in param_data:
+                    params[key] = param_data["value"]
+                else:
+                    params[key] = param_data
+        
+        # Add stream_name if present
+        if stream_data.get("stream_name"):
+            params["stream_name"] = stream_data["stream_name"]
+        
+        # Determine job type
+        job_type = stream_data.get("job_type", "STANDARD")
+        
+        initial_data = {
+            "session_id": session_id,
+            "current_step": WizardStep.BASIC_INFO,
+            "completed_steps": [WizardStep.BASIC_INFO],
+            "params": params,
+            "ai_suggestions": {},
+            "detected_job_type": job_type,
+            "status": "draft",
+            "_extraction_source": {
+                "row_number": stream_data.get("row_number"),
+                "confidence": stream_data.get("overall_confidence", 0.8),
+            },
+        }
+        
+        db.save_session(session_id, initial_data)
+        
+        created_sessions.append({
+            "session_id": session_id,
+            "stream_name": params.get("stream_name", "Unnamed"),
+            "job_type": job_type,
+        })
+    
+    return {
+        "created": len(created_sessions),
+        "sessions": created_sessions,
+    }
 
 
 @router.get("/health")

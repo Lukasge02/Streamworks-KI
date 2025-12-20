@@ -1,7 +1,7 @@
 "use client";
 
 import { Shield, ShieldAlert, Globe, Lock, Users } from "lucide-react";
-import { cn } from "@/app/utils/cn";
+import { cn } from "@/lib/utils";
 
 export type AccessLevel = "public" | "internal" | "restricted" | "project";
 

@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, List, Dict
+from typing import List, Dict
 from enum import Enum
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -114,7 +114,8 @@ class AuthService:
 auth_service = AuthService()
 
 # FastAPI Dependencies
-security = HTTPBearer()
+# auto_error=False makes bearer token optional (won't raise 403 automatically)
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
@@ -122,7 +123,26 @@ async def get_current_user(
 ):
     """
     FastAPI dependency to get the current authenticated user.
+    In development (when no token provided), returns a dev user with internal role.
     """
+    # If no credentials provided, check if we're in dev mode
+    if credentials is None:
+        # Return dev user for local development
+        import os
+        if os.environ.get("ENVIRONMENT", "development") == "development":
+            return {
+                "id": "dev-user",
+                "email": "dev@localhost",
+                "role": "internal",  # Give dev user internal role for full access
+                "raw_role": "authenticated",
+            }
+        # In production, require auth
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     token = credentials.credentials
     try:
         user = await auth_service.get_current_user(token)
@@ -150,3 +170,4 @@ def require_role(allowed_roles: List[str]):
         return user
 
     return role_checker
+

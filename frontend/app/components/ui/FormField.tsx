@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Info } from "lucide-react";
-import { cn } from "@/app/utils/cn";
+import { cn } from "@/lib/utils";
 
 interface FormFieldProps {
   label: string;
