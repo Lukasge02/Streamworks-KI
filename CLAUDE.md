@@ -46,86 +46,119 @@ npm run test                    # Run tests (Jest)
 
 ## Architecture Overview
 
-### Backend Structure
+### Backend Structure (Clean Architecture)
 ```
 backend/
 ├── main.py                     # FastAPI app entry point
 ├── config.py                   # Pydantic settings from .env
-├── database.py                 # SQLAlchemy async setup
-├── services/                   # Modular service layer (40+ services)
-│   ├── ai/                     # AI model services
-│   │   ├── langextract/        # LangExtract parameter extraction
-│   │   │   ├── unified_langextract_service.py
-│   │   │   ├── session_persistence_service.py
-│   │   │   └── mcp_session_persistence_service.py
-│   │   ├── enhanced_job_type_detector.py      # 88.9% accuracy job detection
-│   │   ├── enhanced_unified_parameter_extractor.py
-│   │   ├── enterprise_parameter_engine.py
-│   │   └── parameter_extraction_ai.py
-│   ├── knowledge_graph/        # Knowledge graph & memory
-│   │   ├── unified_knowledge_service.py
-│   │   ├── context_memory_system.py
-│   │   ├── entity_extraction_pipeline.py
-│   │   └── temporal_graph_service.py
-│   ├── xml_generation/         # Template-based XML generation
-│   │   ├── template_engine.py
-│   │   └── parameter_mapper.py
-│   ├── chat_xml/              # XML chat session management
-│   │   ├── chat_session_service.py
-│   │   ├── dialog_manager.py
-│   │   └── parameter_extractor.py
-│   ├── auth/                  # Authentication services
-│   │   ├── auth_service.py
-│   │   ├── jwt_service.py
-│   │   └── permission_service.py
-│   ├── qdrant_rag_service.py  # Vector search
-│   ├── chat_service_sqlalchemy.py # Chat management
-│   └── di_container.py        # Dependency injection
-└── routers/                   # API endpoints
-    ├── langextract_chat.py    # LangExtract chat API
-    ├── chat_xml_unified.py    # Unified XML chat
-    ├── xml_generator.py       # Template-based XML generation
-    ├── chat_rag_test.py       # RAG chat API
-    ├── documents/             # Document management
-    ├── auth.py               # Authentication endpoints
-    └── health.py             # Health checks
+├── config/
+│   └── parameters.yaml         # Central parameter definitions
+├── domains/                    # Domain-Driven Design modules
+│   ├── auth/                   # Authentication domain
+│   │   └── router.py
+│   ├── chat/                   # Chat domain
+│   │   ├── router.py
+│   │   ├── service.py
+│   │   └── session.py
+│   ├── documents/              # Document management domain
+│   │   ├── router.py
+│   │   └── models.py
+│   ├── options/                # Options/config domain
+│   │   └── router.py
+│   ├── testing/                # Test generation domain
+│   │   ├── router.py
+│   │   └── service.py
+│   ├── wizard/                 # Stream wizard domain
+│   │   └── router.py
+│   └── xml/                    # XML generation domain
+│       ├── router.py
+│       ├── service.py
+│       └── validator.py
+├── services/                   # Shared services layer
+│   ├── ai/                     # AI services
+│   │   ├── parameter_extractor.py
+│   │   ├── batch_parameter_extractor.py
+│   │   ├── parameter_registry.py
+│   │   └── schemas.py
+│   ├── rag/                    # RAG system (Enhanced v2.0)
+│   │   ├── engine/             # Core RAG engine
+│   │   │   ├── chat_service.py
+│   │   │   ├── query_service.py
+│   │   │   ├── index_service.py
+│   │   │   └── ingestion_service.py
+│   │   ├── parsers/            # Document parsers
+│   │   │   ├── pymupdf_parser.py
+│   │   │   ├── excel_parser.py
+│   │   │   └── text_parser.py
+│   │   ├── chunking/           # Enterprise chunking
+│   │   ├── storage/            # File storage (MinIO)
+│   │   ├── hybrid_search.py    # Semantic + BM25
+│   │   ├── reranker.py         # Cross-encoder reranking
+│   │   └── vector_store.py     # Qdrant integration
+│   ├── auth_service.py         # Authentication
+│   ├── db.py                   # Supabase client
+│   ├── container.py            # Dependency injection
+│   └── xml_generator.py        # XML generation
+├── scripts/                    # Utility scripts
+│   ├── seed_data.py            # Database seeding
+│   ├── verify_db.py            # DB verification
+│   └── evaluate_rag.py         # RAG evaluation
+├── tests/                      # Test suite
+│   ├── conftest.py             # Pytest fixtures
+│   ├── mocks/                  # Service mocks
+│   ├── unit/                   # Unit tests
+│   ├── integration/            # Integration tests
+│   └── e2e/                    # End-to-end tests
+└── storage/                    # Local storage
+    └── categories.json         # Category definitions
 ```
 
-### Frontend Structure
+### Frontend Structure (Clean Architecture)
 ```
-frontend/src/
-├── app/                       # Next.js App Router
-│   ├── langextract/           # LangExtract interface (/langextract)
-│   ├── xml/                   # XML wizard pages (/xml)
-│   ├── chat/                  # Chat interface (/chat)
-│   ├── auth/                  # Authentication pages
-│   │   ├── login/
-│   │   └── register/
-│   ├── dashboard/             # System dashboard
-│   └── documents/             # Document management
-├── components/                # React components
-│   ├── langextract-chat/      # LangExtract UI components
-│   │   ├── LangExtractInterface.tsx
-│   │   ├── components/
-│   │   │   ├── LangExtractSessionSidebar.tsx
-│   │   │   ├── ParameterOverview.tsx
-│   │   │   └── SmartSuggestions.tsx
-│   │   └── hooks/
-│   │       └── useLangExtractChat.ts
-│   ├── chat/                  # Chat interface components
-│   │   ├── ModernChatInterface.tsx
-│   │   ├── CompactChatInterface.tsx
-│   │   ├── FloatingChatWidget.tsx
-│   │   ├── EnterpriseResponseFormatter.tsx
-│   │   └── EnterpriseInputArea.tsx
-│   ├── xml-streams/           # XML generation components
-│   ├── auth/                  # Authentication components
-│   ├── dashboard/             # Dashboard components
-│   ├── layout/               # Layout components
-│   │   └── AppLayout.tsx
-│   └── ui/                   # Reusable UI components
-└── services/                 # API client
-    └── api.service.ts        # Backend communication
+frontend/
+├── app/                        # Next.js App Router
+│   ├── page.tsx                # Landing page (/)
+│   ├── layout.tsx              # Root layout
+│   ├── globals.css             # Global styles
+│   ├── login/                  # Login page (/login)
+│   ├── chat/                   # RAG Chat interface (/chat)
+│   │   ├── page.tsx
+│   │   └── components/
+│   │       ├── ChatSessionSidebar.tsx
+│   │       └── DocumentPreviewModal.tsx
+│   ├── editor/                 # Stream Wizard (/editor)
+│   │   ├── page.tsx
+│   │   └── components/
+│   │       ├── WizardStep0.tsx   # File upload
+│   │       ├── WizardStep1.tsx   # Basic info
+│   │       ├── WizardStep2.tsx   # Parameters
+│   │       ├── WizardStep3.tsx   # Schedule
+│   │       ├── WizardStep4.tsx   # Error handling
+│   │       ├── WizardStep5.tsx   # Review
+│   │       └── WizardStep6.tsx   # Export
+│   ├── documents/              # Document management (/documents)
+│   ├── streams/                # Stream overview (/streams)
+│   ├── testing/                # Test generation (/testing)
+│   ├── preview/                # XML preview (/preview)
+│   ├── components/             # Shared components
+│   │   ├── AppLayout.tsx       # Main layout
+│   │   ├── Header.tsx          # Navigation header
+│   │   ├── Sidebar.tsx         # Side navigation
+│   │   ├── DDDChat.tsx         # DDD-based chat
+│   │   ├── ui/                 # UI primitives
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   └── ...
+│   │   └── magicui/            # Animation components
+│   └── hooks/                  # Custom hooks
+│       ├── useAutoSave.ts
+│       └── useOptions.ts
+├── hooks/                      # Root-level hooks
+│   └── useAuth.tsx             # Authentication hook
+├── __tests__/                  # Test files
+│   └── login.test.tsx
+└── package.json                # Dependencies
 ```
 
 ## Key Features & Systems
