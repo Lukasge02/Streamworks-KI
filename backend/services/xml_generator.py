@@ -1,107 +1,205 @@
 """
-XML Generator Service
-Generates Streamworks XML using a unified Master Template
+Jinja2-based XML generation for Streamworks automation streams.
+
+Renders the master XML template with flattened wizard session data,
+applying naming conventions and custom filters.
 """
 
-from enum import Enum
-from typing import Dict, Any
+import logging
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+logger = logging.getLogger(__name__)
+
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+_STREAM_PREFIX = "GECK003_"
 
 
-class JobType(str, Enum):
-    STANDARD = "STANDARD"
-    FILE_TRANSFER = "FILE_TRANSFER"
-    SAP = "SAP"
-
-
-class XMLGenerator:
+def _xml_boolean(value) -> str:
     """
-    Generates Streamworks XML from parameters using the Master Template
+    Jinja2 filter that converts Python booleans to XML-friendly strings.
+
+    Truthy values become "True", falsy values become "False".
+    String values "true"/"false" (case-insensitive) are normalized.
     """
+    if isinstance(value, str):
+        return "True" if value.lower() in ("true", "1", "yes", "ja") else "False"
+    return "True" if value else "False"
 
-    def __init__(self):
-        # Template directory
-        template_dir = Path(__file__).parent.parent.parent / "knowledge" / "templates"
 
-        if template_dir.exists():
-            self.env = Environment(
-                loader=FileSystemLoader(str(template_dir)),
-                trim_blocks=True,
-                lstrip_blocks=True,
-            )
-            # Add custom filter for XML boolean values
-            # Streamworks requires 'True' and 'False' (Capitalized)
-            self.env.filters["xml_boolean"] = lambda x: "True" if x else "False"
-        else:
-            self.env = None
+def _get_jinja_env() -> Environment:
+    """
+    Create and return a configured Jinja2 environment.
 
-        # All types now use the master template
-        self.master_template = "master_template.xml"
+    The environment loads templates from the templates directory and
+    registers the xml_boolean custom filter.
+    """
+    env = Environment(
+        loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+        autoescape=select_autoescape(enabled_extensions=("xml",)),
+        trim_blocks=True,
+        lstrip_blocks=True,
+        keep_trailing_newline=True,
+    )
+    env.filters["xml_boolean"] = _xml_boolean
+    return env
 
-    def generate(self, job_type: str, params: Dict[str, Any]) -> str:
-        """
-        Generate XML from job type and parameters
-        """
-        # Normalize job type
-        if isinstance(job_type, str):
-            job_type = JobType(job_type.upper())
 
-        # Add defaults and prepare params
-        params = self._prepare_params(job_type, params)
+def _flatten_session_data(data: dict) -> dict:
+    """
+    Flatten nested wizard session data into a single-level dict for template rendering.
 
-        # Use master template
-        if self.env:
-            try:
-                template = self.env.get_template(self.master_template)
-                return template.render(**params)
-            except Exception as e:
-                print(f"Error rendering template: {e}")
-                return self._generate_fallback(job_type, params)
-
-        return self._generate_fallback(job_type, params)
-
-    def _prepare_params(
-        self, job_type: JobType, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Apply defaults and derived values"""
-        from .schedule_generator import generate_schedule_xml
-
-        # Base defaults
-        defaults = {
-            "stream_name": "NewStream",
-            "job_name": f"0100_{params.get('stream_name', 'NewStream')}",
-            "job_type": job_type.value,
-            "status_flag": True,
-            "deploy_as_active": True,
+    The wizard stores data per step as:
+        {
+            "step_0": {"uploaded_files": [...], "description": "..."},
+            "step_1": {"stream_name": "...", "job_type": "..."},
+            "step_2": {"parameters": {...}},
+            "step_3": {"schedule": {...}},
+            "step_4": {"error_handling": {...}},
+            ...
         }
 
-        # Generate schedule_rule_xml from natural language if provided
-        if params.get("schedule") or params.get("start_time"):
-            defaults["schedule_rule_xml"] = generate_schedule_xml(
-                schedule=params.get("schedule"), start_time=params.get("start_time")
-            )
+    This function merges all step data into a flat namespace. For nested dicts
+    within a step (e.g. step_2.parameters), the inner keys are promoted to
+    top level. Lists and scalar values are kept as-is.
 
-        # Ensure GECK003_ prefix (User Rule)
-        stream_name = params.get("stream_name", defaults["stream_name"])
-        if stream_name and not stream_name.startswith("GECK003_"):
-            defaults["stream_name"] = f"GECK003_{stream_name}"
-            # Update job name if it was based on stream name
-            if "job_name" not in params:
-                defaults["job_name"] = f"0100_{defaults['stream_name']}"
+    Args:
+        data: The wizard session data dict, typically keyed by step.
 
-        # Merge: defaults < params
-        return {**defaults, **params}
+    Returns:
+        A flat dict suitable for Jinja2 template rendering.
+    """
+    flat: dict = {}
 
-    def _generate_fallback(self, job_type: JobType, params: Dict[str, Any]) -> str:
-        """Minimal fallback if template fails"""
-        return f"""<?xml version="1.0" encoding="utf-8"?>
-<ExportableStream>
-  <Stream>
-    <StreamName>{params.get("stream_name", "ErrorStream")}</StreamName>
-    <ShortDescription>Error generating full XML</ShortDescription>
-    <Jobs>
-      <Job><JobType>{job_type.value}</JobType></Job>
-    </Jobs>
-  </Stream>
-</ExportableStream>"""
+    for key, value in data.items():
+        if isinstance(value, dict):
+            # This is a step dict (e.g. "step_1": {...}) or a nested section
+            for inner_key, inner_value in value.items():
+                if isinstance(inner_value, dict):
+                    # Promote nested dict contents (e.g. step_2.parameters.param_x)
+                    for nested_key, nested_value in inner_value.items():
+                        flat[nested_key] = nested_value
+                else:
+                    flat[inner_key] = inner_value
+        else:
+            flat[key] = value
+
+    return flat
+
+
+def _ensure_stream_prefix(name: str) -> str:
+    """
+    Ensure the stream name has the required prefix.
+
+    Args:
+        name: The raw stream name.
+
+    Returns:
+        The stream name with the prefix prepended if not already present.
+    """
+    if not name:
+        return f"{_STREAM_PREFIX}unnamed"
+
+    if name.startswith(_STREAM_PREFIX):
+        return name
+
+    return f"{_STREAM_PREFIX}{name}"
+
+
+def generate_xml(session_data: dict) -> str:
+    """
+    Generate a Streamworks XML definition from wizard session data.
+
+    Pipeline:
+    1. Flatten the nested session data into template variables.
+    2. Ensure the stream name carries the correct prefix.
+    3. Load the master_template.xml Jinja2 template.
+    4. Render and return the XML string.
+
+    Args:
+        session_data: The full wizard session data dict (with step keys).
+
+    Returns:
+        The rendered XML string.
+
+    Raises:
+        jinja2.TemplateNotFound: If master_template.xml is missing.
+    """
+    flat = _flatten_session_data(session_data)
+
+    # Apply stream name prefix
+    stream_name = flat.get("stream_name", "")
+    flat["stream_name"] = _ensure_stream_prefix(stream_name)
+
+    # Provide sensible defaults for common fields
+    defaults = {
+        "job_type": "STANDARD",
+        "description": "",
+        "active": True,
+        "run_as_dummy": False,
+        "confirm": True,
+        "schedule_type": "MANUAL",
+        "error_handling": "ABORT",
+        "max_retries": 0,
+        "retry_interval": 60,
+        "priority": 0,
+    }
+    for key, default_value in defaults.items():
+        if key not in flat:
+            flat[key] = default_value
+
+    # Map frontend field names to template variable names
+    contact_name = flat.get("contact_name", "")
+    if contact_name and "contact_first_name" not in flat:
+        parts = contact_name.strip().split(" ", 1)
+        flat["contact_first_name"] = parts[0]
+        flat["contact_last_name"] = parts[1] if len(parts) > 1 else ""
+
+    if "team" in flat and "department" not in flat:
+        flat["department"] = flat["team"]
+
+    if "email" in flat and "contact_email" not in flat:
+        flat["contact_email"] = flat["email"]
+
+    if "calendar" in flat and "calendar_id" not in flat:
+        flat["calendar_id"] = flat["calendar"]
+
+    if "documentation" in flat and "stream_documentation" not in flat:
+        flat["stream_documentation"] = flat["documentation"]
+
+    if "agent" in flat and "agent_detail" not in flat:
+        flat["agent_detail"] = flat["agent"]
+
+    if "priority" in flat and "stream_priority" not in flat:
+        flat["stream_priority"] = flat["priority"]
+
+    if "schedule_frequency" in flat and "schedule" not in flat:
+        flat["schedule"] = flat["schedule_frequency"]
+
+    if "phone" in flat and "contact_phone" not in flat:
+        flat["contact_phone"] = flat["phone"]
+
+    # Convert boolean overwrite fields to template-expected strings
+    for overwrite_key in ("overwrite", "overwrite_existing"):
+        if overwrite_key in flat and "overwrite_target" not in flat:
+            val = flat[overwrite_key]
+            if isinstance(val, bool):
+                flat["overwrite_target"] = "Overwrite" if val else "Error"
+            elif isinstance(val, str) and val.lower() in ("true", "1", "yes", "ja"):
+                flat["overwrite_target"] = "Overwrite"
+            elif isinstance(val, str):
+                flat["overwrite_target"] = "Error"
+
+    env = _get_jinja_env()
+    template = env.get_template("master_template.xml")
+
+    logger.info(
+        "Generating XML for stream '%s' (job_type=%s, %d template vars)",
+        flat.get("stream_name"),
+        flat.get("job_type"),
+        len(flat),
+    )
+
+    xml_output = template.render(**flat)
+    return xml_output

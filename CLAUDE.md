@@ -1,440 +1,264 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-**Streamworks-KI** is an enterprise RAG (Retrieval-Augmented Generation) system with advanced AI-powered parameter extraction:
-- **Backend**: FastAPI with modular service architecture (130+ Python files)
-- **Frontend**: Next.js 15 with TypeScript (600+ files)
-- **Core Features**: Document processing, **Enhanced RAG v2.0**, LangExtract parameter extraction, template-based XML generation
+**Streamworks-KI v2** -- Kompletter Neuaufbau als schlanker Monolith.
+Zwei Features: **Stream Wizard** (7-Step XML-Generator) + **RAG Chat** (Dokument-Q&A mit Hybrid Search).
 
-### Enhanced RAG v2.0 (NEW)
-The RAG system has been upgraded to enterprise level with:
-- **Hybrid Search**: Semantic (Qdrant) + Keyword (BM25) with Reciprocal Rank Fusion
-- **HyDE**: Hypothetical Document Embeddings for better query matching
-- **Cross-Encoder Reranking**: GPT-based relevance scoring
-- **Context Compression**: LLM-powered irrelevant sentence removal
-- **Citation Generation**: Inline `[1]`, `[2]` references
-- **Confidence Scoring**: 0-1 score with warnings for low-confidence answers
-- **Caching Layer**: LRU/TTL caching for embeddings and search results
+Vorher: 600+ Dateien, LlamaIndex, torch, DDD, Knowledge Graph, Testing-Module etc.
+Jetzt: **~66 Dateien**, nur OpenAI SDK direkt, flache Struktur.
+
+## Tech Stack
+
+| Komponente | Technologie |
+|---|---|
+| Backend | FastAPI + Python 3.13 |
+| Frontend | Next.js 15.5 + TypeScript + TailwindCSS |
+| State Management | React Query (server) + Zustand (client) |
+| LLM | OpenAI GPT-4o / GPT-4o-mini (direkt, kein LlamaIndex) |
+| Datenbank | Supabase (PostgreSQL) -- mit In-Memory Fallback |
+| Vector DB | Qdrant |
+| File Storage | MinIO |
+| XML Templating | Jinja2 |
+
+## Aktueller Status (Stand: 2026-02-04)
+
+### Was funktioniert (Browser-getestet am 2026-02-04)
+- Backend startet, Health-Endpoint antwortet
+- Wizard Session CRUD (erstellen, lesen, Steps speichern, loeschen)
+- **AI-Analyse**: OpenAI GPT-4o extrahiert 10+ Parameter aus Freitext (95% Konfidenz)
+- **XML-Generierung**: Vollstaendige StreamWorks-XML mit GECK003_ Prefix, SAP-Properties, Kontakt-Split
+- Dropdown-Optionen (Agents, Schedules, SAP-Systeme etc.)
+- Frontend baut und alle 4 Seiten laden (/wizard, /chat, /streams, /xml-editor)
+- In-Memory Fallback wenn Supabase nicht erreichbar
+- **Wizard End-to-End Flow**: Alle 7 Steps im Browser durchgetestet
+- Streams-Uebersicht mit Karten-Grid, SAP-Badge, Session-Verwaltung
+- **XML-Editor Seite**: Editierbarer Monaco Editor, Download, Kopieren, Neu-Generierung mit Warnung
+- **AI-Parameter-Verteilung**: 25+ Parameter auf alle Steps (Kontakt, SAP, Zeitplan etc.)
+- **Bidirektionales Field-Mapping**: Frontend-Feldnamen <-> Backend-Template-Variablen
+- **Session-Hydration**: Gespeicherte Wizard-Daten werden korrekt nach Reload geladen
+- Navigation: Wizard -> Editor, Streams -> Editor, Editor -> Wizard (bidirektional)
+
+### Was noch getestet/behoben werden muss
+- RAG Chat -- braucht Qdrant + MinIO (make infra)
+- Dokument-Upload und -Verarbeitung
+- SSE Streaming Chat
+
+### Behobene Bugs
+- **Hydration-Key Mismatch**: Frontend nutzte `step${i}` statt `step_${i}` -- gespeicherte Sessions konnten Daten nicht laden
+- **AI-Parameter-Verteilung**: Nur 4 von 25+ Parametern wurden aus AI-Analyse verteilt -- jetzt vollstaendig ueber alle Steps
+- **Backend Field-Mappings**: Fehlende Mappings (documentation, agent, priority, schedule_frequency, phone, overwrite) in xml_generator.py ergaenzt
+
+### Bekannte Issues
+- Supabase-Projekt (vbtozorzccsbxsypfdbf) ist offline/geloescht -- DNS NXDOMAIN
+  -> db.py faellt automatisch auf In-Memory Storage zurueck
+  -> Daten gehen bei Backend-Neustart verloren
+  -> Fuer Produktion: Neues Supabase-Projekt anlegen + Migrations ausfuehren
+- AI-Schedule-Mapping: AI gibt Umlaute zurueck ("taeglich" vs "täglich"), Select-Match schlaegt fehl
+  -> Workaround: Frequenz manuell im Dropdown waehlen
+  -> Fix: Umlaut-Normalisierung in onApplyParameters einbauen
 
 ## Development Commands
 
-### Backend
 ```bash
+# Infrastructure (Qdrant + MinIO)
+make infra
+
+# Backend (eigenes Terminal)
 cd backend
-python main.py                    # Start server (http://localhost:8000)
-pip install -r requirements.txt   # Install dependencies
-pytest                           # Run tests (if available)
-```
+python3.13 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py                    # http://localhost:8000
 
-### Frontend
-```bash
+# Frontend (eigenes Terminal)
 cd frontend
-npm run dev                      # Start dev server (http://localhost:3000)
-npm run dev:clean               # Start with cache clear (fixes common issues)
-npm run build                   # Production build
-npm run type-check              # TypeScript validation
-npm run lint                    # ESLint validation
-npm run test                    # Run tests (Jest)
+npm install
+npm run dev                       # http://localhost:3000
+
+# Schnelltest
+curl http://localhost:8000/health
+curl -X POST http://localhost:8000/api/wizard/sessions
 ```
 
-### Common Issues
-- **Frontend "Internal Server Error"**: Run `npm run dev:clean` to clear Next.js cache
-- **Port conflicts**: Use `PORT=3001 npm run dev` or kill existing processes
+## Projektstruktur
 
-## Architecture Overview
-
-### Backend Structure (Clean Architecture)
 ```
-backend/
-├── main.py                     # FastAPI app entry point
-├── config.py                   # Pydantic settings from .env
-├── config/
-│   └── parameters.yaml         # Central parameter definitions
-├── domains/                    # Domain-Driven Design modules
-│   ├── auth/                   # Authentication domain
-│   │   └── router.py
-│   ├── chat/                   # Chat domain
-│   │   ├── router.py
-│   │   ├── service.py
-│   │   └── session.py
-│   ├── documents/              # Document management domain
-│   │   ├── router.py
-│   │   └── models.py
-│   ├── options/                # Options/config domain
-│   │   └── router.py
-│   ├── testing/                # Test generation domain
-│   │   ├── router.py
-│   │   └── service.py
-│   ├── wizard/                 # Stream wizard domain
-│   │   └── router.py
-│   └── xml/                    # XML generation domain
-│       ├── router.py
-│       ├── service.py
-│       └── validator.py
-├── services/                   # Shared services layer
-│   ├── ai/                     # AI services
-│   │   ├── parameter_extractor.py
-│   │   ├── batch_parameter_extractor.py
-│   │   ├── parameter_registry.py
-│   │   └── schemas.py
-│   ├── rag/                    # RAG system (Enhanced v2.0)
-│   │   ├── engine/             # Core RAG engine
-│   │   │   ├── chat_service.py
-│   │   │   ├── query_service.py
-│   │   │   ├── index_service.py
-│   │   │   └── ingestion_service.py
-│   │   ├── parsers/            # Document parsers
-│   │   │   ├── pymupdf_parser.py
-│   │   │   ├── excel_parser.py
-│   │   │   └── text_parser.py
-│   │   ├── chunking/           # Enterprise chunking
-│   │   ├── storage/            # File storage (MinIO)
-│   │   ├── hybrid_search.py    # Semantic + BM25
-│   │   ├── reranker.py         # Cross-encoder reranking
-│   │   └── vector_store.py     # Qdrant integration
-│   ├── auth_service.py         # Authentication
-│   ├── db.py                   # Supabase client
-│   ├── container.py            # Dependency injection
-│   └── xml_generator.py        # XML generation
-├── scripts/                    # Utility scripts
-│   ├── seed_data.py            # Database seeding
-│   ├── verify_db.py            # DB verification
-│   └── evaluate_rag.py         # RAG evaluation
-├── tests/                      # Test suite
-│   ├── conftest.py             # Pytest fixtures
-│   ├── mocks/                  # Service mocks
-│   ├── unit/                   # Unit tests
-│   ├── integration/            # Integration tests
-│   └── e2e/                    # End-to-end tests
-└── storage/                    # Local storage
-    └── categories.json         # Category definitions
-```
+streamworks-ki/
+├── .env                          # Credentials (nicht in Git)
+├── .env.example                  # Template
+├── .gitignore
+├── CLAUDE.md                     # <-- diese Datei
+├── Makefile
+├── docker-compose.yml            # Qdrant + MinIO + Backend + Frontend
+│
+├── backend/
+│   ├── main.py                   # FastAPI app + CORS + 5 Router
+│   ├── config.py                 # Pydantic Settings (.env, extra=ignore)
+│   ├── requirements.txt          # 17 Packages (kein torch/LlamaIndex)
+│   ├── Dockerfile
+│   │
+│   ├── routers/
+│   │   ├── health.py             # GET /health
+│   │   ├── wizard.py             # Session CRUD + AI Analyze + XML Generate
+│   │   ├── rag.py                # Chat + SSE Streaming + Session Management
+│   │   ├── documents.py          # Upload, List, Delete
+│   │   └── options.py            # Dropdown-Werte
+│   │
+│   ├── services/
+│   │   ├── db.py                 # Supabase Client + In-Memory Fallback
+│   │   ├── parameter_extractor.py  # OpenAI Structured Output
+│   │   ├── xml_generator.py      # Jinja2 XML Rendering
+│   │   ├── vector_store.py       # Qdrant + OpenAI Embeddings
+│   │   ├── hybrid_search.py      # BM25 + Semantic + RRF
+│   │   ├── reranker.py           # OpenAI-basiertes Reranking
+│   │   ├── document_processor.py # Parse + Chunk + Embed Pipeline
+│   │   ├── rag_service.py        # Query-Orchestrierung + LLM
+│   │   ├── chat_session_service.py # Chat CRUD
+│   │   └── file_storage.py       # MinIO Wrapper
+│   │
+│   ├── models/
+│   │   ├── wizard.py             # WizardSession, AnalyzeRequest/Response
+│   │   ├── rag.py                # ChatRequest, ChatResponse, Source
+│   │   └── documents.py          # UploadResponse, DocumentInfo
+│   │
+│   ├── config/
+│   │   └── parameters.yaml       # 30 Parameter in 7 Gruppen (1:1 aus v1)
+│   │
+│   ├── templates/
+│   │   └── master_template.xml   # Jinja2 XML Template (1:1 aus v1)
+│   │
+│   └── migrations/
+│       ├── 001_sessions.sql
+│       ├── 002_streams.sql
+│       ├── 003_dropdown_options.sql
+│       ├── 004_chat.sql
+│       └── 005_seed_data.sql
+│
+└── frontend/
+    ├── package.json              # Next.js 15, React 19, TanStack Query
+    ├── tsconfig.json             # Strict, @/* -> app/*, @/lib/* -> lib/*
+    ├── tailwind.config.ts        # Arvato Branding (#003366)
+    ├── next.config.ts
+    ├── Dockerfile
+    │
+    ├── app/
+    │   ├── layout.tsx            # Root + QueryClient Provider
+    │   ├── page.tsx              # Redirect -> /wizard
+    │   ├── globals.css           # Tailwind + Arvato CSS Variables
+    │   │
+    │   ├── wizard/
+    │   │   ├── page.tsx          # 7-Step Wizard mit Step-Indikator
+    │   │   └── components/
+    │   │       ├── WizardStep0.tsx  # KI-Beschreibungsanalyse
+    │   │       ├── WizardStep1.tsx  # Grundinfos (Name, Beschreibung)
+    │   │       ├── WizardStep2.tsx  # Kontaktdaten
+    │   │       ├── WizardStep3.tsx  # Job-Typ Auswahl (3 Karten)
+    │   │       ├── WizardStep4.tsx  # Job-spezifische Parameter
+    │   │       ├── WizardStep5.tsx  # Zeitplan
+    │   │       └── WizardStep6.tsx  # Preview + XML Export (Monaco)
+    │   │
+    │   ├── chat/
+    │   │   ├── page.tsx          # RAG Chat mit Streaming
+    │   │   └── components/
+    │   │       ├── ChatSidebar.tsx  # Sessions + Dokument-Upload
+    │   │       └── DocumentPreview.tsx  # Quellen-Modal
+    │   │
+    │   ├── streams/
+    │   │   └── page.tsx          # Session-Dashboard (Karten-Grid)
+    │   │
+    │   ├── xml-editor/
+    │   │   └── page.tsx          # Standalone XML-Editor (Monaco, editierbar)
+    │   │
+    │   └── components/
+    │       ├── AppLayout.tsx     # Header + Sidebar Shell
+    │       ├── Header.tsx        # Logo "Streamworks-KI v2.0"
+    │       ├── Sidebar.tsx       # Navigation (Wizard, Streams, Chat)
+    │       └── ui/               # Button, Card, Dialog, Input, Badge, Toast
+    │
+    └── lib/
+        ├── utils.ts              # cn() Helper
+        ├── api/
+        │   ├── config.ts         # apiFetch Wrapper
+        │   ├── wizard.ts         # React Query Hooks (Wizard)
+        │   └── chat.ts           # React Query Hooks (Chat)
+        └── hooks/
+            └── useStreamingChat.ts  # SSE Streaming Hook
 
-### Frontend Structure (Clean Architecture)
-```
-frontend/
-├── app/                        # Next.js App Router
-│   ├── page.tsx                # Landing page (/)
-│   ├── layout.tsx              # Root layout
-│   ├── globals.css             # Global styles
-│   ├── login/                  # Login page (/login)
-│   ├── chat/                   # RAG Chat interface (/chat)
-│   │   ├── page.tsx
-│   │   └── components/
-│   │       ├── ChatSessionSidebar.tsx
-│   │       └── DocumentPreviewModal.tsx
-│   ├── editor/                 # Stream Wizard (/editor)
-│   │   ├── page.tsx
-│   │   └── components/
-│   │       ├── WizardStep0.tsx   # File upload
-│   │       ├── WizardStep1.tsx   # Basic info
-│   │       ├── WizardStep2.tsx   # Parameters
-│   │       ├── WizardStep3.tsx   # Schedule
-│   │       ├── WizardStep4.tsx   # Error handling
-│   │       ├── WizardStep5.tsx   # Review
-│   │       └── WizardStep6.tsx   # Export
-│   ├── documents/              # Document management (/documents)
-│   ├── streams/                # Stream overview (/streams)
-│   ├── testing/                # Test generation (/testing)
-│   ├── preview/                # XML preview (/preview)
-│   ├── components/             # Shared components
-│   │   ├── AppLayout.tsx       # Main layout
-│   │   ├── Header.tsx          # Navigation header
-│   │   ├── Sidebar.tsx         # Side navigation
-│   │   ├── DDDChat.tsx         # DDD-based chat
-│   │   ├── ui/                 # UI primitives
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   └── ...
-│   │   └── magicui/            # Animation components
-│   └── hooks/                  # Custom hooks
-│       ├── useAutoSave.ts
-│       └── useOptions.ts
-├── hooks/                      # Root-level hooks
-│   └── useAuth.tsx             # Authentication hook
-├── __tests__/                  # Test files
-│   └── login.test.tsx
-└── package.json                # Dependencies
-```
+## API Endpoints
 
-## Key Features & Systems
+### Wizard (/api/wizard)
+| Method | Path | Beschreibung |
+|--------|------|-------------|
+| POST | /sessions | Neue Session erstellen |
+| GET | /sessions | Alle Sessions listen |
+| GET | /sessions/{id} | Session abrufen |
+| PUT | /sessions/{id}/steps | Step-Daten speichern |
+| DELETE | /sessions/{id} | Session loeschen |
+| POST | /analyze | KI-Beschreibungsanalyse |
+| POST | /generate-xml | XML generieren |
 
-### 1. LangExtract Parameter Extraction System
-Advanced AI-powered parameter extraction with 88.9% accuracy:
+### RAG Chat (/api/rag)
+| Method | Path | Beschreibung |
+|--------|------|-------------|
+| POST | /chat | Chat (synchron) |
+| POST | /chat/stream | Chat (SSE Streaming) |
+| GET | /sessions | Chat-Sessions listen |
+| GET | /sessions/{id}/messages | Nachrichten abrufen |
+| DELETE | /sessions/{id} | Chat-Session loeschen |
 
-**Backend Services:**
-- `services/ai/langextract/unified_langextract_service.py` - Main LangExtract service
-- `services/ai/enhanced_job_type_detector.py` - Job type detection (88.9% accuracy)
-- `services/ai/enhanced_unified_parameter_extractor.py` - Parameter extraction
+### Documents (/api/documents)
+| Method | Path | Beschreibung |
+|--------|------|-------------|
+| POST | /upload | Dokument hochladen |
+| GET | / | Dokumente listen |
+| DELETE | /{id} | Dokument loeschen |
 
-**Job Types Supported:**
-- **STANDARD** - General automation with script execution
-- **FILE_TRANSFER** - File transfer between agents/servers
-- **SAP** - SAP system integration
+### Options (/api/options)
+| Method | Path | Beschreibung |
+|--------|------|-------------|
+| GET | /categories | Kategorien listen |
+| GET | /{category} | Optionen einer Kategorie |
 
-**API Endpoints:**
-- `POST /api/langextract/sessions` - Create new session
-- `POST /api/langextract/sessions/{session_id}/messages` - Process message
-- `GET /api/langextract/sessions/{session_id}` - Get session state
+## Architektur-Entscheidungen
 
-### 2. Template-Based XML Generation
-Production-ready XML generation with Jinja2 templates:
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| LLM Framework | OpenAI SDK direkt | 50 Zeilen statt LlamaIndex (~200MB) |
+| Reranker | OpenAI GPT-4o-mini | FlashRank hatte Dependency-Konflikte |
+| Backend-Struktur | routers/ + services/ flach | MVP braucht kein DDD |
+| Auth | Keine | Dev-Modus, spaeter ergaenzen |
+| DB Fallback | In-Memory wenn Supabase offline | Lokale Entwicklung ohne Cloud-Abhaengigkeit |
+| Pydantic Config | extra="ignore" | Frontend-Variablen (NEXT_PUBLIC_*) in .env stoeren nicht |
+| Stream Prefix | GECK003_ | Automatisch prepended wenn nicht vorhanden |
+| Field-Mapping | Bidirektional in xml_generator.py | Frontend-Feldnamen (z.B. `agent`) werden auf Template-Variablen (z.B. `agent_detail`) gemappt |
 
-**⚠️ IMPORTANT: Stream Prefix Configuration**
-- **Current Prefix**: `zsw_` (changed from `STREAM_`)
-- **Configuration Guide**: See `documentation/XML_STREAM_CONFIGURATION.md`
-- **Critical Files for Prefix Changes:**
-  - `services/xml_generation/parameter_mapper.py:261` - Main prefix logic
-  - `services/xml_generation/template_engine.py:89` - Auto-generation
-  - `services/ai/langextract/unified_langextract_service.py:1284` - Fallback names
+## Environment (.env)
 
-**Backend Services:**
-- `services/xml_generation/template_engine.py` - Template rendering engine
-- `services/xml_generation/parameter_mapper.py` - Parameter mapping logic
-- `backend/templates/xml_templates/` - XML template library
-
-**Features:**
-- 3 job-specific templates (STANDARD, FILE_TRANSFER, SAP)
-- Intelligent parameter mapping with fuzzy matching
-- Auto-generation of missing parameters
-- Smart defaults based on job type
-
-**API Endpoints:**
-- `POST /api/xml-generator/template/generate` - Generate XML from session
-- `POST /api/xml-generator/template/preview` - Preview parameter mapping
-- `GET /api/xml-generator/template/info` - Template metadata
-
-### 3. Knowledge Graph & Memory System
-Advanced context management with temporal memory:
-
-**Backend Services:**
-- `services/knowledge_graph/unified_knowledge_service.py`
-- `services/knowledge_graph/context_memory_system.py`
-- `services/knowledge_graph/entity_extraction_pipeline.py`
-- `services/knowledge_graph/temporal_graph_service.py`
-
-### 4. Authentication System
-JWT-based authentication with role management:
-
-**Backend Services:**
-- `services/auth/auth_service.py` - Authentication logic
-- `services/auth/jwt_service.py` - JWT token management
-- `services/auth/permission_service.py` - Role-based permissions
-
-**Frontend Pages:**
-- `/auth/login` - Login interface
-- `/auth/register` - Registration interface
-
-## Key Patterns
-
-### Backend Service Pattern
-```python
-# Services use dependency injection and async patterns
-class LangExtractService:
-    def __init__(self, db_service, parameter_extractor, job_detector):
-        self.db = db_service
-        self.parameter_extractor = parameter_extractor
-        self.job_detector = job_detector
-
-    async def process_message(self, session_id: str, message: str) -> ProcessedResponse:
-        # Always use async/await for I/O operations
-        session = await self.db.get_session(session_id)
-        job_type = await self.job_detector.detect_job_type(message)
-        parameters = await self.parameter_extractor.extract(message, job_type)
-        return ProcessedResponse(job_type=job_type, parameters=parameters)
-```
-
-### Frontend API Pattern
-```typescript
-// Use React Query for server state
-const { data: session, isLoading } = useQuery({
-  queryKey: ['langextract-session', sessionId],
-  queryFn: () => fetchLangExtractSession(sessionId)
-})
-
-// Use Zustand for client state
-const useLangExtractStore = create<LangExtractStore>((set) => ({
-  currentSession: null,
-  setCurrentSession: (session) => set({ currentSession: session })
-}))
-```
-
-### Database Pattern
-```python
-# Always use async SQLAlchemy patterns
-async def get_chat_sessions(db: AsyncSession, user_id: str):
-    query = select(ChatSession).filter(ChatSession.user_id == user_id)
-    result = await db.execute(query)
-    return result.scalars().all()
-```
-
-## Important File Locations
-
-### Backend Key Files
-- `backend/main.py` - FastAPI application entry point
-- `backend/config.py` - Configuration with Pydantic Settings
-- `backend/database.py` - SQLAlchemy database setup
-- `backend/services/di_container.py` - Dependency injection container
-- `backend/services/ai/langextract/unified_langextract_service.py` - Main LangExtract service
-- `backend/services/xml_generation/template_engine.py` - XML template engine
-- `backend/routers/langextract_chat.py` - LangExtract API endpoints
-
-### Frontend Key Files
-- `frontend/src/app/layout.tsx` - Root layout component
-- `frontend/src/services/api.service.ts` - API client service
-- `frontend/src/components/langextract-chat/LangExtractInterface.tsx` - Main LangExtract UI
-- `frontend/src/components/chat/ModernChatInterface.tsx` - Modern chat component
-- `frontend/src/components/layout/AppLayout.tsx` - Application layout
-
-## Technology Stack
-
-### Backend
-- **FastAPI 0.116.0** - Async web framework
-- **SQLAlchemy 2.0** - Async ORM with PostgreSQL
-- **Qdrant** - Vector database for embeddings
-- **LlamaIndex 0.11.0** - RAG orchestration
-- **Transformers 4.44.0** - Local embedding models
-- **Ollama** - Local LLM integration
-- **Jinja2** - Template engine for XML generation
-
-### Frontend
-- **Next.js 15.6.0** - React framework with App Router
-- **TypeScript 5.x** - Type safety
-- **TailwindCSS** - Styling
-- **React Query 5.87.1** - Server state management
-- **Zustand** - Client state management
-- **Monaco Editor 4.7.0** - Code editing for XML
-- **Framer Motion** - Animations
-
-## Development Guidelines
-
-### Code Conventions
-- **Python**: PEP 8, async/await patterns, type hints required
-- **TypeScript**: Strict mode enabled, proper typing required
-- **Services**: Respect modular structure - don't create monolithic services
-- **API**: Use FastAPI dependency injection for all database/service access
-
-### Module Organization
-- **LangExtract features**: Use `services/ai/langextract/` module
-- **Parameter extraction**: Use `services/ai/enhanced_*` modules
-- **XML generation**: Use `services/xml_generation/` module
-- **Knowledge graph**: Use `services/knowledge_graph/` module
-- **Authentication**: Use `services/auth/` module
-- **Chat features**: Use `services/chat_xml/` modules
-
-### Error Handling
-```python
-# Backend: Use HTTPException with structured details
-raise HTTPException(
-    status_code=404,
-    detail={"error": "Session not found", "session_id": session_id}
-)
-```
-
-```typescript
-// Frontend: Use React Query error handling
-const mutation = useMutation({
-  mutationFn: processLangExtractMessage,
-  onError: (error) => {
-    toast.error(`Processing failed: ${error.message}`)
-  }
-})
-```
-
-## Common Tasks
-
-### Adding LangExtract Features
-1. Backend: Extend `services/ai/langextract/` modules
-2. Router: Add endpoints in `routers/langextract_chat.py`
-3. Frontend: Use React Query for API calls
-4. UI: Add components to `components/langextract-chat/`
-
-### Adding XML Generation Features
-1. Backend: Modify `services/xml_generation/` modules
-2. Templates: Update XML templates in `backend/templates/xml_templates/`
-3. Frontend: Extend XML-related components
-
-### Adding Authentication Features
-1. Backend: Extend `services/auth/` modules
-2. Router: Add endpoints in `routers/auth.py`
-3. Frontend: Update auth components and pages
-
-### Adding Knowledge Graph Features
-1. Backend: Extend `services/knowledge_graph/` modules
-2. Test with knowledge graph services
-3. Frontend: Update interfaces for enhanced context
-
-## Performance Metrics
-
-### LangExtract System Performance
-- **Job Type Detection Accuracy**: 88.9%
-- **Parameter Extraction**: Detailed extraction with auto-generation
-- **German Language Support**: Optimized patterns for StreamWorks context
-- **False Positive Reduction**: 70% improvement over previous system
-
-### Template XML Generation
-- **Template Rendering**: Sub-second performance with caching
-- **Parameter Mapping**: Intelligent field mapping with fuzzy matching
-- **Template Library**: 3 production-ready templates (STANDARD, FILE_TRANSFER, SAP)
-
-## Environment Setup
-
-### Required Environment Variables
-Create `.env` file in backend/ with:
 ```bash
-# Database
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_KEY=your_service_key
+# Pflicht
+OPENAI_API_KEY=sk-...
+SUPABASE_URL=https://xxx.supabase.co   # oder leer fuer In-Memory
+SUPABASE_KEY=eyJ...                     # oder leer fuer In-Memory
 
-# LLM Provider (openai|ollama)
-LLM_PROVIDER=openai
-OPENAI_API_KEY=your_api_key
-
-# Vector Database
-VECTOR_DB=qdrant
+# Optional (haben Defaults)
+OPENAI_MODEL=gpt-4o
+OPENAI_EMBED_MODEL=text-embedding-3-large
 QDRANT_URL=http://localhost:6333
-
-# Embedding Provider (gamma for local)
-EMBEDDING_PROVIDER=gamma
-
-# Authentication
-JWT_SECRET_KEY=your_jwt_secret
-JWT_ALGORITHM=HS256
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+QDRANT_COLLECTION=streamworks
+MINIO_ENDPOINT=localhost:9000
+MINIO_ACCESS_KEY=streamworks
+MINIO_SECRET_KEY=streamworks123
+MINIO_BUCKET=documents
+BACKEND_HOST=0.0.0.0
+BACKEND_PORT=8000
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 ```
 
-### Local Development Setup
-1. **Qdrant**: `docker run -p 6333:6333 qdrant/qdrant`
-2. **Backend**: `cd backend && python main.py`
-3. **Frontend**: `cd frontend && npm run dev`
+## Naechste Schritte
 
-## Testing & Quality
-
-### Backend Testing
-```bash
-cd backend
-pytest                          # Run all tests
-pytest tests/test_langextract.py # Run LangExtract tests
-pytest tests/test_xml_generation.py # Run XML generation tests
-```
-
-### Frontend Testing
-```bash
-cd frontend
-npm run type-check              # TypeScript validation
-npm run lint                    # ESLint validation
-npm run build                   # Production build test
-```
-
-## Health Checks
-
-- **API Health**: http://localhost:8000/health
-- **Database Health**: http://localhost:8000/health/database
-- **Detailed Health**: http://localhost:8000/health/detailed
-- **API Docs**: http://localhost:8000/docs
-- **LangExtract Health**: http://localhost:8000/api/langextract/health
-- **XML Generator Health**: http://localhost:8000/api/xml-generator/template/health
+1. **RAG Chat fixen**: Qdrant + MinIO starten (`make infra`), Chat-Endpunkte testen
+2. **Dokument-Upload**: Upload-Flow testen und debuggen
+3. **SSE Streaming**: Chat-Streaming im Browser verifizieren
+4. **Supabase**: Neues Projekt anlegen, Migrations ausfuehren (fuer persistente Daten)
+5. **Polish**: UI-Feinschliff, Umlaut-Normalisierung in AI-Parameter-Verteilung
