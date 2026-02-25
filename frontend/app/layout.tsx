@@ -1,41 +1,47 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { AuthProvider } from "../hooks/useAuth";
-import { Providers } from "../lib/providers";
+"use client";
 
-export const metadata: Metadata = {
-    title: "Streamworks Self Service",
-    description: "Self Service Portal für Streamworks XML-Generierung",
-};
+import { Inter } from "next/font/google";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { Toaster } from "@/components/ui/toast";
+import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export default function RootLayout({
-    children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
-    return (
-        <html lang="de" suppressHydrationWarning>
-            <head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link
-                    rel="preconnect"
-                    href="https://fonts.gstatic.com"
-                    crossOrigin="anonymous"
-                />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap"
-                    rel="stylesheet"
-                />
-            </head>
-            <body
-                className="font-sans min-h-screen bg-white"
-                suppressHydrationWarning
-            >
-                <Providers>
-                    <AuthProvider>{children}</AuthProvider>
-                </Providers>
-            </body>
-        </html>
-    );
-}
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 1000,
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
 
+  return (
+    <html lang="de" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <title>Streamworks-KI</title>
+        <meta name="description" content="AI-powered Stream Wizard" />
+      </head>
+      <body className="min-h-screen bg-surface font-sans antialiased" suppressHydrationWarning>
+        <QueryClientProvider client={queryClient}>
+          {children}
+          <Toaster />
+        </QueryClientProvider>
+      </body>
+    </html>
+  );
+}

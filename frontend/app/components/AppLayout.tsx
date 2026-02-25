@@ -1,23 +1,39 @@
 "use client";
 
-import Header from "./Header";
-import Sidebar from "./Sidebar";
+import React from "react";
+import Header from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
+import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  sessionId?: string | null;
+  fullWidth?: boolean;
+  noScroll?: boolean;
 }
 
-export default function AppLayout({ children, sessionId }: AppLayoutProps) {
+export default function AppLayout({ children, fullWidth, noScroll }: AppLayoutProps) {
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-blue-50/30 overflow-hidden">
-      <Header sessionId={sessionId} />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar sessionId={sessionId} />
-
-        <main className="flex-1 flex flex-col p-6 overflow-hidden">
-          {children}
+    <div className="flex h-screen flex-col overflow-hidden">
+      <Header />
+      <div className="flex flex-1 min-h-0">
+        <Sidebar />
+        <main className={cn(
+          "flex-1",
+          noScroll ? "overflow-hidden" : "overflow-y-auto scrollbar-thin"
+        )}>
+          {noScroll ? (
+            <div className="h-full">
+              {children}
+            </div>
+          ) : (
+            <div className={cn(
+              fullWidth
+                ? "w-full p-4"
+                : "mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8"
+            )}>
+              {children}
+            </div>
+          )}
         </main>
       </div>
     </div>

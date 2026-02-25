@@ -1,571 +1,227 @@
-import os
-import json
-from typing import Optional
-from supabase import create_client, Client
-from dotenv import load_dotenv
+"""
+Database abstraction layer.
 
-load_dotenv()
+Tries Supabase first. If unavailable, falls back to in-memory storage
+so the app works in local dev without a running Supabase instance.
+"""
+
+import logging
+import uuid
+from datetime import datetime, timezone
+from functools import lru_cache
+from config import get_settings
+
+logger = logging.getLogger(__name__)
+
+_supabase_client = None
+_supabase_available = None
 
 
-class DatabaseService:
-    _instance = None
-    client: Optional[Client] = None
+def _try_supabase():
+    global _supabase_client, _supabase_available
+    if _supabase_available is not None:
+        return _supabase_available
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(DatabaseService, cls).__new__(cls)
-            cls._instance._init_client()
-        return cls._instance
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_key:
+        logger.warning("Supabase not configured, using in-memory storage")
+        _supabase_available = False
+        return False
 
-    def _init_client(self):
-        url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_KEY")
-        if url and key:
-            try:
-                self.client = create_client(url, key)
-            except Exception as e:
-                print(f"Error connecting to Supabase: {e}")
-        else:
-            print("Warning: SUPABASE_URL or SUPABASE_KEY not found in environment.")
+    try:
+        from supabase import create_client
+        _supabase_client = create_client(settings.supabase_url, settings.supabase_key)
+        # Quick connectivity test
+        _supabase_client.table("sessions").select("id").limit(1).execute()
+        _supabase_available = True
+        logger.info("Connected to Supabase")
+        return True
+    except Exception as e:
+        logger.warning(f"Supabase unavailable ({e}), using in-memory storage")
+        _supabase_available = False
+        return False
 
-    def get_client(self) -> Optional[Client]:
-        return self.client
 
-    def save_session(self, session_id: str, data: dict):
-        """Save or update a wizard session."""
-        if not self.client:
-            return None
-        try:
-            # Upsert session data
-            data_copy = json.loads(
-                json.dumps(data, default=str)
-            )  # Ensure JSON serializable
-            return (
-                self.client.table("sessions")
-                .upsert({"id": session_id, "data": data_copy, "updated_at": "now()"})
-                .execute()
-            )
-        except Exception as e:
-            print(f"Error saving session {session_id}: {e}")
-            return None
+def get_supabase():
+    if _try_supabase():
+        return _supabase_client
+    return None
 
-    def get_session(self, session_id: str) -> Optional[dict]:
-        """Retrieve a wizard session."""
-        if not self.client:
-            return None
-        try:
-            response = (
-                self.client.table("sessions")
-                .select("data")
-                .eq("id", session_id)
-                .execute()
-            )
-            if response.data and len(response.data) > 0:
-                return response.data[0]["data"]
-            return None
-        except Exception as e:
-            print(f"Error getting session {session_id}: {e}")
-            return None
 
-    def save_stream(
-        self,
-        filename: str,
-        content: str,
-        metadata: dict = None,
-        job_type: str = "STANDARD",
-    ):
-        """Save a generated stream."""
-        if not self.client:
-            return None
+# ── In-Memory Fallback Store ──────────────────────────────────────
 
-        dataset = {
-            "filename": filename,
-            "content": content,
-            "metadata": metadata or {},
+class _MemStore:
+    """Simple dict-based store that mimics Supabase table operations."""
+
+    def __init__(self):
+        self.tables: dict[str, list[dict]] = {
+            "sessions": [],
+            "streams": [],
+            "dropdown_options": [],
+            "chat_sessions": [],
+            "chat_messages": [],
+            "documents": [],
         }
+        self._seed_options()
 
-        # Check if schema supports job_type directly or inside metadata
-        # Based on migration, we have metadata jsonb. job_type can go there.
-        if metadata is None:
-            metadata = {}
-        metadata["job_type"] = job_type
-        dataset["metadata"] = metadata
+    def _seed_options(self):
+        options = [
+            ("agents", "UC4_UNIX_01", "UC4_UNIX_01", 1),
+            ("agents", "UC4_UNIX_02", "UC4_UNIX_02", 2),
+            ("agents", "UC4_WIN_01", "UC4_WIN_01", 3),
+            ("agents", "UC4_WIN_02", "UC4_WIN_02", 4),
+            ("agents", "UC4_SAP_01", "UC4_SAP_01", 5),
+            ("transfer_mode", "Binary", "binary", 1),
+            ("transfer_mode", "Text", "text", 2),
+            ("transfer_mode", "Auto", "auto", 3),
+            ("schedule", "Taeglich", "taeglich", 1),
+            ("schedule", "Woechentlich", "woechentlich", 2),
+            ("schedule", "Monatlich", "monatlich", 3),
+            ("schedule", "Stuendlich", "stuendlich", 4),
+            ("schedule", "Einmalig", "einmalig", 5),
+            ("job_type", "Standard Job", "STANDARD", 1),
+            ("job_type", "Dateitransfer", "FILE_TRANSFER", 2),
+            ("job_type", "SAP Job", "SAP", 3),
+            ("sap_system", "PA1", "PA1", 1),
+            ("sap_system", "P01", "P01", 2),
+            ("sap_system", "QA1", "QA1", 3),
+            ("sap_system", "DEV", "DEV", 4),
+            ("calendar", "Werktage DE", "WERKTAGE_DE", 1),
+            ("calendar", "Alle Tage", "ALLE_TAGE", 2),
+            ("calendar", "Monatsende", "MONATSENDE", 3),
+        ]
+        for cat, label, value, sort in options:
+            self.tables["dropdown_options"].append({
+                "id": str(uuid.uuid4()),
+                "category": cat,
+                "label": label,
+                "value": value,
+                "is_active": True,
+                "sort_order": sort,
+            })
 
-        try:
-            return self.client.table("streams").insert(dataset).execute()
-        except Exception as e:
-            print(f"Error saving stream {filename}: {e}")
-            raise e
+    def table(self, name: str):
+        if name not in self.tables:
+            self.tables[name] = []
+        return _MemTable(self.tables[name])
 
-    def get_dropdown_options(self, category: str):
-        """Fetch dropdown options for a specific category."""
-        if not self.client:
-            return []
-        try:
-            response = (
-                self.client.table("dropdown_options")
-                .select("label, value")
-                .eq("category", category)
-                .eq("is_active", True)
-                .execute()
+
+class _MemResult:
+    def __init__(self, data: list[dict]):
+        self.data = data
+
+
+class _MemTable:
+    def __init__(self, rows: list[dict]):
+        self._rows = rows
+        self._filters: list[tuple[str, str]] = []
+        self._order_key = None
+        self._order_desc = False
+        self._selected = "*"
+
+    def select(self, cols="*"):
+        t = _MemTable(self._rows)
+        t._selected = cols
+        t._filters = list(self._filters)
+        return t
+
+    def insert(self, data: dict):
+        t = _MemTable(self._rows)
+        t._filters = list(self._filters)
+        t._insert_data = data
+        return t
+
+    def update(self, data: dict):
+        t = _MemTable(self._rows)
+        t._filters = list(self._filters)
+        t._update_data = data
+        return t
+
+    def delete(self):
+        t = _MemTable(self._rows)
+        t._filters = list(self._filters)
+        t._is_delete = True
+        return t
+
+    def eq(self, key: str, value):
+        self._filters.append((key, value))
+        return self
+
+    def order(self, key: str, desc: bool = False):
+        self._order_key = key
+        self._order_desc = desc
+        return self
+
+    def limit(self, n: int):
+        self._limit = n
+        return self
+
+    def single(self):
+        self._single = True
+        return self
+
+    def execute(self):
+        # Handle insert
+        if hasattr(self, '_insert_data'):
+            now = datetime.now(timezone.utc).isoformat()
+            row = {**self._insert_data}
+            if "id" not in row:
+                row["id"] = str(uuid.uuid4())
+            if "created_at" not in row:
+                row["created_at"] = now
+            if "updated_at" not in row:
+                row["updated_at"] = now
+            self._rows.append(row)
+            return _MemResult([row])
+
+        # Handle delete
+        if hasattr(self, '_is_delete'):
+            deleted = [r for r in self._rows if self._matches(r)]
+            remaining = [r for r in self._rows if not self._matches(r)]
+            self._rows.clear()
+            self._rows.extend(remaining)
+            return _MemResult(deleted)
+
+        # Handle update
+        if hasattr(self, '_update_data'):
+            updated = []
+            for r in self._rows:
+                if self._matches(r):
+                    now = datetime.now(timezone.utc).isoformat()
+                    for k, v in self._update_data.items():
+                        if v == "now()":
+                            r[k] = now
+                        else:
+                            r[k] = v
+                    updated.append(r)
+            return _MemResult(updated)
+
+        # Handle select
+        results = [r for r in self._rows if self._matches(r)]
+        if self._order_key:
+            results.sort(
+                key=lambda r: r.get(self._order_key, ""),
+                reverse=self._order_desc,
             )
-            return response.data
-        except Exception as e:
-            print(f"Error fetching dropdown options for {category}: {e}")
-            return []
+        if hasattr(self, '_limit'):
+            results = results[:self._limit]
+        if hasattr(self, '_single') and self._single:
+            return _MemResult(results[0] if results else None)
+        return _MemResult(results)
 
-    def get_user_streams(self, user_id: str = None, limit: int = 50):
-        """Get recent streams (optionally filtered by user)"""
-        if not self.client:
-            return []
-        try:
-            query = (
-                self.client.table("streams")
-                .select("id, filename, created_at, metadata")
-                .order("created_at", desc=True)
-                .limit(limit)
-            )
-
-            # If user_id provided (future)
-            if user_id:
-                query = query.eq("user_id", user_id)
-
-            response = query.execute()
-            return response.data
-        except Exception as e:
-            print(f"Error fetching streams: {e}")
-            return []
-
-    def get_stream(self, stream_id: str):
-        """Get full stream details including content"""
-        if not self.client:
-            return None
-        try:
-            response = (
-                self.client.table("streams").select("*").eq("id", stream_id).execute()
-            )
-
-            if response.data:
-                return response.data[0]
-            return None
-        except Exception as e:
-            print(f"Error fetching stream {stream_id}: {e}")
-            return None
-
-    def list_sessions(self, limit: int = 50):
-        """List all sessions with their status and params for dashboard"""
-        if not self.client:
-            return []
-        try:
-            response = (
-                self.client.table("sessions")
-                .select("id, data, created_at, updated_at")
-                .order("updated_at", desc=True)
-                .limit(limit)
-                .execute()
-            )
-
-            # Transform data for frontend
-            sessions = []
-            for row in response.data or []:
-                data = row.get("data", {})
-                params = data.get("params", {})
-                sessions.append(
-                    {
-                        "id": row["id"],
-                        "name": params.get("stream_name") or "Entwurf",
-                        "status": data.get("status", "draft"),
-                        "job_type": data.get("detected_job_type")
-                        or params.get("job_type", "STANDARD"),
-                        "current_step": data.get("current_step", "basic_info"),
-                        "completion_percent": data.get("completion_percent", 0),
-                        "created_at": row.get("created_at"),
-                        "updated_at": row.get("updated_at"),
-                        "params": params,
-                    }
-                )
-            return sessions
-        except Exception as e:
-            print(f"Error listing sessions: {e}")
-            return []
-
-    def update_session_status(self, session_id: str, status: str):
-        """Update session status (draft/complete)"""
-        if not self.client:
-            return None
-        try:
-            # Get existing session
-            session = self.get_session(session_id)
-            if session:
-                session["status"] = status
-                return self.save_session(session_id, session)
-            return None
-        except Exception as e:
-            print(f"Error updating session status: {e}")
-            return None
-
-    def delete_session(self, session_id: str):
-        """Delete a session"""
-        if not self.client:
-            return False
-        try:
-            self.client.table("sessions").delete().eq("id", session_id).execute()
-            return True
-        except Exception as e:
-            print(f"Error deleting session {session_id}: {e}")
-            return False
-
-    # --- Project & Testing Methods ---
-
-    def create_project(self, name: str, description: str = None):
-        """Create a new project."""
-        if not self.client:
-            return None
-        try:
-            return (
-                self.client.table("projects")
-                .insert({"name": name, "description": description})
-                .execute()
-            )
-        except Exception as e:
-            print(f"Error creating project: {e}")
-            return None
-
-    def list_projects(self):
-        """List all projects."""
-        if not self.client:
-            return []
-        try:
-            return (
-                self.client.table("projects")
-                .select("*")
-                .order("created_at", desc=True)
-                .execute()
-                .data
-            )
-        except Exception as e:
-            print(f"Error listing projects: {e}")
-            return []
-
-    def get_project(self, project_id: str):
-        """Get project details."""
-        if not self.client:
-            return None
-        try:
-            response = (
-                self.client.table("projects").select("*").eq("id", project_id).execute()
-            )
-            return response.data[0] if response.data else None
-        except Exception as e:
-            print(f"Error getting project {project_id}: {e}")
-            return None
-
-    def delete_project(self, project_id: str):
-        """Delete a project."""
-        if not self.client:
-            return False
-        try:
-            self.client.table("projects").delete().eq("id", project_id).execute()
-            return True
-        except Exception as e:
-            print(f"Error deleting project {project_id}: {e}")
-            return False
-
-    def link_project_document(
-        self,
-        project_id: str,
-        doc_id: str,
-        category: str = "context",
-        filename: str = None,
-        rag_enabled: bool = True,
-    ):
-        """
-        Link a document to a project with category and RAG scope.
-        """
-        if not self.client:
-            return None
-
-        data = {
-            "project_id": project_id,
-            "doc_id": doc_id,
-            "category": category,
-            "rag_enabled": rag_enabled,
-        }
-        if filename:
-            data["filename"] = filename
-
-        try:
-            result = self.client.table("project_documents").insert(data).execute()
-            return result
-        except Exception as e:
-            print(f"Error linking document to project: {e}")
-            return None
-
-    def get_project_documents(self, project_id: str):
-        """Get documents linked to a project."""
-        if not self.client:
-            return []
-        try:
-            return (
-                self.client.table("project_documents")
-                .select("*")
-                .eq("project_id", project_id)
-                .execute()
-                .data
-            )
-        except Exception as e:
-            print(f"Error getting project documents: {e}")
-            return []
-
-    def save_test_plan(self, project_id: str, content: str):
-        """Save a generated test plan."""
-        if not self.client:
-            return None
-        try:
-            return (
-                self.client.table("test_plans")
-                .insert({"project_id": project_id, "content": content})
-                .execute()
-            )
-        except Exception as e:
-            print(f"Error saving test plan: {e}")
-            return None
-
-    def update_test_plan(self, plan_id: str, content: str):
-        """Update an existing test plan content."""
-        if not self.client:
-            return None
-        try:
-            return (
-                self.client.table("test_plans")
-                .update({"content": content})
-                .eq("id", plan_id)
-                .execute()
-            )
-        except Exception as e:
-            print(f"Error updating test plan {plan_id}: {e}")
-            return None
-
-    def get_test_plans(self, project_id: str):
-        """Get test plans for a project."""
-        if not self.client:
-            return []
-        try:
-            return (
-                self.client.table("test_plans")
-                .select("*")
-                .eq("project_id", project_id)
-                .order("created_at", desc=True)
-                .execute()
-                .data
-            )
-        except Exception as e:
-            print(f"Error getting test plans: {e}")
-            return []
-
-    def delete_test_plan(self, plan_id: str) -> bool:
-        """Delete a test plan and all associated test executions."""
-        if not self.client:
-            return False
-        try:
-            # Delete associated test executions first
-            self.client.table("test_executions").delete().eq("plan_id", plan_id).execute()
-            
-            # Delete the test plan
-            result = (
-                self.client.table("test_plans")
-                .delete()
-                .eq("id", plan_id)
-                .execute()
-            )
-            return bool(result.data)
-        except Exception as e:
-            print(f"Error deleting test plan {plan_id}: {e}")
-            return False
-
-    def unlink_project_document(self, project_id: str, doc_id: str) -> bool:
-        """Remove a document link from a project."""
-        if not self.client:
-            return False
-        try:
-            self.client.table("project_documents").delete().eq(
-                "project_id", project_id
-            ).eq("doc_id", doc_id).execute()
-            return True
-        except Exception as e:
-            print(f"Error unlinking document from project: {e}")
-            return False
-
-    def update_project_document_rag(
-        self, project_id: str, doc_id: str, rag_enabled: bool
-    ) -> bool:
-        """Update RAG enabled status for a project document."""
-        if not self.client:
-            return False
-        try:
-            result = (
-                self.client.table("project_documents")
-                .update({"rag_enabled": rag_enabled})
-                .eq("project_id", project_id)
-                .eq("doc_id", doc_id)
-                .execute()
-            )
-            return bool(result.data)
-        except Exception as e:
-            print(f"Error updating document RAG status: {e}")
-            return False
-
-    # --- Test Execution Tracking ---
-
-    def save_test_execution(
-        self,
-        plan_id: str,
-        test_id: str,
-        status: str,
-        tester: str = None,
-        result: str = None,
-        build_id: str = None,
-        execution_date: str = None,
-        comment: str = None,
-    ):
-        """Save or update a test execution result."""
-        if not self.client:
-            return None
-        try:
-            # Check if execution already exists
-            existing = (
-                self.client.table("test_executions")
-                .select("*")
-                .eq("plan_id", plan_id)
-                .eq("test_id", test_id)
-                .execute()
-            )
-
-            execution_data = {
-                "plan_id": plan_id,
-                "test_id": test_id,
-                "status": status,
-                "tester": tester,
-                "result": result,
-                "build_id": build_id,
-                "execution_date": execution_date or "now()",
-                "comment": comment,
-                "updated_at": "now()",
-            }
-
-            if existing.data and len(existing.data) > 0:
-                # Update existing
-                return (
-                    self.client.table("test_executions")
-                    .update(execution_data)
-                    .eq("plan_id", plan_id)
-                    .eq("test_id", test_id)
-                    .execute()
-                )
-            else:
-                # Insert new
-                return (
-                    self.client.table("test_executions")
-                    .insert(execution_data)
-                    .execute()
-                )
-        except Exception as e:
-            print(f"Error saving test execution: {e}")
-            return None
-
-    def get_test_executions(self, plan_id: str):
-        """Get all test executions for a plan."""
-        if not self.client:
-            return []
-        try:
-            return (
-                self.client.table("test_executions")
-                .select("*")
-                .eq("plan_id", plan_id)
-                .order("execution_date", desc=True)
-                .execute()
-                .data
-            )
-        except Exception as e:
-            print(f"Error getting test executions: {e}")
-            return []
-
-    def get_test_execution(self, plan_id: str, test_id: str):
-        """Get a specific test execution."""
-        if not self.client:
-            return None
-        try:
-            result = (
-                self.client.table("test_executions")
-                .select("*")
-                .eq("plan_id", plan_id)
-                .eq("test_id", test_id)
-                .execute()
-            )
-            if result.data and len(result.data) > 0:
-                return result.data[0]
-            return None
-        except Exception as e:
-            print(f"Error getting test execution: {e}")
-            return None
-
-    def bulk_update_test_executions(self, plan_id: str, executions: list):
-        """Bulk update multiple test executions."""
-        if not self.client:
-            return None
-        try:
-            # Upsert all executions
-            return (
-                self.client.table("test_executions")
-                .upsert(executions)
-                .execute()
-            )
-        except Exception as e:
-            print(f"Error bulk updating test executions: {e}")
-            return None
-
-    def get_test_statistics(self, plan_id: str):
-        """Get aggregated test statistics for a plan."""
-        if not self.client:
-            return {}
-        try:
-            executions = self.get_test_executions(plan_id)
-            if not executions:
-                return {
-                    "total": 0,
-                    "passed": 0,
-                    "failed": 0,
-                    "skipped": 0,
-                    "pending": 0,
-                    "pass_rate": 0.0,
-                }
-
-            total = len(executions)
-            passed = sum(1 for e in executions if e.get("status") == "passed")
-            failed = sum(1 for e in executions if e.get("status") == "failed")
-            skipped = sum(1 for e in executions if e.get("status") == "skipped")
-            pending = sum(1 for e in executions if e.get("status") == "pending" or not e.get("status"))
-
-            executed = total - pending
-            pass_rate = (passed / executed * 100) if executed > 0 else 0.0
-
-            return {
-                "total": total,
-                "passed": passed,
-                "failed": failed,
-                "skipped": skipped,
-                "pending": pending,
-                "pass_rate": round(pass_rate, 2),
-            }
-        except Exception as e:
-            print(f"Error getting test statistics: {e}")
-            return {}
+    def _matches(self, row: dict) -> bool:
+        for key, value in self._filters:
+            if row.get(key) != value:
+                return False
+        return True
 
 
-# Global instance
-db = DatabaseService()
+_mem_store = _MemStore()
 
 
-# Backward compatibility
-def get_supabase() -> Optional[Client]:
-    return db.get_client()
+def get_db():
+    """Returns Supabase client or in-memory fallback."""
+    sb = get_supabase()
+    if sb is not None:
+        return sb
+    return _mem_store

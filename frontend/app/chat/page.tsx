@@ -1,623 +1,516 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import AppLayout from "../components/AppLayout";
-import ChatSessionSidebar, {
-  ChatSessionSidebarRef,
-} from "./components/ChatSessionSidebar";
-import DocumentPreviewModal from "./components/DocumentPreviewModal";
-import { useChatSession, type Source } from "../../lib/api/chat";
-import { useStreamingChat, type StreamSource } from "../../lib/hooks/useStreamingChat";
+import {
+  Send,
+  Bot,
+  User,
+  Loader2,
+  MessageSquare,
+  FileSearch,
+  ShieldCheck,
+  AlertTriangle,
+} from "lucide-react";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  sources?: Source[];
-  timestamp: Date;
-  confidence?: number;
-  confidence_level?: string;
-  query_type?: string;
-  warnings?: string[];
-  isStreaming?: boolean;
+import AppLayout from "@/components/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
+import {
+  useChatMessages,
+  chatKeys,
+  type ChatMessage,
+  type Source,
+} from "@/lib/api/chat";
+import { useStreamingChat } from "@/lib/hooks/useStreamingChat";
+
+import ChatSidebar from "./components/ChatSidebar";
+import DocumentPreview from "./components/DocumentPreview";
+
+/* ------------------------------------------------------------------ */
+/* Helpers                                                             */
+/* ------------------------------------------------------------------ */
+
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [showSources, setShowSources] = useState<number | null>(null);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [previewDoc, setPreviewDoc] = useState<{
-    docId: string;
-    filename: string;
-    content: string;
-  } | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const sidebarRef = useRef<ChatSessionSidebarRef>(null);
-
-  // TanStack Query hooks
-  const { data: sessionData } = useChatSession(activeSessionId);
-
-  // Streaming hook
-  const {
-    isStreaming,
-    currentText,
-    sources: streamSources,
-    status,
-    confidence,
-    queryType,
-    streamQuery,
-    cancelStream,
-    error: streamError,
-  } = useStreamingChat();
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, currentText]);
-
-  // Load session messages when session data changes
-  useEffect(() => {
-    if (sessionData?.messages) {
-      const loadedMessages: Message[] = sessionData.messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        sources: msg.sources || [],
-        timestamp: new Date(msg.created_at || Date.now()),
-      }));
-      setMessages(loadedMessages);
-    }
-  }, [sessionData]);
-
-  // Send message with streaming
-  const sendMessage = async () => {
-    if (!input.trim() || isStreaming) return;
-
-    const userMessage: Message = {
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
+function confidenceLabel(score: number): {
+  label: string;
+  variant: "success" | "warning" | "destructive";
+  Icon: React.ElementType;
+} {
+  if (score >= 0.7) {
+    return { label: "Hohe Konfidenz", variant: "success", Icon: ShieldCheck };
+  }
+  if (score >= 0.4) {
+    return {
+      label: "Mittlere Konfidenz",
+      variant: "warning",
+      Icon: AlertTriangle,
     };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-
-    // Stream the response
-    streamQuery(
-      userMessage.content,
-      5,
-      activeSessionId,
-      (fullResponse: string, sources: StreamSource[], newSessionId: string | null) => {
-        // When streaming completes, update session and add final message
-        if (newSessionId && !activeSessionId) {
-          setActiveSessionId(newSessionId);
-          setTimeout(() => {
-            sidebarRef.current?.refreshSessions();
-          }, 500);
-        }
-
-        // Convert StreamSource to Source format
-        const formattedSources: Source[] = sources.map((s, i) => ({
-          doc_id: s.doc_id,
-          filename: s.filename,
-          content: s.content,
-          score: s.score,
-          doc_type: s.filename?.split('.').pop() || 'unknown',
-          index: i + 1,
-        }));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: fullResponse,
-            sources: formattedSources,
-            timestamp: new Date(),
-            confidence: confidence || undefined,
-            query_type: queryType || undefined,
-          },
-        ]);
-      }
-    );
+  }
+  return {
+    label: "Niedrige Konfidenz",
+    variant: "destructive",
+    Icon: AlertTriangle,
   };
+}
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
+/* ------------------------------------------------------------------ */
+/* Source Badge                                                         */
+/* ------------------------------------------------------------------ */
 
-  const handleNewChat = () => {
-    setMessages([]);
-    setActiveSessionId(null);
-    setShowSources(null);
-    cancelStream();
-  };
-
-  const handleSessionSelect = (sessionId: string) => {
-    if (sessionId !== activeSessionId) {
-      setActiveSessionId(sessionId);
-      setShowSources(null);
-      cancelStream();
-    }
-  };
-
-  // Custom markdown components for styling
-  const MarkdownContent = ({ content }: { content: string }) => (
-    <ReactMarkdown
-      components={{
-        // Bold text
-        strong: ({ children }) => (
-          <strong className="font-semibold">{children}</strong>
-        ),
-        // Italic text
-        em: ({ children }) => (
-          <em className="italic">{children}</em>
-        ),
-        // Code blocks
-        code: ({ children, className }) => {
-          const isInline = !className;
-          if (isInline) {
-            return (
-              <code className="bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">
-                {children}
-              </code>
-            );
-          }
-          return (
-            <code className="block bg-slate-900 text-slate-100 p-3 rounded-lg text-xs font-mono overflow-x-auto my-2">
-              {children}
-            </code>
-          );
-        },
-        // Lists
-        ul: ({ children }) => (
-          <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>
-        ),
-        li: ({ children }) => (
-          <li className="text-sm">{children}</li>
-        ),
-        // Paragraphs
-        p: ({ children }) => (
-          <p className="mb-2 last:mb-0">{children}</p>
-        ),
-        // Headers
-        h1: ({ children }) => (
-          <h1 className="text-lg font-bold mt-3 mb-2">{children}</h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="text-base font-bold mt-3 mb-2">{children}</h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>
-        ),
-      }}
+function SourceBadge({
+  source,
+  index,
+  onClick,
+}: {
+  source: Source;
+  index: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/5 px-2 py-0.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
+      title={source.document_name}
     >
-      {content}
-    </ReactMarkdown>
+      <FileSearch className="h-3 w-3" />
+      <span>[{index + 1}]</span>
+      <span className="max-w-[120px] truncate">{source.document_name}</span>
+    </button>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Message Bubble                                                      */
+/* ------------------------------------------------------------------ */
+
+function MessageBubble({
+  message,
+  onSourceClick,
+}: {
+  message: {
+    role: "user" | "assistant";
+    content: string;
+    sources?: Source[];
+    created_at?: string;
+  };
+  onSourceClick: (source: Source) => void;
+}) {
+  const isUser = message.role === "user";
 
   return (
-    <AppLayout>
-      <div className="flex h-[calc(100vh-80px)] overflow-hidden -m-6">
-        {/* Sidebar Toggle Button (mobile) */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="lg:hidden fixed top-20 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-slate-200"
-        >
-          <svg
-            className="w-5 h-5 text-slate-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        </button>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+    >
+      {/* Avatar */}
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+          isUser
+            ? "bg-primary text-primary-foreground"
+            : "bg-accent/10 text-accent"
+        }`}
+      >
+        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+      </div>
 
-        {/* Session Sidebar */}
-        <div className={`${sidebarOpen ? "block" : "hidden"} lg:block`}>
-          <ChatSessionSidebar
-            ref={sidebarRef}
-            activeSessionId={activeSessionId}
-            onSessionSelect={handleSessionSelect}
-            onNewChat={handleNewChat}
-          />
+      {/* Content */}
+      <div
+        className={`flex max-w-[75%] flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}
+      >
+        <div
+          className={`rounded-lg px-4 py-3 text-sm leading-relaxed ${
+            isUser
+              ? "bg-primary text-primary-foreground"
+              : "border border-border bg-surface-raised text-primary shadow-card"
+          }`}
+        >
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          ) : (
+            <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-pre:bg-surface-sunken prose-pre:text-xs">
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </div>
+          )}
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col p-4 pb-6 bg-slate-50/30 min-h-0">
-          {/* Page Header */}
-          <div className="flex items-center justify-between mb-4 flex-shrink-0">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Dokumente-Chat
-              </h1>
-              <p className="text-sm text-slate-500">
-                RAG-basierte Fragen an Ihre Wissensbasis
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {activeSessionId && !isStreaming && (
-                <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                  Session aktiv
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Messages Container */}
-          <div className="flex-1 overflow-auto bg-white rounded-2xl border border-slate-200 mb-3 shadow-sm min-h-0">
-            <div className="p-6 space-y-6">
-              {messages.length === 0 && !isStreaming ? (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/10">
-                    <svg
-                      className="w-10 h-10 text-blue-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">
-                    Fragen Sie Ihre Dokumente
-                  </h2>
-                  <p className="text-slate-500 mb-8 max-w-md mx-auto text-sm">
-                    Die KI durchsucht Ihre Wissensbasis und antwortet basierend
-                    auf den hochgeladenen Dokumenten.
-                  </p>
-                  <div className="flex flex-wrap gap-2 justify-center max-w-lg mx-auto">
-                    {[
-                      "Was ist Streamworks?",
-                      "Welche Job-Typen gibt es?",
-                      "Wie funktioniert ein FileTransfer?",
-                      "Was ist ein Agent?",
-                    ].map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setInput(s)}
-                        className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 transition-all shadow-sm"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      {message.role === "assistant" && (
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
-                          <svg
-                            className="w-5 h-5 text-white"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                      <div
-                        className={`max-w-[75%] ${message.role === "user" ? "order-1" : ""}`}
-                      >
-                        <div
-                          className={`rounded-2xl px-4 py-3 ${message.role === "user"
-                            ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
-                            : "bg-slate-100 text-slate-800"
-                            }`}
-                        >
-                          <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-slate">
-                            {message.role === "assistant" ? (
-                              <MarkdownContent content={message.content} />
-                            ) : (
-                              <p className="whitespace-pre-wrap">{message.content}</p>
-                            )}
-                          </div>
-
-                          <div className="flex justify-between items-end mt-1.5 pt-2 border-t border-slate-200/50">
-                            <div className="flex gap-2">
-                              {message.role === "assistant" &&
-                                message.confidence !== undefined && (
-                                  <span
-                                    className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${message.confidence > 0.8
-                                      ? "bg-green-50 text-green-600 border-green-100"
-                                      : message.confidence > 0.5
-                                        ? "bg-yellow-50 text-yellow-600 border-yellow-100"
-                                        : "bg-red-50 text-red-600 border-red-100"
-                                      }`}
-                                    title={message.confidence_level}
-                                  >
-                                    {(message.confidence * 100).toFixed(0)}%
-                                  </span>
-                                )}
-                            </div>
-                            <span className="text-[10px] text-slate-400">
-                              {message.timestamp.toLocaleTimeString("de-DE", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                        </div>
-
-                        {message.sources && message.sources.length > 0 && (
-                          <div className="mt-2 text-right">
-                            <button
-                              onClick={() =>
-                                setShowSources(
-                                  showSources === index ? null : index
-                                )
-                              }
-                              className="text-xs text-slate-400 hover:text-blue-600 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors ml-auto"
-                            >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                                />
-                              </svg>
-                              {message.sources.length} Quellen
-                            </button>
-
-                            {showSources === index && (
-                              <div className="mt-2 space-y-2 text-left">
-                                {message.sources.map((source, sIndex) => (
-                                  <div
-                                    key={sIndex}
-                                    className="bg-slate-50 rounded-xl p-3 border border-slate-200 cursor-pointer hover:bg-blue-50/50 hover:border-blue-200 transition-all group"
-                                    onClick={() => {
-                                      const docId = source.doc_id || source.id;
-                                      if (docId) {
-                                        setPreviewDoc({
-                                          docId: docId,
-                                          filename: source.filename || "Unknown",
-                                          content: source.content,
-                                        });
-                                      }
-                                    }}
-                                  >
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                      <span className="text-xs font-bold text-slate-500 min-w-[1.5rem] group-hover:text-blue-600">
-                                        [{source.index || sIndex + 1}]
-                                      </span>
-                                      <span className="text-xs font-medium text-blue-600 px-2 py-0.5 bg-blue-50 rounded-md ring-1 ring-blue-500/10">
-                                        {source.doc_type?.toUpperCase() || 'DOC'}
-                                      </span>
-                                      <span
-                                        className="text-xs font-medium text-slate-700 truncate flex-1 group-hover:text-blue-700"
-                                        title={source.filename}
-                                      >
-                                        {source.filename}
-                                      </span>
-                                      <span className="text-xs font-medium text-slate-400 whitespace-nowrap bg-slate-100 px-1.5 py-0.5 rounded">
-                                        {(source.score * 100).toFixed(0)}%
-                                      </span>
-                                    </div>
-                                    <p className="text-xs text-slate-600 line-clamp-2 group-hover:text-slate-800">
-                                      {source.content}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {message.role === "user" && (
-                        <div className="w-10 h-10 bg-slate-200 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <svg
-                            className="w-5 h-5 text-slate-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* Streaming Message */}
-                  {isStreaming && (
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
-                        <svg
-                          className="w-5 h-5 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                      <div className="max-w-[75%]">
-                        {/* Streaming text */}
-                        {currentText && (
-                          <div className="bg-slate-100 rounded-2xl px-4 py-3">
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-slate">
-                              <MarkdownContent content={currentText} />
-                              <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-0.5"></span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Sources preview while streaming */}
-                        {streamSources.length > 0 && !currentText && (
-                          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                            <div className="text-xs font-medium text-slate-500 mb-2">
-                              📚 {streamSources.length} Quellen gefunden
-                            </div>
-                            {streamSources.slice(0, 2).map((source, i) => (
-                              <div key={i} className="text-xs text-slate-600 truncate">
-                                • {source.filename}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Sources preview while streaming */}
-                        {streamSources.length > 0 && !currentText && (
-                          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 mb-2">
-                            <div className="text-xs font-medium text-slate-500 mb-2">
-                              📚 {streamSources.length} Quellen gefunden
-                            </div>
-                            {streamSources.slice(0, 2).map((source, i) => (
-                              <div key={i} className="text-xs text-slate-600 truncate">
-                                • {source.filename}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Loading dots or Status when no text yet */}
-                        {!currentText && streamSources.length === 0 && (
-                          <div className="bg-slate-100 rounded-2xl px-5 py-4">
-                            {status ? (
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                <span className="text-sm font-medium text-slate-500 animate-pulse">{status}</span>
-                              </div>
-                            ) : (
-                              <div className="flex gap-1.5">
-                                <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                                <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                                <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Error message */}
-                  {streamError && (
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div className="bg-red-50 rounded-2xl px-4 py-3 border border-red-100">
-                        <p className="text-sm text-red-600">{streamError}</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-
-          {/* Input Area */}
-          <div className="flex gap-3 flex-shrink-0">
-            <div className="flex-1 relative">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Stellen Sie eine Frage zu Ihren Dokumenten..."
-                rows={1}
-                disabled={isStreaming}
-                className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-slate-800 bg-white shadow-sm pr-12 disabled:bg-slate-50 disabled:text-slate-400"
-                style={{ minHeight: "52px", maxHeight: "120px" }}
+        {/* Sources */}
+        {!isUser && message.sources && message.sources.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {message.sources.map((src, idx) => (
+              <SourceBadge
+                key={`${src.document_name}-${idx}`}
+                source={src}
+                index={idx}
+                onClick={() => onSourceClick(src)}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                ⏎
-              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Timestamp */}
+        {message.created_at && (
+          <span className="text-[10px] text-muted-foreground/60">
+            {formatTime(message.created_at)}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Streaming Bubble                                                    */
+/* ------------------------------------------------------------------ */
+
+function StreamingBubble({
+  text,
+  sources,
+  confidence,
+  isStreaming,
+  onSourceClick,
+}: {
+  text: string;
+  sources: Source[];
+  confidence: number | null;
+  isStreaming: boolean;
+  onSourceClick: (source: Source) => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3"
+    >
+      {/* Avatar */}
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+        <Bot className="h-4 w-4" />
+      </div>
+
+      {/* Content */}
+      <div className="flex max-w-[75%] flex-col gap-1.5">
+        <div className="rounded-lg border border-border bg-surface-raised px-4 py-3 text-sm leading-relaxed text-primary shadow-card">
+          {text ? (
+            <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-pre:bg-surface-sunken prose-pre:text-xs">
+              <ReactMarkdown>{text}</ReactMarkdown>
             </div>
-            {isStreaming ? (
-              <button
-                onClick={cancelStream}
-                className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition-all border border-slate-200 flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10h6v4H9z" />
-                </svg>
-                Stop
-              </button>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Antwort wird generiert...</span>
+            </div>
+          )}
+
+          {/* Streaming cursor */}
+          {isStreaming && text && (
+            <span className="inline-block h-4 w-1.5 animate-pulse rounded-sm bg-accent/60" />
+          )}
+        </div>
+
+        {/* Sources */}
+        {sources.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {sources.map((src, idx) => (
+              <SourceBadge
+                key={`${src.document_name}-${idx}`}
+                source={src}
+                index={idx}
+                onClick={() => onSourceClick(src)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Confidence */}
+        {confidence !== null && !isStreaming && (
+          <div>
+            {(() => {
+              const c = confidenceLabel(confidence);
+              return (
+                <Badge variant={c.variant} className="gap-1">
+                  <c.Icon className="h-3 w-3" />
+                  {c.label} ({Math.round(confidence * 100)}%)
+                </Badge>
+              );
+            })()}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Empty State                                                         */
+/* ------------------------------------------------------------------ */
+
+function EmptyState() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10">
+        <MessageSquare className="h-8 w-8 text-accent" />
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold text-primary">
+          RAG-Wissensassistent
+        </h2>
+        <p className="mt-1 max-w-md text-sm text-muted-foreground">
+          Stellen Sie eine Frage zu Ihren Dokumenten. Der Assistent durchsucht
+          die Wissensbasis und liefert quellenbasierte Antworten.
+        </p>
+      </div>
+      <div className="mt-2 flex flex-wrap justify-center gap-2">
+        {[
+          "Was sind die wichtigsten Parameter?",
+          "Erklaere den Dateitransfer-Prozess.",
+          "Welche Fehlerbehandlung ist vorgesehen?",
+        ].map((suggestion) => (
+          <span
+            key={suggestion}
+            className="rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs text-muted-foreground"
+          >
+            {suggestion}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Main Chat Page                                                      */
+/* ------------------------------------------------------------------ */
+
+export default function ChatPage() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  // Session state
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  // Source preview
+  const [previewSource, setPreviewSource] = useState<Source | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Input
+  const [inputValue, setInputValue] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Streaming
+  const streaming = useStreamingChat();
+
+  // Persisted messages for the active session
+  const { data: persistedMessages = [] } = useChatMessages(activeSessionId);
+
+  // Build display messages: persisted + current streaming if active
+  const displayMessages: Array<{
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    sources?: Source[];
+    created_at?: string;
+  }> = [...persistedMessages];
+
+  // Auto-scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [displayMessages.length, streaming.streamedText, scrollToBottom]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [inputValue]);
+
+  // Handlers
+  async function handleSend() {
+    const msg = inputValue.trim();
+    if (!msg || streaming.isStreaming) return;
+
+    setInputValue("");
+    streaming.reset();
+
+    // Optimistically add user message to display
+    const tempUserMsg: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      session_id: activeSessionId ?? "",
+      role: "user",
+      content: msg,
+      created_at: new Date().toISOString(),
+    };
+
+    // We add it to the query cache temporarily
+    if (activeSessionId) {
+      queryClient.setQueryData<ChatMessage[]>(
+        chatKeys.messages(activeSessionId),
+        (old) => [...(old ?? []), tempUserMsg]
+      );
+    }
+
+    const result = await streaming.sendMessage(msg, activeSessionId);
+
+    // After streaming completes, update the session ID and invalidate queries
+    const newSessionId = result.sessionId ?? activeSessionId;
+    if (newSessionId && newSessionId !== activeSessionId) {
+      setActiveSessionId(newSessionId);
+    }
+
+    // Give the backend a moment to persist, then refresh
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.sessions });
+      if (newSessionId) {
+        queryClient.invalidateQueries({
+          queryKey: chatKeys.messages(newSessionId),
+        });
+      }
+    }, 500);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  function handleNewChat() {
+    setActiveSessionId(null);
+    streaming.reset();
+    setInputValue("");
+  }
+
+  function handleSelectSession(sessionId: string) {
+    if (streaming.isStreaming) return;
+    streaming.reset();
+    setActiveSessionId(sessionId);
+  }
+
+  function handleSourceClick(source: Source) {
+    setPreviewSource(source);
+    setPreviewOpen(true);
+  }
+
+  // Determine whether to show the streaming bubble
+  const showStreamingBubble =
+    streaming.isStreaming || streaming.streamedText.length > 0;
+
+  // Check if the streaming bubble content is already in persisted messages
+  // (happens after invalidation). If so, don't show streaming bubble.
+  const lastPersisted = persistedMessages[persistedMessages.length - 1];
+  const streamingAlreadyPersisted =
+    !streaming.isStreaming &&
+    lastPersisted?.role === "assistant" &&
+    streaming.streamedText.length > 0 &&
+    lastPersisted.content.length >= streaming.streamedText.length * 0.8;
+
+  const shouldShowStreamingBubble =
+    showStreamingBubble && !streamingAlreadyPersisted;
+
+  const hasMessages = displayMessages.length > 0 || shouldShowStreamingBubble;
+
+  return (
+    <AppLayout noScroll>
+      <div className="flex h-full">
+        {/* Sidebar */}
+        <ChatSidebar
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
+          onNewChat={handleNewChat}
+        />
+
+        {/* Main chat area */}
+        <div className="flex flex-1 flex-col">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
+            {!hasMessages ? (
+              <EmptyState />
             ) : (
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim()}
-                className="px-6 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+              <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+                <AnimatePresence initial={false}>
+                  {displayMessages.map((msg) => (
+                    <MessageBubble
+                      key={msg.id}
+                      message={msg}
+                      onSourceClick={handleSourceClick}
+                    />
+                  ))}
+                </AnimatePresence>
+
+                {/* Streaming response */}
+                {shouldShowStreamingBubble && (
+                  <StreamingBubble
+                    text={streaming.streamedText}
+                    sources={streaming.sources}
+                    confidence={streaming.confidence}
+                    isStreaming={streaming.isStreaming}
+                    onSourceClick={handleSourceClick}
                   />
-                </svg>
-                Senden
-              </button>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Document Preview Modal */}
-        <DocumentPreviewModal
-          isOpen={!!previewDoc}
-          onClose={() => setPreviewDoc(null)}
-          docId={previewDoc?.docId || ""}
-          filename={previewDoc?.filename || ""}
-          initialContent={previewDoc?.content}
-        />
+          {/* Input bar */}
+          <div className="border-t border-border bg-surface-raised px-4 py-3">
+            <div className="mx-auto flex w-full max-w-3xl items-end gap-3">
+              <div className="relative flex-1">
+                <textarea
+                  ref={textareaRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Stellen Sie eine Frage zu Ihren Dokumenten..."
+                  rows={1}
+                  disabled={streaming.isStreaming}
+                  className="w-full resize-none rounded-lg border border-border bg-surface px-4 py-2.5 pr-12 text-sm text-primary shadow-sm transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-50"
+                />
+              </div>
+              <Button
+                onClick={handleSend}
+                disabled={!inputValue.trim() || streaming.isStreaming}
+                size="icon"
+                className="h-10 w-10 shrink-0"
+              >
+                {streaming.isStreaming ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="mx-auto mt-1.5 max-w-3xl text-center text-[10px] text-muted-foreground/60">
+              KI-generierte Antworten koennen Fehler enthalten. Quellen pruefen.
+            </p>
+          </div>
+        </div>
       </div>
+
+      {/* Document preview modal */}
+      <DocumentPreview
+        source={previewSource}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+      />
     </AppLayout>
   );
 }

@@ -1,49 +1,46 @@
-"""
-Configuration module for Streamworks-KI Backend
-Loads environment variables from .env file
-"""
-
+from pydantic_settings import BaseSettings
+from functools import lru_cache
 import os
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Load .env file from project root (one level up from backend/)
-env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(env_path)
 
 
-class Config:
-    """Application configuration"""
+class Settings(BaseSettings):
+    # OpenAI
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o"
+    openai_embed_model: str = "text-embedding-3-large"
 
-    # OpenAI Settings
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    # Supabase
+    supabase_url: str = ""
+    supabase_key: str = ""
 
-    # RAG Enhancement Settings
-    RAG_HYBRID_ENABLED: bool = os.getenv("RAG_HYBRID_ENABLED", "true").lower() == "true"
-    RAG_SEMANTIC_WEIGHT: float = float(os.getenv("RAG_SEMANTIC_WEIGHT", "0.6"))
-    RAG_KEYWORD_WEIGHT: float = float(os.getenv("RAG_KEYWORD_WEIGHT", "0.4"))
-    RAG_RERANK_ENABLED: bool = os.getenv("RAG_RERANK_ENABLED", "true").lower() == "true"
-    RAG_RERANK_TOP_K: int = int(os.getenv("RAG_RERANK_TOP_K", "5"))
-    RAG_HYDE_ENABLED: bool = os.getenv("RAG_HYDE_ENABLED", "true").lower() == "true"
-    RAG_CONTEXT_COMPRESSION: bool = (
-        False  # os.getenv("RAG_CONTEXT_COMPRESSION", "true").lower() == "true"
-    )
-    RAG_CACHE_TTL: int = int(os.getenv("RAG_CACHE_TTL", "3600"))
-    RAG_CACHE_MAX_SIZE: int = int(os.getenv("RAG_CACHE_MAX_SIZE", "1000"))
-    RAG_CONFIDENCE_THRESHOLD: float = float(
-        os.getenv("RAG_CONFIDENCE_THRESHOLD", "0.5")
-    )
+    # Qdrant
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_collection: str = "streamworks"
 
-    # Validation
-    @classmethod
-    def validate(cls) -> bool:
-        """Check if required configuration is present"""
-        if not cls.OPENAI_API_KEY:
-            print("⚠️ OPENAI_API_KEY not set in .env file!")
-            return False
-        return True
+    # MinIO
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "streamworks"
+    minio_secret_key: str = "streamworks123"
+    minio_bucket: str = "documents"
+    minio_secure: bool = False
+
+    # Server
+    backend_host: str = "0.0.0.0"
+    backend_port: int = 8000
+
+    # CORS
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    # Environment
+    environment: str = "development"
+
+    model_config = {
+        "env_file": (".env", "../.env"),
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
-# Singleton instance
-config = Config()
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

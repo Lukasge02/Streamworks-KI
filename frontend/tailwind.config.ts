@@ -1,100 +1,102 @@
 import type { Config } from "tailwindcss";
-import animate from "tailwindcss-animate";
-import typography from "@tailwindcss/typography";
 
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        // Arvato Systems Brand Colors
-        arvato: {
-          blue: "#0082D9",
-          "blue-dark": "#006BB3",
-          "blue-light": "#33A0E6",
-          gray: "#4F4F4F",
-          "gray-light": "#6B6B6B",
-          "gray-dark": "#3D3D3D",
-        },
         primary: {
-          50: "#E6F4FF",
-          100: "#BAE0FF",
-          200: "#8DCBFF",
-          300: "#60B6FF",
-          400: "#33A1FF",
-          500: "#0082D9", // Arvato Main Blue
-          600: "#006BB3",
-          700: "#00548D",
-          800: "#003D66",
-          900: "#002640",
+          DEFAULT: "#003366",
+          light: "#004d99",
+          dark: "#002244",
+          foreground: "#ffffff",
         },
         accent: {
-          50: "#E6FFF7",
-          100: "#B3FFE8",
-          200: "#80FFD9",
-          300: "#4DFFCA",
-          400: "#1AFFBB",
-          500: "#00D4AA", // Teal Accent
-          600: "#00B391",
-          700: "#009278",
-          800: "#00715F",
-          900: "#005046",
+          DEFAULT: "#0066cc",
+          light: "#3388dd",
+          dark: "#004c99",
+          foreground: "#ffffff",
+        },
+        surface: {
+          DEFAULT: "#f8fafc",
+          raised: "#ffffff",
+          sunken: "#f1f5f9",
+        },
+        border: {
+          DEFAULT: "#e2e8f0",
+          light: "#f1f5f9",
+          dark: "#cbd5e1",
+        },
+        success: {
+          DEFAULT: "#16a34a",
+          light: "#dcfce7",
+          foreground: "#ffffff",
+        },
+        warning: {
+          DEFAULT: "#d97706",
+          light: "#fef3c7",
+          foreground: "#ffffff",
+        },
+        destructive: {
+          DEFAULT: "#dc2626",
+          light: "#fee2e2",
+          foreground: "#ffffff",
+        },
+        muted: {
+          DEFAULT: "#f1f5f9",
+          foreground: "#64748b",
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      borderRadius: {
+        lg: "0.75rem",
+        md: "0.5rem",
+        sm: "0.375rem",
       },
       boxShadow: {
-        soft: "0 2px 8px rgba(0, 0, 0, 0.08)",
-        medium: "0 4px 16px rgba(0, 0, 0, 0.12)",
-        glow: "0 0 20px rgba(0, 130, 217, 0.25)",
-        "glow-accent": "0 0 20px rgba(0, 212, 170, 0.25)",
+        soft: "0 1px 2px 0 rgba(0, 0, 0, 0.04)",
+        card: "0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04)",
+        elevated: "0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04)",
+        modal: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
       },
       animation: {
-        "border-beam": "border-beam calc(var(--duration)*1s) infinite linear",
-        shine: "shine var(--duration) infinite linear",
-        "pulse-soft": "pulse-soft 2s ease-in-out infinite",
-        float: "float 3s ease-in-out infinite",
-        "fade-in": "fade-in 0.5s ease-out",
-        "slide-up": "slide-up 0.5s ease-out",
+        "fade-in": "fadeIn 0.2s ease-out",
+        "slide-in": "slideIn 0.2s ease-out",
+        "slide-up": "slideUp 0.3s ease-out",
+        "pulse-soft": "pulseSoft 2s ease-in-out infinite",
+        "slide-in-right": "slideInRight 0.3s ease-out",
       },
       keyframes: {
-        "border-beam": {
-          "100%": { "offset-distance": "100%" },
-        },
-        shine: {
-          "0%": { "background-position": "0% 0%" },
-          "50%": { "background-position": "100% 100%" },
-          "100%": { "background-position": "0% 0%" },
-        },
-        "pulse-soft": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.7" },
-        },
-        float: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-8px)" },
-        },
-        "fade-in": {
+        fadeIn: {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
         },
-        "slide-up": {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
+        slideIn: {
+          "0%": { opacity: "0", transform: "translateX(-8px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-      },
-      borderRadius: {
-        xl: "12px",
-        "2xl": "16px",
-        "3xl": "24px",
+        pulseSoft: {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.05)" },
+        },
+        slideInRight: {
+          "0%": { opacity: "0", transform: "translateX(16px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
       },
     },
   },
-  plugins: [animate, typography],
+  plugins: [],
 };
 
 export default config;

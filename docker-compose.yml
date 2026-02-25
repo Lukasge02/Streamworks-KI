@@ -1,104 +1,76 @@
-version: '3.8'
-
-# =============================================================================
-# Streamworks-KI Docker Compose
-# =============================================================================
-# Unified configuration with profiles for different environments
-#
-# Usage:
-#   docker compose up                    # Default: Qdrant + MinIO (development)
-#   docker compose --profile full up     # Full stack including backend
-#   docker compose --profile db-only up  # Only Qdrant (minimal)
-# =============================================================================
-
 services:
-  # ---------------------------------------------------------------------------
-  # Qdrant - Vector Database for RAG
-  # ---------------------------------------------------------------------------
   qdrant:
-    image: qdrant/qdrant:latest
-    container_name: streamworks_qdrant
-    restart: unless-stopped
-    profiles: ["default", "full", "db-only"]
-    ports:
-      - "6333:6333"  # REST API + Web UI
-      - "6334:6334"  # gRPC API
+    image: qdrant/qdrant:v1.13.2
     expose:
-      - 6333
-      - 6334
-      - 6335
+      - "6333"
     volumes:
-      - ./qdrant_data:/qdrant/storage:Z
-    environment:
-      - QDRANT__SERVICE__HTTP_PORT=6333
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ---------------------------------------------------------------------------
-  # MinIO - S3-compatible Object Storage for Documents
-  # ---------------------------------------------------------------------------
-  minio:
-    image: minio/minio:latest
-    container_name: streamworks_minio
+      - qdrant_data:/qdrant/storage
     restart: unless-stopped
-    profiles: ["default", "full"]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    command: server /data --console-address ":9001"
+    expose:
+      - "9000"
     ports:
-      - "9000:9000"   # API
-      - "9001:9001"   # Web Console
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-streamworks}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-streamworks123}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-streamworks}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-streamworks123}
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  # ---------------------------------------------------------------------------
-  # Backend - FastAPI Application
-  # ---------------------------------------------------------------------------
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: streamworks-backend:latest
-    container_name: streamworks_backend
     restart: unless-stopped
-    profiles: ["full"]
-    env_file:
-      - .env
-    environment:
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - MINIO_ENDPOINT=minio:9000
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  backend:
+    build: ./backend
     ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
-    command: ["uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file: .env
+    environment:
+      # Docker-interne Service-Namen ueberschreiben localhost aus .env
+      - QDRANT_URL=http://qdrant:6333
+      - MINIO_ENDPOINT=minio:9000
+      - ENVIRONMENT=production
+      # CORS: Frontend laeuft im Browser -> braucht die EXTERNE URL
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     depends_on:
       qdrant:
         condition: service_healthy
       minio:
         condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into Next.js at build time -- muss die EXTERNE Backend-URL sein
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   qdrant_data:
-    driver: local
   minio_data:
-    driver: local
-
-# =============================================================================
-# Network Configuration
-# =============================================================================
-networks:
-  default:
-    name: streamworks_network

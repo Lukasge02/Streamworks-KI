@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useCallback, Suspense } from "react";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -27,15 +27,16 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
+import ParameterPanel from "@/xml-editor/components/ParameterPanel";
 
 /* ------------------------------------------------------------------ */
 /* Monaco Editor - lazy loaded                                         */
 /* ------------------------------------------------------------------ */
 
-const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
+const MonacoEditor = dynamicImport(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[600px] items-center justify-center rounded-md border border-border bg-surface-sunken">
+    <div className="flex flex-1 items-center justify-center rounded-md border border-border bg-surface-sunken">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
     </div>
   ),
@@ -153,185 +154,182 @@ function XmlEditorInner() {
     "Unbenannter Stream";
 
   return (
-    <AppLayout>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Link href={`/wizard?session=${sessionId}`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-primary flex items-center gap-2">
-              <FileCode2 className="h-5 w-5 text-accent" />
-              XML-Editor
-            </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {streamName}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {xmlResult && (
-            <>
-              <Button
-                variant="outline"
-                onClick={handleCopy}
-                disabled={!xmlResult}
-              >
-                <Copy className="h-4 w-4" />
-                Kopieren
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleRegenerate}
-                disabled={generateXml.isPending}
-              >
-                {generateXml.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Neu generieren
-              </Button>
-              <Button onClick={handleDownload}>
-                <Download className="h-4 w-4" />
-                Herunterladen
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Status bar */}
-      {xmlResult && (
-        <div className="flex items-center justify-between mb-4">
+    <AppLayout noScroll>
+      <div className="flex flex-col h-full">
+        {/* Top bar: Stream name + actions */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border/50 bg-surface-raised">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              <span className="text-sm text-success font-medium">Generiert</span>
+            <Link href={`/wizard?session=${sessionId}`}>
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <FileCode2 className="h-4 w-4 text-accent" />
+                {streamName}
+              </h1>
             </div>
-            <Badge variant="outline">{xmlResult.filename}</Badge>
-            {hasUserEdits && (
-              <Badge variant="warning">Bearbeitet</Badge>
+            {xmlResult && (
+              <div className="flex items-center gap-2 ml-2">
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                  <span className="text-xs text-success font-medium">Generiert</span>
+                </div>
+                <Badge variant="outline" className="text-[10px]">{xmlResult.filename}</Badge>
+                {hasUserEdits && (
+                  <Badge variant="warning" className="text-[10px]">Bearbeitet</Badge>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {xmlResult && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Kopieren</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRegenerate}
+                  disabled={generateXml.isPending}
+                >
+                  {generateXml.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  <span className="hidden sm:inline">Neu generieren</span>
+                </Button>
+                <Button size="sm" onClick={handleDownload}>
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Herunterladen</span>
+                </Button>
+              </>
             )}
           </div>
         </div>
-      )}
 
-      {/* Warnings */}
-      {xmlResult?.warnings && xmlResult.warnings.length > 0 && (
-        <div className="rounded-md border border-warning/30 bg-warning-light p-3 mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="h-4 w-4 text-warning" />
-            <span className="text-sm font-medium text-warning">
-              Hinweise ({xmlResult.warnings.length})
-            </span>
+        {/* Warnings */}
+        {xmlResult?.warnings && xmlResult.warnings.length > 0 && (
+          <div className="shrink-0 mx-4 mt-3 rounded-md border border-warning/30 bg-warning-light p-2.5">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+              <span className="text-xs font-medium text-warning">
+                Hinweise ({xmlResult.warnings.length})
+              </span>
+            </div>
+            <ul className="space-y-0.5 pl-5">
+              {xmlResult.warnings.map((w, i) => (
+                <li key={i} className="text-xs text-muted-foreground list-disc">
+                  {w}
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="space-y-0.5 pl-6">
-            {xmlResult.warnings.map((w, i) => (
-              <li key={i} className="text-sm text-muted-foreground list-disc">
-                {w}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
 
-      {/* Loading state for generation */}
-      {generateXml.isPending && !xmlResult && (
-        <div className="flex items-center justify-center py-24">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-accent" />
-            <span className="text-muted-foreground">XML wird generiert...</span>
+        {/* Loading state for generation */}
+        {generateXml.isPending && !xmlResult && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-accent" />
+              <span className="text-muted-foreground">XML wird generiert...</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Error state */}
-      {generateXml.isError && !xmlResult && (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-          <h3 className="text-primary mb-2">Generierung fehlgeschlagen</h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            Bitte ueberpruefen Sie die Wizard-Daten und versuchen Sie es erneut.
-          </p>
-          <Button onClick={handleGenerate}>
-            <RefreshCw className="h-4 w-4" />
-            Erneut versuchen
-          </Button>
-        </div>
-      )}
-
-      {/* Monaco Editor */}
-      {xmlResult && (
-        <div className="rounded-md border border-border overflow-hidden animate-fade-in">
-          <MonacoEditor
-            height="600px"
-            language="xml"
-            value={editedXml ?? xmlResult.xml}
-            theme="vs"
-            onChange={(value) => setEditedXml(value ?? "")}
-            options={{
-              readOnly: false,
-              minimap: { enabled: true },
-              lineNumbers: "on",
-              scrollBeyondLastLine: false,
-              wordWrap: "on",
-              fontSize: 13,
-              padding: { top: 12, bottom: 12 },
-              formatOnPaste: true,
-            }}
-          />
-        </div>
-      )}
-
-      {/* Regenerate Confirmation Dialog */}
-      <Dialog
-        open={showRegenConfirm}
-        onOpenChange={(open) => !open && setShowRegenConfirm(false)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>XML neu generieren?</DialogTitle>
-            <DialogDescription>
-              Sie haben Aenderungen am XML vorgenommen. Beim Neu-Generieren gehen
-              diese Aenderungen verloren.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRegenConfirm(false)}>
-              Abbrechen
-            </Button>
-            <Button variant="destructive" onClick={confirmRegenerate}>
+        {/* Error state */}
+        {generateXml.isError && !xmlResult && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-primary mb-2">Generierung fehlgeschlagen</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Bitte ueberpruefen Sie die Wizard-Daten und versuchen Sie es erneut.
+            </p>
+            <Button onClick={handleGenerate}>
               <RefreshCw className="h-4 w-4" />
-              Neu generieren
+              Erneut versuchen
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        )}
+
+        {/* Split layout: Monaco left, ParameterPanel right */}
+        {xmlResult && (
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 min-h-0 animate-fade-in">
+            {/* Monaco Editor */}
+            <div className="flex-[65] min-w-0 rounded-md border border-border overflow-hidden">
+              <MonacoEditor
+                height="100%"
+                language="xml"
+                value={editedXml ?? xmlResult.xml}
+                theme="vs"
+                onChange={(value) => setEditedXml(value ?? "")}
+                options={{
+                  readOnly: false,
+                  minimap: { enabled: true },
+                  lineNumbers: "on",
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  fontSize: 13,
+                  padding: { top: 12, bottom: 12 },
+                  formatOnPaste: true,
+                }}
+              />
+            </div>
+
+            {/* Parameter Panel */}
+            <div className="flex-[35] min-w-[320px] max-w-[480px] border border-border/60 rounded-md bg-surface-raised overflow-hidden">
+              <ParameterPanel
+                sessionData={session?.data}
+                sessionId={sessionId}
+                onRegenerate={handleGenerate}
+                isRegenerating={generateXml.isPending}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Regenerate Confirmation Dialog */}
+        <Dialog
+          open={showRegenConfirm}
+          onOpenChange={(open) => !open && setShowRegenConfirm(false)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>XML neu generieren?</DialogTitle>
+              <DialogDescription>
+                Sie haben Aenderungen am XML vorgenommen. Beim Neu-Generieren gehen
+                diese Aenderungen verloren.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRegenConfirm(false)}>
+                Abbrechen
+              </Button>
+              <Button variant="destructive" onClick={confirmRegenerate}>
+                <RefreshCw className="h-4 w-4" />
+                Neu generieren
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AppLayout>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Exported page with Suspense boundary                                */
+/* Exported page                                                       */
 /* ------------------------------------------------------------------ */
 
 export default function XmlEditorPage() {
-  return (
-    <Suspense
-      fallback={
-        <AppLayout>
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
-          </div>
-        </AppLayout>
-      }
-    >
-      <XmlEditorInner />
-    </Suspense>
-  );
+  return <XmlEditorInner />;
 }

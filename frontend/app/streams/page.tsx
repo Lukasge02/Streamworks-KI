@@ -138,7 +138,7 @@ export default function StreamsPage() {
       {/* Empty State */}
       {!isLoading && (!sessions || sessions.length === 0) && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted shadow-soft mb-4">
             <FileCode2 className="h-8 w-8 text-muted-foreground" />
           </div>
           <h3 className="text-primary mb-1">Keine Streams vorhanden</h3>
@@ -170,7 +170,7 @@ export default function StreamsPage() {
             return (
               <Card
                 key={session.id}
-                className="card-hover cursor-pointer group"
+                className="card-interactive cursor-pointer group"
                 onClick={() => router.push(`/wizard?session=${session.id}`)}
               >
                 <CardHeader>
