@@ -1,0 +1,180 @@
+StreamWorks Dokumentation - Vollstaendige Referenz
+===================================================
+
+1. Uebersicht
+--------------
+StreamWorks ist ein Enterprise-Workload-Automation-System zur zentralen Steuerung,
+Planung und Ueberwachung von Batch-Jobs und Dateitransfers in heterogenen
+IT-Landschaften. Es ermoeglicht die Definition, Terminierung und Ausfuehrung
+von Auftraegen (Jobs) auf verschiedenen Plattformen wie Windows, Linux, SAP
+und z/OS (Mainframe).
+
+StreamWorks organisiert Jobs in sogenannten "Streams" -- logische Ablaufketten,
+die Abhaengigkeiten zwischen einzelnen Auftraegen definieren. Ein Stream kann
+aus einem einzelnen Job oder aus Hunderten miteinander verknuepften Jobs bestehen.
+
+2. Job-Typen in StreamWorks
+----------------------------
+
+StreamWorks unterstuetzt folgende Job-Typen:
+
+2.1 SAP-Jobs
+SAP-Jobs fuehren ABAP-Programme oder SAP-Transaktionen auf einem SAP-System aus.
+Sie benoetigen folgende Parameter:
+- SAP-System: Die System-ID (z.B. PRD, QAS, DEV)
+- SAP-Client: Die Mandantennummer (z.B. 100, 200, 800)
+- SAP-Variant: Die auszufuehrende Programm-Variante
+- SAP-Report: Der Name des ABAP-Reports (z.B. RSUSR002)
+- SAP-Jobklasse: Prioritaet (A, B oder C)
+- Overwrite: Ob ein bestehender Job ueberschrieben werden darf
+
+Typische Anwendungsfaelle fuer SAP-Jobs:
+- Naechtliche Datenbank-Backups (z.B. taeglich um 22:00 Uhr)
+- Monatsabschluesse (z.B. am letzten Werktag des Monats)
+- SAP-Transport-Importe
+- Batch-Input-Verarbeitung
+- Reportausfuehrungen fuer Controlling und Finanzbuchhaltung
+
+2.2 Standard-Jobs (Betriebssystem-Jobs)
+Standard-Jobs fuehren Kommandos oder Skripte auf dem Betriebssystem des
+Zielrechners aus. Sie werden auf einem StreamWorks-Agenten ausgefuehrt.
+
+Parameter:
+- Agent: Der Name des StreamWorks-Agenten (z.B. PROD_AGENT_01)
+- Kommando: Das auszufuehrende Betriebssystem-Kommando oder Skript
+- Arbeitsverzeichnis: Das Verzeichnis, in dem der Job ausgefuehrt wird
+- Benutzer: Der Betriebssystem-Benutzer, unter dem der Job laeuft
+
+Standard-Jobs werden verwendet fuer:
+- Datenbankwartung (Reorganisation, Indexaufbau)
+- Log-Rotation und Bereinigung
+- Systemueberwachung und Health-Checks
+- Anwendungsstarts und -stops
+- Dateiverarbeitung (Konvertierung, Archivierung)
+
+2.3 Dateitransfer-Jobs (File Transfer)
+Dateitransfer-Jobs kopieren Dateien zwischen verschiedenen Systemen.
+Sie nutzen das StreamWorks File-Transfer-Protokoll.
+
+Parameter:
+- Quellsystem: Der Agent auf dem die Quelldatei liegt
+- Quelldatei: Der vollstaendige Pfad zur Quelldatei
+- Zielsystem: Der Agent auf dem die Datei abgelegt werden soll
+- Zieldatei: Der vollstaendige Pfad fuer die Zieldatei
+- Transfermodus: Binaer oder Text (ASCII)
+- Komprimierung: Ob die Datei komprimiert uebertragen wird
+
+Dateitransfer-Jobs werden verwendet fuer:
+- Schnittstellen-Dateien zwischen Systemen uebertragen
+- Backup-Dateien auf remote Storage kopieren
+- EDI-Daten (Electronic Data Interchange) verteilen
+- Log-Dateien zur zentralen Auswertung sammeln
+
+3. Agenten
+-----------
+
+Ein StreamWorks-Agent ist eine Software-Komponente, die auf einem Zielsystem
+installiert wird und dort Jobs im Auftrag des StreamWorks-Servers ausfuehrt.
+
+Agenten-Typen:
+- Windows-Agent: Fuer Windows-Server (Dienst-basiert)
+- Linux/Unix-Agent: Fuer Linux und Unix-Systeme (Daemon)
+- SAP-Agent: Spezialisierter Agent fuer SAP-Systeme (nutzt RFC-Verbindung)
+- z/OS-Agent: Fuer Mainframe-Systeme
+
+Jeder Agent hat einen eindeutigen Namen und ist einem StreamWorks-Server
+zugeordnet. Agenten melden ihren Status regelmaessig an den Server
+(Heartbeat). Wenn ein Agent nicht erreichbar ist, werden seine Jobs
+als fehlgeschlagen markiert.
+
+Wichtige Agenten-Eigenschaften:
+- Hostname: Die Netzwerkadresse des Zielsystems
+- Port: Der Kommunikationsport (Standard: 7500)
+- Maximale parallele Jobs: Wie viele Jobs gleichzeitig laufen duerfen
+- Betriebssystem: Windows, Linux, AIX, HP-UX, etc.
+
+4. Scheduling (Zeitplanung)
+----------------------------
+
+StreamWorks bietet umfangreiche Moeglichkeiten zur Zeitplanung:
+
+4.1 Frequenzen
+- Taeglich: Job laeuft jeden Tag
+- Woechentlich: An bestimmten Wochentagen (z.B. Mo-Fr)
+- Monatlich: An bestimmten Tagen im Monat
+- Jaehrlich: An bestimmten Tagen im Jahr
+- Intervall: Alle X Minuten/Stunden
+
+4.2 Startzeiten
+Jeder Job kann eine feste Startzeit haben (z.B. 06:00, 22:00, 03:30).
+Zusaetzlich koennen Zeitfenster definiert werden, in denen ein Job
+ausgefuehrt werden darf (z.B. nur zwischen 20:00 und 06:00).
+
+4.3 Kalender
+StreamWorks nutzt Kalender um Feiertage und Betriebsruhetage zu definieren.
+Jobs koennen so konfiguriert werden, dass sie an Feiertagen nicht laufen
+oder auf den naechsten Werktag verschoben werden.
+
+4.4 Abhaengigkeiten
+Jobs koennen von anderen Jobs abhaengig sein:
+- Vorgaenger-Abhaengigkeit: Job B startet erst wenn Job A erfolgreich war
+- Datei-Abhaengigkeit: Job wartet auf das Vorhandensein einer bestimmten Datei
+- Ressourcen-Abhaengigkeit: Job wartet auf eine logische Ressource
+- Zeitliche Abhaengigkeit: Job wartet auf eine bestimmte Uhrzeit
+
+5. Streams
+-----------
+
+Ein Stream ist eine Sammlung von zusammengehoerenden Jobs mit definierten
+Abhaengigkeiten. Streams werden als XML-Dateien definiert und exportiert.
+
+Stream-Eigenschaften:
+- Stream-Name: Eindeutiger Name (z.B. GECK003_SAP-BACKUP-DAILY)
+- Beschreibung: Kurzbeschreibung des Streams
+- Kategorie: Organisationseinheit (z.B. SAP, Infrastruktur, Schnittstelle)
+- Prioritaet: Hoch, Mittel oder Niedrig
+- Kontaktperson: Verantwortlicher Ansprechpartner
+- Agent: Auf welchem System der Stream ausgefuehrt wird
+
+Stream-Namenskonvention:
+Streams werden nach dem Schema GECK003_<Beschreibung> benannt.
+Das Praefix GECK003_ identifiziert den StreamWorks-Mandanten.
+
+6. Monitoring und Benachrichtigung
+------------------------------------
+
+StreamWorks bietet umfangreiche Ueberwachungsfunktionen:
+- Job-Status in Echtzeit (wartend, laufend, erfolgreich, fehlgeschlagen)
+- Automatische E-Mail-Benachrichtigung bei Fehlern
+- Eskalation bei ueberschrittener Laufzeit
+- Dashboard fuer den Ueberblick aller laufenden Streams
+- Joblog-Viewer fuer detaillierte Protokolle
+
+7. Export/Import
+-----------------
+
+Streams koennen als XML-Dateien exportiert und in andere StreamWorks-Instanzen
+importiert werden. Das XML-Format enthaelt alle Job-Definitionen,
+Abhaengigkeiten, Scheduling-Regeln und Parameter.
+
+Der Export erfolgt ueber die StreamWorks-CLI oder die Web-Oberflaeche.
+Typische Anwendungsfaelle:
+- Umgebungstransport (DEV -> QAS -> PRD)
+- Backup der Konfiguration
+- Dokumentation der Automatisierung
+
+8. Haeufig verwendete Begriffe
+-------------------------------
+
+| Begriff | Erklaerung |
+|---------|------------|
+| Stream | Logische Ablaufkette von Jobs |
+| Job | Einzelner Arbeitsauftrag |
+| Agent | Software auf dem Zielsystem, die Jobs ausfuehrt |
+| Schedule | Zeitplan fuer die Ausfuehrung |
+| Dependency | Abhaengigkeit zwischen Jobs |
+| Calendar | Feiertagskalender |
+| Logical Resource | Logische Ressource zur Steuerung von Parallelitaet |
+| Recovery | Automatische Wiederholung bei Fehlern |
+| Overwrite | Ueberschreiben eines bestehenden Jobs |
+| GECK003 | StreamWorks-Mandanten-Praefix |

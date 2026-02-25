@@ -19,8 +19,24 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(400, f"Unsupported file type: {file.content_type}")
 
     file_bytes = await file.read()
+    if len(file_bytes) == 0:
+        raise HTTPException(400, "Leere Datei kann nicht verarbeitet werden")
     if len(file_bytes) > 40 * 1024 * 1024:
         raise HTTPException(400, "File too large (max 40MB)")
+
+    # Check for duplicate filename
+    existing = (
+        get_db()
+        .table("documents")
+        .select("id")
+        .eq("filename", file.filename)
+        .execute()
+    )
+    if existing.data:
+        raise HTTPException(
+            409,
+            f"Dokument '{file.filename}' existiert bereits. Bitte zuerst loeschen oder umbenennen.",
+        )
 
     try:
         result = document_processor.process_document(

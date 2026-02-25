@@ -1,0 +1,129 @@
+StreamWorks FAQ - Haeufig gestellte Fragen
+============================================
+
+F: Was ist StreamWorks?
+A: StreamWorks ist ein Enterprise-Workload-Automation-System, das die zentrale
+   Steuerung, Planung und Ueberwachung von Batch-Jobs und Dateitransfers in
+   heterogenen IT-Landschaften ermoeglicht. Es wird von der Firma Arvato Systems
+   entwickelt und in grossen Unternehmen zur IT-Automatisierung eingesetzt.
+
+F: Welche Job-Typen gibt es in StreamWorks?
+A: StreamWorks unterstuetzt drei Haupt-Job-Typen:
+   1. SAP-Jobs: Fuehren ABAP-Reports oder Transaktionen auf SAP-Systemen aus
+   2. Standard-Jobs: Fuehren Betriebssystem-Kommandos oder Skripte aus
+   3. Dateitransfer-Jobs: Kopieren Dateien zwischen verschiedenen Systemen
+   Zusaetzlich gibt es spezialisierte Job-Typen wie z/OS-Jobs fuer Mainframes
+   und Datenbank-Jobs fuer direkte Datenbankoperationen.
+
+F: Was ist ein Agent in StreamWorks?
+A: Ein Agent ist eine Software-Komponente, die auf einem Zielsystem installiert
+   wird und dort Jobs im Auftrag des StreamWorks-Servers ausfuehrt. Es gibt
+   verschiedene Agenten-Typen fuer Windows, Linux, SAP und z/OS. Jeder Agent
+   hat einen eindeutigen Namen und kommuniziert ueber eine verschluesselte
+   Verbindung mit dem StreamWorks-Server. Agenten senden regelmaessig einen
+   Heartbeat an den Server, um ihre Verfuegbarkeit zu melden.
+
+F: Was ist ein Stream?
+A: Ein Stream ist eine logische Ablaufkette von zusammengehoerenden Jobs mit
+   definierten Abhaengigkeiten. Ein Stream kann aus einem einzelnen Job oder
+   aus Hunderten miteinander verknuepften Jobs bestehen. Streams werden als
+   XML-Dateien definiert und koennen zwischen StreamWorks-Instanzen
+   transportiert werden. Der Stream-Name folgt der Konvention GECK003_<Name>.
+
+F: Wie konfiguriere ich einen taeglichen Backup-Job?
+A: Um einen taeglichen Backup-Job zu konfigurieren, gehen Sie wie folgt vor:
+   1. Erstellen Sie einen neuen Stream im Wizard
+   2. Waehlen Sie den Job-Typ (z.B. SAP fuer SAP-Datenbank-Backups)
+   3. Geben Sie die technischen Parameter ein (SAP-System, Report, Variante)
+   4. Konfigurieren Sie den Zeitplan: Frequenz "Taeglich", Startzeit z.B. "22:00"
+   5. Optional: Definieren Sie Abhaengigkeiten zu anderen Jobs
+   6. Optional: Konfigurieren Sie E-Mail-Benachrichtigung bei Fehlern
+   7. Generieren Sie die XML-Datei und importieren Sie sie in StreamWorks
+
+F: Wie funktioniert die Zeitplanung in StreamWorks?
+A: StreamWorks bietet flexible Zeitplanungs-Optionen:
+   - Frequenz: Taeglich, woechentlich, monatlich, jaehrlich oder intervallbasiert
+   - Startzeit: Feste Uhrzeit (z.B. 22:00)
+   - Kalender: Feiertags- und Betriebsruhetags-Kalender
+   - Abhaengigkeiten: Vorgaenger-Jobs, Datei-Abhaengigkeiten, Ressourcen
+   Jobs koennen so konfiguriert werden, dass sie an Feiertagen nicht laufen
+   oder auf den naechsten Werktag verschoben werden.
+
+F: Was passiert wenn ein Job fehlschlaegt?
+A: Bei einem Job-Fehler bietet StreamWorks mehrere Optionen:
+   1. Automatische Wiederholung (Recovery): Der Job wird nach einer
+      konfigurierbaren Wartezeit erneut gestartet
+   2. E-Mail-Benachrichtigung an die verantwortliche Person
+   3. Eskalation bei mehrfachem Fehlschlag
+   4. Abhaengige Jobs werden angehalten und nicht gestartet
+   5. Im Monitoring-Dashboard wird der Job rot markiert
+   Die Recovery-Konfiguration umfasst die Anzahl der Wiederholungsversuche
+   und die Wartezeit zwischen den Versuchen.
+
+F: Wie exportiere ich einen Stream als XML?
+A: Es gibt mehrere Wege zum XML-Export:
+   1. Ueber den Streamworks-KI Wizard: Im letzten Schritt (Step 6) wird die
+      XML automatisch generiert und kann heruntergeladen werden
+   2. Ueber die StreamWorks-CLI: Kommando "swexport -stream <name> -file <pfad>"
+   3. Ueber die StreamWorks-Web-Oberflaeche: Stream auswaehlen -> Export-Button
+   Das XML-Format enthaelt alle Job-Definitionen, Abhaengigkeiten und Parameter.
+
+F: Was bedeutet das Praefix GECK003_?
+A: GECK003_ ist das Mandanten-Praefix in StreamWorks. Es identifiziert den
+   StreamWorks-Mandanten und wird automatisch jedem Stream-Namen vorangestellt.
+   Das Praefix stellt sicher, dass Streams eindeutig identifizierbar sind,
+   auch wenn sie zwischen verschiedenen StreamWorks-Instanzen transportiert werden.
+   Im Streamworks-KI Wizard wird das Praefix automatisch ergaenzt, wenn es
+   nicht bereits im Stream-Namen enthalten ist.
+
+F: Welche SAP-Systeme kann ich in StreamWorks ansprechen?
+A: StreamWorks kann jedes SAP-System ansprechen, fuer das ein SAP-Agent
+   konfiguriert ist. Typische Systeme sind:
+   - PRD (Produktiv-System)
+   - QAS (Qualitaetssicherung)
+   - DEV (Entwicklungssystem)
+   - SBX (Sandbox)
+   Die Verbindung erfolgt ueber RFC (Remote Function Call). Jedes SAP-System
+   hat eine System-ID und einen oder mehrere Mandanten (Clients).
+
+F: Kann ich Jobs von anderen Jobs abhaengig machen?
+A: Ja, StreamWorks bietet umfangreiche Abhaengigkeits-Definitionen:
+   1. Vorgaenger-Abhaengigkeit: Job B startet erst wenn Job A erfolgreich war
+   2. Datei-Abhaengigkeit: Job wartet auf das Vorhandensein einer Datei
+   3. Logische Ressource: Job wartet auf Verfuegbarkeit einer Ressource
+   4. Zeitliche Abhaengigkeit: Job wartet auf eine bestimmte Uhrzeit
+   5. Externe Abhaengigkeit: Job wartet auf ein Signal von einem anderen System
+   Abhaengigkeiten werden im Stream-XML definiert und koennen im Wizard
+   konfiguriert werden.
+
+F: Was ist eine logische Ressource?
+A: Eine logische Ressource ist ein Steuerungsmechanismus in StreamWorks,
+   der die Parallelitaet von Jobs kontrolliert. Eine Ressource hat einen
+   Namen und einen Zaehler. Jobs, die dieselbe Ressource verwenden, werden
+   so gesteuert, dass maximal so viele Jobs gleichzeitig laufen, wie der
+   Zaehler erlaubt. Beispiel: Eine Ressource "DB_CONNECTION" mit Zaehler 3
+   erlaubt maximal 3 gleichzeitige Datenbankzugriffe.
+
+F: Wie viele Jobs kann ein Agent gleichzeitig ausfuehren?
+A: Die maximale Anzahl paralleler Jobs pro Agent ist konfigurierbar.
+   Standardmaessig sind es 10 parallele Jobs. Der Wert kann in der
+   Agent-Konfiguration angepasst werden. Bei Ueberschreitung werden
+   weitere Jobs in eine Warteschlange gestellt und ausgefuehrt, sobald
+   ein Slot frei wird.
+
+F: Unterstuetzt StreamWorks Cloud-Systeme?
+A: Ja, StreamWorks kann auch Cloud-basierte Systeme ansprechen, sofern
+   ein Agent auf dem Cloud-System installiert werden kann oder ueber
+   einen Proxy-Agenten zugegriffen wird. Unterstuetzt werden u.a.
+   AWS EC2, Azure VMs und Google Cloud Compute Instances. Fuer
+   Cloud-native Dienste (Lambda, Azure Functions) gibt es spezielle
+   Konnektoren.
+
+F: Wie sichere ich meine StreamWorks-Konfiguration?
+A: Es gibt mehrere Backup-Strategien:
+   1. XML-Export aller Streams und Import in ein Versions-Kontrollsystem (Git)
+   2. Datenbank-Backup des StreamWorks-Servers
+   3. Export der Agent-Konfigurationen
+   4. Automatisiertes Backup ueber einen StreamWorks-Job (Meta-Automatisierung)
+   Der empfohlene Ansatz ist der XML-Export aller Streams in ein Git-Repository,
+   da so Aenderungen nachvollziehbar dokumentiert werden.

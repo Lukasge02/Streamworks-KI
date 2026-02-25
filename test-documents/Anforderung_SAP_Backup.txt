@@ -1,0 +1,168 @@
+Anforderung: Taegliches SAP-Datenbank-Backup
+=============================================
+
+Erstellt von: Thomas Mueller, IT-Betrieb
+Datum: 15.01.2026
+Prioritaet: Hoch
+Kategorie: SAP
+
+1. Beschreibung der Anforderung
+---------------------------------
+Wir benoetigen einen automatisierten Job, der taeglich um 22:00 Uhr ein
+vollstaendiges Backup der SAP-Produktivdatenbank erstellt. Das Backup
+soll auf dem SAP-System PRD (Mandant 100) ausgefuehrt werden und den
+ABAP-Report RSDBBCOPY aufrufen.
+
+Der Job soll an Werktagen (Montag bis Freitag) laufen. An Wochenenden
+und Feiertagen soll er nicht gestartet werden, da in dieser Zeit
+Wartungsfenster fuer andere Systeme eingeplant sind.
+
+2. Technische Details
+----------------------
+- Job-Typ: SAP
+- SAP-System: PRD
+- SAP-Client/Mandant: 100
+- SAP-Report: RSDBBCOPY
+- SAP-Variante: FULL_BACKUP
+- SAP-Jobklasse: A (hoechste Prioritaet)
+- Agent: SAP_AGENT_PRD_01
+- Startzeit: 22:00 Uhr
+- Frequenz: Taeglich (nur Werktage)
+- Erwartete Laufzeit: ca. 45 Minuten
+- Maximale Laufzeit: 120 Minuten
+
+3. Abhaengigkeiten
+-------------------
+- Der Backup-Job soll erst starten, nachdem alle SAP-Batch-Jobs des Tages
+  abgeschlossen sind (Vorgaenger: GECK003_SAP-BATCHRUN-DAILY)
+- Nach erfolgreichem Backup soll ein Dateitransfer-Job gestartet werden,
+  der die Backup-Datei auf den zentralen Backup-Server kopiert
+
+4. Benachrichtigung
+--------------------
+- Bei Fehler: E-Mail an sap-admin@firma.de und it-betrieb@firma.de
+- Bei Ueberschreitung der Laufzeit (>90 Minuten): Warnung an sap-admin@firma.de
+
+5. Kontaktdaten
+----------------
+- Ansprechpartner: Thomas Mueller
+- E-Mail: thomas.mueller@firma.de
+- Telefon: +49 521 9876 5432
+- Abteilung: IT-Betrieb / SAP Basis
+
+6. Stream-Konfiguration
+-------------------------
+- Stream-Name: GECK003_SAP-BACKUP-DAILY
+- Beschreibung: Taegliches SAP-Datenbank-Backup PRD
+- Kategorie: SAP
+- Prioritaet: Hoch
+- Recovery: 2 Wiederholungsversuche mit 15 Minuten Wartezeit
+
+
+Anforderung: Monatlicher SAP-Abschluss
+========================================
+
+Erstellt von: Sandra Meier, Finanzbuchhaltung
+Datum: 20.01.2026
+Prioritaet: Hoch
+Kategorie: SAP
+
+1. Beschreibung
+----------------
+Am letzten Werktag jedes Monats muss ein SAP-Monatsabschluss durchgefuehrt
+werden. Dieser besteht aus mehreren Schritten:
+
+a) Saldenvortrag (Report SAPF010)
+b) Periodenwechsel (Report SAPF011)
+c) Abschlussreport (Report RFBILA00)
+d) Export der Bilanzdaten
+
+2. Technische Details
+----------------------
+- Job-Typ: SAP
+- SAP-System: PRD
+- SAP-Client: 100
+- Agent: SAP_AGENT_PRD_01
+- Startzeit: 06:00 Uhr (frueh morgens vor Arbeitsbeginn)
+- Frequenz: Monatlich, letzter Werktag
+- Erwartete Laufzeit: ca. 3 Stunden
+- Stream-Name: GECK003_SAP-MONATSABSCHLUSS
+
+3. Kontaktdaten
+----------------
+- Ansprechpartner: Sandra Meier
+- E-Mail: sandra.meier@firma.de
+- Telefon: +49 521 1234 5678
+- Abteilung: Finanzbuchhaltung
+
+
+Anforderung: Dateitransfer Schnittstelle ERP-CRM
+=================================================
+
+Erstellt von: Klaus Weber, IT-Integration
+Datum: 22.01.2026
+Prioritaet: Mittel
+Kategorie: Schnittstelle
+
+1. Beschreibung
+----------------
+Taeglich um 07:00 Uhr sollen Kundenstammdaten aus dem ERP-System
+(SAP) in das CRM-System uebertragen werden. Die Daten werden als
+CSV-Datei auf dem SAP-Server abgelegt und muessen auf den CRM-Server
+kopiert werden.
+
+2. Technische Details
+----------------------
+- Job-Typ: Dateitransfer
+- Quellsystem/Agent: SAP_AGENT_PRD_01
+- Quelldatei: /data/export/kunden_stamm_YYYYMMDD.csv
+- Zielsystem/Agent: CRM_AGENT_01
+- Zieldatei: /data/import/kunden_stamm_YYYYMMDD.csv
+- Transfermodus: Text (ASCII)
+- Komprimierung: Ja
+- Startzeit: 07:00 Uhr
+- Frequenz: Taeglich (nur Werktage)
+- Stream-Name: GECK003_ERP-CRM-TRANSFER
+
+3. Abhaengigkeit
+-----------------
+Der Dateitransfer darf erst starten, nachdem der SAP-Export-Job
+(GECK003_SAP-EXPORT-KUNDEN) erfolgreich abgeschlossen ist.
+
+4. Kontaktdaten
+----------------
+- Ansprechpartner: Klaus Weber
+- E-Mail: klaus.weber@firma.de
+- Telefon: +49 521 5555 4444
+- Abteilung: IT-Integration
+
+
+Anforderung: Log-Bereinigung Windows-Server
+=============================================
+
+Erstellt von: Anna Schmidt, IT-Infrastruktur
+Datum: 25.01.2026
+Prioritaet: Niedrig
+Kategorie: Infrastruktur
+
+1. Beschreibung
+----------------
+Woechentlich am Sonntag um 03:00 Uhr sollen auf allen Windows-Servern
+die Log-Dateien bereinigt werden, die aelter als 30 Tage sind.
+Das Skript cleanup_logs.ps1 ist bereits auf allen Servern vorhanden.
+
+2. Technische Details
+----------------------
+- Job-Typ: Standard (Betriebssystem)
+- Agent: WIN_AGENT_PROD_01
+- Kommando: powershell.exe -File C:\Scripts\cleanup_logs.ps1 -Days 30
+- Startzeit: 03:00 Uhr
+- Frequenz: Woechentlich (Sonntag)
+- Stream-Name: GECK003_WIN-LOG-CLEANUP
+
+3. Kontaktdaten
+----------------
+- Ansprechpartner: Anna Schmidt
+- E-Mail: anna.schmidt@firma.de
+- Telefon: +49 521 3333 2222
+- Abteilung: IT-Infrastruktur
