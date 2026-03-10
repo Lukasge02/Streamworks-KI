@@ -16,21 +16,22 @@ Jetzt: **~66 Dateien**, nur OpenAI SDK direkt, flache Struktur.
 | Frontend | Next.js 15.5 + TypeScript + TailwindCSS |
 | State Management | React Query (server) + Zustand (client) |
 | LLM | OpenAI GPT-4o / GPT-4o-mini (direkt, kein LlamaIndex) |
-| Datenbank | Supabase (PostgreSQL) -- mit In-Memory Fallback |
+| Datenbank | PostgreSQL 16 (Docker) -- mit In-Memory Fallback fuer lokale Dev |
 | Vector DB | Qdrant |
 | File Storage | MinIO |
 | XML Templating | Jinja2 |
+| Reverse Proxy | Nginx |
 
-## Aktueller Status (Stand: 2026-02-04)
+## Aktueller Status (Stand: 2026-03-10)
 
-### Was funktioniert (Browser-getestet am 2026-02-04)
+### Was funktioniert
 - Backend startet, Health-Endpoint antwortet
 - Wizard Session CRUD (erstellen, lesen, Steps speichern, loeschen)
 - **AI-Analyse**: OpenAI GPT-4o extrahiert 10+ Parameter aus Freitext (95% Konfidenz)
 - **XML-Generierung**: Vollstaendige StreamWorks-XML mit GECK003_ Prefix, SAP-Properties, Kontakt-Split
 - Dropdown-Optionen (Agents, Schedules, SAP-Systeme etc.)
 - Frontend baut und alle 4 Seiten laden (/wizard, /chat, /streams, /xml-editor)
-- In-Memory Fallback wenn Supabase nicht erreichbar
+- In-Memory Fallback wenn PostgreSQL nicht erreichbar
 - **Wizard End-to-End Flow**: Alle 7 Steps im Browser durchgetestet
 - Streams-Uebersicht mit Karten-Grid, SAP-Badge, Session-Verwaltung
 - **XML-Editor Seite**: Editierbarer Monaco Editor, Download, Kopieren, Neu-Generierung mit Warnung
@@ -38,35 +39,35 @@ Jetzt: **~66 Dateien**, nur OpenAI SDK direkt, flache Struktur.
 - **Bidirektionales Field-Mapping**: Frontend-Feldnamen <-> Backend-Template-Variablen
 - **Session-Hydration**: Gespeicherte Wizard-Daten werden korrekt nach Reload geladen
 - Navigation: Wizard -> Editor, Streams -> Editor, Editor -> Wizard (bidirektional)
+- **DB-Umbau**: Supabase SDK -> PostgreSQL (psycopg2) mit chainable Query Builder
+- **Docker-Deployment**: Postgres + Qdrant + MinIO + Backend + Frontend + Nginx
+- **115 Tests** bestehen
 
-### Was noch getestet/behoben werden muss
-- RAG Chat -- braucht Qdrant + MinIO (make infra)
-- Dokument-Upload und -Verarbeitung
-- SSE Streaming Chat
-
-### Behobene Bugs
-- **Hydration-Key Mismatch**: Frontend nutzte `step${i}` statt `step_${i}` -- gespeicherte Sessions konnten Daten nicht laden
-- **AI-Parameter-Verteilung**: Nur 4 von 25+ Parametern wurden aus AI-Analyse verteilt -- jetzt vollstaendig ueber alle Steps
-- **Backend Field-Mappings**: Fehlende Mappings (documentation, agent, priority, schedule_frequency, phone, overwrite) in xml_generator.py ergaenzt
+### Deployment
+- **Server**: Netcup VPS, IP 159.195.20.23
+- **Zugang**: ssh root@159.195.20.23
+- **Stack**: Docker Compose (6 Container: postgres, qdrant, minio, backend, frontend, nginx)
+- **Nginx**: Port 80, proxied `/api/` -> Backend, `/` -> Frontend
+- **Daten**: PostgreSQL + MinIO + Qdrant, alles in Docker Volumes persistent
 
 ### Bekannte Issues
-- Supabase-Projekt (vbtozorzccsbxsypfdbf) ist offline/geloescht -- DNS NXDOMAIN
-  -> db.py faellt automatisch auf In-Memory Storage zurueck
-  -> Daten gehen bei Backend-Neustart verloren
-  -> Fuer Produktion: Neues Supabase-Projekt anlegen + Migrations ausfuehren
-- AI-Schedule-Mapping: AI gibt Umlaute zurueck ("taeglich" vs "täglich"), Select-Match schlaegt fehl
+- AI-Schedule-Mapping: AI gibt Umlaute zurueck ("taeglich" vs "taeglich"), Select-Match schlaegt fehl
   -> Workaround: Frequenz manuell im Dropdown waehlen
   -> Fix: Umlaut-Normalisierung in onApplyParameters einbauen
 
 ## Development Commands
 
 ```bash
+# === Lokale Entwicklung ===
+
 # Infrastructure (Qdrant + MinIO)
 make infra
 
+# Mit PostgreSQL lokal
+make infra-full
+
 # Backend (eigenes Terminal)
 cd backend
-python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python main.py                    # http://localhost:8000
@@ -76,9 +77,21 @@ cd frontend
 npm install
 npm run dev                       # http://localhost:3000
 
-# Schnelltest
-curl http://localhost:8000/health
-curl -X POST http://localhost:8000/api/wizard/sessions
+# === Docker (Produktion) ===
+
+make docker-up          # Alles starten (http://localhost via Nginx)
+make docker-logs        # Logs folgen
+make docker-rebuild     # Nach Code-Aenderungen
+make docker-status      # Container-Status
+
+# === Server-Deployment ===
+
+ssh root@159.195.20.23
+cd /opt/streamworks-ki
+make deploy             # git pull + docker compose up --build -d
+
+# === Tests ===
+cd backend && python -m pytest tests/ -q
 ```
 
 ## Projektstruktur
@@ -90,12 +103,13 @@ streamworks-ki/
 ├── .gitignore
 ├── CLAUDE.md                     # <-- diese Datei
 ├── Makefile
-├── docker-compose.yml            # Qdrant + MinIO + Backend + Frontend
+├── docker-compose.yml            # Postgres + Qdrant + MinIO + Backend + Frontend + Nginx
+├── nginx.conf                    # Reverse Proxy Config
 │
 ├── backend/
 │   ├── main.py                   # FastAPI app + CORS + 5 Router
 │   ├── config.py                 # Pydantic Settings (.env, extra=ignore)
-│   ├── requirements.txt          # 17 Packages (kein torch/LlamaIndex)
+│   ├── requirements.txt          # psycopg2-binary statt supabase
 │   ├── Dockerfile
 │   │
 │   ├── routers/
@@ -106,7 +120,7 @@ streamworks-ki/
 │   │   └── options.py            # Dropdown-Werte
 │   │
 │   ├── services/
-│   │   ├── db.py                 # Supabase Client + In-Memory Fallback
+│   │   ├── db.py                 # PostgreSQL (psycopg2) + In-Memory Fallback
 │   │   ├── parameter_extractor.py  # OpenAI Structured Output
 │   │   ├── xml_generator.py      # Jinja2 XML Rendering
 │   │   ├── vector_store.py       # Qdrant + OpenAI Embeddings
@@ -133,7 +147,8 @@ streamworks-ki/
 │       ├── 002_streams.sql
 │       ├── 003_dropdown_options.sql
 │       ├── 004_chat.sql
-│       └── 005_seed_data.sql
+│       ├── 005_seed_data.sql
+│       └── 006_folders.sql
 │
 └── frontend/
     ├── package.json              # Next.js 15, React 19, TanStack Query
@@ -185,41 +200,6 @@ streamworks-ki/
         └── hooks/
             └── useStreamingChat.ts  # SSE Streaming Hook
 
-## API Endpoints
-
-### Wizard (/api/wizard)
-| Method | Path | Beschreibung |
-|--------|------|-------------|
-| POST | /sessions | Neue Session erstellen |
-| GET | /sessions | Alle Sessions listen |
-| GET | /sessions/{id} | Session abrufen |
-| PUT | /sessions/{id}/steps | Step-Daten speichern |
-| DELETE | /sessions/{id} | Session loeschen |
-| POST | /analyze | KI-Beschreibungsanalyse |
-| POST | /generate-xml | XML generieren |
-
-### RAG Chat (/api/rag)
-| Method | Path | Beschreibung |
-|--------|------|-------------|
-| POST | /chat | Chat (synchron) |
-| POST | /chat/stream | Chat (SSE Streaming) |
-| GET | /sessions | Chat-Sessions listen |
-| GET | /sessions/{id}/messages | Nachrichten abrufen |
-| DELETE | /sessions/{id} | Chat-Session loeschen |
-
-### Documents (/api/documents)
-| Method | Path | Beschreibung |
-|--------|------|-------------|
-| POST | /upload | Dokument hochladen |
-| GET | / | Dokumente listen |
-| DELETE | /{id} | Dokument loeschen |
-
-### Options (/api/options)
-| Method | Path | Beschreibung |
-|--------|------|-------------|
-| GET | /categories | Kategorien listen |
-| GET | /{category} | Optionen einer Kategorie |
-
 ## Architektur-Entscheidungen
 
 | Thema | Entscheidung | Grund |
@@ -228,7 +208,9 @@ streamworks-ki/
 | Reranker | OpenAI GPT-4o-mini | FlashRank hatte Dependency-Konflikte |
 | Backend-Struktur | routers/ + services/ flach | MVP braucht kein DDD |
 | Auth | Keine | Dev-Modus, spaeter ergaenzen |
-| DB Fallback | In-Memory wenn Supabase offline | Lokale Entwicklung ohne Cloud-Abhaengigkeit |
+| DB | PostgreSQL (psycopg2) + In-Memory Fallback | Self-hosted, kein Cloud-Vendor-Lock-in |
+| DB Query Builder | Chainable API (.table().select().eq().execute()) | Gleiche Schnittstelle wie Supabase SDK, kein Router-Code geaendert |
+| Reverse Proxy | Nginx | Gleiche Origin fuer Frontend+Backend, kein CORS noetig |
 | Pydantic Config | extra="ignore" | Frontend-Variablen (NEXT_PUBLIC_*) in .env stoeren nicht |
 | Stream Prefix | GECK003_ | Automatisch prepended wenn nicht vorhanden |
 | Field-Mapping | Bidirektional in xml_generator.py | Frontend-Feldnamen (z.B. `agent`) werden auf Template-Variablen (z.B. `agent_detail`) gemappt |
@@ -238,8 +220,12 @@ streamworks-ki/
 ```bash
 # Pflicht
 OPENAI_API_KEY=sk-...
-SUPABASE_URL=https://xxx.supabase.co   # oder leer fuer In-Memory
-SUPABASE_KEY=eyJ...                     # oder leer fuer In-Memory
+
+# PostgreSQL (Docker setzt DATABASE_URL automatisch)
+# Fuer lokale Dev: leer lassen -> In-Memory Fallback
+DATABASE_URL=
+POSTGRES_USER=streamworks
+POSTGRES_PASSWORD=streamworks123
 
 # Optional (haben Defaults)
 OPENAI_MODEL=gpt-4o
@@ -254,11 +240,3 @@ BACKEND_HOST=0.0.0.0
 BACKEND_PORT=8000
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 ```
-
-## Naechste Schritte
-
-1. **RAG Chat fixen**: Qdrant + MinIO starten (`make infra`), Chat-Endpunkte testen
-2. **Dokument-Upload**: Upload-Flow testen und debuggen
-3. **SSE Streaming**: Chat-Streaming im Browser verifizieren
-4. **Supabase**: Neues Projekt anlegen, Migrations ausfuehren (fuer persistente Daten)
-5. **Polish**: UI-Feinschliff, Umlaut-Normalisierung in AI-Parameter-Verteilung

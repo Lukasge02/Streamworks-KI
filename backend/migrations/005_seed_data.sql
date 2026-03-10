@@ -29,4 +29,4 @@ INSERT INTO dropdown_options (category, label, value, sort_order) VALUES
 ('calendar', 'Werktage DE', 'WERKTAGE_DE', 1),
 ('calendar', 'Alle Tage', 'ALLE_TAGE', 2),
 ('calendar', 'Monatsende', 'MONATSENDE', 3)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (category, value) DO NOTHING;

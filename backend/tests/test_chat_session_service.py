@@ -7,13 +7,13 @@ from services import chat_session_service
 
 def _with_fresh_db(fn):
     """Run fn with a fresh in-memory DB."""
-    original = db_mod._mem_store
-    db_mod._mem_store = _MemStore()
-    db_mod._supabase_available = False
+    original = db_mod._store
+    db_mod._store = _MemStore(persist=False)
     try:
         return fn()
     finally:
-        db_mod._mem_store = original
+        # Restore to None so get_db() re-initializes next time
+        db_mod._store = None
 
 
 class TestChatSessionCRUD:

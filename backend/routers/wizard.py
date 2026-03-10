@@ -14,13 +14,22 @@ from fastapi import APIRouter, HTTPException
 from models.wizard import (
     AnalyzeRequest,
     AnalyzeResponse,
+    FieldChange,
     GenerateXmlRequest,
     GenerateXmlResponse,
+    QuickEditApplyRequest,
+    QuickEditPreview,
+    QuickEditRequest,
     SaveStepRequest,
     WizardSession,
 )
 from services.db import get_db
-from services.parameter_extractor import extract_parameters
+from services.parameter_extractor import (
+    FIELD_LABELS,
+    FIELD_TO_STEP,
+    extract_parameters,
+    parse_edit_instruction,
+)
 from services.xml_generator import generate_xml
 
 logger = logging.getLogger(__name__)
@@ -240,3 +249,186 @@ def generate_xml_endpoint(body: GenerateXmlRequest):
         filename=filename,
         warnings=warnings,
     )
+
+
+# ---------------------------------------------------------------------------
+# Quick Edit
+# ---------------------------------------------------------------------------
+
+
+def _match_session_id(
+    target_name: str | None,
+    session_names: dict[str, str],
+) -> str | None:
+    """Match an AI-detected stream name to a session ID (case-insensitive, substring fallback)."""
+    if not target_name:
+        # Auto-select if only one session exists
+        if len(session_names) == 1:
+            return next(iter(session_names))
+        return None
+
+    target_lower = target_name.lower()
+
+    # Exact match (case-insensitive)
+    for sid, name in session_names.items():
+        if name.lower() == target_lower:
+            return sid
+
+    # Substring match
+    for sid, name in session_names.items():
+        if target_lower in name.lower() or name.lower() in target_lower:
+            return sid
+
+    return None
+
+
+@router.post("/quick-edit", response_model=QuickEditPreview)
+def quick_edit_preview(body: QuickEditRequest):
+    """
+    Parse a natural-language edit instruction and return a preview of changes.
+    """
+    if not body.instruction.strip():
+        raise HTTPException(status_code=400, detail="Instruction must not be empty")
+
+    if not body.session_names:
+        return QuickEditPreview(
+            message="Keine Streams vorhanden.",
+            error="no_sessions",
+        )
+
+    # Parse instruction with AI
+    try:
+        result = parse_edit_instruction(
+            body.instruction,
+            list(body.session_names.values()),
+        )
+    except Exception as exc:
+        logger.exception("Quick edit parsing failed")
+        raise HTTPException(
+            status_code=500,
+            detail=f"KI-Analyse fehlgeschlagen: {str(exc)}",
+        )
+
+    changes_raw = result.get("changes", [])
+    ai_message = result.get("message", "")
+    target_name = result.get("target_stream_name")
+
+    if not changes_raw:
+        return QuickEditPreview(
+            message=ai_message or "Keine Aenderungen erkannt.",
+            error="no_changes",
+        )
+
+    # Match target stream
+    session_id = _match_session_id(target_name, body.session_names)
+
+    if not session_id:
+        return QuickEditPreview(
+            message=f"Stream konnte nicht zugeordnet werden: '{target_name}'. "
+            f"Vorhandene Streams: {', '.join(body.session_names.values())}",
+            error="ambiguous_target",
+        )
+
+    matched_name = body.session_names[session_id]
+
+    # Load current session data for old_value
+    db = get_db()
+    existing = (
+        db.table("sessions")
+        .select("id, data")
+        .eq("id", session_id)
+        .single()
+        .execute()
+    )
+
+    session_data = (existing.data or {}).get("data", {}) or {}
+
+    # Build FieldChange list with old values and step numbers
+    field_changes: list[FieldChange] = []
+    for change in changes_raw:
+        field = change.get("field", "")
+        new_value = change.get("new_value", "")
+
+        step = FIELD_TO_STEP.get(field)
+        if step is None:
+            continue  # Unknown field, skip
+
+        step_key = f"step_{step}"
+        step_data = session_data.get(step_key, {}) or {}
+        old_value = step_data.get(field)
+
+        field_changes.append(
+            FieldChange(
+                field=field,
+                old_value=str(old_value) if old_value is not None else None,
+                new_value=str(new_value),
+                step=step,
+                label=FIELD_LABELS.get(field, field),
+            )
+        )
+
+    if not field_changes:
+        return QuickEditPreview(
+            message="Keine gueltigen Felder in der Anweisung erkannt.",
+            error="invalid_fields",
+        )
+
+    return QuickEditPreview(
+        session_id=session_id,
+        session_name=matched_name,
+        changes=field_changes,
+        message=ai_message,
+    )
+
+
+@router.post("/quick-edit/apply")
+def quick_edit_apply(body: QuickEditApplyRequest):
+    """
+    Apply confirmed quick-edit changes to a session.
+
+    Groups changes by step number and merges them into existing step data.
+    """
+    db = get_db()
+
+    # Load session
+    existing = (
+        db.table("sessions")
+        .select("id, data")
+        .eq("id", body.session_id)
+        .single()
+        .execute()
+    )
+
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session_data = existing.data.get("data", {}) or {}
+
+    # Group changes by step
+    steps_to_update: dict[int, dict[str, str]] = {}
+    for change in body.changes:
+        step = change.step
+        if step not in steps_to_update:
+            steps_to_update[step] = {}
+        steps_to_update[step][change.field] = change.new_value
+
+    # Merge into session data
+    for step_num, fields in steps_to_update.items():
+        step_key = f"step_{step_num}"
+        step_data = session_data.get(step_key, {}) or {}
+        step_data.update(fields)
+        session_data[step_key] = step_data
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    result = (
+        db.table("sessions")
+        .update({"data": session_data, "updated_at": now})
+        .eq("id", body.session_id)
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to apply changes")
+
+    return result.data[0]

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAnalyze, type AnalyzeResult } from "@/lib/api/wizard";
-import { Sparkles, Loader2, ArrowRight, Lightbulb } from "lucide-react";
+import { Sparkles, Loader2, ArrowRight, Lightbulb, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -26,6 +26,82 @@ interface WizardStep0Props {
 }
 
 /* ------------------------------------------------------------------ */
+/* Suggestion-to-field mapping                                         */
+/* ------------------------------------------------------------------ */
+
+const SUGGESTION_FIELD_MAP: Record<string, { key: string; label: string; placeholder: string }[]> = {
+  "agent": [
+    { key: "agent_detail", label: "Agent", placeholder: "z.B. WIN_AGENT_01" },
+  ],
+  "quell": [
+    { key: "source_agent", label: "Quell-Agent", placeholder: "z.B. SRC_AGENT" },
+    { key: "target_agent", label: "Ziel-Agent", placeholder: "z.B. TGT_AGENT" },
+  ],
+  "ziel": [
+    { key: "target_agent", label: "Ziel-Agent", placeholder: "z.B. TGT_AGENT" },
+  ],
+  "skript": [
+    { key: "main_script", label: "Hauptskript", placeholder: "z.B. /scripts/job.sh" },
+  ],
+  "kontakt": [
+    { key: "contact_name", label: "Ansprechpartner", placeholder: "z.B. Max Mustermann" },
+    { key: "contact_email", label: "E-Mail", placeholder: "z.B. max@firma.de" },
+  ],
+  "ansprechpartner": [
+    { key: "contact_name", label: "Ansprechpartner", placeholder: "z.B. Max Mustermann" },
+    { key: "contact_email", label: "E-Mail", placeholder: "z.B. max@firma.de" },
+  ],
+  "zeitplan": [
+    { key: "schedule", label: "Frequenz", placeholder: "z.B. taeglich" },
+    { key: "start_time", label: "Startzeit", placeholder: "z.B. 08:00" },
+  ],
+  "startzeit": [
+    { key: "start_time", label: "Startzeit", placeholder: "z.B. 08:00" },
+  ],
+  "frequenz": [
+    { key: "schedule", label: "Frequenz", placeholder: "z.B. taeglich" },
+  ],
+  "kalender": [
+    { key: "calendar_id", label: "Kalender", placeholder: "z.B. DEFAULT" },
+  ],
+  "name": [
+    { key: "stream_name", label: "Stream-Name", placeholder: "z.B. GECK003_REPORT" },
+  ],
+  "stream-name": [
+    { key: "stream_name", label: "Stream-Name", placeholder: "z.B. GECK003_REPORT" },
+  ],
+  "datei": [
+    { key: "source_file_pattern", label: "Quell-Dateimuster", placeholder: "z.B. /data/*.csv" },
+    { key: "target_file_path", label: "Ziel-Pfad", placeholder: "z.B. /import/" },
+  ],
+  "sap": [
+    { key: "sap_system", label: "SAP-System", placeholder: "z.B. PRD" },
+    { key: "sap_report", label: "SAP-Report", placeholder: "z.B. ZFINANCE01" },
+  ],
+};
+
+function getSuggestedFields(suggestions: string[]): { key: string; label: string; placeholder: string }[] {
+  const fields: { key: string; label: string; placeholder: string }[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const suggestion of suggestions) {
+    const lower = suggestion.toLowerCase();
+    for (const [keyword, mappedFields] of Object.entries(SUGGESTION_FIELD_MAP)) {
+      if (lower.includes(keyword)) {
+        for (const field of mappedFields) {
+          if (!seenKeys.has(field.key)) {
+            seenKeys.add(field.key);
+            fields.push(field);
+          }
+        }
+      }
+    }
+  }
+
+  return fields;
+}
+
+/* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -36,6 +112,7 @@ export default function WizardStep0({
 }: WizardStep0Props) {
   const analyze = useAnalyze();
   const [result, setResult] = useState<AnalyzeResult | null>(null);
+  const [additionalParams, setAdditionalParams] = useState<Record<string, string>>({});
 
   const description = (data.description as string) ?? "";
 
@@ -44,6 +121,7 @@ export default function WizardStep0({
     try {
       const res = await analyze.mutateAsync({ description: description.trim() });
       setResult(res);
+      setAdditionalParams({});
     } catch {
       // mutation error handled by react-query
     }
@@ -51,8 +129,15 @@ export default function WizardStep0({
 
   function handleApply() {
     if (!result) return;
+    // Merge AI-extracted params with manually added ones
+    const merged = { ...result.parameters };
+    for (const [key, value] of Object.entries(additionalParams)) {
+      if (value.trim()) {
+        merged[key] = value.trim();
+      }
+    }
     onApplyParameters?.({
-      ...result.parameters,
+      ...merged,
       job_type: result.job_type,
     });
     onChange({ ...data, applied: true });
@@ -66,6 +151,16 @@ export default function WizardStep0({
     if (c >= 0.5) return "warning";
     return "destructive";
   }
+
+  /* ---- Suggested fields from suggestions ---- */
+  const suggestedFields = result?.suggestions
+    ? getSuggestedFields(result.suggestions)
+    : [];
+
+  // Filter out fields that were already extracted by AI
+  const missingFields = suggestedFields.filter(
+    (f) => !result?.parameters[f.key] || result.parameters[f.key] === ""
+  );
 
   return (
     <div className="space-y-6">
@@ -194,6 +289,45 @@ export default function WizardStep0({
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Inline fields for missing parameters */}
+            {missingFields.length > 0 && (
+              <div>
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  Fehlende Angaben ergaenzen
+                </span>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  {missingFields.map((field) => (
+                    <div key={field.key}>
+                      <label
+                        htmlFor={`additional_${field.key}`}
+                        className="text-xs font-medium text-muted-foreground mb-1 block"
+                      >
+                        {field.label}
+                      </label>
+                      <input
+                        id={`additional_${field.key}`}
+                        type="text"
+                        className={cn(
+                          "flex h-9 w-full rounded-md border border-border bg-surface-raised px-3 py-1 text-sm",
+                          "shadow-sm transition-colors placeholder:text-muted-foreground/60",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
+                        )}
+                        placeholder={field.placeholder}
+                        value={additionalParams[field.key] ?? ""}
+                        onChange={(e) =>
+                          setAdditionalParams((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

@@ -51,7 +51,7 @@ async def chat(body: ChatRequest):
         sources=[
             Source(
                 document_name=s.get("document_name", ""),
-                chunk_text=s.get("text", ""),
+                chunk_text=s.get("text_preview") or s.get("text", ""),
                 score=s.get("score", 0),
                 page=s.get("page"),
             )

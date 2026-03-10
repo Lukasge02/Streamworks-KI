@@ -3,7 +3,8 @@
 import os
 import pytest
 
-# Force in-memory storage by clearing Supabase env vars before any import
+# Force in-memory storage by clearing DB env vars before any import
+os.environ.pop("DATABASE_URL", None)
 os.environ.pop("SUPABASE_URL", None)
 os.environ.pop("SUPABASE_KEY", None)
 os.environ["OPENAI_API_KEY"] = "sk-test-fake-key"
@@ -15,7 +16,7 @@ from services.db import _MemStore
 @pytest.fixture()
 def fresh_memstore():
     """Return a fresh in-memory store with seed data, isolated per test."""
-    store = _MemStore()
+    store = _MemStore(persist=False)
     return store
 
 
@@ -24,10 +25,8 @@ def client():
     """FastAPI TestClient with a fresh in-memory DB per test."""
     import services.db as db_mod
 
-    original_store = db_mod._mem_store
-    db_mod._mem_store = _MemStore()
-    # Force in-memory path
-    db_mod._supabase_available = False
+    original_store = db_mod._store
+    db_mod._store = _MemStore(persist=False)
 
     from fastapi.testclient import TestClient
     from main import app
@@ -36,7 +35,7 @@ def client():
         yield c
 
     # Restore
-    db_mod._mem_store = original_store
+    db_mod._store = original_store
 
 
 @pytest.fixture()

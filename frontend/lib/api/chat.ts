@@ -113,12 +113,17 @@ export function useDocuments() {
 export function useUploadDocument() {
   const queryClient = useQueryClient();
 
-  return useMutation<UploadResponse, Error, File>({
-    mutationFn: async (file) => {
+  return useMutation<UploadResponse, Error, { file: File; folderId?: string | null }>({
+    mutationFn: async ({ file, folderId }) => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(`${BACKEND_URL}/api/documents/upload`, {
+      let url = `${BACKEND_URL}/api/documents/upload`;
+      if (folderId) {
+        url += `?folder_id=${encodeURIComponent(folderId)}`;
+      }
+
+      const res = await fetch(url, {
         method: "POST",
         body: formData,
         // Do NOT set Content-Type header -- browser sets multipart boundary
@@ -135,6 +140,7 @@ export function useUploadDocument() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.documents });
+      queryClient.invalidateQueries({ queryKey: ["doc-folders"] });
     },
   });
 }

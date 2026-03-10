@@ -9,9 +9,8 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o"
     openai_embed_model: str = "text-embedding-3-large"
 
-    # Supabase
-    supabase_url: str = ""
-    supabase_key: str = ""
+    # Database (PostgreSQL)
+    database_url: str = ""
 
     # Qdrant
     qdrant_url: str = "http://localhost:6333"
@@ -29,7 +28,7 @@ class Settings(BaseSettings):
     backend_port: int = 8000
 
     # CORS
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002"
 
     # Environment
     environment: str = "development"

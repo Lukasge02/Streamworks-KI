@@ -1,16 +1,15 @@
-.PHONY: dev dev-backend dev-frontend infra install migrate docker-up docker-down docker-logs docker-rebuild docker-status
+.PHONY: dev dev-backend dev-frontend infra install docker-up docker-down docker-logs docker-rebuild docker-status deploy
 
 # ── Docker (Production / Server-Deployment) ──────────────────────────
 
-# Alles starten: Qdrant + MinIO + Backend + Frontend
+# Alles starten: Postgres + Qdrant + MinIO + Backend + Frontend + Nginx
 docker-up:
 	docker compose up --build -d
 	@echo ""
 	@echo "Streamworks-KI laeuft:"
-	@echo "  Frontend:      http://localhost:3000"
-	@echo "  Backend API:   http://localhost:8000"
-	@echo "  Health Check:  http://localhost:8000/health"
-	@echo "  MinIO Console: http://localhost:9001"
+	@echo "  App:           http://localhost (via Nginx)"
+	@echo "  Backend API:   http://localhost/api"
+	@echo "  Health Check:  http://localhost/health"
 	@echo ""
 	@echo "Logs: make docker-logs"
 
@@ -24,7 +23,7 @@ docker-logs:
 
 # Neu bauen (nach Code-Aenderungen)
 docker-rebuild:
-	docker compose up --build -d --force-recreate backend frontend
+	docker compose up --build -d --force-recreate backend frontend nginx
 
 # Status aller Container anzeigen
 docker-status:
@@ -32,9 +31,15 @@ docker-status:
 
 # ── Lokale Entwicklung ───────────────────────────────────────────────
 
-# Nur Infrastruktur starten (Qdrant + MinIO)
+# Nur Infrastruktur starten (Qdrant + MinIO, optional Postgres)
 infra:
 	docker compose up qdrant minio -d
+
+# Infra mit Postgres (wenn man lokal auch PostgreSQL nutzen will)
+infra-full:
+	docker compose up postgres qdrant minio -d
+	@echo "PostgreSQL laeuft auf localhost:5432"
+	@echo "DATABASE_URL=postgresql://streamworks:streamworks123@localhost:5432/streamworks"
 
 # Alle Dependencies installieren
 install:
@@ -56,13 +61,15 @@ dev:
 	@echo "  2. make dev-backend  # FastAPI auf :8000"
 	@echo "  3. make dev-frontend # Next.js auf :3000"
 	@echo ""
+	@echo "Mit PostgreSQL lokal:"
+	@echo "  1. make infra-full   # Postgres + Qdrant + MinIO"
+	@echo "  2. DATABASE_URL=postgresql://streamworks:streamworks123@localhost:5432/streamworks make dev-backend"
+	@echo ""
 	@echo "Oder alles in Docker:  make docker-up"
 
-# SQL-Migrationen ausfuehren
-migrate:
-	@echo "Run migrations in Supabase SQL Editor:"
-	@echo "  backend/migrations/001_sessions.sql"
-	@echo "  backend/migrations/002_streams.sql"
-	@echo "  backend/migrations/003_dropdown_options.sql"
-	@echo "  backend/migrations/004_chat.sql"
-	@echo "  backend/migrations/005_seed_data.sql"
+# Server-Deployment (auf VPS ausfuehren)
+deploy:
+	git pull
+	docker compose up --build -d
+	@echo "Deployment abgeschlossen!"
+	docker compose ps

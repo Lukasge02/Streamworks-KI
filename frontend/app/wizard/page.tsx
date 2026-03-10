@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 import {
   useWizardSession,
   useCreateSession,
-  useSaveStep,
 } from "@/lib/api/wizard";
+import { apiFetch } from "@/lib/api/config";
 import {
   Loader2,
   ChevronLeft,
@@ -63,10 +63,10 @@ interface StepValidation {
 const STEP_VALIDATION: Record<number, StepValidation> = {
   0: { required: [], optional: [] }, // KI-Analyse - immer OK wenn besucht
   1: { required: ['stream_name'], optional: ['short_description', 'documentation', 'priority'] },
-  2: { required: [], optional: ['contact_name', 'email', 'phone', 'team'] },
+  2: { required: ['contact_name', 'email'], optional: ['phone', 'team'] },
   3: { required: ['job_type'], optional: [] },
   4: { required: [], optional: [] }, // Dynamisch je nach job_type
-  5: { required: [], optional: ['schedule_frequency', 'start_time', 'calendar'] },
+  5: { required: ['schedule_frequency'], optional: ['start_time', 'calendar'] },
   6: { required: [], optional: [] }, // Vorschau - immer OK
 };
 
@@ -108,10 +108,7 @@ function getStepValidationStatus(
     if (validation.required.length > 0) {
       return 'error';
     }
-    // Keine Pflichtfelder aber optionale -> warning wenn besucht
-    if (validation.optional.length > 0) {
-      return 'warning';
-    }
+    // Keine Pflichtfelder, nur optionale -> complete (alles ist optional)
     return 'complete';
   }
 
@@ -275,18 +272,9 @@ function WizardInner() {
 
   const sessionId = searchParams.get("session");
 
-  /* ---- Auto-create session if none provided ---- */
+  /* ---- Lazy session creation (only when user actually saves data) ---- */
   const createSession = useCreateSession();
-
-  useEffect(() => {
-    if (!sessionId && !createSession.isPending) {
-      createSession
-        .mutateAsync()
-        .then((s) => router.replace(`/wizard?session=${s.id}`))
-        .catch(() => toast.error("Sitzung konnte nicht erstellt werden."));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  const creatingRef = useRef(false); // prevent double-creation
 
   /* ---- Fetch session ---- */
   const {
@@ -325,15 +313,70 @@ function WizardInner() {
     }
   }, [session]);
 
-  /* ---- Save step mutation ---- */
-  const saveStep = useSaveStep(sessionId ?? "");
+  /* ---- Track if save is in progress ---- */
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stepDataRef = useRef(stepData);
+  const currentStepRef = useRef(currentStep);
+  stepDataRef.current = stepData;
+  currentStepRef.current = currentStep;
+
+  /* ---- Auto-save: debounced, triggers on every stepData change ---- */
+  const autoSave = useCallback(async () => {
+    if (savingRef.current) return;
+    const step = currentStepRef.current;
+    const data = stepDataRef.current[step] ?? {};
+    const hasData = Object.keys(data).length > 0;
+    if (!hasData) return;
+
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      // ensureSession is inlined here to use fresh sessionId from searchParams
+      let sid = new URLSearchParams(window.location.search).get("session");
+      if (!sid) {
+        if (creatingRef.current) return;
+        creatingRef.current = true;
+        try {
+          const s = await createSession.mutateAsync();
+          router.replace(`/wizard?session=${s.id}`);
+          sid = s.id;
+        } catch {
+          toast.error("Sitzung konnte nicht erstellt werden.");
+          return;
+        } finally {
+          creatingRef.current = false;
+        }
+      }
+      await apiFetch(`/api/wizard/sessions/${sid}/steps`, {
+        method: "PUT",
+        body: JSON.stringify({ step, data }),
+      });
+    } catch {
+      // silent — explicit saves still show toast
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  }, [createSession, router, toast]);
 
   const handleStepDataChange = useCallback(
     (data: Record<string, any>) => {
       setStepData((prev) => ({ ...prev, [currentStep]: data }));
+      // Debounced auto-save (1s after last keystroke)
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(() => autoSave(), 1000);
     },
-    [currentStep]
+    [currentStep, autoSave]
   );
+
+  // Cleanup auto-save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
 
   /* ---- Resolve job type for step 4 ---- */
   const jobType =
@@ -352,14 +395,42 @@ function WizardInner() {
 
   /* ---- Navigation ---- */
 
-  async function saveCurrentStep() {
-    if (!sessionId) return;
-    const data = stepData[currentStep] ?? {};
+  async function ensureSession(): Promise<string | null> {
+    if (sessionId) return sessionId;
+    if (creatingRef.current) return null;
+    creatingRef.current = true;
     try {
-      await saveStep.mutateAsync({ step: currentStep, data });
+      const s = await createSession.mutateAsync();
+      router.replace(`/wizard?session=${s.id}`);
+      return s.id;
+    } catch {
+      toast.error("Sitzung konnte nicht erstellt werden.");
+      return null;
+    } finally {
+      creatingRef.current = false;
+    }
+  }
+
+  async function saveCurrentStep() {
+    const data = stepData[currentStep] ?? {};
+    // Nothing to save if step is empty and no session exists yet
+    const hasData = Object.keys(data).length > 0;
+    if (!sessionId && !hasData) return;
+
+    setIsSaving(true);
+    try {
+      const sid = await ensureSession();
+      if (!sid) return;
+
+      await apiFetch(`/api/wizard/sessions/${sid}/steps`, {
+        method: "PUT",
+        body: JSON.stringify({ step: currentStep, data }),
+      });
     } catch {
       toast.error("Schritt konnte nicht gespeichert werden.");
       throw new Error("save failed");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -398,7 +469,7 @@ function WizardInner() {
 
   /* ---- Loading / Missing session ---- */
 
-  if (!sessionId || sessionLoading) {
+  if (sessionId && sessionLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-24">
@@ -468,12 +539,12 @@ function WizardInner() {
             // Step 5: Zeitplan
             const step5Updates: Record<string, any> = {};
             if (params.schedule) {
-              // Normalize umlauts: AI may return "täglich" but dropdowns use "taeglich"
+              // Normalize umlauts: AI may return umlauts but dropdowns use ascii
               const umlautMap: Record<string, string> = {
-                "täglich": "taeglich",
-                "wöchentlich": "woechentlich",
+                "taeglich": "taeglich",
+                "woechentlich": "woechentlich",
                 "monatlich": "monatlich",
-                "stündlich": "stuendlich",
+                "stuendlich": "stuendlich",
                 "einmalig": "einmalig",
               };
               const normalized = umlautMap[params.schedule.toLowerCase()] || params.schedule;
@@ -497,6 +568,7 @@ function WizardInner() {
       <WizardStep1
         data={stepData[1] ?? {}}
         onChange={handleStepDataChange}
+        jobType={jobType}
       />
     ),
     2: (
@@ -528,10 +600,40 @@ function WizardInner() {
       <WizardStep6
         data={stepData}
         onChange={handleStepDataChange}
-        sessionId={sessionId}
+        sessionId={sessionId ?? ""}
+        getValidationStatus={getValidationStatusForStep}
         onNavigateToEditor={async () => {
+          // Auto-generate documentation if checkbox was set
+          if (stepData[1]?.auto_documentation) {
+            const parts: string[] = [];
+            const s1 = stepData[1] ?? {};
+            const s2 = stepData[2] ?? {};
+            const s3 = stepData[3] ?? {};
+            const s4 = stepData[4] ?? {};
+            const s5 = stepData[5] ?? {};
+            if (s1.stream_name) parts.push(`Stream: ${s1.stream_name}`);
+            if (s1.short_description) parts.push(`Beschreibung: ${s1.short_description}`);
+            if (s3.job_type) parts.push(`Job-Typ: ${s3.job_type}`);
+            if (s2.contact_name) parts.push(`Ansprechpartner: ${s2.contact_name}`);
+            if (s2.email) parts.push(`E-Mail: ${s2.email}`);
+            if (s4.agent) parts.push(`Agent: ${s4.agent}`);
+            if (s4.main_script) parts.push(`Skript: ${s4.main_script}`);
+            if (s4.source_agent) parts.push(`Quell-Agent: ${s4.source_agent}`);
+            if (s4.target_agent) parts.push(`Ziel-Agent: ${s4.target_agent}`);
+            if (s4.sap_report) parts.push(`SAP-Report: ${s4.sap_report}`);
+            if (s5.schedule_frequency) parts.push(`Frequenz: ${s5.schedule_frequency}`);
+            if (s5.start_time) parts.push(`Startzeit: ${s5.start_time}`);
+            if (parts.length > 0) {
+              setStepData((prev) => ({
+                ...prev,
+                1: { ...prev[1], documentation: parts.join('. ') + '.' },
+              }));
+            }
+          }
+          const sid = await ensureSession();
+          if (!sid) return;
           await saveCurrentStep();
-          router.push(`/xml-editor?session=${sessionId}`);
+          router.push(`/xml-editor?session=${sid}`);
         }}
       />
     ),
@@ -576,7 +678,7 @@ function WizardInner() {
             <Button
               variant="outline"
               onClick={goBack}
-              disabled={isFirst || saveStep.isPending}
+              disabled={isFirst || isSaving}
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="hidden sm:inline">Zurueck</span>
@@ -609,8 +711,8 @@ function WizardInner() {
             </div>
 
             {!isLast && (
-              <Button onClick={goNext} disabled={saveStep.isPending}>
-                {saveStep.isPending ? (
+              <Button onClick={goNext} disabled={isSaving}>
+                {isSaving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>

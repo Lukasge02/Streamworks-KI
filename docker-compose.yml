@@ -1,8 +1,24 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: streamworks
+      POSTGRES_USER: ${POSTGRES_USER:-streamworks}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-streamworks123}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-streamworks}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   qdrant:
     image: qdrant/qdrant:v1.13.2
-    expose:
-      - "6333"
     volumes:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
@@ -16,10 +32,6 @@ services:
   minio:
     image: minio/minio:RELEASE.2025-01-20T14-49-07Z
     command: server /data --console-address ":9001"
-    expose:
-      - "9000"
-    ports:
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-streamworks}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-streamworks123}
@@ -35,17 +47,16 @@ services:
 
   backend:
     build: ./backend
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
     env_file: .env
     environment:
-      # Docker-interne Service-Namen ueberschreiben localhost aus .env
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-streamworks}:${POSTGRES_PASSWORD:-streamworks123}@postgres:5432/streamworks
       - QDRANT_URL=http://qdrant:6333
       - MINIO_ENDPOINT=minio:9000
       - ENVIRONMENT=production
-      # CORS: Frontend laeuft im Browser -> braucht die EXTERNE URL
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - CORS_ORIGINS=http://localhost,http://159.195.20.23
     depends_on:
+      postgres:
+        condition: service_healthy
       qdrant:
         condition: service_healthy
       minio:
@@ -62,15 +73,26 @@ services:
     build:
       context: ./frontend
       args:
-        # Baked into Next.js at build time -- muss die EXTERNE Backend-URL sein
-        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000}
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+        # Leer = relative URLs (/api/...) -- Nginx proxied alles
+        NEXT_PUBLIC_BACKEND_URL: ""
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
 
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
 volumes:
+  postgres_data:
   qdrant_data:
   minio_data:

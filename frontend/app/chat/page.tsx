@@ -112,22 +112,18 @@ function MessageBubble({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+      className={`flex gap-3 ${isUser ? "justify-end" : "flex-row"}`}
     >
-      {/* Avatar */}
-      <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-accent/10 text-accent"
-        }`}
-      >
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-      </div>
+      {/* Avatar — only for assistant */}
+      {!isUser && (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+          <Bot className="h-4 w-4" />
+        </div>
+      )}
 
       {/* Content */}
       <div
-        className={`flex max-w-[75%] flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}
+        className={`flex max-w-[85%] flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}
       >
         <div
           className={`rounded-lg px-4 py-3 text-sm leading-relaxed ${
@@ -199,7 +195,7 @@ function StreamingBubble({
       </div>
 
       {/* Content */}
-      <div className="flex max-w-[75%] flex-col gap-1.5">
+      <div className="flex max-w-[85%] flex-col gap-1.5">
         <div className="rounded-lg border border-border bg-surface-raised px-4 py-3 text-sm leading-relaxed text-primary shadow-card">
           {text ? (
             <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-pre:bg-surface-sunken prose-pre:text-xs">
@@ -263,11 +259,11 @@ function EmptyState() {
       </div>
       <div>
         <h2 className="text-lg font-semibold text-primary">
-          RAG-Wissensassistent
+          Streamworks Hilfe
         </h2>
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
-          Stellen Sie eine Frage zu Ihren Dokumenten. Der Assistent durchsucht
-          die Wissensbasis und liefert quellenbasierte Antworten.
+          Stellen Sie Fragen zur Streamworks-Dokumentation. Der Assistent
+          durchsucht die Wissensbasis und liefert quellenbasierte Antworten.
         </p>
       </div>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
@@ -428,7 +424,7 @@ export default function ChatPage() {
 
   return (
     <AppLayout noScroll>
-      <div className="flex h-full">
+      <div className="flex h-full pt-1">
         {/* Sidebar */}
         <ChatSidebar
           activeSessionId={activeSessionId}
@@ -437,13 +433,13 @@ export default function ChatPage() {
         />
 
         {/* Main chat area */}
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col bg-surface-raised">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {!hasMessages ? (
               <EmptyState />
             ) : (
-              <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+              <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6">
                 <AnimatePresence initial={false}>
                   {displayMessages.map((msg) => (
                     <MessageBubble
@@ -472,7 +468,7 @@ export default function ChatPage() {
 
           {/* Input bar */}
           <div className="border-t border-border bg-surface-raised px-4 py-3">
-            <div className="mx-auto flex w-full max-w-3xl items-end gap-3">
+            <div className="mx-auto flex w-full max-w-5xl items-end gap-3">
               <div className="relative flex-1">
                 <textarea
                   ref={textareaRef}
@@ -498,7 +494,7 @@ export default function ChatPage() {
                 )}
               </Button>
             </div>
-            <p className="mx-auto mt-1.5 max-w-3xl text-center text-[10px] text-muted-foreground/60">
+            <p className="mx-auto mt-1.5 max-w-5xl text-center text-[10px] text-muted-foreground/60">
               KI-generierte Antworten koennen Fehler enthalten. Quellen pruefen.
             </p>
           </div>

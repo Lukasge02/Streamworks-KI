@@ -14,18 +14,34 @@ import {
   Eye,
   FileCode2,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /* Props                                                               */
 /* ------------------------------------------------------------------ */
 
+type ValidationStatus = 'complete' | 'warning' | 'error' | 'pending';
+
 interface WizardStep6Props {
   data: Record<number, Record<string, any>>;
   onChange: (data: Record<string, any>) => void;
   sessionId: string;
+  getValidationStatus?: (stepIndex: number) => ValidationStatus;
   onNavigateToEditor: () => Promise<void>;
 }
+
+/* ------------------------------------------------------------------ */
+/* Step labels for error messages                                      */
+/* ------------------------------------------------------------------ */
+
+const STEP_LABELS: Record<number, string> = {
+  1: "Grunddaten",
+  2: "Kontakt",
+  3: "Job-Typ",
+  4: "Parameter",
+  5: "Zeitplan",
+};
 
 /* ------------------------------------------------------------------ */
 /* Summary Section                                                     */
@@ -86,6 +102,7 @@ export default function WizardStep6({
   data,
   onChange,
   sessionId,
+  getValidationStatus,
   onNavigateToEditor,
 }: WizardStep6Props) {
   const toast = useToast();
@@ -98,7 +115,20 @@ export default function WizardStep6({
 
   const [isNavigating, setIsNavigating] = useState(false);
 
+  // Check which steps have errors
+  const incompleteSteps: string[] = [];
+  if (getValidationStatus) {
+    for (let i = 1; i <= 5; i++) {
+      const status = getValidationStatus(i);
+      if (status === 'error') {
+        incompleteSteps.push(STEP_LABELS[i] || `Schritt ${i}`);
+      }
+    }
+  }
+  const hasErrors = incompleteSteps.length > 0;
+
   async function handleNavigateToEditor() {
+    if (hasErrors) return;
     setIsNavigating(true);
     try {
       await onNavigateToEditor();
@@ -208,10 +238,19 @@ export default function WizardStep6({
             Generieren Sie die Streamworks-XML und bearbeiten Sie diese im Editor.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {hasErrors && (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                Folgende Schritte haben fehlende Pflichtfelder:{" "}
+                <strong>{incompleteSteps.join(", ")}</strong>
+              </span>
+            </div>
+          )}
           <Button
             onClick={handleNavigateToEditor}
-            disabled={isNavigating}
+            disabled={isNavigating || hasErrors}
             size="lg"
           >
             {isNavigating ? (

@@ -11,7 +11,7 @@
   --color-accent-light: #3388dd;
 
   /* Surfaces */
-  --color-surface: #f8fafc;
+  --color-surface: #f0f2f5;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f1f5f9;
 
@@ -32,8 +32,7 @@
   --color-info: #0284c7;
 
   /* Spacing & Layout */
-  --sidebar-width: 260px;
-  --header-height: 56px;
+  --header-height: 48px;
   --radius: 0.5rem;
 }
 
@@ -80,10 +79,6 @@
 
   .card-interactive {
     @apply transition-all duration-200 hover:shadow-elevated hover:-translate-y-0.5;
-  }
-
-  .glass {
-    @apply bg-white/80 backdrop-blur-md;
   }
 
   .focus-ring {
