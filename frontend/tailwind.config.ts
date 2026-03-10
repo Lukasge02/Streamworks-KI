@@ -9,6 +9,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        header: "#003366",
+        "content-bg": "#f0f2f5",
         primary: {
           DEFAULT: "#003366",
           light: "#004d99",
@@ -22,7 +24,7 @@ const config: Config = {
           foreground: "#ffffff",
         },
         surface: {
-          DEFAULT: "#f8fafc",
+          DEFAULT: "#f0f2f5",
           raised: "#ffffff",
           sunken: "#f1f5f9",
         },

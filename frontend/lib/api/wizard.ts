@@ -136,3 +136,56 @@ export function useGenerateXml() {
       }),
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Quick Edit                                                          */
+/* ------------------------------------------------------------------ */
+
+export interface FieldChange {
+  field: string;
+  old_value: string | null;
+  new_value: string;
+  step: number;
+  label: string;
+}
+
+export interface QuickEditPreview {
+  session_id: string | null;
+  session_name: string | null;
+  changes: FieldChange[];
+  message: string;
+  error: string | null;
+}
+
+export function useQuickEdit() {
+  return useMutation<
+    QuickEditPreview,
+    Error,
+    { instruction: string; session_names: Record<string, string> }
+  >({
+    mutationFn: (body) =>
+      apiFetch<QuickEditPreview>("/api/wizard/quick-edit", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  });
+}
+
+export function useApplyQuickEdit() {
+  const qc = useQueryClient();
+
+  return useMutation<
+    WizardSession,
+    Error,
+    { session_id: string; changes: FieldChange[] }
+  >({
+    mutationFn: (body) =>
+      apiFetch<WizardSession>("/api/wizard/quick-edit/apply", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.sessions });
+    },
+  });
+}
