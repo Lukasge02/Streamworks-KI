@@ -668,7 +668,7 @@ function WizardInner() {
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
-            <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={currentStep}>
+            <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto animate-fade-in" key={currentStep}>
               {stepComponents[currentStep]}
             </div>
           </div>
