@@ -165,7 +165,7 @@ export default function WizardStep0({
   return (
     <div className="space-y-6">
       {/* Description Input */}
-      <Card>
+      <Card accent>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-accent" />
@@ -214,7 +214,7 @@ export default function WizardStep0({
 
       {/* Results */}
       {result && (
-        <Card className="animate-fade-in">
+        <Card accent className="animate-fade-in">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Analyse-Ergebnis</CardTitle>

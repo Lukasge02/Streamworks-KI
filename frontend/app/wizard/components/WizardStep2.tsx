@@ -35,7 +35,7 @@ export default function WizardStep2({ data, onChange }: WizardStep2Props) {
   const emailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   return (
-    <Card>
+    <Card accent>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5 text-accent" />

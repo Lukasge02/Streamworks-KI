@@ -141,7 +141,7 @@ export default function WizardStep6({
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <Card>
+      <Card accent>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5 text-accent" />
@@ -228,7 +228,7 @@ export default function WizardStep6({
       </Card>
 
       {/* XML Generation - navigate to editor */}
-      <Card>
+      <Card accent>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileCode2 className="h-5 w-5 text-accent" />

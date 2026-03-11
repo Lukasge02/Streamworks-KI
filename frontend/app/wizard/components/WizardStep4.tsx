@@ -324,7 +324,7 @@ export default function WizardStep4({
   const Icon = jobTypeIcon[jobType] ?? Settings2;
 
   return (
-    <Card>
+    <Card accent>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">

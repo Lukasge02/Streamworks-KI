@@ -49,7 +49,7 @@ export default function WizardStep1({ data, onChange, jobType }: WizardStep1Prop
   }
 
   return (
-    <Card>
+    <Card accent>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-accent" />

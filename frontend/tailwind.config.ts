@@ -57,9 +57,9 @@ const config: Config = {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
       borderRadius: {
-        lg: "0.75rem",
-        md: "0.5rem",
-        sm: "0.375rem",
+        lg: "0.5rem",
+        md: "0.25rem",
+        sm: "0.125rem",
       },
       boxShadow: {
         soft: "0 1px 2px 0 rgba(0, 0, 0, 0.04)",

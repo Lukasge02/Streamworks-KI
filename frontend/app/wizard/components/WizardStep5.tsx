@@ -94,7 +94,7 @@ export default function WizardStep5({ data, onChange }: WizardStep5Props) {
   }
 
   return (
-    <Card>
+    <Card accent>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-accent" />

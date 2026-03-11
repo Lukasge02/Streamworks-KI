@@ -149,10 +149,18 @@ function VerticalStepIndicator({
   return (
     <nav className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-border/50">
-        <h2 className="text-sm font-semibold text-primary">Stream-Wizard</h2>
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          Schritt {currentStep + 1} von {STEPS.length}
-        </p>
+        <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Stream-Wizard</h2>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex-1 h-1.5 bg-border/50 rounded-sm overflow-hidden">
+            <div
+              className="h-full bg-accent transition-all duration-500 ease-out rounded-sm"
+              style={{ width: `${Math.round(((currentStep + 1) / STEPS.length) * 100)}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-semibold text-primary tabular-nums">
+            {Math.round(((currentStep + 1) / STEPS.length) * 100)}%
+          </span>
+        </div>
       </div>
       <ol className="flex-1 flex flex-col py-2">
         {STEPS.map((step, idx) => {
@@ -211,7 +219,7 @@ function VerticalStepIndicator({
               >
                 <span
                   className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold shrink-0 transition-all duration-200",
+                    "flex h-7 w-7 items-center justify-center rounded text-xs font-bold shrink-0 transition-all duration-200",
                     // Aktiver Step
                     isActive && "bg-primary text-white shadow-sm",
                     // Complete (Gruen)
@@ -646,7 +654,7 @@ function WizardInner() {
     <AppLayout noScroll>
       <div className="flex h-full">
         {/* Left: Vertical Step Navigation */}
-        <div className="hidden md:flex w-[220px] flex-col border-r border-border/50 bg-surface-raised shrink-0">
+        <div className="hidden md:flex w-[240px] flex-col border-r border-border/50 bg-surface-raised shrink-0">
           <VerticalStepIndicator
             currentStep={currentStep}
             onStepClick={goToStep}
@@ -668,13 +676,15 @@ function WizardInner() {
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
-            <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto animate-fade-in" key={currentStep}>
-              {stepComponents[currentStep]}
+            <div className="min-h-full flex items-center justify-center p-4 sm:p-6 lg:p-8">
+              <div className="w-full max-w-4xl animate-fade-in" key={currentStep}>
+                {stepComponents[currentStep]}
+              </div>
             </div>
           </div>
 
           {/* Fixed Bottom Navigation */}
-          <div className="shrink-0 flex items-center justify-between border-t border-border bg-surface-raised px-4 sm:px-6 lg:px-8 py-4">
+          <div className="shrink-0 flex items-center justify-between border-t border-border/30 bg-surface-raised px-4 sm:px-6 lg:px-8 py-3">
             <Button
               variant="outline"
               onClick={goBack}
@@ -684,7 +694,7 @@ function WizardInner() {
               <span className="hidden sm:inline">Zurueck</span>
             </Button>
 
-            <div className="hidden md:flex items-center gap-1.5">
+            <div className="hidden md:flex items-center gap-1">
               {STEPS.map((_, idx) => {
                 const status = getValidationStatusForStep(idx);
                 return (
@@ -692,8 +702,9 @@ function WizardInner() {
                     key={idx}
                     onClick={() => goToStep(idx)}
                     className={cn(
-                      "w-2 h-2 rounded-full transition-all duration-200",
-                      idx === currentStep && "bg-primary w-4",
+                      "h-1 rounded-sm transition-all duration-300",
+                      idx === currentStep && "bg-primary w-8",
+                      idx !== currentStep && "w-6",
                       idx !== currentStep && status === 'complete' && "bg-success",
                       idx !== currentStep && status === 'warning' && "bg-warning",
                       idx !== currentStep && status === 'error' && "bg-destructive",

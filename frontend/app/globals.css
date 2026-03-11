@@ -33,7 +33,7 @@
 
   /* Spacing & Layout */
   --header-height: 48px;
-  --radius: 0.5rem;
+  --radius: 0.25rem;
 }
 
 @layer base {
@@ -43,7 +43,8 @@
 
   body {
     color: var(--color-text-primary);
-    background-color: var(--color-surface);
+    background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf1 100%);
+    background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
